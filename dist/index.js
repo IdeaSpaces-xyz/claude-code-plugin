@@ -30625,12 +30625,13 @@ function deleteCredentials() {
 }
 var DEFAULT_API_URL2 = "https://api.ideaspaces.xyz";
 function loadConfig() {
-  const envKey = process.env.IS_API_KEY;
+  const envKey = process.env.IS_API_KEY || process.env.CLAUDE_PLUGIN_OPTION_api_key;
+  const envRepo = process.env.IS_REPO || process.env.CLAUDE_PLUGIN_OPTION_repo_id || "";
   if (envKey) {
     return {
       apiUrl: (process.env.IS_API_URL || DEFAULT_API_URL2).replace(/\/$/, ""),
       apiKey: envKey,
-      repo: process.env.IS_REPO || ""
+      repo: envRepo
     };
   }
   const stored = loadStoredCredentials();
@@ -30638,7 +30639,7 @@ function loadConfig() {
     return {
       apiUrl: (process.env.IS_API_URL || stored.api_url || DEFAULT_API_URL2).replace(/\/$/, ""),
       apiKey: stored.api_key,
-      repo: process.env.IS_REPO || stored.repo_id || ""
+      repo: envRepo || stored.repo_id || ""
     };
   }
   return null;
