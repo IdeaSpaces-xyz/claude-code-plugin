@@ -19,38 +19,45 @@ claude --plugin-dir ./path/to/claude-code-plugin
 
 **Option A — Browser login (recommended):**
 
-Start Claude Code with the plugin, then type:
+Start Claude Code with the plugin installed, then:
 ```
 Use is_login to connect to IdeaSpaces
 ```
-This opens your browser for Google OAuth. Credentials are stored automatically.
+Opens your browser for Google OAuth. Credentials stored automatically.
 
 **Option B — API key:**
 
 1. Get an API key at [ideaspaces.xyz/settings](https://ideaspaces.xyz/settings)
 2. Enter it when prompted during plugin installation
 
-## Tools
+## What It Does
 
-13 tools for working with your knowledge space:
+IdeaSpaces gives your agent a knowledge space — a searchable, entity-connected, git-versioned collection of notes that persists across sessions. Navigate by meaning, not file paths. Connect notes to entities. Apply perspectives to transform information. Track what changed over time.
+
+### Tools
 
 | Tool | What |
 |---|---|
-| `is_navigate` | Browse the tree — context, summaries, guidance, perspectives |
+| `is_navigate` | Browse the tree — direction, guidance, perspectives, skills |
 | `is_search` | Semantic search by meaning |
-| `is_read` | Read a file or note by path or ID |
+| `is_read` | Read by path or node ID |
 | `is_write` | Create or update a Note |
+| `is_list` | Filter nodes by entity, type, tag, contributor |
 | `is_grep` | Text search or cross-file section extraction |
 | `is_git` | Temporal awareness — log, changes, diff |
-| `is_list` | Filter nodes by entity, type, tag, contributor |
 | `is_list_tags` | Discover existing tags |
 | `is_outline` | Full tree with summaries and node IDs |
 | `is_delete` | Remove a file (recoverable) |
 | `is_move` | Move or rename, preserving identity |
 | `is_update_metadata` | Update tags, entities, accessibility |
 | `is_login` | Authenticate via browser |
+| `is_logout` | Clear stored credentials |
 
-## Skills
+### Skills
 
-- **is-space** — How to work with the knowledge space (orient → engage → organize)
+- **is-space** — When and how to use the knowledge space
 - **is-writing** — Writing standard for Notes that compound
+
+## Session Awareness
+
+The plugin tracks what changed between sessions. On your first `is_navigate` call, it shows changes since your last session — so the agent picks up where it left off.
