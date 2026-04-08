@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "ideaspaces",
-      "source": ".",
+      "source": "./",
       "description": "Connect Claude Code to your IdeaSpaces knowledge space."
     }
   ]
