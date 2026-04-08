@@ -11,11 +11,15 @@
   "keywords": ["knowledge", "memory", "search", "notes", "perspectives"],
   "userConfig": {
     "api_key": {
+      "title": "API Key",
       "description": "IdeaSpaces API key (optional — use is_login tool to authenticate via browser instead)",
+      "type": "string",
       "sensitive": true
     },
     "repo_id": {
+      "title": "Repo ID",
       "description": "Repo ID (optional — auto-discovered if you have one space)",
+      "type": "string",
       "sensitive": false
     }
   }
