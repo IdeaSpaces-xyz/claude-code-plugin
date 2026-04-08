@@ -1,25 +1,13 @@
 {
-  "name": "ideaspaces",
+  "name": "IdeaSpaces",
   "description": "Connect to your IdeaSpaces knowledge space — persistent, searchable knowledge that compounds across sessions.",
-  "version": "0.2.0",
-  "author": {
-    "name": "IdeaSpaces"
-  },
-  "homepage": "https://ideaspaces.xyz",
-  "repository": "https://github.com/IdeaSpaces-xyz/claude-code-plugin",
-  "license": "MIT",
-  "keywords": ["knowledge", "memory", "search", "notes", "perspectives"],
   "userConfig": {
     "api_key": {
-      "title": "API Key",
       "description": "IdeaSpaces API key (optional — use is_login tool to authenticate via browser instead)",
-      "type": "string",
       "sensitive": true
     },
     "repo_id": {
-      "title": "Repo ID",
       "description": "Repo ID (optional — auto-discovered if you have one space)",
-      "type": "string",
       "sensitive": false
     }
   }
