@@ -1,0 +1,17 @@
+{
+  "name": "ideaspaces",
+  "owner": {
+    "name": "IdeaSpaces",
+    "email": "hello@ideaspaces.xyz"
+  },
+  "metadata": {
+    "description": "Persistent, searchable knowledge that compounds across sessions."
+  },
+  "plugins": [
+    {
+      "name": "ideaspaces",
+      "source": ".",
+      "description": "Connect Claude Code to your IdeaSpaces knowledge space."
+    }
+  ]
+}
