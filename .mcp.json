@@ -2,10 +2,9 @@
   "mcpServers": {
     "ideaspaces": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
       "env": {
-        "IS_API_KEY": "${user_config.api_key}",
-        "IS_REPO": "${user_config.repo_id}"
+        "IS_CLI_PATH": "${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js"
       }
     }
   }

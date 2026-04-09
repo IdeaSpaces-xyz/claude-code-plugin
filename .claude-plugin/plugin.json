@@ -1,14 +1,4 @@
 {
   "name": "IdeaSpaces",
-  "description": "Connect to your IdeaSpaces knowledge space — persistent, searchable knowledge that compounds across sessions.",
-  "userConfig": {
-    "api_key": {
-      "description": "IdeaSpaces API key (optional — use is_login tool to authenticate via browser instead)",
-      "sensitive": true
-    },
-    "repo_id": {
-      "description": "Repo ID (optional — auto-discovered if you have one space)",
-      "sensitive": false
-    }
-  }
+  "description": "Connect to your IdeaSpaces knowledge space — persistent, searchable knowledge that compounds across sessions."
 }

@@ -5,48 +5,70 @@ description: >
   file tools when working with knowledge that should be searchable, connected
   to entities, and persist across sessions. Read this when you see is_* tools
   available or when the user asks about their knowledge space.
-allowed-tools: "mcp__ideaspaces__is_navigate mcp__ideaspaces__is_search mcp__ideaspaces__is_read mcp__ideaspaces__is_write mcp__ideaspaces__is_grep mcp__ideaspaces__is_git mcp__ideaspaces__is_list_tags mcp__ideaspaces__is_delete mcp__ideaspaces__is_move mcp__ideaspaces__is_update_metadata mcp__ideaspaces__is_outline"
+allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideaspaces_ideaspaces__is_find mcp__plugin_ideaspaces_ideaspaces__is_read mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth"
 ---
 
 # Working with IdeaSpaces
 
 You have two sets of tools: local file tools (Read, Write, Edit, Bash) and IdeaSpaces tools (is_*). Use the right set for the task.
 
-**Local tools for code. is_* tools for knowledge.** If it should be findable by meaning, connected to entities, and persist across sessions — use is_* tools. If it's a source file, config, or temporary artifact — use local tools.
+**IdeaSpaces (is_* tools)** — knowledge that should be findable by meaning, connected to entities, and shared across sessions. Decisions, research, architecture, plans, profiles, analysis.
+
+**Local file tools** — source code, config, temporary artifacts, build outputs.
 
 ## Start Here
 
-**Orient first.** Call `is_navigate` at the start of a session to understand the space — what branches exist, what the user is working on (Now), what guidance applies. This is your map.
+**Orient first.** Call `is_explore` at the start of a session to see the space — branches, README context, what changed since last session.
 
-## The 11 Tools
+## Tools
 
-### Orient — understand what's there
+### is_explore — see what's there
+Navigate the knowledge tree. Returns branch context, children with summaries, agent guidance (Direction, Perspectives, Skills).
 
-- `is_navigate` — tree position + awareness. Returns README context, children with summaries, agent guidance, Now. **Navigate before writing** to understand where content belongs.
-- `is_search` — find by meaning across the Space. Supports facet filtering by entity, type, directory, author, tags. Use to discover existing knowledge before creating.
-- `is_grep` — text/regex search within files, or extract sections by heading across files. Complements semantic search — is_search finds meaning, is_grep finds exact references.
-- `is_outline` — full tree of the space — every file and directory with name, summary, node ID. Use for big-picture orientation and resolving references.
+- `is_explore` — root of the space
+- `is_explore path="core/"` — subtree
+- `is_explore full=true` — full outline of every file and directory
 
-### Engage — read and write
+### is_find — search for knowledge
+Three methods in one tool. Automatically picks the right approach.
 
-- `is_read` — full content + metadata (tags, attached_to, node_id, SHA). Supports windowed reads with offset/limit — grep for a heading, then read just that section.
-- `is_write` — create or update a Note. Gets indexed, embedded, searchable. **Summary is the most important field** — it's what search shows and what loads in context. Use `attached_to` for entity binding: `hostname:x`, `person:y`, `note:n_id`.
+- `is_find query="MCP architecture"` — semantic search (default)
+- `is_find method="grep" query="TODO"` — text/regex in files
+- `is_find method="grep" heading="## Decision"` — extract sections by heading
+- `is_find method="list" tag="architecture"` — filter by metadata
+- `is_find method="list" attached_to="hostname:acme.com"` — find by entity
 
-### Organize — restructure the space
+Filters: `scope`, `type`, `tag`, `attached_to`, `contributed_by`, `limit`.
 
-- `is_delete` — remove a file. Recoverable via git history.
-- `is_move` — move or rename a file or directory. Preserves node identity and history.
-- `is_update_metadata` — update tags, entities, accessibility on a node without re-embedding.
+### is_read — read content
+Read a note's full content and metadata. Accepts paths or node IDs.
 
-### Time — track evolution
+- `is_read path="core/About.md"` — by path
+- `is_read path="n_b4d942f682a0"` — by node ID
+- `is_read path="core/About.md" history=true` — include git log
+- `is_read path="core/About.md" offset=10 limit=50` — windowed read
 
-- `is_git` — temporal awareness. Operations: `log` (recent commits), `changes` (files changed since a SHA), `find` (commits that introduced a string), `diff` (what a commit changed), `word_diff` (word-level diff). Scope any operation to a path for file-level history.
-- `is_list_tags` — discover what tags exist before tagging. Prevents duplicates.
+### is_write — create, update, move, delete
+Four actions in one tool.
+
+- `is_write path="analysis.md" content="# Analysis\n..." name="Analysis" summary="Key findings" tags=["research"]` — create/update
+- `is_write action="update_metadata" node_id="n_abc" tags=["core"] attached_to=["hostname:acme.com"]` — update metadata
+- `is_write action="move" source="old/path.md" destination="new/path.md"` — move/rename
+- `is_write action="delete" path="draft.md"` — delete (recoverable via git)
+
+Write fields: `name`, `summary`, `tags`, `attached_to`, `if_match` (conditional write).
+
+### is_auth — connect and manage
+- `is_auth` — login (opens browser for OAuth)
+- `is_auth repo="my-notes"` — select a specific space
+- `is_auth action="repos"` — list available spaces
+- `is_auth action="status"` — connection info
+- `is_auth action="logout"` — clear credentials
 
 ## Key Patterns
 
-- **Navigate before writing.** Always `is_navigate` the target area first. Understand what branches mean (READMEs). Place content where it compounds with related knowledge.
-- **Search before creating.** `is_search` to check if something similar exists. Avoid duplicates. Build on what's there.
+- **Navigate before writing.** `is_explore` the target area first. Place content where it compounds.
+- **Search before creating.** `is_find` to check if something similar exists. Build on what's there.
 - **Summary is everything.** The `summary` field determines how a Note is found. Write it like the first thing someone reads.
-- **Entities connect.** Add `attached_to` when writing: `hostname:acme.com`, `person:alice`. This is how Notes connect across the Space.
-- **Position matters.** Where you `is_write` determines which branch context applies. Navigate first, understand the branch, then write.
+- **Entities connect.** Add `attached_to` when writing: `hostname:acme.com`, `person:alice`.
+- **IDs are stable.** Node IDs survive moves and renames. Use them for references.
