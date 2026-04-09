@@ -30846,15 +30846,20 @@ server.tool("is_login", "Log in to IdeaSpaces, or select a space if already auth
   if (client && !repo) {
     return textResult(`Already connected to ${connectedRepo}. Use is_logout first to switch.`);
   }
+  if (!repo && pendingAuth) {
+    return textResult(`Authenticated. Select a space by calling is_login with one:
+${formatRepoList(pendingAuth.repos)}`);
+  }
   if (repo && pendingAuth) {
     const match = resolveRepo(pendingAuth.repos, repo);
     if (!match) {
       return errorResult(new Error(`Space "${repo}" not found. Available:
 ${formatRepoList(pendingAuth.repos)}`));
     }
+    const { apiKey, apiUrl: apiUrl2 } = pendingAuth;
     try {
-      await connectClient(pendingAuth.apiKey, pendingAuth.apiUrl, match.repo_id);
-      saveCredentials({ api_url: pendingAuth.apiUrl, api_key: pendingAuth.apiKey, repo_id: match.repo_id });
+      await connectClient(apiKey, apiUrl2, match.repo_id);
+      saveCredentials({ api_url: apiUrl2, api_key: apiKey, repo_id: match.repo_id });
       const orientation = await getOrientation();
       return textResult(`Connected to ${match.name || match.slug}.${orientation}`);
     } catch (err) {
