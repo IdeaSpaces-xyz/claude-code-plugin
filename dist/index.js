@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+#!/usr/bin/env node
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -30113,7 +30114,7 @@ var StdioServerTransport = class {
   }
 };
 
-// src/index.ts
+// dist/index.js
 import { exec } from "node:child_process";
 import { platform } from "node:os";
 
@@ -30590,7 +30591,7 @@ async function autoSelectRepo(client2) {
   return { repoId: null, repos };
 }
 
-// src/credentials.ts
+// dist/credentials.js
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -30598,10 +30599,12 @@ var CONFIG_DIR = join(homedir(), ".ideaspaces");
 var CREDENTIALS_FILE = join(CONFIG_DIR, "credentials.json");
 function loadStoredCredentials() {
   try {
-    if (!existsSync(CREDENTIALS_FILE)) return null;
+    if (!existsSync(CREDENTIALS_FILE))
+      return null;
     const raw = readFileSync(CREDENTIALS_FILE, "utf-8");
     const data = JSON.parse(raw);
-    if (!data.api_key) return null;
+    if (!data.api_key)
+      return null;
     return data;
   } catch {
     return null;
@@ -30648,7 +30651,7 @@ function getDefaultApiUrl() {
   return (process.env.IS_API_URL || DEFAULT_API_URL2).replace(/\/$/, "");
 }
 
-// src/callback-server.ts
+// dist/callback-server.js
 import { createServer } from "node:http";
 import { URL as URL2 } from "node:url";
 var SUCCESS_HTML = `<!DOCTYPE html>
@@ -30721,11 +30724,28 @@ function startCallbackServer() {
   });
 }
 
-// src/index.ts
+// dist/index.js
 var client = null;
 var session = null;
 var connectedRepo = null;
 var firstNavigate = true;
+var pendingAuth = null;
+function formatRepoList(repos) {
+  return repos.map((r) => {
+    const name = r.name || r.slug;
+    const parts = [name];
+    if (r.hostname)
+      parts.push(r.hostname);
+    if (r.file_count != null)
+      parts.push(`${r.file_count} files`);
+    if (r.last_activity)
+      parts.push(`active ${r.last_activity}`);
+    return `  ${r.slug} \u2014 ${parts.join(", ")}`;
+  }).join("\n");
+}
+function resolveRepo(repos, ref) {
+  return repos.find((r) => r.slug === ref || r.repo_id === ref);
+}
 async function connectClient(apiKey, apiUrl, repo) {
   const c = createClient({ apiKey, apiUrl, repo: repo || void 0 });
   if (!repo) {
@@ -30734,9 +30754,8 @@ async function connectClient(apiKey, apiUrl, repo) {
       c.setRepo(repoId);
       repo = repoId;
     } else if (repos.length > 1) {
-      throw new Error(
-        `Multiple repos available. Set IS_REPO to one of: ${repos.map((r) => r.repo_id).join(", ")}`
-      );
+      pendingAuth = { apiKey, apiUrl, repos };
+      return { repoId: null, repos };
     } else {
       throw new Error("No repos found for this API key.");
     }
@@ -30745,7 +30764,8 @@ async function connectClient(apiKey, apiUrl, repo) {
   connectedRepo = repo;
   session = createSession(c);
   firstNavigate = true;
-  return repo;
+  pendingAuth = null;
+  return { repoId: repo };
 }
 function persistSessionHead(sha) {
   try {
@@ -30767,6 +30787,10 @@ function loadLastSha() {
 }
 function requireClient() {
   if (!client) {
+    if (pendingAuth) {
+      throw new Error(`Authenticated but no space selected. Call is_login with one of:
+${formatRepoList(pendingAuth.repos)}`);
+    }
     throw new Error("Not connected. Use the is_login tool to authenticate first.");
   }
   return client;
@@ -30774,7 +30798,9 @@ function requireClient() {
 var initialConfig = loadConfig();
 if (initialConfig) {
   try {
-    await connectClient(initialConfig.apiKey, initialConfig.apiUrl, initialConfig.repo);
+    const result = await connectClient(initialConfig.apiKey, initialConfig.apiUrl, initialConfig.repo);
+    if (!result.repoId) {
+    }
   } catch {
   }
 }
@@ -30803,502 +30829,515 @@ var server = new McpServer({
   name: "ideaspaces",
   version: "0.1.0"
 });
-server.tool(
-  "is_login",
-  "Log in to IdeaSpaces via browser. Opens Google OAuth, waits for callback, stores credentials.",
-  {},
-  async () => {
-    if (client) {
-      return textResult(`Already connected to repo ${connectedRepo}. Use is_logout first to switch accounts.`);
+async function getOrientation() {
+  if (!session)
+    return "";
+  try {
+    const awareness = await session.getAwarenessBlock();
+    return awareness ? `
+
+${awareness}` : "";
+  } catch {
+    return "";
+  }
+}
+server.tool("is_login", "Log in to IdeaSpaces, or select a space if already authenticated. Pass `repo` (slug or ID) to select a specific space.", {
+  repo: external_exports3.string().optional().describe("Space to connect to (slug or repo ID). Omit to auto-select or list available spaces.")
+}, async ({ repo }) => {
+  if (client && !repo) {
+    return textResult(`Already connected to ${connectedRepo}. Use is_logout first to switch.`);
+  }
+  if (repo && pendingAuth) {
+    const match = resolveRepo(pendingAuth.repos, repo);
+    if (!match) {
+      return errorResult(new Error(`Space "${repo}" not found. Available:
+${formatRepoList(pendingAuth.repos)}`));
     }
-    const apiUrl = getDefaultApiUrl();
-    let callbackServer;
     try {
-      callbackServer = await startCallbackServer();
+      await connectClient(pendingAuth.apiKey, pendingAuth.apiUrl, match.repo_id);
+      saveCredentials({ api_url: pendingAuth.apiUrl, api_key: pendingAuth.apiKey, repo_id: match.repo_id });
+      const orientation = await getOrientation();
+      return textResult(`Connected to ${match.name || match.slug}.${orientation}`);
     } catch (err) {
-      return errorResult(err);
-    }
-    const authUrl = `${apiUrl}/auth/google?response_type=cli&port=${callbackServer.port}`;
-    openBrowser(authUrl);
-    try {
-      const token = await callbackServer.waitForCallback(12e4);
-      callbackServer.close();
-      saveCredentials({ api_url: apiUrl, api_key: token });
-      const repoId = await connectClient(token, apiUrl, "");
-      saveCredentials({ api_url: apiUrl, api_key: token, repo_id: repoId });
-      return textResult(`Logged in and connected to ${repoId}. Credentials saved \u2014 future sessions will auto-connect.`);
-    } catch (err) {
-      callbackServer.close();
-      if (err instanceof Error && err.message.includes("timed out")) {
-        return errorResult(new Error(
-          `Login timed out. If the browser didn't open, visit manually:
-${authUrl}`
-        ));
-      }
       return errorResult(err);
     }
   }
-);
-server.tool(
-  "is_logout",
-  "Log out of IdeaSpaces. Clears stored credentials.",
-  {},
-  async () => {
-    deleteCredentials();
+  if (repo && client) {
+    const stored = loadStoredCredentials();
+    if (!stored)
+      return errorResult(new Error("No stored credentials. Use is_logout and re-login."));
+    const tempClient = createClient({ apiKey: stored.api_key, apiUrl: stored.api_url });
+    const { repos } = await autoSelectRepo(tempClient);
+    const match = resolveRepo(repos, repo);
+    if (!match) {
+      return errorResult(new Error(`Space "${repo}" not found. Available:
+${formatRepoList(repos)}`));
+    }
     client = null;
+    session = null;
     connectedRepo = null;
-    return textResult("Logged out. Stored credentials removed.");
-  }
-);
-server.tool(
-  "is_navigate",
-  "Navigate the knowledge tree. Returns branch context (README), children with summaries, agent guidance, and current Now.",
-  { path: external_exports3.string().optional().describe("Directory path. Empty for root.") },
-  async ({ path }) => {
     try {
-      const c = requireClient();
-      const { data: r } = await c.navigate(path ?? "");
-      const lines = [];
-      lines.push(`\u{1F4CD} ${r.path || "(root)"}`);
-      if (r.file_count > 0) lines.push(`   ${r.file_count} files`);
-      if (r.readme) {
-        lines.push("");
-        lines.push(r.readme);
+      await connectClient(stored.api_key, stored.api_url, match.repo_id);
+      saveCredentials({ ...stored, repo_id: match.repo_id });
+      const orientation = await getOrientation();
+      return textResult(`Switched to ${match.name || match.slug}.${orientation}`);
+    } catch (err) {
+      return errorResult(err);
+    }
+  }
+  const apiUrl = getDefaultApiUrl();
+  let callbackServer;
+  try {
+    callbackServer = await startCallbackServer();
+  } catch (err) {
+    return errorResult(err);
+  }
+  const authUrl = `${apiUrl}/auth/google?response_type=cli&port=${callbackServer.port}`;
+  openBrowser(authUrl);
+  try {
+    const token = await callbackServer.waitForCallback(12e4);
+    callbackServer.close();
+    saveCredentials({ api_url: apiUrl, api_key: token });
+    const result = await connectClient(token, apiUrl, "");
+    if (result.repoId === null) {
+      return textResult(`Logged in. You have multiple spaces \u2014 call is_login with one:
+${formatRepoList(result.repos)}`);
+    }
+    saveCredentials({ api_url: apiUrl, api_key: token, repo_id: result.repoId });
+    const orientation = await getOrientation();
+    return textResult(`Logged in and connected.${orientation}`);
+  } catch (err) {
+    callbackServer.close();
+    if (err instanceof Error && err.message.includes("timed out")) {
+      return errorResult(new Error(`Login timed out. If the browser didn't open, visit manually:
+${authUrl}`));
+    }
+    return errorResult(err);
+  }
+});
+server.tool("is_logout", "Log out of IdeaSpaces. Clears stored credentials.", {}, async () => {
+  deleteCredentials();
+  client = null;
+  session = null;
+  connectedRepo = null;
+  pendingAuth = null;
+  return textResult("Logged out. Stored credentials removed.");
+});
+server.tool("is_navigate", "Navigate the knowledge tree. Returns branch context (README), children with summaries, agent guidance, and current Now.", { path: external_exports3.string().optional().describe("Directory path. Empty for root.") }, async ({ path }) => {
+  try {
+    const c = requireClient();
+    const { data: r } = await c.navigate(path ?? "");
+    const lines = [];
+    lines.push(`\u{1F4CD} ${r.path || "(root)"}`);
+    if (r.file_count > 0)
+      lines.push(`   ${r.file_count} files`);
+    if (r.readme) {
+      lines.push("");
+      lines.push(r.readme);
+    }
+    if (r.now) {
+      lines.push("");
+      lines.push(`\u{1F3AF} Now: ${r.now}`);
+    }
+    const dirs = r.children.filter((c2) => c2.type === "directory");
+    const files = r.children.filter((c2) => c2.type === "file");
+    if (dirs.length) {
+      lines.push("", "Directories:");
+      for (const d of dirs) {
+        const count = d.file_count ? ` (${d.file_count})` : "";
+        const summary = d.summary ? ` \u2014 ${d.summary}` : "";
+        lines.push(`  \u{1F4C1} ${d.name}/${count}${summary}`);
       }
-      if (r.now) {
-        lines.push("");
-        lines.push(`\u{1F3AF} Now: ${r.now}`);
+    }
+    if (files.length) {
+      lines.push("", "Files:");
+      for (const f of files) {
+        const summary = f.summary ? ` \u2014 ${f.summary}` : "";
+        lines.push(`  \u{1F4C4} ${f.name}${summary}`);
       }
-      const dirs = r.children.filter((c2) => c2.type === "directory");
-      const files = r.children.filter((c2) => c2.type === "file");
-      if (dirs.length) {
-        lines.push("", "Directories:");
-        for (const d of dirs) {
-          const count = d.file_count ? ` (${d.file_count})` : "";
-          const summary = d.summary ? ` \u2014 ${d.summary}` : "";
-          lines.push(`  \u{1F4C1} ${d.name}/${count}${summary}`);
-        }
-      }
-      if (files.length) {
-        lines.push("", "Files:");
-        for (const f of files) {
-          const summary = f.summary ? ` \u2014 ${f.summary}` : "";
-          lines.push(`  \u{1F4C4} ${f.name}${summary}`);
-        }
-      }
-      if (firstNavigate && client) {
-        firstNavigate = false;
-        const lastSha = loadLastSha();
-        if (lastSha) {
-          try {
-            const { data: changes } = await c.gitOps({ op: "changes", since: lastSha });
-            if (changes.changes?.length) {
-              lines.push("", `Since last session (${changes.changes.length} changes):`);
-              for (const ch of changes.changes.slice(0, 15)) {
-                lines.push(`  ${ch.status} ${ch.path}`);
-              }
-              if (changes.changes.length > 15) {
-                lines.push(`  ... and ${changes.changes.length - 15} more`);
-              }
-            }
-          } catch {
-          }
-        }
+    }
+    if (firstNavigate && client) {
+      firstNavigate = false;
+      const lastSha = loadLastSha();
+      if (lastSha) {
         try {
-          const { data: log } = await c.gitOps({ op: "log", limit: 1 });
-          const headSha = log.entries?.[0]?.sha;
-          if (headSha) persistSessionHead(headSha);
+          const { data: changes } = await c.gitOps({ op: "changes", since: lastSha });
+          if (changes.changes?.length) {
+            lines.push("", `Since last session (${changes.changes.length} changes):`);
+            for (const ch of changes.changes.slice(0, 15)) {
+              lines.push(`  ${ch.status} ${ch.path}`);
+            }
+            if (changes.changes.length > 15) {
+              lines.push(`  ... and ${changes.changes.length - 15} more`);
+            }
+          }
         } catch {
         }
       }
-      if (r.agent_context.length) {
-        const groups = {};
-        for (const a of r.agent_context) {
-          const kind = a.kind || "other";
-          (groups[kind] ??= []).push(a);
+      try {
+        const { data: log } = await c.gitOps({ op: "log", limit: 1 });
+        const headSha = log.entries?.[0]?.sha;
+        if (headSha)
+          persistSessionHead(headSha);
+      } catch {
+      }
+    }
+    if (r.agent_context.length) {
+      const groups = {};
+      for (const a of r.agent_context) {
+        const kind = a.kind || "other";
+        (groups[kind] ??= []).push(a);
+      }
+      const directionKinds = /* @__PURE__ */ new Set(["now", "purpose"]);
+      const guidanceKinds = /* @__PURE__ */ new Set(["guidance", "soul", "identity", "custom"]);
+      const dirItems = ["now", "purpose"].filter((k) => groups[k]);
+      if (dirItems.length) {
+        lines.push("", "Direction:");
+        for (const k of dirItems)
+          for (const a of groups[k]) {
+            const desc = a.description ? `: ${a.description}` : "";
+            lines.push(`  ${a.name}${desc}`);
+          }
+      }
+      const guidItems = ["guidance", "soul", "identity", "custom"].filter((k) => groups[k]);
+      if (guidItems.length) {
+        lines.push("", "Guidance:");
+        for (const k of guidItems)
+          for (const a of groups[k]) {
+            const from = a.inherited_from ? ` (from ${a.inherited_from})` : "";
+            const desc = a.description ? ` \u2014 ${a.description}` : "";
+            lines.push(`  ${a.name}${from}${desc}`);
+          }
+      }
+      if (groups["perspective"]) {
+        lines.push("", "Perspectives:");
+        for (const a of groups["perspective"]) {
+          const desc = a.description ? ` \u2014 ${a.description}` : "";
+          lines.push(`  ${a.name}${desc}`);
         }
-        const directionKinds = /* @__PURE__ */ new Set(["now", "purpose"]);
-        const guidanceKinds = /* @__PURE__ */ new Set(["guidance", "soul", "identity", "custom"]);
-        const dirItems = ["now", "purpose"].filter((k) => groups[k]);
-        if (dirItems.length) {
-          lines.push("", "Direction:");
-          for (const k of dirItems)
-            for (const a of groups[k]) {
-              const desc = a.description ? `: ${a.description}` : "";
-              lines.push(`  ${a.name}${desc}`);
-            }
+      }
+      if (groups["skill"]) {
+        lines.push("", "Skills:");
+        for (const a of groups["skill"]) {
+          const desc = a.description ? ` \u2014 ${a.description}` : "";
+          lines.push(`  ${a.name}${desc}`);
         }
-        const guidItems = ["guidance", "soul", "identity", "custom"].filter((k) => groups[k]);
-        if (guidItems.length) {
-          lines.push("", "Guidance:");
-          for (const k of guidItems)
-            for (const a of groups[k]) {
-              const from = a.inherited_from ? ` (from ${a.inherited_from})` : "";
-              const desc = a.description ? ` \u2014 ${a.description}` : "";
-              lines.push(`  ${a.name}${from}${desc}`);
-            }
-        }
-        if (groups["perspective"]) {
-          lines.push("", "Perspectives:");
-          for (const a of groups["perspective"]) {
+      }
+      const knownKinds = /* @__PURE__ */ new Set([...directionKinds, ...guidanceKinds, "perspective", "skill"]);
+      const otherKinds = Object.keys(groups).filter((k) => !knownKinds.has(k));
+      if (otherKinds.length) {
+        lines.push("", "Context:");
+        for (const k of otherKinds)
+          for (const a of groups[k]) {
             const desc = a.description ? ` \u2014 ${a.description}` : "";
             lines.push(`  ${a.name}${desc}`);
           }
-        }
-        if (groups["skill"]) {
-          lines.push("", "Skills:");
-          for (const a of groups["skill"]) {
-            const desc = a.description ? ` \u2014 ${a.description}` : "";
-            lines.push(`  ${a.name}${desc}`);
-          }
-        }
-        const knownKinds = /* @__PURE__ */ new Set([...directionKinds, ...guidanceKinds, "perspective", "skill"]);
-        const otherKinds = Object.keys(groups).filter((k) => !knownKinds.has(k));
-        if (otherKinds.length) {
-          lines.push("", "Context:");
-          for (const k of otherKinds)
-            for (const a of groups[k]) {
-              const desc = a.description ? ` \u2014 ${a.description}` : "";
-              lines.push(`  ${a.name}${desc}`);
-            }
-        }
       }
-      return textResult(lines.join("\n"));
-    } catch (err) {
-      return errorResult(err);
     }
+    return textResult(lines.join("\n"));
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_search",
-  "Semantic search across the knowledge space. Find Notes by meaning, not keywords.",
-  {
-    query: external_exports3.string().describe("What to search for"),
-    scope: external_exports3.string().optional().describe("Directory subtree scope"),
-    node_type: external_exports3.string().optional().describe("Filter: note, perspective, skill, agent_context, readme"),
-    attached_to: external_exports3.string().optional().describe("Entity, e.g. 'hostname:acme.com'"),
-    contributed_by: external_exports3.string().optional().describe("Author, e.g. 'person:alice'"),
-    tags: external_exports3.string().optional().describe("Tag filter")
-  },
-  async ({ query, scope, node_type, attached_to, contributed_by, tags }) => {
-    try {
-      const c = requireClient();
-      const { data } = await c.search({ query, scope, node_type, attached_to, contributed_by, tags });
-      if (!data.results.length) return textResult(`No results for "${query}"`);
-      const lines = [`\u{1F50D} "${query}" (${data.results.length} results)`, ""];
-      for (const r of data.results) {
-        lines.push(`${r.score.toFixed(2)}  ${r.path}`);
-        if (r.name) lines.push(`      ${r.name}`);
-        if (r.summary) lines.push(`      ${r.summary}`);
-      }
-      return textResult(lines.join("\n"));
-    } catch (err) {
-      return errorResult(err);
+});
+server.tool("is_search", "Semantic search across the knowledge space. Find Notes by meaning, not keywords.", {
+  query: external_exports3.string().describe("What to search for"),
+  scope: external_exports3.string().optional().describe("Directory subtree scope"),
+  node_type: external_exports3.string().optional().describe("Filter: note, perspective, skill, agent_context, readme"),
+  attached_to: external_exports3.string().optional().describe("Entity, e.g. 'hostname:acme.com'"),
+  contributed_by: external_exports3.string().optional().describe("Author, e.g. 'person:alice'"),
+  tags: external_exports3.string().optional().describe("Tag filter")
+}, async ({ query, scope, node_type, attached_to, contributed_by, tags }) => {
+  try {
+    const c = requireClient();
+    const { data } = await c.search({ query, scope, node_type, attached_to, contributed_by, tags });
+    if (!data.results.length)
+      return textResult(`No results for "${query}"`);
+    const lines = [`\u{1F50D} "${query}" (${data.results.length} results)`, ""];
+    for (const r of data.results) {
+      lines.push(`${r.score.toFixed(2)}  ${r.path}`);
+      if (r.name)
+        lines.push(`      ${r.name}`);
+      if (r.summary)
+        lines.push(`      ${r.summary}`);
     }
+    return textResult(lines.join("\n"));
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_read",
-  "Read a file from the knowledge space. Returns content, frontmatter, and metadata. Accepts a file path (e.g. 'core/Perspective.md') or a node ID (e.g. 'n_b4d942f682a0'). Use offset/limit for windowed reads.",
-  {
-    path: external_exports3.string().describe("File path or node ID (e.g. 'core/Perspective.md' or 'n_b4d942f682a0')"),
-    offset: external_exports3.number().optional().describe("Line to start from (1-indexed)"),
-    limit: external_exports3.number().optional().describe("Max lines to return")
-  },
-  async ({ path, offset, limit }) => {
-    try {
-      const c = requireClient();
-      const isNodeId = /^(\/?n\/)?n_[a-f0-9]{12}$/.test(path);
-      const opts = offset || limit ? { offset, limit } : void 0;
-      let r;
-      if (isNodeId) {
-        const { data: nodeData } = await c.readNode(path.replace(/^\/n\//, ""));
-        if (opts && nodeData.path) {
-          const { data: windowed } = await c.readFile(nodeData.path, opts);
-          r = windowed;
-        } else {
-          r = nodeData;
-        }
+});
+server.tool("is_read", "Read a file from the knowledge space. Returns content, frontmatter, and metadata. Accepts a file path (e.g. 'core/Perspective.md') or a node ID (e.g. 'n_b4d942f682a0'). Use offset/limit for windowed reads.", {
+  path: external_exports3.string().describe("File path or node ID (e.g. 'core/Perspective.md' or 'n_b4d942f682a0')"),
+  offset: external_exports3.number().optional().describe("Line to start from (1-indexed)"),
+  limit: external_exports3.number().optional().describe("Max lines to return")
+}, async ({ path, offset, limit }) => {
+  try {
+    const c = requireClient();
+    const isNodeId = /^(\/?n\/)?n_[a-f0-9]{12}$/.test(path);
+    const opts = offset || limit ? { offset, limit } : void 0;
+    let r;
+    if (isNodeId) {
+      const { data: nodeData } = await c.readNode(path.replace(/^\/n\//, ""));
+      if (opts && nodeData.path) {
+        const { data: windowed } = await c.readFile(nodeData.path, opts);
+        r = windowed;
       } else {
-        const { data: fileData } = await c.readFile(path, opts);
-        r = fileData;
+        r = nodeData;
       }
-      const meta3 = [];
-      if (r.node_id) meta3.push(`Node: /n/${r.node_id}`);
-      if (r.tags?.length) meta3.push(`Tags: ${r.tags.join(", ")}`);
-      if (r.attached_to?.length) meta3.push(`Attached to: ${r.attached_to.join(", ")}`);
-      if (r.last_commit_sha) meta3.push(`SHA: ${r.last_commit_sha}`);
-      let text = meta3.length ? meta3.join("\n") + "\n\n" : "";
-      text += r.content;
-      if (r.continuation) {
-        text += `
+    } else {
+      const { data: fileData } = await c.readFile(path, opts);
+      r = fileData;
+    }
+    const meta3 = [];
+    if (r.node_id)
+      meta3.push(`Node: /n/${r.node_id}`);
+    if (r.tags?.length)
+      meta3.push(`Tags: ${r.tags.join(", ")}`);
+    if (r.attached_to?.length)
+      meta3.push(`Attached to: ${r.attached_to.join(", ")}`);
+    if (r.last_commit_sha)
+      meta3.push(`SHA: ${r.last_commit_sha}`);
+    let text = meta3.length ? meta3.join("\n") + "\n\n" : "";
+    text += r.content;
+    if (r.continuation) {
+      text += `
 
 [${r.continuation.remaining} more lines. Use offset=${r.continuation.next_offset} to continue.]`;
-      }
-      return textResult(text);
-    } catch (err) {
-      return errorResult(err);
     }
+    return textResult(text);
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_write",
-  "Write a Note to the knowledge space. Creates or updates a markdown file.",
-  {
-    path: external_exports3.string().describe("File path to write, e.g. 'startups/acme-analysis.md'"),
-    content: external_exports3.string().describe("Markdown content"),
-    name: external_exports3.string().optional().describe("Note name (required on create)"),
-    summary: external_exports3.string().optional().describe("Dense summary for search"),
-    tags: external_exports3.array(external_exports3.string()).optional().describe("Classifiers"),
-    attached_to: external_exports3.array(external_exports3.string()).optional().describe("Entity binding"),
-    if_match: external_exports3.string().optional().describe("SHA from is_read \u2014 conditional write")
-  },
-  async ({ path, content, name, summary, tags, attached_to, if_match }) => {
-    try {
-      const c = requireClient();
-      const { data: r } = await c.writeFile(path, { content, name, summary, tags, attached_to, if_match });
-      if (r.commit_sha) persistSessionHead(r.commit_sha);
-      if (session) session.invalidate();
-      return textResult(`Written: ${r.path}
+});
+server.tool("is_write", "Write a Note to the knowledge space. Creates or updates a markdown file.", {
+  path: external_exports3.string().describe("File path to write, e.g. 'startups/acme-analysis.md'"),
+  content: external_exports3.string().describe("Markdown content"),
+  name: external_exports3.string().optional().describe("Note name (required on create)"),
+  summary: external_exports3.string().optional().describe("Dense summary for search"),
+  tags: external_exports3.array(external_exports3.string()).optional().describe("Classifiers"),
+  attached_to: external_exports3.array(external_exports3.string()).optional().describe("Entity binding"),
+  if_match: external_exports3.string().optional().describe("SHA from is_read \u2014 conditional write")
+}, async ({ path, content, name, summary, tags, attached_to, if_match }) => {
+  try {
+    const c = requireClient();
+    const { data: r } = await c.writeFile(path, { content, name, summary, tags, attached_to, if_match });
+    if (r.commit_sha)
+      persistSessionHead(r.commit_sha);
+    if (session)
+      session.invalidate();
+    return textResult(`Written: ${r.path}
 Node: /n/${r.node_id}
 Commit: ${r.commit_sha}`);
-    } catch (err) {
-      return errorResult(err);
-    }
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_grep",
-  "Text/regex search within files, or extract sections by heading. Use heading= for cross-file section extraction.",
-  {
-    pattern: external_exports3.string().optional().describe("Text or regex pattern"),
-    scope: external_exports3.string().optional().describe("Directory scope, e.g. 'core/'"),
-    heading: external_exports3.string().optional().describe("Extract this section from all files in scope")
-  },
-  async ({ pattern, scope, heading }) => {
-    try {
-      const c = requireClient();
-      if (heading) {
-        const { data: r2 } = await c.grepSections(heading, scope);
-        if (!r2.sections?.length) return textResult(`No sections matching "${heading}"`);
-        const parts = r2.sections.map((s) => {
-          let text = `${s.file}:
+});
+server.tool("is_grep", "Text/regex search within files, or extract sections by heading. Use heading= for cross-file section extraction.", {
+  pattern: external_exports3.string().optional().describe("Text or regex pattern"),
+  scope: external_exports3.string().optional().describe("Directory scope, e.g. 'core/'"),
+  heading: external_exports3.string().optional().describe("Extract this section from all files in scope")
+}, async ({ pattern, scope, heading }) => {
+  try {
+    const c = requireClient();
+    if (heading) {
+      const { data: r2 } = await c.grepSections(heading, scope);
+      if (!r2.sections?.length)
+        return textResult(`No sections matching "${heading}"`);
+      const parts = r2.sections.map((s) => {
+        let text = `${s.file}:
 ${s.content}`;
-          if (s.truncated) text += "\n[truncated]";
-          return text;
-        });
-        return textResult(`${r2.section_count} section(s) with "${heading}":
+        if (s.truncated)
+          text += "\n[truncated]";
+        return text;
+      });
+      return textResult(`${r2.section_count} section(s) with "${heading}":
 
 ${parts.join("\n\n")}`);
-      }
-      const { data: r } = await c.grep(pattern ?? "", scope);
-      const lines = r.matches.map((m) => `${m.file}:${m.line_number}: ${m.content}`);
-      return textResult(lines.length ? lines.join("\n") : `No matches for "${pattern}"`);
-    } catch (err) {
-      return errorResult(err);
     }
+    const { data: r } = await c.grep(pattern ?? "", scope);
+    const lines = r.matches.map((m) => `${m.file}:${m.line_number}: ${m.content}`);
+    return textResult(lines.length ? lines.join("\n") : `No matches for "${pattern}"`);
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_git",
-  "Temporal awareness \u2014 read-only git operations. Operations: log, changes, find, diff, word_diff.",
-  {
-    op: external_exports3.string().describe("Operation: log, changes, find, diff, word_diff"),
-    path: external_exports3.string().optional().describe("File or directory scope"),
-    ref: external_exports3.string().optional().describe("Commit SHA or range"),
-    text: external_exports3.string().optional().describe("Search text (for 'find')"),
-    since: external_exports3.string().optional().describe("Base commit SHA (for 'changes')"),
-    limit: external_exports3.number().optional().describe("Max entries (default 20)")
-  },
-  async ({ op, path, ref, text, since, limit }) => {
-    try {
-      const c = requireClient();
-      const { data: r } = await c.gitOps({
-        op,
-        path,
-        ref,
-        text,
-        since,
-        limit
-      });
-      const lines = [];
-      if (r.entries?.length) {
-        for (const e of r.entries) lines.push(`${e.sha.slice(0, 7)} ${e.date} ${e.author}: ${e.message}`);
-      } else if (r.changes?.length) {
-        for (const c2 of r.changes) lines.push(`${c2.status} ${c2.path}`);
-      } else if (r.output) {
-        lines.push(r.output.length > 3e3 ? r.output.slice(0, 3e3) + "\n... (truncated)" : r.output);
-      }
-      return textResult(lines.length ? lines.join("\n") : "No results.");
-    } catch (err) {
-      return errorResult(err);
+});
+server.tool("is_git", "Temporal awareness \u2014 read-only git operations. Operations: log, changes, find, diff, word_diff.", {
+  op: external_exports3.string().describe("Operation: log, changes, find, diff, word_diff"),
+  path: external_exports3.string().optional().describe("File or directory scope"),
+  ref: external_exports3.string().optional().describe("Commit SHA or range"),
+  text: external_exports3.string().optional().describe("Search text (for 'find')"),
+  since: external_exports3.string().optional().describe("Base commit SHA (for 'changes')"),
+  limit: external_exports3.number().optional().describe("Max entries (default 20)")
+}, async ({ op, path, ref, text, since, limit }) => {
+  try {
+    const c = requireClient();
+    const { data: r } = await c.gitOps({
+      op,
+      path,
+      ref,
+      text,
+      since,
+      limit
+    });
+    const lines = [];
+    if (r.entries?.length) {
+      for (const e of r.entries)
+        lines.push(`${e.sha.slice(0, 7)} ${e.date} ${e.author}: ${e.message}`);
+    } else if (r.changes?.length) {
+      for (const c2 of r.changes)
+        lines.push(`${c2.status} ${c2.path}`);
+    } else if (r.output) {
+      lines.push(r.output.length > 3e3 ? r.output.slice(0, 3e3) + "\n... (truncated)" : r.output);
     }
+    return textResult(lines.length ? lines.join("\n") : "No results.");
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_list_tags",
-  "List tags in use across the knowledge space with counts.",
-  {
-    prefix: external_exports3.string().optional().describe("Filter tags starting with this prefix")
-  },
-  async ({ prefix }) => {
-    try {
-      const c = requireClient();
-      const { data: r } = await c.listTags(prefix);
-      if (!r.tags?.length) return textResult("No tags found.");
-      const lines = r.tags.map((t) => `  ${t.tag}  (${t.total})`);
-      return textResult(`${r.tags.length} tags:
+});
+server.tool("is_list_tags", "List tags in use across the knowledge space with counts.", {
+  prefix: external_exports3.string().optional().describe("Filter tags starting with this prefix")
+}, async ({ prefix }) => {
+  try {
+    const c = requireClient();
+    const { data: r } = await c.listTags(prefix);
+    if (!r.tags?.length)
+      return textResult("No tags found.");
+    const lines = r.tags.map((t) => `  ${t.tag}  (${t.total})`);
+    return textResult(`${r.tags.length} tags:
 ${lines.join("\n")}`);
-    } catch (err) {
-      return errorResult(err);
-    }
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_outline",
-  "Full tree of the knowledge space \u2014 every file and directory with name, summary, and node ID. Use for orientation and reference resolution.",
-  {},
-  async () => {
-    try {
-      const c = requireClient();
-      const { data: r } = await c.outline();
-      const branches = r.items.filter((i) => i.type === "branch");
-      const files = r.items.filter((i) => i.type !== "branch");
-      const lines = [`${r.items.length} items in ${r.slug}:`, ""];
-      if (branches.length) {
-        lines.push("Directories:");
-        for (const b of branches) {
-          const summary = b.summary ? ` \u2014 ${b.summary}` : "";
-          lines.push(`  \u{1F4C1} ${b.path}/${summary}`);
-        }
-        lines.push("");
+});
+server.tool("is_outline", "Full tree of the knowledge space \u2014 every file and directory with name, summary, and node ID. Use for orientation and reference resolution.", {}, async () => {
+  try {
+    const c = requireClient();
+    const { data: r } = await c.outline();
+    const branches = r.items.filter((i) => i.type === "branch");
+    const files = r.items.filter((i) => i.type !== "branch");
+    const lines = [`${r.items.length} items in ${r.slug}:`, ""];
+    if (branches.length) {
+      lines.push("Directories:");
+      for (const b of branches) {
+        const summary = b.summary ? ` \u2014 ${b.summary}` : "";
+        lines.push(`  \u{1F4C1} ${b.path}/${summary}`);
       }
-      lines.push("Files:");
-      for (const f of files) {
-        const summary = f.summary ? ` \u2014 ${f.summary}` : "";
-        lines.push(`  ${f.path}${summary}`);
-      }
-      return textResult(lines.join("\n"));
-    } catch (err) {
-      return errorResult(err);
+      lines.push("");
     }
-  }
-);
-server.tool(
-  "is_delete",
-  "Delete a file from the knowledge space. Recoverable via git history.",
-  {
-    path: external_exports3.string().describe("File path to delete")
-  },
-  async ({ path }) => {
-    try {
-      const c = requireClient();
-      const { data: file2 } = await c.readFile(path);
-      if (!file2.node_id) return errorResult(`No node_id found for ${path}`);
-      const { data: r } = await c.deleteNode(file2.node_id);
-      if (session) {
-        await session.trackHead();
-        session.invalidate();
-      }
-      return textResult(`Deleted: ${r.path}`);
-    } catch (err) {
-      return errorResult(err);
+    lines.push("Files:");
+    for (const f of files) {
+      const summary = f.summary ? ` \u2014 ${f.summary}` : "";
+      lines.push(`  ${f.path}${summary}`);
     }
+    return textResult(lines.join("\n"));
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_move",
-  "Move or rename a file or directory. Preserves node identity and history.",
-  {
-    source: external_exports3.string().describe("Current path"),
-    destination: external_exports3.string().describe("New path")
-  },
-  async ({ source, destination }) => {
-    try {
-      const c = requireClient();
-      const { data: r } = await c.moveFile(source, destination);
-      if (session) {
-        await session.trackHead();
-        session.invalidate();
-      }
-      const text = r.files_updated != null ? `Moved directory: ${r.moved} \u2192 ${r.destination} (${r.files_updated} files)` : `Moved: ${r.moved} \u2192 ${r.destination}`;
-      return textResult(text);
-    } catch (err) {
-      return errorResult(err);
+});
+server.tool("is_delete", "Delete a file from the knowledge space. Recoverable via git history.", {
+  path: external_exports3.string().describe("File path to delete")
+}, async ({ path }) => {
+  try {
+    const c = requireClient();
+    const { data: file2 } = await c.readFile(path);
+    if (!file2.node_id)
+      return errorResult(`No node_id found for ${path}`);
+    const { data: r } = await c.deleteNode(file2.node_id);
+    if (session) {
+      await session.trackHead();
+      session.invalidate();
     }
+    return textResult(`Deleted: ${r.path}`);
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_list",
-  "List and filter nodes by metadata \u2014 entity connections, type, tag, contributor, directory. Structural traversal (vs. is_search which is semantic).",
-  {
-    node_type: external_exports3.string().optional().describe("Filter: note, perspective, skill, agent_context, readme"),
-    tag: external_exports3.string().optional().describe("Filter by tag"),
-    attached_to: external_exports3.string().optional().describe("Entity, e.g. 'hostname:acme.com'"),
-    contributed_by: external_exports3.string().optional().describe("Author, e.g. 'person:alice' or 'agent:claude-code'"),
-    dir_path: external_exports3.string().optional().describe("Directory scope, e.g. 'startups/'"),
-    origin: external_exports3.string().optional().describe("Origin prefix, e.g. 'perspective:' or 'conversation:'"),
-    limit: external_exports3.number().optional().describe("Max results (default 50)"),
-    offset: external_exports3.number().optional().describe("Pagination offset"),
-    sort_by: external_exports3.enum(["updated_at", "created_at"]).optional().describe("Sort field"),
-    sort_order: external_exports3.enum(["asc", "desc"]).optional().describe("Sort direction")
-  },
-  async ({ node_type, tag, attached_to, contributed_by, dir_path, origin, limit, offset, sort_by, sort_order }) => {
-    try {
-      const c = requireClient();
-      const { data: r } = await c.listNodes({
-        node_type,
-        tag,
-        attached_to,
-        contributed_by,
-        dir_path,
-        origin,
-        limit,
-        offset,
-        sort_by,
-        sort_order
-      });
-      if (!r.nodes.length) return textResult("No matching nodes.");
-      const lines = [`${r.total} node(s)${r.total > r.nodes.length ? ` (showing ${r.nodes.length})` : ""}:`, ""];
-      for (const n of r.nodes) {
-        const summary = n.summary ? ` \u2014 ${n.summary}` : "";
-        lines.push(`  ${n.path}${summary}`);
-        const meta3 = [];
-        if (n.node_type && n.node_type !== "note") meta3.push(n.node_type);
-        if (n.attached_to?.length) meta3.push(`attached: ${n.attached_to.join(", ")}`);
-        if (n.tags?.length) meta3.push(`tags: ${n.tags.join(", ")}`);
-        if (meta3.length) lines.push(`    [${meta3.join(" | ")}]`);
-      }
-      return textResult(lines.join("\n"));
-    } catch (err) {
-      return errorResult(err);
+});
+server.tool("is_move", "Move or rename a file or directory. Preserves node identity and history.", {
+  source: external_exports3.string().describe("Current path"),
+  destination: external_exports3.string().describe("New path")
+}, async ({ source, destination }) => {
+  try {
+    const c = requireClient();
+    const { data: r } = await c.moveFile(source, destination);
+    if (session) {
+      await session.trackHead();
+      session.invalidate();
     }
+    const text = r.files_updated != null ? `Moved directory: ${r.moved} \u2192 ${r.destination} (${r.files_updated} files)` : `Moved: ${r.moved} \u2192 ${r.destination}`;
+    return textResult(text);
+  } catch (err) {
+    return errorResult(err);
   }
-);
-server.tool(
-  "is_update_metadata",
-  "Update metadata (tags, entities, accessibility) on a node without re-embedding.",
-  {
-    node_id: external_exports3.string().describe("Node ID, e.g. 'n_abc123'"),
-    tags: external_exports3.array(external_exports3.string()).optional().describe("New tags"),
-    attached_to: external_exports3.array(external_exports3.string()).optional().describe("Entity bindings"),
-    accessibility: external_exports3.array(external_exports3.string()).optional().describe("Visibility"),
-    references: external_exports3.array(external_exports3.string()).optional().describe("Node ID references")
-  },
-  async ({ node_id, tags, attached_to, accessibility, references }) => {
-    try {
-      const c = requireClient();
-      const fields = {};
-      if (tags) fields.tags = tags;
-      if (attached_to) fields.attached_to = attached_to;
-      if (accessibility) fields.accessibility = accessibility;
-      if (references) fields.references = references;
-      const { data: r } = await c.updateMetadata(node_id, fields);
-      return textResult(`Updated ${r.updated}: ${r.fields.join(", ")}`);
-    } catch (err) {
-      return errorResult(err);
+});
+server.tool("is_list", "List and filter nodes by metadata \u2014 entity connections, type, tag, contributor, directory. Structural traversal (vs. is_search which is semantic).", {
+  node_type: external_exports3.string().optional().describe("Filter: note, perspective, skill, agent_context, readme"),
+  tag: external_exports3.string().optional().describe("Filter by tag"),
+  attached_to: external_exports3.string().optional().describe("Entity, e.g. 'hostname:acme.com'"),
+  contributed_by: external_exports3.string().optional().describe("Author, e.g. 'person:alice' or 'agent:claude-code'"),
+  dir_path: external_exports3.string().optional().describe("Directory scope, e.g. 'startups/'"),
+  origin: external_exports3.string().optional().describe("Origin prefix, e.g. 'perspective:' or 'conversation:'"),
+  limit: external_exports3.number().optional().describe("Max results (default 50)"),
+  offset: external_exports3.number().optional().describe("Pagination offset"),
+  sort_by: external_exports3.enum(["updated_at", "created_at"]).optional().describe("Sort field"),
+  sort_order: external_exports3.enum(["asc", "desc"]).optional().describe("Sort direction")
+}, async ({ node_type, tag, attached_to, contributed_by, dir_path, origin, limit, offset, sort_by, sort_order }) => {
+  try {
+    const c = requireClient();
+    const { data: r } = await c.listNodes({
+      node_type,
+      tag,
+      attached_to,
+      contributed_by,
+      dir_path,
+      origin,
+      limit,
+      offset,
+      sort_by,
+      sort_order
+    });
+    if (!r.nodes.length)
+      return textResult("No matching nodes.");
+    const lines = [`${r.total} node(s)${r.total > r.nodes.length ? ` (showing ${r.nodes.length})` : ""}:`, ""];
+    for (const n of r.nodes) {
+      const summary = n.summary ? ` \u2014 ${n.summary}` : "";
+      lines.push(`  ${n.path}${summary}`);
+      const meta3 = [];
+      if (n.node_type && n.node_type !== "note")
+        meta3.push(n.node_type);
+      if (n.attached_to?.length)
+        meta3.push(`attached: ${n.attached_to.join(", ")}`);
+      if (n.tags?.length)
+        meta3.push(`tags: ${n.tags.join(", ")}`);
+      if (meta3.length)
+        lines.push(`    [${meta3.join(" | ")}]`);
     }
+    return textResult(lines.join("\n"));
+  } catch (err) {
+    return errorResult(err);
   }
-);
+});
+server.tool("is_update_metadata", "Update metadata (tags, entities, accessibility) on a node without re-embedding.", {
+  node_id: external_exports3.string().describe("Node ID, e.g. 'n_abc123'"),
+  tags: external_exports3.array(external_exports3.string()).optional().describe("New tags"),
+  attached_to: external_exports3.array(external_exports3.string()).optional().describe("Entity bindings"),
+  accessibility: external_exports3.array(external_exports3.string()).optional().describe("Visibility"),
+  references: external_exports3.array(external_exports3.string()).optional().describe("Node ID references")
+}, async ({ node_id, tags, attached_to, accessibility, references }) => {
+  try {
+    const c = requireClient();
+    const fields = {};
+    if (tags)
+      fields.tags = tags;
+    if (attached_to)
+      fields.attached_to = attached_to;
+    if (accessibility)
+      fields.accessibility = accessibility;
+    if (references)
+      fields.references = references;
+    const { data: r } = await c.updateMetadata(node_id, fields);
+    return textResult(`Updated ${r.updated}: ${r.fields.join(", ")}`);
+  } catch (err) {
+    return errorResult(err);
+  }
+});
 var transport = new StdioServerTransport();
 await server.connect(transport);
