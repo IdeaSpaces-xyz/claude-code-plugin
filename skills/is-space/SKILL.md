@@ -66,6 +66,21 @@ Write fields: `name`, `summary`, `tags`, `attached_to`, `if_match` (conditional 
 - `is_auth action="status"` — connection info
 - `is_auth action="logout"` — clear credentials
 
+## The `_agent/` Convention
+
+Any directory can have an `_agent/` folder. It holds agent-facing context that loads when navigating to that position:
+
+- `_agent/purpose.md` — why this space (or branch) exists
+- `_agent/now.md` — current focus at this level
+- `_agent/guidance.md` — behavioral rules for this area
+- `_agent/soul.md` — agent personality (root level)
+- `_agent/perspectives/` — reusable thinking patterns
+- `_agent/skills/` — procedures
+
+This is fractal — root `_agent/` sets global direction, branch-level `_agent/` adds specificity. `is_explore` returns these as `agent_context`. Read them with `is_read` when you need depth.
+
+Agent-specific subdirectories (`_agent/{agent_id}/`) are private to that agent. Everything else under `_agent/` is shared.
+
 ## Key Patterns
 
 - **Navigate before writing.** `is_explore` the target area first.
