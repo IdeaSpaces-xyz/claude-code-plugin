@@ -1,44 +1,36 @@
 # IdeaSpaces Plugin for Claude Code
 
-Connect Claude Code to your [IdeaSpaces](https://ideaspaces.xyz) knowledge space. Persistent, searchable knowledge that compounds across sessions.
+Connect Claude Code to your [IdeaSpaces](https://ideaspaces.xyz) knowledge space — persistent, searchable knowledge that compounds across sessions.
 
-## Setup
+## Install
 
-1. Get an API key at [ideaspaces.xyz/settings](https://ideaspaces.xyz/settings)
-2. Install the plugin:
-   ```bash
-   claude plugin install ideaspaces
-   ```
-3. Enter your API key when prompted
+```bash
+claude plugin add ideaspaces-xyz/claude-code-plugin
+```
+
+On first use, call `is_auth` to log in via browser. No API key needed.
 
 ## Tools
 
-10 tools for working with your knowledge space:
+5 tools — consolidated from the full CLI, optimized for agent use:
 
 | Tool | What |
 |---|---|
-| `is_navigate` | Browse the tree — context, summaries, Now |
-| `is_search` | Semantic search by meaning |
-| `is_read` | Read a file with metadata |
-| `is_write` | Create or update a Note |
-| `is_grep` | Text search or cross-file section extraction |
-| `is_git` | Temporal awareness — log, changes, diff |
-| `is_list_tags` | Discover existing tags |
-| `is_delete` | Remove a file (recoverable) |
-| `is_move` | Move or rename, preserving identity |
-| `is_update_metadata` | Update tags, entities, accessibility |
+| `is_explore` | See what's in the space — tree, README context, changes since last session |
+| `is_find` | Find by meaning (`search`), text pattern (`grep`), or metadata (`list`) |
+| `is_read` | Read content + metadata. Add `history=true` for git log |
+| `is_write` | Create, update, move, or delete notes |
+| `is_auth` | Login, logout, list spaces, connection status |
 
 ## Skills
 
-- **is-space** — How to work with the knowledge space (orient → engage → organize)
-- **is-writing** — Writing standard for Notes that compound (summaries, sections, entities)
+- **is-space** — How to work with the knowledge space (orient, find, read, write, auth)
+- **is-writing** — Writing standard for Notes that compound
 
-## Development
+## Architecture
 
-```bash
-# Test locally
-claude --mcp-config mcp-test.json --plugin-dir ./ideaspaces-plugin
+The plugin ships a thin MCP server (~235 lines) that shells out to the [IdeaSpaces CLI](https://github.com/IdeaSpaces-xyz/cli) with `--json`. The CLI handles auth, formatting, session tracking, and error mapping. Same validation, same output — one implementation, two interfaces.
 
-# The MCP server runs standalone too
-IS_API_KEY=your_key node mcp-server/dist/index.js
+```
+Agent → MCP (5 tools) → spawn CLI --json → SDK → API
 ```
