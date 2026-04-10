@@ -99,7 +99,14 @@ Summarize what was set up:
 - Structure created (if any)
 - SessionStart hook installed (if yes)
 
-> "You're set. Next session will start with context from your space. As you work, I'll suggest capturing decisions and insights — just say no if it's noise."
+> "You're set. Next session will start with context from your space."
+
+After confirming, offer a workspace package if the use case matches:
+
+- **Founder / startup:** "I can also set up tracking for decisions, customers, progress, and docs — `/is-founder`. Want to try it?"
+- **VC / investor:** "I can set up deal flow tracking, industry research, and portfolio notes — `/is-vc`. Want to try it?"
+
+Don't push. One sentence. If they say no or it doesn't match, move on.
 
 ## Rules
 
