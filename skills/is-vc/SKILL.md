@@ -6,138 +6,52 @@ allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideasp
 
 # VC Workspace Kickoff
 
-## Intent
+This skill follows the shared protocol in `../_shared/workspace-kickoff-pattern.md`.
 
-Set up a VC workspace without imposing a rigid template. The partner stays in charge. The agent runs a short kickoff conversation, synthesizes their operating model, proposes structure, and scaffolds only after approval.
+Use that flow as the default behavior. This file defines the VC-specific overlay.
 
-## Core Principles
-
-1. **User agency first** — no scaffolding before explicit approval.
-2. **Collaborative kickoff, not interrogation** — ask only what is needed to model their workflow.
-3. **Small initial footprint** — start with minimal structure; expand with use.
-4. **Local context over global rules** — README + `_agent/guidance.md` at each branch.
-
-## Entry Conditions
-
-Use this when user says they are a VC/investor or asks for workspace setup.
-
-If not connected / no space selected: suggest `is-setup` first.
-
-## Activation Signals and Boundaries
+## Domain Triggers
 
 Strong triggers:
 - "set this up for my VC workflow"
 - "help me structure dealflow / IC process"
 - "I want this space to run our investing process"
 
-Do **not** use this skill for:
-- one-off deal analysis (just evaluate one company)
+Do **not** use for:
+- one-off deal analysis
 - single note writing or cleanup
 - routine metadata updates on existing notes
 
-In those cases, continue with normal `is_*` tools and only offer this skill if the user asks to design the full workspace.
-
----
-
-## Flow
-
-### 1) Kickoff Conversation (discovery)
-
-Use a short, collaborative onboarding tone: "Help me understand how *you* run deals so I can support your process."
-
-Start with 3 core prompts:
+## VC Discovery Prompts (2–3, then synthesize)
 
 - "What do you mainly invest in right now (stage + themes)?"
 - "How do deals move from first look to decision in your firm?"
 - "Where do you currently lose context or repeat work?"
 
-Optional follow-ups (only if needed):
+Optional follow-ups:
 - portfolio involvement level
 - IC artifact style (memo-heavy vs discussion-heavy)
 - 90-day success signal for this space
 
-Rules:
-- Ask 1 question at a time once they start answering.
-- After ~3 answered prompts, synthesize a first draft immediately.
-- Cap discovery to ~5 total questions unless they ask for deeper design.
-- Reflect back in plain language after every 1–2 answers.
-- Don’t scaffold yet.
+## Suggested Branch Options (proposal phase)
 
-### 2) Synthesize Operating Story
+Offer as options, not defaults:
 
-Generate a short artifact for confirmation:
-
-## Operating Story
-- Investment style (stage, check size, pace)
-- Decision workflow (screening → diligence → IC → follow-up)
-- Portfolio behavior (hands-on / light-touch)
-- Current bottlenecks
-- Success criteria for this space
-
-Ask: **“Is this accurate? What should I change?”**
-
-### 3) Propose Structure (preview only)
-
-Provide a proposal, not a command:
-
-## Proposed Structure (Draft)
 - `/pipeline` (or `/dealflow`) — active company evaluations
 - `/market-intel` (or `/industries`) — reusable sector/thematic knowledge
 - `/portfolio` — post-investment updates and decision history
 - optional `/ic` — investment committee memos and decisions
 
-For each branch, include:
-- why it exists
-- what goes there
-- what should *not* go there
+For each approved branch, scaffold:
+- `README.md`
+- optional `_agent/guidance.md`
 
-Also propose `_agent` context files:
-- root `_agent/purpose.md`
-- root `_agent/now.md`
-- root `_agent/guidance.md`
-- branch-level `_agent/guidance.md` for decision standards
-
-### 4) Confirm before write
-
-Ask for explicit choice:
-- Apply as proposed
-- Edit names/branches first
-- Start smaller (pick 1–2 branches)
-
-No writes until user confirms.
-
-### 5) Scaffold approved structure
-
-Use `is_write` to create only approved files.
-
-Per approved branch create:
-- `README.md` (clear inclusion/exclusion guidance)
-- optional `_agent/guidance.md` (local behavior and quality bar)
-
-At root, update/set:
-- `_agent/purpose.md` (from their stated value target)
-- `_agent/now.md` (current focus + progress signals)
-- `_agent/guidance.md` (how to support this firm)
-
-Do not create placeholder company notes.
-
-### 6) Confirm setup
-
-Return:
-- created paths
-- one-line purpose
-- current focus snapshot
-- suggested first action (e.g., “let’s capture the first deal you’re reviewing”)
-
----
-
-## Suggested Guidance Content (short form)
+## Suggested Local Guidance
 
 ### `/pipeline/_agent/guidance.md`
 - Prioritize investment-relevant evidence.
-- Always surface: upside case, failure case, disconfirming signals.
+- Always surface upside case, failure case, and disconfirming signals.
 - Keep stage in metadata (`stage:*`), not prose drift.
-- Ask before escalating to IC recommendation.
 
 ### `/market-intel/_agent/guidance.md`
 - Promote cross-deal patterns from pipeline notes.
@@ -145,13 +59,10 @@ Return:
 - Prefer specific claims with evidence over generic trends.
 
 ### `/portfolio/_agent/guidance.md`
-- Track changes over time (thesis shifts, follow-on logic, board decisions).
+- Track thesis shifts, follow-on logic, and board decisions over time.
 - Separate facts from interpretation.
-- Keep follow-on decisions tied to prior assumptions.
 
----
-
-## Metadata Conventions (recommend, not force)
+## Recommended Metadata Conventions
 
 Tags:
 - `stage:screening | deep-dive | ic | passed | portfolio`
@@ -161,21 +72,17 @@ Entities (`attached_to`):
 - `hostname:company.com`
 - `person:founder-name`
 
----
+## Ongoing Repetitive-Work Patterns
 
-## Don’t
-
-- Don’t force fixed directory names.
-- Don’t apply a scoring template as mandatory process.
-- Don’t pre-create many empty notes.
-- Don’t overwrite Purpose/Now without confirmation.
-
----
+- New deal: capture in `/pipeline` with stage + entity binding
+- Cross-deal pattern: promote to `/market-intel`
+- Deal stage change: metadata update instead of narrative drift
+- Board/follow-on updates: append to `/portfolio` with decision rationale
 
 ## Success Test
 
-A partner can say: **“I just met a Series A fintech founder”** and the agent knows:
+A partner says: "I just met a Series A fintech founder" and the agent knows:
 - where to place it,
 - what metadata to suggest,
 - what prior context to retrieve,
-- and how to move it through that firm’s real process.
+- and how to move it through that firm’s process.

@@ -1,46 +1,90 @@
 ---
 name: is-founder
-description: >
-  Workspace for solo founders and small teams. Scaffolds space for tracking
-  decisions, progress, customers, and documentation. Use when: user is a founder,
-  building a startup, or asks about tracking progress across sessions.
+description: Collaborative founder workspace kickoff. Use when a user asks to set up startup workflow, operating context, or cross-session tracking. Do NOT use for one-off startup questions or single note edits.
 allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideaspaces_ideaspaces__is_find mcp__plugin_ideaspaces_ideaspaces__is_read mcp__plugin_ideaspaces_ideaspaces__is_write"
 ---
 
-# Founder Workspace
+# Founder Workspace Kickoff
 
-Scaffold a space for a founder who works extensively with AI and needs knowledge to compound across sessions.
+This skill follows the shared protocol in `../_shared/workspace-kickoff-pattern.md`.
 
-## What It Sets Up
+Use that flow as the default behavior. This file defines the founder-specific overlay.
 
-Ask what the user is building, then scaffold:
+## Domain Triggers
 
-**`/decisions`** — The most valuable thing to capture. Every "we're going with X because Y" that would otherwise be lost. README: "Why we chose what we chose. Prevents relitigating."
+Strong triggers:
+- "set this up for my startup"
+- "help me structure my founder workspace"
+- "I want cross-session context for decisions/customers/progress"
 
-**`/customers`** — Interview notes, feedback, patterns. Each customer as a note with `attached_to: hostname:company.com` or `person:name`. README: "What customers tell us. Raw signal."
+Do **not** use for:
+- one-off startup analysis
+- quick writing/edit of one note
+- ad-hoc brainstorming without workspace setup intent
 
-**`/progress`** — Weekly or milestone-based updates. What shipped, what's blocked, what's next. README: "What happened and what we learned."
+## Founder Discovery Prompts (2–3, then synthesize)
 
-**`/docs`** — Living documentation that stays current. Product specs, architecture decisions, processes. README: "How things work. Keep it updated or delete it."
+- "What are you building, and for whom?"
+- "Where do decisions or customer insights currently get lost?"
+- "What recurring updates do you wish happened automatically each week?"
 
-## How to Scaffold
+Optional follow-ups:
+- solo founder or team workflow
+- current GTM motion
+- 90-day success signal for this space
 
-1. Confirm with user: "I'd suggest four areas: decisions, customers, progress, docs. Want all four, or start smaller?"
-2. For each accepted area: `is_write` the directory README
-3. Don't create empty placeholder notes — only READMEs
-4. Update Now to reflect the new structure if appropriate
+## Suggested Branch Options (proposal phase)
 
-## Ongoing Patterns
+Offer as options, not defaults:
 
-After scaffolding, the agent knows:
+- `/decisions` — why key choices were made
+- `/customers` — interview notes, feedback, recurring patterns
+- `/progress` — weekly/milestone log (shipped, blocked, learned)
+- `/docs` — durable docs that should stay current
+- optional `/experiments` — hypotheses, tests, results
 
-- **After a decision:** "That's a clear decision — capture in `/decisions`?" → is-capture
-- **After a user conversation:** "Want to capture that customer feedback?" → write to `/customers` with entity binding
-- **End of a work session:** "Anything worth logging in `/progress`?" → brief update
-- **Documentation drifted:** "The spec in `/docs` doesn't match what we just built" → is-reflect
+For each approved branch, scaffold:
+- `README.md`
+- optional `_agent/guidance.md`
 
-## Don't
+## Suggested Local Guidance
 
-- Don't create subdirectories within the four areas upfront. Let them emerge.
-- Don't create templates. Each note is written fresh by is-writing standard.
-- Don't force the structure. If the user only wants `/decisions`, that's enough.
+### `/decisions/_agent/guidance.md`
+- Capture decision + rationale + tradeoffs + expected outcome.
+- Prefer concrete evidence over opinion.
+
+### `/customers/_agent/guidance.md`
+- Distinguish direct quotes, interpretation, and implications.
+- Promote repeated signals across customers.
+
+### `/progress/_agent/guidance.md`
+- Keep updates brief and factual: shipped, blocked, learned, next.
+- Link changes back to current Now when relevant.
+
+### `/docs/_agent/guidance.md`
+- Keep docs alive: update or delete stale docs.
+- Prefer focused docs over broad handbooks.
+
+## Recommended Metadata Conventions
+
+Tags:
+- `type:decision`, `type:feedback`, `type:progress`, `type:experiment`
+- `priority:*`, `theme:*`, `status:*`
+
+Entities (`attached_to`):
+- `hostname:company.com`
+- `person:name`
+
+## Ongoing Repetitive-Work Patterns
+
+- After a decision: propose capture in `/decisions`
+- After customer conversations: propose capture in `/customers`
+- End of week/session: propose short `/progress` update
+- When focus drifts: trigger `is-reflect` at natural break
+
+## Success Test
+
+A founder says: "I just talked to three users and changed pricing" and the agent knows:
+- where each part belongs,
+- what to capture now vs later,
+- and how that affects current focus.
