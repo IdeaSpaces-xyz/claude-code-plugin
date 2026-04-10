@@ -1,10 +1,9 @@
 ---
 name: is-space
 description: >
-  Work with the IdeaSpaces knowledge space. Use is_* tools instead of local
-  file tools when working with knowledge that should be searchable, connected
-  to entities, and persist across sessions. Read this when you see is_* tools
-  available or when the user asks about their knowledge space.
+  Tool reference for the IdeaSpaces knowledge space. How to use is_explore,
+  is_find, is_read, is_write, is_auth. Read this when working with is_* tools
+  or when the user asks about their space. NOT for code, config, or local files.
 allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideaspaces_ideaspaces__is_find mcp__plugin_ideaspaces_ideaspaces__is_read mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth"
 ---
 
@@ -18,7 +17,9 @@ You have two sets of tools: local file tools (Read, Write, Edit, Bash) and IdeaS
 
 ## Start Here
 
-**Orient first.** Call `is_explore` at the start of a session to see the space — branches, README context, what changed since last session.
+**No Purpose or Now?** Suggest `/is-setup` — it handles connection, direction, and hook installation.
+
+**Returning?** `is_explore` at session start. If the SessionStart hook is installed, this happens automatically.
 
 ## Tools
 
@@ -67,8 +68,13 @@ Write fields: `name`, `summary`, `tags`, `attached_to`, `if_match` (conditional 
 
 ## Key Patterns
 
-- **Navigate before writing.** `is_explore` the target area first. Place content where it compounds.
-- **Search before creating.** `is_find` to check if something similar exists. Build on what's there.
-- **Summary is everything.** The `summary` field determines how a Note is found. Write it like the first thing someone reads.
+- **Navigate before writing.** `is_explore` the target area first.
+- **Search before creating.** `is_find` to check if something similar exists.
 - **Entities connect.** Add `attached_to` when writing: `hostname:acme.com`, `person:alice`.
 - **IDs are stable.** Node IDs survive moves and renames. Use them for references.
+
+## Related Skills
+
+- **is-capture** — when to propose saving knowledge during work
+- **is-writing** — quality standard for summaries, sections, entities
+- **is-reflect** — when to propose updating Purpose, Now, or structure

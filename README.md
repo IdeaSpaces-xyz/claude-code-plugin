@@ -24,8 +24,11 @@ On first use, call `is_auth` to log in via browser. No API key needed.
 
 ## Skills
 
+- **is-setup** — First-run onboarding: connect, set purpose and focus, install SessionStart hook
 - **is-space** — How to work with the knowledge space (orient, find, read, write, auth)
 - **is-writing** — Writing standard for Notes that compound
+- **is-capture** — When and how to propose saving knowledge (decisions, insights, findings)
+- **is-reflect** — When to propose updating Purpose, Now, and space structure
 
 ## Architecture
 

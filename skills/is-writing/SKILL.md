@@ -67,3 +67,5 @@ Title → Summary → Sections. Each level complete at its depth. A reader (or s
 - No hedge stacking: "It seems like it might possibly..." — either state the claim or acknowledge uncertainty once
 - No elegant variation: if it's a "startup" in the first paragraph, don't call it a "venture" in the second
 - No empty summaries — every Note needs a summary that earns its place
+
+This standard applies whenever **is-capture** proposes writing to the space.
