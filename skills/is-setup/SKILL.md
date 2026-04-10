@@ -78,8 +78,8 @@ If yes, write to `.claude/settings.local.json`:
         "matcher": "startup",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "You have IdeaSpaces connected. Run is_explore to read Purpose, Now, and recent changes. If there are new changes since last session, mention them briefly. Then proceed with the user's request. Keep orientation to 2-3 lines unless the user asks for more."
+            "type": "command",
+            "command": "echo 'IdeaSpaces connected. Orient: run is_explore to read Purpose, Now, and recent changes. Keep orientation to 2-3 lines.'"
           }
         ]
       }
