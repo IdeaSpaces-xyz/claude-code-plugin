@@ -3,8 +3,9 @@ name: is-setup
 description: >
   Set up a knowledge space — connect, set purpose and focus, install automatic
   session check-in. Use when: user says "set up my space", "connect to IdeaSpaces",
-  asks about persistent memory or cross-session context, or is_auth shows no
-  connection. One-time flow, ~5 minutes.
+  asks about persistent memory or cross-session context, is_auth shows no
+  connection, OR the connected space is effectively empty (blank Purpose/Now
+  and little or no structure). One-time flow, ~5 minutes.
 allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideaspaces_ideaspaces__is_find mcp__plugin_ideaspaces_ideaspaces__is_read mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth Edit Read Bash"
 ---
 
@@ -13,6 +14,15 @@ allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideasp
 **Goal:** Connect → Purpose → Now → SessionStart hook. The hook is the key deliverable — without it, the space is passive.
 
 Do not offer unprompted. Wait for a signal.
+
+## Trigger Note
+
+Treat an effectively empty space as a setup signal:
+- `_agent/purpose.md` blank template
+- `_agent/now.md` blank template
+- little or no meaningful directory structure yet
+
+When those are true, recommend this setup flow explicitly.
 
 ## Flow
 
