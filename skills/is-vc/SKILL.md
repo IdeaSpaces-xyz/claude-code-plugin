@@ -1,45 +1,88 @@
 ---
 name: is-vc
-description: >
-  Workspace for investors and VCs. Scaffolds space for deal flow, industry
-  research, and portfolio tracking. Use when: user is a VC, angel investor,
-  evaluates startups, or asks about tracking deal flow.
+description: Collaborative VC workspace kickoff. Use when a user asks to set up investor workflow, dealflow structure, or firm operating context. Do NOT use for one-off company analysis or routine note capture.
 allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideaspaces_ideaspaces__is_find mcp__plugin_ideaspaces_ideaspaces__is_read mcp__plugin_ideaspaces_ideaspaces__is_write"
 ---
 
-# VC Workspace
+# VC Workspace Kickoff
 
-Scaffold a space for an investor who needs deal flow tracking, industry knowledge that compounds, and consistent evaluation frameworks.
+This skill follows the shared protocol in `../_shared/workspace-kickoff-pattern.md`.
 
-## What It Sets Up
+Use that flow as the default behavior. This file defines the VC-specific overlay.
 
-Ask about their focus (stage, sector, thesis), then scaffold:
+## Domain Triggers
 
-**`/dealflow`** — One note per company. `attached_to: hostname:company.com`, `person:founder-name`. Status via tags: `stage:screening`, `stage:deep-dive`, `stage:passed`, `stage:portfolio`. README: "Companies we're looking at. Search by entity or stage."
+Strong triggers:
+- "set this up for my VC workflow"
+- "help me structure dealflow / IC process"
+- "I want this space to run our investing process"
 
-**`/industries`** — Accumulated knowledge by sector. Regulatory landscapes, market maps, trend analysis. README: "What we know about markets. Grows with every deal."
+Do **not** use for:
+- one-off deal analysis
+- single note writing or cleanup
+- routine metadata updates on existing notes
 
-**`/portfolio`** — Post-investment tracking. Board prep, follow-on decisions, performance notes. README: "Companies we invested in. Living record."
+## VC Discovery Prompts (2–3, then synthesize)
 
-## How to Scaffold
+- "What do you mainly invest in right now (stage + themes)?"
+- "How do deals move from first look to decision in your firm?"
+- "Where do you currently lose context or repeat work?"
 
-1. Ask: "What stage and sector do you focus on?"
-2. Confirm areas: "Dealflow, industries, portfolio — all three, or start with dealflow?"
-3. For each: `is_write` the README
-4. Set Purpose and Now to reflect the investment thesis if not already set
+Optional follow-ups:
+- portfolio involvement level
+- IC artifact style (memo-heavy vs discussion-heavy)
+- 90-day success signal for this space
 
-## Ongoing Patterns
+## Suggested Branch Options (proposal phase)
 
-After scaffolding, the agent knows:
+Offer as options, not defaults:
 
-- **Evaluating a company:** Search `/dealflow` and `/industries` for existing knowledge. Write analysis to `/dealflow/company-name.md` with entity binding. Tag with stage.
-- **Research surfaces an insight:** "That regulatory finding applies beyond this deal — capture in `/industries`?" → is-capture
-- **Deal moves stages:** Update tags via `is_write action="update_metadata"`. The stage progression is in the metadata, not scattered across notes.
-- **Cross-deal pattern:** "Three companies in your pipeline are hitting the same compliance issue. Worth a note in `/industries`?"
-- **Portfolio update:** Board meeting prep pulls from `/portfolio/company.md` history — `is_read history=true` shows how the view evolved.
+- `/pipeline` (or `/dealflow`) — active company evaluations
+- `/market-intel` (or `/industries`) — reusable sector/thematic knowledge
+- `/portfolio` — post-investment updates and decision history
+- optional `/ic` — investment committee memos and decisions
 
-## Don't
+For each approved branch, scaffold:
+- `README.md`
+- optional `_agent/guidance.md`
 
-- Don't create per-company subdirectories. Flat notes in `/dealflow` with entity binding and tags. Search handles discovery.
-- Don't build a scoring template. Each evaluation is written fresh. Consistency comes from the agent's awareness of prior evaluations, not from a form.
-- Don't pre-create industry categories. They emerge from deals evaluated.
+## Suggested Local Guidance
+
+### `/pipeline/_agent/guidance.md`
+- Prioritize investment-relevant evidence.
+- Always surface upside case, failure case, and disconfirming signals.
+- Keep stage in metadata (`stage:*`), not prose drift.
+
+### `/market-intel/_agent/guidance.md`
+- Promote cross-deal patterns from pipeline notes.
+- Capture reusable insights (regulation, GTM, market structure).
+- Prefer specific claims with evidence over generic trends.
+
+### `/portfolio/_agent/guidance.md`
+- Track thesis shifts, follow-on logic, and board decisions over time.
+- Separate facts from interpretation.
+
+## Recommended Metadata Conventions
+
+Tags:
+- `stage:screening | deep-dive | ic | passed | portfolio`
+- `sector:*`, `round:*`, `geo:*`, `priority:*`
+
+Entities (`attached_to`):
+- `hostname:company.com`
+- `person:founder-name`
+
+## Ongoing Repetitive-Work Patterns
+
+- New deal: capture in `/pipeline` with stage + entity binding
+- Cross-deal pattern: promote to `/market-intel`
+- Deal stage change: metadata update instead of narrative drift
+- Board/follow-on updates: append to `/portfolio` with decision rationale
+
+## Success Test
+
+A partner says: "I just met a Series A fintech founder" and the agent knows:
+- where to place it,
+- what metadata to suggest,
+- what prior context to retrieve,
+- and how to move it through that firm’s process.
