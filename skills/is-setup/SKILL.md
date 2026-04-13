@@ -41,7 +41,30 @@ Run `is_explore` to see what exists. Check if `_agent/purpose.md` and `_agent/no
 
 If the space already has Purpose and Now filled in, confirm with the user: "Your space already has a direction set. Want to review it, update it, or skip to hook setup?"
 
-### 3. Elicit Purpose
+### 3. Offer "Connect this repo" (if in a git folder)
+
+Run a quick check with Bash:
+
+- `git rev-parse --is-inside-work-tree`
+- if true: `git rev-parse --show-toplevel` and `git remote get-url origin`
+
+If this is a git repo, explicitly offer:
+
+> "I found a local git repo here. Want to connect it to IdeaSpaces so this repo becomes searchable and agent-visible?"
+
+If yes, run:
+
+- `ideaspaces power connect --from-cwd`
+
+This command auto-detects origin URL, normalizes SSH remotes to HTTPS (Phase A policy), and reports a simple classification:
+- `ideaspace_shaped` (has `_agent/purpose.md` + `_agent/now.md`)
+- `generic` or `ambiguous`
+
+Always show the command result and ask for confirmation before proceeding.
+
+If command fails because CLI is missing/outdated, tell the user exactly what failed and continue setup normally.
+
+### 4. Elicit Purpose
 
 If Purpose is blank or the user wants to set it, ask:
 
@@ -53,7 +76,7 @@ Listen for concrete signals. Probe with:
 
 Write the answer to `_agent/purpose.md` using `is_write`. Keep it short — 3-5 sentences. Concrete over aspirational.
 
-### 4. Set Current Focus
+### 5. Set Current Focus
 
 Ask:
 
@@ -64,7 +87,7 @@ Write to `_agent/now.md` using `is_write`. Structure:
 - What progress looks like (concrete, evaluable)
 - What to focus on (3-5 bullets)
 
-### 5. Scaffold Structure (Optional)
+### 6. Scaffold Structure (Optional)
 
 If the user has a clear use case, offer to create initial directories:
 
@@ -72,7 +95,7 @@ If the user has a clear use case, offer to create initial directories:
 
 Only scaffold if the user agrees. Create directories with README.md files that explain what belongs there.
 
-### 6. Install SessionStart Hook
+### 7. Install SessionStart Hook
 
 Ask:
 
@@ -100,10 +123,11 @@ If yes, write to `.claude/settings.local.json`:
 
 Read the file first — if it exists, merge the hooks key rather than overwriting.
 
-### 7. Confirm
+### 8. Confirm
 
 Summarize what was set up:
 - Space connected (which one)
+- Existing git repo connected (if done)
 - Purpose set (one line)
 - Current focus set (one line)
 - Structure created (if any)
@@ -121,6 +145,7 @@ Don't push. One sentence. If they say no or it doesn't match, move on.
 ## Rules
 
 - **Don't write Purpose for the user.** Elicit, reflect back, refine.
+- **Don't auto-connect repos without consent.** Detect, explain, ask, then run.
 - **Don't over-scaffold.** Purpose + Now + hook is enough. Structure grows from use.
 - **Merge, don't overwrite settings.** Read `.claude/settings.local.json` first, merge the hooks key.
 
