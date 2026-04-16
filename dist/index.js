@@ -21013,25 +21013,585 @@ var StdioServerTransport = class {
 // dist/index.js
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import { existsSync } from "node:fs";
+import { dirname, join as join2 } from "node:path";
+import { existsSync as existsSync2 } from "node:fs";
+
+// node_modules/@ideaspaces/sdk/dist/transport.js
+var SdkError = class extends Error {
+  category;
+  status;
+  retryable;
+  retryAfterMs;
+  constructor(opts) {
+    super(opts.message);
+    this.name = "SdkError";
+    this.category = opts.category;
+    this.status = opts.status;
+    this.retryable = opts.retryable;
+    this.retryAfterMs = opts.retryAfterMs;
+  }
+};
+function classifyStatus(status, headers) {
+  if (status === 429) {
+    const retryAfter = headers["retry-after"];
+    let retryAfterMs;
+    if (retryAfter) {
+      const seconds = Number(retryAfter);
+      retryAfterMs = Number.isFinite(seconds) ? seconds * 1e3 : void 0;
+    }
+    return { category: "rate_limited", retryable: true, retryAfterMs };
+  }
+  if (status === 502 || status === 503 || status === 529) {
+    return { category: "overloaded", retryable: true };
+  }
+  if (status === 401) {
+    return { category: "auth_error", retryable: false };
+  }
+  if (status === 404) {
+    return { category: "not_found", retryable: false };
+  }
+  if (status >= 400 && status < 500) {
+    return { category: "client_error", retryable: false };
+  }
+  return { category: "overloaded", retryable: true };
+}
+function backoffMs(attempt) {
+  const base = Math.min(500 * Math.pow(2, attempt), 16e3);
+  const jitter = Math.random() * base * 0.25;
+  return base + jitter;
+}
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+var DEFAULT_RETRYABLE_STATUSES = [429, 502, 503, 529];
+function createFetchTransport(config2) {
+  const maxRetries = config2.retry?.maxRetries ?? 3;
+  const retryableStatuses = config2.retry?.retryableStatuses ?? DEFAULT_RETRYABLE_STATUSES;
+  const timeout = config2.timeout ?? 3e4;
+  return {
+    async request(method, path, body) {
+      const url = `${config2.apiUrl}/api/v1${path}`;
+      const headers = {
+        Authorization: `Bearer ${config2.apiKey}`,
+        "Content-Type": "application/json"
+      };
+      let lastError;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), timeout);
+          let resp;
+          try {
+            resp = await fetch(url, {
+              method,
+              headers,
+              body: body ? JSON.stringify(body) : void 0,
+              signal: controller.signal
+            });
+          } finally {
+            clearTimeout(timer);
+          }
+          if (resp.ok) {
+            const responseHeaders2 = {};
+            resp.headers.forEach((v, k) => {
+              responseHeaders2[k.toLowerCase()] = v;
+            });
+            const bodyText = await resp.text();
+            return {
+              status: resp.status,
+              headers: responseHeaders2,
+              json: async () => JSON.parse(bodyText),
+              text: async () => bodyText
+            };
+          }
+          const responseHeaders = {};
+          resp.headers.forEach((v, k) => {
+            responseHeaders[k.toLowerCase()] = v;
+          });
+          const errorText = await resp.text().catch(() => "");
+          let detail = errorText;
+          try {
+            const json = JSON.parse(errorText);
+            detail = json.detail || json.error || errorText;
+          } catch {
+          }
+          const { category, retryable, retryAfterMs } = classifyStatus(resp.status, responseHeaders);
+          const canRetry = retryable && retryableStatuses.includes(resp.status) && attempt < maxRetries;
+          if (!canRetry) {
+            throw new SdkError({
+              message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
+              category,
+              status: resp.status,
+              retryable,
+              retryAfterMs
+            });
+          }
+          const delayMs = retryAfterMs ?? backoffMs(attempt);
+          await sleep(delayMs);
+          lastError = new SdkError({
+            message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
+            category,
+            status: resp.status,
+            retryable,
+            retryAfterMs
+          });
+        } catch (err) {
+          if (err instanceof SdkError)
+            throw err;
+          const isTimeout = err instanceof DOMException && err.name === "AbortError";
+          const category = isTimeout ? "timeout" : "network_error";
+          if (attempt < maxRetries) {
+            await sleep(backoffMs(attempt));
+            lastError = err instanceof Error ? err : new Error(String(err));
+            continue;
+          }
+          throw new SdkError({
+            message: `${method} ${path}: ${category} \u2014 ${err instanceof Error ? err.message : String(err)}`,
+            category,
+            retryable: true
+          });
+        }
+      }
+      throw lastError || new Error("Unexpected transport error");
+    }
+  };
+}
+
+// node_modules/@ideaspaces/sdk/dist/client.js
+var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
+var IsClient = class {
+  transport;
+  repo;
+  constructor(transport2, repo) {
+    this.transport = transport2;
+    this.repo = repo;
+  }
+  /** Current repo ID. Throws if not set. */
+  get repoId() {
+    if (!this.repo) {
+      throw new Error("No repo selected. Pass repo in config, or call autoSelectRepo().");
+    }
+    return this.repo;
+  }
+  /** Whether a repo is selected. */
+  get isConnected() {
+    return !!this.repo;
+  }
+  /** Update the active repo (e.g. after autoSelectRepo). */
+  setRepo(repoId) {
+    this.repo = repoId;
+  }
+  // ─── Internal request wrapper ──────────────────────────────────
+  async req(method, path, body) {
+    const start = Date.now();
+    const resp = await this.transport.request(method, path, body);
+    const data = await resp.json();
+    const requestMs = Date.now() - start;
+    let rateLimit;
+    const remaining = resp.headers["x-ratelimit-remaining"];
+    const resetAt = resp.headers["x-ratelimit-reset"];
+    if (remaining !== void 0) {
+      rateLimit = {
+        remaining: Number(remaining),
+        resetAt: resetAt ? new Date(Number(resetAt) * 1e3) : /* @__PURE__ */ new Date()
+      };
+    }
+    return { data, meta: { requestMs, retries: 0, rateLimit } };
+  }
+  // ─── Repos ────────────────────────────────────────────────────
+  async listRepos() {
+    return this.req("GET", "/repos");
+  }
+  async createRepo(body) {
+    return this.req("POST", "/repos", body);
+  }
+  // ─── Outline ──────────────────────────────────────────────────
+  async outline() {
+    return this.req("GET", `/repos/${this.repoId}/nodes/outline`);
+  }
+  // ─── Tree ─────────────────────────────────────────────────────
+  async navigate(path = "") {
+    const encodedPath = path ? `/${encodeURIComponent(path)}` : "";
+    const resp = await this.req("GET", `/repos/${this.repoId}/tree${encodedPath}`);
+    resp.data.children = resp.data.children.map((child) => ({
+      ...child,
+      type: child.type === "dir" ? "directory" : child.type
+    }));
+    return resp;
+  }
+  // ─── Search ───────────────────────────────────────────────────
+  async search(params) {
+    const qs = new URLSearchParams();
+    qs.set("q", params.query);
+    qs.set("repo_id", this.repoId);
+    if (params.scope)
+      qs.set("scope", params.scope);
+    if (params.node_type)
+      qs.set("node_type", params.node_type);
+    if (params.attached_to)
+      qs.set("attached_to", params.attached_to);
+    if (params.contributed_by)
+      qs.set("contributed_by", params.contributed_by);
+    const tag = params.tag ?? params.tags;
+    if (tag) {
+      qs.set("tag", tag);
+      qs.set("tags", tag);
+    }
+    const topK = params.top_k ?? params.limit;
+    if (typeof topK === "number") {
+      qs.set("top_k", String(topK));
+      qs.set("limit", String(topK));
+    }
+    return this.req("GET", `/search?${qs.toString()}`);
+  }
+  // ─── Files ────────────────────────────────────────────────────
+  async readFile(path, opts) {
+    const qs = new URLSearchParams();
+    if (opts?.offset)
+      qs.set("offset", String(opts.offset));
+    if (opts?.limit)
+      qs.set("limit", String(opts.limit));
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return this.req("GET", `/repos/${this.repoId}/files/${encodeURIComponent(path)}${query}`);
+  }
+  async readNode(nodeId) {
+    return this.req("GET", `/repos/${this.repoId}/nodes/${nodeId}`);
+  }
+  async writeFile(path, body) {
+    return this.req("PUT", `/repos/${this.repoId}/files/${encodeURIComponent(path)}`, body);
+  }
+  // ─── Grep ─────────────────────────────────────────────────────
+  async grep(pattern, scope) {
+    const qs = new URLSearchParams({ pattern });
+    if (scope)
+      qs.set("scope", scope);
+    return this.req("GET", `/repos/${this.repoId}/grep?${qs.toString()}`);
+  }
+  async grepSections(heading, scope, maxLines) {
+    const qs = new URLSearchParams({ heading });
+    if (scope)
+      qs.set("scope", scope);
+    if (maxLines)
+      qs.set("max_lines", String(maxLines));
+    return this.req("GET", `/repos/${this.repoId}/grep/sections?${qs.toString()}`);
+  }
+  // ─── Tags ─────────────────────────────────────────────────────
+  async listTags(prefix) {
+    const qs = new URLSearchParams();
+    if (prefix)
+      qs.set("q", prefix);
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return this.req("GET", `/repos/${this.repoId}/tags${query}`);
+  }
+  // ─── Node history ─────────────────────────────────────────────
+  async nodeHistory(nodeId) {
+    return this.req("GET", `/repos/${this.repoId}/nodes/${nodeId}/history`);
+  }
+  async nodeAtVersion(nodeId, sha) {
+    return this.req("GET", `/repos/${this.repoId}/nodes/${nodeId}/history/${sha}`);
+  }
+  // ─── Delete node ──────────────────────────────────────────────
+  async deleteNode(nodeId) {
+    return this.req("DELETE", `/repos/${this.repoId}/nodes/${nodeId}`);
+  }
+  // ─── Move / delete file ───────────────────────────────────────
+  async moveFile(source, destination) {
+    return this.req("POST", `/repos/${this.repoId}/files/move`, {
+      source,
+      destination: destination ?? null
+    });
+  }
+  // ─── Update metadata ──────────────────────────────────────────
+  async updateMetadata(nodeId, fields) {
+    return this.req("PATCH", `/repos/${this.repoId}/nodes/${nodeId}/metadata`, fields);
+  }
+  // ─── List nodes ───────────────────────────────────────────────
+  async listNodes(params) {
+    const qs = new URLSearchParams();
+    if (params?.node_type)
+      qs.set("node_type", params.node_type);
+    if (params?.tag)
+      qs.set("tag", params.tag);
+    if (params?.dir_path)
+      qs.set("dir_path", params.dir_path);
+    if (params?.attached_to)
+      qs.set("attached_to", params.attached_to);
+    if (params?.contributed_by)
+      qs.set("contributed_by", params.contributed_by);
+    if (params?.origin)
+      qs.set("origin", params.origin);
+    if (params?.limit)
+      qs.set("limit", String(params.limit));
+    if (params?.offset)
+      qs.set("offset", String(params.offset));
+    if (params?.sort_by)
+      qs.set("sort_by", params.sort_by);
+    if (params?.sort_order)
+      qs.set("sort_order", params.sort_order);
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return this.req("GET", `/repos/${this.repoId}/nodes${query}`);
+  }
+  // ─── File status (bulk sync) ──────────────────────────────────
+  async fileStatus(scope) {
+    const qs = new URLSearchParams();
+    if (scope)
+      qs.set("scope", scope);
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return this.req("GET", `/repos/${this.repoId}/files/status${query}`);
+  }
+  // ─── Git operations ───────────────────────────────────────────
+  async gitOps(params) {
+    const qs = new URLSearchParams({ op: params.op });
+    if (params.path)
+      qs.set("path", params.path);
+    if (params.ref)
+      qs.set("ref", params.ref);
+    if (params.text)
+      qs.set("text", params.text);
+    if (params.since)
+      qs.set("since", params.since);
+    if (params.limit)
+      qs.set("limit", String(params.limit));
+    return this.req("GET", `/repos/${this.repoId}/git?${qs.toString()}`);
+  }
+};
+function createClient(config2) {
+  const transport2 = config2.transport ?? createFetchTransport({
+    apiUrl: config2.apiUrl ?? DEFAULT_API_URL,
+    apiKey: config2.apiKey,
+    timeout: config2.timeout,
+    retry: config2.retry
+  });
+  return new IsClient(transport2, config2.repo ?? "");
+}
+
+// node_modules/@ideaspaces/sdk/dist/patterns/session.js
+function createSession(client, opts) {
+  let cachedAwareness2 = null;
+  let knownHeadSha = null;
+  let lastSha = opts?.lastSha ?? null;
+  async function getCurrentHead() {
+    try {
+      const { data } = await client.gitOps({ op: "log", limit: 1 });
+      return data.entries?.[0]?.sha ?? null;
+    } catch {
+      return null;
+    }
+  }
+  async function buildAwareness() {
+    const { data: root } = await client.navigate("");
+    const lines = [];
+    if (root.now) {
+      const nowLines = root.now.split("\n").filter((l) => l.trim() && !l.startsWith("---") && !l.startsWith("name:") && !l.startsWith("summary:"));
+      const firstLine = nowLines.find((l) => !l.startsWith("#") && l.trim().length > 0);
+      if (firstLine)
+        lines.push(`Now: ${firstLine.trim().slice(0, 200)}`);
+    }
+    const dirs = root.children.filter((c) => c.type === "directory" || c.type === "dir");
+    const files = root.children.filter((c) => c.type !== "directory" && c.type !== "dir");
+    if (dirs.length || files.length) {
+      lines.push(`
+Tree (${root.file_count} files):`);
+      for (const d of dirs) {
+        const count = d.file_count ? ` (${d.file_count})` : "";
+        const summary = d.summary ? ` \u2014 ${d.summary}` : "";
+        lines.push(`  ${d.name}/${count}${summary}`);
+      }
+      for (const f of files) {
+        const summary = f.summary ? ` \u2014 ${f.summary}` : "";
+        lines.push(`  ${f.name}${summary}`);
+      }
+    }
+    if (root.agent_context.length) {
+      const contextNames = root.agent_context.map((a) => a.name).join(", ");
+      lines.push(`
+Agent context: ${contextNames}`);
+    }
+    if (lastSha) {
+      try {
+        const { data: changes } = await client.gitOps({
+          op: "changes",
+          since: lastSha
+        });
+        if (changes.changes?.length) {
+          lines.push(`
+Since last session (${changes.changes.length} changes):`);
+          for (const c of changes.changes.slice(0, 15)) {
+            lines.push(`  ${c.status} ${c.path}`);
+          }
+          if (changes.changes.length > 15) {
+            lines.push(`  ... and ${changes.changes.length - 15} more`);
+          }
+        }
+      } catch {
+      }
+    }
+    knownHeadSha = await getCurrentHead();
+    return lines.join("\n");
+  }
+  return {
+    async getAwarenessBlock() {
+      if (cachedAwareness2 !== null)
+        return cachedAwareness2;
+      cachedAwareness2 = await buildAwareness();
+      return cachedAwareness2;
+    },
+    async getContextFor(query, opts2) {
+      const { data } = await client.search({
+        query,
+        scope: opts2?.scope,
+        limit: opts2?.limit ?? 10
+      });
+      if (!data.results.length)
+        return `No results for "${query}"`;
+      const lines = [];
+      for (const r of data.results) {
+        const score = r.score.toFixed(2);
+        lines.push(`${score}  ${r.path}`);
+        if (r.name)
+          lines.push(`      ${r.name}`);
+        if (r.summary)
+          lines.push(`      ${r.summary}`);
+      }
+      return lines.join("\n");
+    },
+    async getChanges() {
+      if (!knownHeadSha)
+        return null;
+      const currentHead = await getCurrentHead();
+      if (!currentHead || currentHead === knownHeadSha) {
+        return null;
+      }
+      try {
+        const { data } = await client.gitOps({
+          op: "changes",
+          since: knownHeadSha
+        });
+        knownHeadSha = currentHead;
+        if (!data.changes?.length)
+          return null;
+        const lines = data.changes.slice(0, 15).map((c) => `  ${c.status} ${c.path}`);
+        if (data.changes.length > 15) {
+          lines.push(`  ... and ${data.changes.length - 15} more`);
+        }
+        return {
+          changed: true,
+          summary: `${data.changes.length} change${data.changes.length === 1 ? "" : "s"}:
+${lines.join("\n")}`
+        };
+      } catch {
+        return null;
+      }
+    },
+    async trackHead() {
+      knownHeadSha = await getCurrentHead();
+    },
+    invalidate() {
+      cachedAwareness2 = null;
+    }
+  };
+}
+
+// node_modules/@ideaspaces/sdk/dist/patterns/repo.js
+async function autoSelectRepo(client) {
+  const { data } = await client.listRepos();
+  const repos = data.repos;
+  if (repos.length === 1) {
+    client.setRepo(repos[0].repo_id);
+    return { repoId: repos[0].repo_id, repos };
+  }
+  return { repoId: null, repos };
+}
+
+// dist/credentials.js
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+var CONFIG_DIR = join(homedir(), ".ideaspaces");
+var CREDENTIALS_FILE = join(CONFIG_DIR, "credentials.json");
+function loadStoredCredentials() {
+  try {
+    if (!existsSync(CREDENTIALS_FILE))
+      return null;
+    const raw = readFileSync(CREDENTIALS_FILE, "utf-8");
+    const data = JSON.parse(raw);
+    if (!data.api_key)
+      return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+function saveCredentials(creds) {
+  if (!existsSync(CONFIG_DIR)) {
+    mkdirSync(CONFIG_DIR, { recursive: true, mode: 448 });
+  }
+  writeFileSync(CREDENTIALS_FILE, JSON.stringify(creds, null, 2) + "\n", {
+    mode: 384
+  });
+}
+var DEFAULT_API_URL2 = "https://api.ideaspaces.xyz";
+function loadConfig() {
+  const envKey = process.env.IS_API_KEY || process.env.CLAUDE_PLUGIN_OPTION_api_key;
+  const envRepo = process.env.IS_REPO || process.env.CLAUDE_PLUGIN_OPTION_repo_id || "";
+  if (envKey) {
+    return {
+      apiUrl: (process.env.IS_API_URL || DEFAULT_API_URL2).replace(/\/$/, ""),
+      apiKey: envKey,
+      repo: envRepo
+    };
+  }
+  const stored = loadStoredCredentials();
+  if (stored) {
+    return {
+      apiUrl: (process.env.IS_API_URL || stored.api_url || DEFAULT_API_URL2).replace(/\/$/, ""),
+      apiKey: stored.api_key,
+      repo: envRepo || stored.repo_id || ""
+    };
+  }
+  return null;
+}
+
+// dist/index.js
 function resolveCli() {
   if (process.env.IS_CLI_PATH)
     return process.env.IS_CLI_PATH;
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const relative = join(__dirname, "../cli/bundle/ideaspaces.js");
-  if (existsSync(relative))
+  const relative = join2(__dirname, "../cli/bundle/ideaspaces.js");
+  if (existsSync2(relative))
     return relative;
   return "ideaspaces";
 }
 var CLI = resolveCli();
+function ok(text) {
+  return { content: [{ type: "text", text }] };
+}
+function fail(text) {
+  return { content: [{ type: "text", text }], isError: true };
+}
+function isErrorResult(result) {
+  return result.isError === true;
+}
+function resultText(result) {
+  return result.content[0]?.text ?? "";
+}
+function appendText(result, appendix) {
+  if (isErrorResult(result))
+    return result;
+  if (!appendix.trim())
+    return result;
+  return ok(`${resultText(result)}
+
+${appendix}`);
+}
 function cli(args, stdin) {
   return new Promise((resolve) => {
     const isFile = CLI.includes("/") || CLI.includes("\\") || CLI.endsWith(".js");
     const proc = spawn(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
       stdio: ["pipe", "pipe", "pipe"]
     });
-    let out = "", err = "";
+    let out = "";
+    let err = "";
     proc.stdout.on("data", (d) => out += d);
     proc.stderr.on("data", (d) => err += d);
     proc.on("close", (code) => resolve({ out, err, code: code ?? 1 }));
@@ -21041,41 +21601,166 @@ function cli(args, stdin) {
     proc.stdin.end();
   });
 }
-function ok(t) {
-  return { content: [{ type: "text", text: t }] };
-}
-function fail(t) {
-  return { content: [{ type: "text", text: t }], isError: true };
-}
 async function run(args, stdin) {
   const { out, err, code } = await cli(["--json", ...args], stdin);
   if (code !== 0)
     return fail(err.trim() || out.trim() || `Exit ${code}`);
   return ok(out.trim() || err.trim() || "Done");
 }
+var CONTEXT_HOOK_ENABLED = process.env.IS_MCP_CONTEXT_HOOK === "1";
+var INCLUDE_AWARENESS_IN_EXPLORE = process.env.IS_MCP_INCLUDE_AWARENESS === "1";
+var sdkClient = null;
+var sdkSession = null;
+var cachedAwareness = null;
+function resetLifecycle() {
+  sdkClient = null;
+  sdkSession = null;
+  cachedAwareness = null;
+}
+async function persistSessionState() {
+  if (!sdkClient || !sdkClient.isConnected)
+    return;
+  const stored = loadStoredCredentials();
+  if (!stored)
+    return;
+  try {
+    const { data } = await sdkClient.gitOps({ op: "log", limit: 1 });
+    const sha = data.entries?.[0]?.sha;
+    if (!sha)
+      return;
+    saveCredentials({
+      ...stored,
+      repo_id: sdkClient.repoId,
+      last_sha: sha
+    });
+  } catch {
+  }
+}
+async function initLifecycle() {
+  const config2 = loadConfig();
+  if (!config2) {
+    resetLifecycle();
+    return;
+  }
+  const client = createClient({
+    apiKey: config2.apiKey,
+    apiUrl: config2.apiUrl,
+    repo: config2.repo || void 0
+  });
+  if (!client.isConnected) {
+    try {
+      const discovered = await autoSelectRepo(client);
+      if (!discovered.repoId) {
+        resetLifecycle();
+        return;
+      }
+    } catch {
+      resetLifecycle();
+      return;
+    }
+  }
+  const lastSha = loadStoredCredentials()?.last_sha ?? null;
+  const session = createSession(client, { lastSha });
+  sdkClient = client;
+  sdkSession = session;
+  try {
+    cachedAwareness = await sdkSession.getAwarenessBlock();
+  } catch {
+    cachedAwareness = null;
+  }
+  await persistSessionState();
+}
+async function refreshLifecycleAfterMutation() {
+  if (!sdkSession)
+    return;
+  try {
+    await sdkSession.trackHead();
+    sdkSession.invalidate();
+    cachedAwareness = await sdkSession.getAwarenessBlock();
+    await persistSessionState();
+  } catch {
+  }
+}
+async function contextHook(method, query, scope, limit) {
+  if (!CONTEXT_HOOK_ENABLED)
+    return "";
+  if (!sdkSession || method !== "search" || !query)
+    return "";
+  try {
+    const context = await sdkSession.getContextFor(query, { scope, limit });
+    if (!context || context.startsWith("No results"))
+      return "";
+    return `--- Context Preview ---
+${context}`;
+  } catch {
+    return "";
+  }
+}
+async function awarenessHook(path, full) {
+  if (!INCLUDE_AWARENESS_IN_EXPLORE)
+    return "";
+  if (full)
+    return "";
+  if (path && path.trim().length > 0)
+    return "";
+  if (!sdkSession)
+    return "";
+  try {
+    if (!cachedAwareness) {
+      cachedAwareness = await sdkSession.getAwarenessBlock();
+    }
+    return cachedAwareness ? `--- Awareness ---
+${cachedAwareness}` : "";
+  } catch {
+    return "";
+  }
+}
 var server = new McpServer({ name: "ideaspaces", version: "0.2.0" });
-server.tool("is_auth", "Connect to a space. Lists available spaces if multiple exist.", {
-  action: external_exports.enum(["login", "logout", "repos", "status"]).default("login").describe("login: authenticate or select space. logout: clear credentials. repos: list spaces. status: connection info."),
-  repo: external_exports.string().optional().describe("Space slug to connect to")
-}, async ({ action, repo }) => {
+server.tool("is_auth", "Connect to a space, create a new space, or manage credentials.", {
+  action: external_exports.enum(["login", "logout", "repos", "status", "create"]).default("login").describe("login: authenticate or select space. logout: clear credentials. repos: list spaces. status: connection info. create: create a new space and connect."),
+  repo: external_exports.string().optional().describe("Space slug to connect to"),
+  name: external_exports.string().optional().describe("Space name (for create)"),
+  purpose: external_exports.string().optional().describe("Space purpose (for create)")
+}, async ({ action, repo, name, purpose }) => {
   switch (action) {
-    case "login":
-      return run(repo ? ["login", repo] : ["login"]);
-    case "logout":
-      return run(["power", "logout"]);
+    case "login": {
+      const result = await run(repo ? ["login", repo] : ["login"]);
+      if (!isErrorResult(result))
+        await initLifecycle();
+      return result;
+    }
+    case "logout": {
+      const result = await run(["power", "logout"]);
+      if (!isErrorResult(result))
+        resetLifecycle();
+      return result;
+    }
     case "repos":
       return run(["power", "repos"]);
     case "status":
       return run(["power", "status"]);
+    case "create": {
+      if (!name)
+        return fail("name required for create");
+      const a = ["power", "create", name];
+      if (purpose)
+        a.push("--purpose", purpose);
+      if (repo)
+        a.push("--slug", repo);
+      const result = await run(a);
+      if (!isErrorResult(result))
+        await initLifecycle();
+      return result;
+    }
   }
 });
 server.tool("is_explore", "See what's in the space. Returns tree structure, README context, and what changed since last session.", {
   path: external_exports.string().optional().describe("Directory path. Empty for root."),
   full: external_exports.boolean().optional().describe("Return full outline of every file and directory.")
 }, async ({ path, full }) => {
-  if (full)
-    return run(["power", "outline"]);
-  return run(path ? ["navigate", path] : ["navigate"]);
+  const result = full ? await run(["power", "outline"]) : await run(path ? ["navigate", path] : ["navigate"]);
+  const awareness = await awarenessHook(path, full);
+  return appendText(result, awareness);
 });
 server.tool("is_find", "Find knowledge by meaning, text pattern, or metadata. Automatically picks the right search method.", {
   method: external_exports.enum(["search", "grep", "list"]).default("search").describe("search: semantic. grep: text/regex in files. list: filter by metadata."),
@@ -21133,7 +21818,9 @@ server.tool("is_find", "Find knowledge by meaning, text pattern, or metadata. Au
         a.push("--limit", String(limit));
       break;
   }
-  return run(a);
+  const result = await run(a);
+  const extraContext = await contextHook(method, query, scope, limit);
+  return appendText(result, extraContext);
 });
 server.tool("is_read", "Read a note's content and metadata. Add history=true to see how it evolved.", {
   path: external_exports.string().describe("File path or node ID (e.g. 'core/About.md' or 'n_b4d942f682a0')"),
@@ -21147,10 +21834,10 @@ server.tool("is_read", "Read a note's content and metadata. Add history=true to 
   if (limit)
     a.push("--limit", String(limit));
   const result = await run(a);
-  if (history && !("isError" in result)) {
+  if (history && !isErrorResult(result)) {
     const hist = await cli(["--json", "power", "git", "log", "--path", path]);
     if (hist.out.trim()) {
-      return ok(`${result.content[0].text}
+      return ok(`${resultText(result)}
 
 --- History ---
 ${hist.out.trim()}`);
@@ -21190,7 +21877,10 @@ server.tool("is_write", "Create, update, move, or delete notes. Specify action: 
         a.push("--attached-to", attached_to.join(","));
       if (if_match)
         a.push("--if-match", if_match);
-      return run(a, content);
+      const result = await run(a, content);
+      if (!isErrorResult(result))
+        await refreshLifecycleAfterMutation();
+      return result;
     }
     case "update_metadata": {
       if (!node_id)
@@ -21204,19 +21894,29 @@ server.tool("is_write", "Create, update, move, or delete notes. Specify action: 
         a.push("--accessibility", accessibility.join(","));
       if (references?.length)
         a.push("--references", references.join(","));
-      return run(a);
+      const result = await run(a);
+      if (!isErrorResult(result))
+        await refreshLifecycleAfterMutation();
+      return result;
     }
     case "move": {
       if (!source || !destination)
         return fail("source and destination required");
-      return run(["power", "move", source, destination]);
+      const result = await run(["power", "move", source, destination]);
+      if (!isErrorResult(result))
+        await refreshLifecycleAfterMutation();
+      return result;
     }
     case "delete": {
       if (!path)
         return fail("path required");
-      return run(["power", "delete", path, "--yes"]);
+      const result = await run(["power", "delete", path, "--yes"]);
+      if (!isErrorResult(result))
+        await refreshLifecycleAfterMutation();
+      return result;
     }
   }
 });
+await initLifecycle();
 var transport = new StdioServerTransport();
 await server.connect(transport);
