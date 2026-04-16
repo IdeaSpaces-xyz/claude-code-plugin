@@ -21022,6 +21022,8 @@ var SdkError = class extends Error {
   status;
   retryable;
   retryAfterMs;
+  /** Structured error payload from the API, when available. */
+  detail;
   constructor(opts) {
     super(opts.message);
     this.name = "SdkError";
@@ -21029,6 +21031,7 @@ var SdkError = class extends Error {
     this.status = opts.status;
     this.retryable = opts.retryable;
     this.retryAfterMs = opts.retryAfterMs;
+    this.detail = opts.detail;
   }
 };
 function classifyStatus(status, headers) {
@@ -21100,6 +21103,7 @@ function createFetchTransport(config2) {
             return {
               status: resp.status,
               headers: responseHeaders2,
+              retries: attempt,
               json: async () => JSON.parse(bodyText),
               text: async () => bodyText
             };
@@ -21109,31 +21113,40 @@ function createFetchTransport(config2) {
             responseHeaders[k.toLowerCase()] = v;
           });
           const errorText = await resp.text().catch(() => "");
+          let parsed = void 0;
           let detail = errorText;
           try {
-            const json = JSON.parse(errorText);
-            detail = json.detail || json.error || errorText;
+            parsed = JSON.parse(errorText);
+            if (parsed && typeof parsed === "object") {
+              const payload = parsed;
+              detail = payload.detail ?? payload.error ?? parsed;
+            } else {
+              detail = parsed;
+            }
           } catch {
           }
+          const detailMessage = typeof detail === "string" ? detail : detail == null ? "" : JSON.stringify(detail);
           const { category, retryable, retryAfterMs } = classifyStatus(resp.status, responseHeaders);
           const canRetry = retryable && retryableStatuses.includes(resp.status) && attempt < maxRetries;
           if (!canRetry) {
             throw new SdkError({
-              message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
+              message: `${method} ${path}: ${resp.status} \u2014 ${detailMessage}`,
               category,
               status: resp.status,
               retryable,
-              retryAfterMs
+              retryAfterMs,
+              detail: parsed ?? detail
             });
           }
           const delayMs = retryAfterMs ?? backoffMs(attempt);
           await sleep(delayMs);
           lastError = new SdkError({
-            message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
+            message: `${method} ${path}: ${resp.status} \u2014 ${detailMessage}`,
             category,
             status: resp.status,
             retryable,
-            retryAfterMs
+            retryAfterMs,
+            detail: parsed ?? detail
           });
         } catch (err) {
           if (err instanceof SdkError)
@@ -21196,7 +21209,14 @@ var IsClient = class {
         resetAt: resetAt ? new Date(Number(resetAt) * 1e3) : /* @__PURE__ */ new Date()
       };
     }
-    return { data, meta: { requestMs, retries: 0, rateLimit } };
+    return {
+      data,
+      meta: {
+        requestMs,
+        retries: resp.retries ?? 0,
+        rateLimit
+      }
+    };
   }
   // ─── Repos ────────────────────────────────────────────────────
   async listRepos() {
@@ -21204,6 +21224,26 @@ var IsClient = class {
   }
   async createRepo(body) {
     return this.req("POST", "/repos", body);
+  }
+  async connectRepo(body) {
+    return this.req("POST", "/repos/connect", body);
+  }
+  async setRepoCredential(gitCredential, repoId = this.repoId) {
+    return this.req("POST", `/repos/${repoId}/credentials`, {
+      git_credential: gitCredential
+    });
+  }
+  async reindexRepo(repoId = this.repoId) {
+    return this.req("POST", `/repos/${repoId}/reindex`);
+  }
+  async syncPullRepo(repoId = this.repoId) {
+    return this.req("POST", `/repos/${repoId}/sync/pull`);
+  }
+  async syncPushRepo(repoId = this.repoId) {
+    return this.req("POST", `/repos/${repoId}/sync/push`);
+  }
+  async syncStatus(repoId = this.repoId) {
+    return this.req("GET", `/repos/${repoId}/sync/status`);
   }
   // ─── Outline ──────────────────────────────────────────────────
   async outline() {
@@ -21257,8 +21297,24 @@ var IsClient = class {
   async readNode(nodeId) {
     return this.req("GET", `/repos/${this.repoId}/nodes/${nodeId}`);
   }
-  async writeFile(path, body) {
-    return this.req("PUT", `/repos/${this.repoId}/files/${encodeURIComponent(path)}`, body);
+  async _withDefaultIfMatch(path, body, opts) {
+    if (opts?.force || body.if_match !== void 0)
+      return body;
+    try {
+      const { data } = await this.readFile(path);
+      if (!data.last_commit_sha)
+        return body;
+      return { ...body, if_match: data.last_commit_sha };
+    } catch (error2) {
+      if (error2 instanceof SdkError && error2.status === 404) {
+        return body;
+      }
+      throw error2;
+    }
+  }
+  async writeFile(path, body, opts) {
+    const payload = await this._withDefaultIfMatch(path, body, opts);
+    return this.req("PUT", `/repos/${this.repoId}/files/${encodeURIComponent(path)}`, payload);
   }
   // ─── Grep ─────────────────────────────────────────────────────
   async grep(pattern, scope) {
@@ -21717,12 +21773,13 @@ ${cachedAwareness}` : "";
 }
 var server = new McpServer({ name: "ideaspaces", version: "0.2.0" });
 server.tool("is_auth", "Connect to a space, create a new space, or manage credentials. Spaces are either personal (no hostname) or belong to an organization (hostname like 'ideaspaces.xyz'). Use repos to see both scopes. Use hostname/slug to login to org spaces.", {
-  action: external_exports.enum(["login", "logout", "repos", "status", "create"]).default("login").describe("login: authenticate or select space (use hostname/slug for org spaces). logout: clear credentials. repos: list all spaces (personal and org). status: connection info. create: create a new space and connect."),
+  action: external_exports.enum(["login", "logout", "repos", "status", "create", "repo_status", "repo_pull", "repo_push", "repo_credential_set", "repo_credential_clear"]).default("login").describe("login: authenticate or select space (use hostname/slug for org spaces). logout: clear credentials. repos: list all spaces (personal and org). status: connection info. create: create a new space and connect. repo_status: sync freshness check. repo_pull: pull from origin. repo_push: push to origin. repo_credential_set/clear: manage git credentials."),
   repo: external_exports.string().optional().describe("Space slug or hostname/slug to connect to (e.g. 'notes' or 'ideaspaces.xyz/notes')"),
   name: external_exports.string().optional().describe("Space name (for create)"),
   purpose: external_exports.string().optional().describe("Space purpose (for create)"),
-  hostname: external_exports.string().optional().describe("Organization hostname for team spaces (for create). Omit for personal space.")
-}, async ({ action, repo, name, purpose, hostname: hostname2 }) => {
+  hostname: external_exports.string().optional().describe("Organization hostname for team spaces (for create). Omit for personal space."),
+  value: external_exports.string().optional().describe("Credential value (for repo_credential_set)")
+}, async ({ action, repo, name, purpose, hostname: hostname2, value }) => {
   switch (action) {
     case "login": {
       const result = await run(repo ? ["login", repo] : ["login"]);
@@ -21755,6 +21812,27 @@ server.tool("is_auth", "Connect to a space, create a new space, or manage creden
         await initLifecycle();
       return result;
     }
+    case "repo_status":
+      return run(["power", "repo", "status"]);
+    case "repo_pull": {
+      const result = await run(["power", "repo", "pull"]);
+      if (!isErrorResult(result))
+        await refreshLifecycleAfterMutation();
+      return result;
+    }
+    case "repo_push": {
+      const result = await run(["power", "repo", "push"]);
+      if (!isErrorResult(result))
+        await refreshLifecycleAfterMutation();
+      return result;
+    }
+    case "repo_credential_set": {
+      if (!value)
+        return fail("value required for repo_credential_set");
+      return run(["power", "repo", "credential", "set", "--value", value]);
+    }
+    case "repo_credential_clear":
+      return run(["power", "repo", "credential", "clear"]);
   }
 });
 server.tool("is_explore", "See what's in the space. Returns tree structure, README context, and what changed since last session.", {

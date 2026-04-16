@@ -4,12 +4,14 @@
 import { exec } from "node:child_process";
 import { platform } from "node:os";
 
-// node_modules/@ideaspaces/sdk/dist/transport.js
+// ../sdk/dist/transport.js
 var SdkError = class extends Error {
   category;
   status;
   retryable;
   retryAfterMs;
+  /** Structured error payload from the API, when available. */
+  detail;
   constructor(opts) {
     super(opts.message);
     this.name = "SdkError";
@@ -17,6 +19,7 @@ var SdkError = class extends Error {
     this.status = opts.status;
     this.retryable = opts.retryable;
     this.retryAfterMs = opts.retryAfterMs;
+    this.detail = opts.detail;
   }
 };
 function classifyStatus(status, headers) {
@@ -88,6 +91,7 @@ function createFetchTransport(config) {
             return {
               status: resp.status,
               headers: responseHeaders2,
+              retries: attempt,
               json: async () => JSON.parse(bodyText),
               text: async () => bodyText
             };
@@ -97,31 +101,40 @@ function createFetchTransport(config) {
             responseHeaders[k.toLowerCase()] = v;
           });
           const errorText = await resp.text().catch(() => "");
+          let parsed = void 0;
           let detail = errorText;
           try {
-            const json = JSON.parse(errorText);
-            detail = json.detail || json.error || errorText;
+            parsed = JSON.parse(errorText);
+            if (parsed && typeof parsed === "object") {
+              const payload = parsed;
+              detail = payload.detail ?? payload.error ?? parsed;
+            } else {
+              detail = parsed;
+            }
           } catch {
           }
+          const detailMessage = typeof detail === "string" ? detail : detail == null ? "" : JSON.stringify(detail);
           const { category, retryable, retryAfterMs } = classifyStatus(resp.status, responseHeaders);
           const canRetry = retryable && retryableStatuses.includes(resp.status) && attempt < maxRetries;
           if (!canRetry) {
             throw new SdkError({
-              message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
+              message: `${method} ${path}: ${resp.status} \u2014 ${detailMessage}`,
               category,
               status: resp.status,
               retryable,
-              retryAfterMs
+              retryAfterMs,
+              detail: parsed ?? detail
             });
           }
           const delayMs = retryAfterMs ?? backoffMs(attempt);
           await sleep(delayMs);
           lastError = new SdkError({
-            message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
+            message: `${method} ${path}: ${resp.status} \u2014 ${detailMessage}`,
             category,
             status: resp.status,
             retryable,
-            retryAfterMs
+            retryAfterMs,
+            detail: parsed ?? detail
           });
         } catch (err) {
           if (err instanceof SdkError)
@@ -145,7 +158,7 @@ function createFetchTransport(config) {
   };
 }
 
-// node_modules/@ideaspaces/sdk/dist/client.js
+// ../sdk/dist/client.js
 var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
 var IsClient = class {
   transport;
@@ -184,7 +197,14 @@ var IsClient = class {
         resetAt: resetAt ? new Date(Number(resetAt) * 1e3) : /* @__PURE__ */ new Date()
       };
     }
-    return { data, meta: { requestMs, retries: 0, rateLimit } };
+    return {
+      data,
+      meta: {
+        requestMs,
+        retries: resp.retries ?? 0,
+        rateLimit
+      }
+    };
   }
   // ─── Repos ────────────────────────────────────────────────────
   async listRepos() {
@@ -196,8 +216,22 @@ var IsClient = class {
   async connectRepo(body) {
     return this.req("POST", "/repos/connect", body);
   }
+  async setRepoCredential(gitCredential, repoId = this.repoId) {
+    return this.req("POST", `/repos/${repoId}/credentials`, {
+      git_credential: gitCredential
+    });
+  }
   async reindexRepo(repoId = this.repoId) {
     return this.req("POST", `/repos/${repoId}/reindex`);
+  }
+  async syncPullRepo(repoId = this.repoId) {
+    return this.req("POST", `/repos/${repoId}/sync/pull`);
+  }
+  async syncPushRepo(repoId = this.repoId) {
+    return this.req("POST", `/repos/${repoId}/sync/push`);
+  }
+  async syncStatus(repoId = this.repoId) {
+    return this.req("GET", `/repos/${repoId}/sync/status`);
   }
   // ─── Outline ──────────────────────────────────────────────────
   async outline() {
@@ -375,7 +409,7 @@ function createClient(config) {
   return new IsClient(transport, config.repo ?? "");
 }
 
-// node_modules/@ideaspaces/sdk/dist/patterns/session.js
+// ../sdk/dist/patterns/session.js
 function createSession(client, opts) {
   let cachedAwareness = null;
   let knownHeadSha = null;
@@ -502,7 +536,7 @@ ${lines.join("\n")}`
   };
 }
 
-// node_modules/@ideaspaces/sdk/dist/patterns/repo.js
+// ../sdk/dist/patterns/repo.js
 async function autoSelectRepo(client) {
   const { data } = await client.listRepos();
   const repos = data.repos;
@@ -513,7 +547,7 @@ async function autoSelectRepo(client) {
   return { repoId: null, repos };
 }
 
-// node_modules/@ideaspaces/sdk/dist/patterns/sync.js
+// ../sdk/dist/patterns/sync.js
 import { createHash } from "node:crypto";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, basename, extname } from "node:path";
@@ -588,7 +622,7 @@ async function syncToSpace(client, localPath, spacePath, options = {}) {
   const localFiles = await collectLocalFiles(localPath);
   log(`Found ${localFiles.size} local files, ${spaceFiles.size} space files in scope`);
   const prevState = await loadSyncState(localPath);
-  for (const [relPath, { localPath: filePath, content }] of localFiles) {
+  for (const [relPath, { content }] of localFiles) {
     const normalized = relPath.split("/").map((p) => normalizeFilename(p)).join("/");
     const targetPath = spacePath ? `${spacePath}/${normalized}` : normalized;
     const localHash = gitBlobHash(content);
@@ -636,11 +670,11 @@ async function syncToSpace(client, localPath, spacePath, options = {}) {
       });
       log(`Uploaded: ${relPath} \u2192 ${targetPath}`);
       result.uploaded.push(relPath);
-    } catch (e) {
-      const msg = e?.message || String(e);
-      if (msg.includes("409")) {
+    } catch (error) {
+      if (error instanceof SdkError && error.status === 409) {
         result.conflicts.push(relPath);
       } else {
+        const msg = error instanceof Error ? error.message : String(error);
         result.errors.push({ path: relPath, error: msg });
       }
     }
