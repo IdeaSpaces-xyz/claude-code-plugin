@@ -2085,17 +2085,9 @@ var repoCommand = {
       return 1;
     }
     const client = await initClient(global2);
-    const clientAny = client;
-    const rawReq = typeof clientAny.req === "function" ? ((method, path, body) => clientAny.req(method, path, body)) : void 0;
     switch (op) {
       case "status": {
-        const syncStatus = clientAny.syncStatus;
-        const response = typeof syncStatus === "function" ? await syncStatus(client.repoId) : typeof rawReq === "function" ? await rawReq("GET", `/repos/${client.repoId}/sync/status`) : null;
-        if (!response) {
-          output.error("SDK in this CLI build cannot call sync status. Update @ideaspaces/sdk.");
-          return 1;
-        }
-        const data = response.data;
+        const { data } = await client.syncStatus();
         const lines = [
           `Repo: ${data.repo_id}`,
           `Status: ${data.status}${data.is_fresh ? " (fresh)" : ""}`,
@@ -2109,13 +2101,7 @@ var repoCommand = {
         return 0;
       }
       case "pull": {
-        const syncPullRepo = clientAny.syncPullRepo;
-        const response = typeof syncPullRepo === "function" ? await syncPullRepo(client.repoId) : typeof rawReq === "function" ? await rawReq("POST", `/repos/${client.repoId}/sync/pull`) : null;
-        if (!response) {
-          output.error("SDK in this CLI build cannot call sync pull. Update @ideaspaces/sdk.");
-          return 1;
-        }
-        const data = response.data;
+        const { data } = await client.syncPullRepo();
         if (data.new_head) {
           try {
             setLastSha(client.repoId, data.new_head);
@@ -2135,13 +2121,7 @@ var repoCommand = {
         return 0;
       }
       case "push": {
-        const syncPushRepo = clientAny.syncPushRepo;
-        const response = typeof syncPushRepo === "function" ? await syncPushRepo(client.repoId) : typeof rawReq === "function" ? await rawReq("POST", `/repos/${client.repoId}/sync/push`) : null;
-        if (!response) {
-          output.error("SDK in this CLI build cannot call sync push. Update @ideaspaces/sdk.");
-          return 1;
-        }
-        const data = response.data;
+        const { data } = await client.syncPushRepo();
         if (data.head) {
           try {
             setLastSha(client.repoId, data.head);
@@ -2158,29 +2138,18 @@ var repoCommand = {
       }
       case "credential": {
         const sub = args2[1];
-        const setRepoCredential = clientAny.setRepoCredential;
         if (sub === "set") {
           const value = flags2.value;
           if (!value) {
             output.error("Usage: ideaspaces power repo credential set --value <token>");
             return 1;
           }
-          const response = typeof setRepoCredential === "function" ? await setRepoCredential(value, client.repoId) : typeof rawReq === "function" ? await rawReq("POST", `/repos/${client.repoId}/credentials`, { git_credential: value }) : null;
-          if (!response) {
-            output.error("SDK in this CLI build cannot set repo credentials. Update @ideaspaces/sdk.");
-            return 1;
-          }
-          const data = response.data;
+          const { data } = await client.setRepoCredential(value);
           output.result(data, `Repo credentials set for ${data.repo_id}.`);
           return 0;
         }
         if (sub === "clear") {
-          const response = typeof setRepoCredential === "function" ? await setRepoCredential(null, client.repoId) : typeof rawReq === "function" ? await rawReq("POST", `/repos/${client.repoId}/credentials`, { git_credential: null }) : null;
-          if (!response) {
-            output.error("SDK in this CLI build cannot clear repo credentials. Update @ideaspaces/sdk.");
-            return 1;
-          }
-          const data = response.data;
+          const { data } = await client.setRepoCredential(null);
           output.result(data, `Repo credentials cleared for ${data.repo_id}.`);
           return 0;
         }
