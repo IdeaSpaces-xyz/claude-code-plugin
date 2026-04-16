@@ -4,7 +4,7 @@
 import { exec } from "node:child_process";
 import { platform } from "node:os";
 
-// ../sdk/dist/transport.js
+// node_modules/@ideaspaces/sdk/dist/transport.js
 var SdkError = class extends Error {
   category;
   status;
@@ -145,7 +145,7 @@ function createFetchTransport(config) {
   };
 }
 
-// ../sdk/dist/client.js
+// node_modules/@ideaspaces/sdk/dist/client.js
 var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
 var IsClient = class {
   transport;
@@ -190,6 +190,15 @@ var IsClient = class {
   async listRepos() {
     return this.req("GET", "/repos");
   }
+  async createRepo(body) {
+    return this.req("POST", "/repos", body);
+  }
+  async connectRepo(body) {
+    return this.req("POST", "/repos/connect", body);
+  }
+  async reindexRepo(repoId = this.repoId) {
+    return this.req("POST", `/repos/${repoId}/reindex`);
+  }
   // ─── Outline ──────────────────────────────────────────────────
   async outline() {
     return this.req("GET", `/repos/${this.repoId}/nodes/outline`);
@@ -197,7 +206,12 @@ var IsClient = class {
   // ─── Tree ─────────────────────────────────────────────────────
   async navigate(path = "") {
     const encodedPath = path ? `/${encodeURIComponent(path)}` : "";
-    return this.req("GET", `/repos/${this.repoId}/tree${encodedPath}`);
+    const resp = await this.req("GET", `/repos/${this.repoId}/tree${encodedPath}`);
+    resp.data.children = resp.data.children.map((child) => ({
+      ...child,
+      type: child.type === "dir" ? "directory" : child.type
+    }));
+    return resp;
   }
   // ─── Search ───────────────────────────────────────────────────
   async search(params) {
@@ -212,10 +226,16 @@ var IsClient = class {
       qs.set("attached_to", params.attached_to);
     if (params.contributed_by)
       qs.set("contributed_by", params.contributed_by);
-    if (params.tags)
-      qs.set("tags", params.tags);
-    if (params.limit)
-      qs.set("limit", String(params.limit));
+    const tag = params.tag ?? params.tags;
+    if (tag) {
+      qs.set("tag", tag);
+      qs.set("tags", tag);
+    }
+    const topK = params.top_k ?? params.limit;
+    if (typeof topK === "number") {
+      qs.set("top_k", String(topK));
+      qs.set("limit", String(topK));
+    }
     return this.req("GET", `/search?${qs.toString()}`);
   }
   // ─── Files ────────────────────────────────────────────────────
@@ -231,8 +251,24 @@ var IsClient = class {
   async readNode(nodeId) {
     return this.req("GET", `/repos/${this.repoId}/nodes/${nodeId}`);
   }
-  async writeFile(path, body) {
-    return this.req("PUT", `/repos/${this.repoId}/files/${encodeURIComponent(path)}`, body);
+  async _withDefaultIfMatch(path, body, opts) {
+    if (opts?.force || body.if_match !== void 0)
+      return body;
+    try {
+      const { data } = await this.readFile(path);
+      if (!data.last_commit_sha)
+        return body;
+      return { ...body, if_match: data.last_commit_sha };
+    } catch (error) {
+      if (error instanceof SdkError && error.status === 404) {
+        return body;
+      }
+      throw error;
+    }
+  }
+  async writeFile(path, body, opts) {
+    const payload = await this._withDefaultIfMatch(path, body, opts);
+    return this.req("PUT", `/repos/${this.repoId}/files/${encodeURIComponent(path)}`, payload);
   }
   // ─── Grep ─────────────────────────────────────────────────────
   async grep(pattern, scope) {
@@ -339,11 +375,11 @@ function createClient(config) {
   return new IsClient(transport, config.repo ?? "");
 }
 
-// ../sdk/dist/patterns/session.js
-function createSession(client) {
+// node_modules/@ideaspaces/sdk/dist/patterns/session.js
+function createSession(client, opts) {
   let cachedAwareness = null;
   let knownHeadSha = null;
-  let lastSha = null;
+  let lastSha = opts?.lastSha ?? null;
   async function getCurrentHead() {
     try {
       const { data } = await client.gitOps({ op: "log", limit: 1 });
@@ -361,8 +397,8 @@ function createSession(client) {
       if (firstLine)
         lines.push(`Now: ${firstLine.trim().slice(0, 200)}`);
     }
-    const dirs = root.children.filter((c) => c.type === "directory");
-    const files = root.children.filter((c) => c.type === "file");
+    const dirs = root.children.filter((c) => c.type === "directory" || c.type === "dir");
+    const files = root.children.filter((c) => c.type !== "directory" && c.type !== "dir");
     if (dirs.length || files.length) {
       lines.push(`
 Tree (${root.file_count} files):`);
@@ -410,11 +446,11 @@ Since last session (${changes.changes.length} changes):`);
       cachedAwareness = await buildAwareness();
       return cachedAwareness;
     },
-    async getContextFor(query, opts) {
+    async getContextFor(query, opts2) {
       const { data } = await client.search({
         query,
-        scope: opts?.scope,
-        limit: opts?.limit ?? 10
+        scope: opts2?.scope,
+        limit: opts2?.limit ?? 10
       });
       if (!data.results.length)
         return `No results for "${query}"`;
@@ -466,7 +502,7 @@ ${lines.join("\n")}`
   };
 }
 
-// ../sdk/dist/patterns/repo.js
+// node_modules/@ideaspaces/sdk/dist/patterns/repo.js
 async function autoSelectRepo(client) {
   const { data } = await client.listRepos();
   const repos = data.repos;
@@ -477,7 +513,7 @@ async function autoSelectRepo(client) {
   return { repoId: null, repos };
 }
 
-// ../sdk/dist/patterns/sync.js
+// node_modules/@ideaspaces/sdk/dist/patterns/sync.js
 import { createHash } from "node:crypto";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, basename, extname } from "node:path";
@@ -1215,10 +1251,11 @@ async function readStdin() {
 var writeCommand = {
   name: "write",
   description: "Create or update a note",
-  usage: "ideaspaces write <path> [--name NAME] [--summary TEXT] [--tags a,b] [--content TEXT]",
+  usage: "ideaspaces write <path> [--name NAME] [--summary TEXT] [--tags a,b] [--content TEXT] [--if-match SHA] [--force]",
   examples: [
     'echo "# My Note\\nContent here" | ideaspaces write notes/my-note.md --name "My Note"',
-    'ideaspaces write notes/test.md --name "Test" --content "# Test\\nHello"'
+    'ideaspaces write notes/test.md --name "Test" --content "# Test\\nHello"',
+    'ideaspaces write notes/test.md --content "# overwrite" --force'
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
@@ -1238,14 +1275,52 @@ var writeCommand = {
     const client = await initClient(global2);
     const tags = flags2.tags ? flags2.tags.split(",").map((t) => t.trim()) : void 0;
     const attachedTo = flags2["attached-to"] ? flags2["attached-to"].split(",").map((t) => t.trim()) : void 0;
-    const { data: r } = await client.writeFile(path, {
-      content,
-      name: flags2.name,
-      summary: flags2.summary,
-      tags,
-      attached_to: attachedTo,
-      if_match: flags2["if-match"]
-    });
+    const force = Boolean(flags2.force);
+    const explicitIfMatch = flags2["if-match"];
+    if (force && explicitIfMatch) {
+      output.error("Use either --force or --if-match, not both.");
+      return 1;
+    }
+    let ifMatch = explicitIfMatch;
+    if (!ifMatch && !force) {
+      try {
+        const { data } = await client.readFile(path);
+        ifMatch = data.last_commit_sha;
+      } catch (error) {
+        if (!(error instanceof SdkError && error.status === 404)) {
+          throw error;
+        }
+      }
+    }
+    let r;
+    try {
+      ({ data: r } = await client.writeFile(path, {
+        content,
+        name: flags2.name,
+        summary: flags2.summary,
+        tags,
+        attached_to: attachedTo,
+        if_match: ifMatch
+      }));
+    } catch (error) {
+      if (error instanceof SdkError && error.status === 409) {
+        const rawDetail = error.detail;
+        const detail = rawDetail && typeof rawDetail === "object" ? rawDetail.detail ?? rawDetail : null;
+        const pathHint = typeof detail?.path === "string" ? detail.path : path;
+        const expected = typeof detail?.expected_sha === "string" ? detail.expected_sha : void 0;
+        const actual = typeof detail?.actual_sha === "string" ? detail.actual_sha : void 0;
+        const lines = [
+          "Write conflict: file changed since your last read.",
+          pathHint ? `Path: ${pathHint}` : "",
+          expected ? `Expected SHA: ${expected}` : "",
+          actual ? `Actual SHA:   ${actual}` : "",
+          "Re-run with --force to overwrite intentionally."
+        ].filter(Boolean);
+        output.error(lines.join("\n"));
+        return 5;
+      }
+      throw error;
+    }
     if (r.commit_sha) {
       try {
         setLastSha(client.repoId, r.commit_sha);
@@ -1271,7 +1346,8 @@ var awarenessCommand = {
   async run(_args, _flags, global2) {
     const output = createOutput(global2);
     const client = await initClient(global2);
-    const session = createSession(client);
+    const lastSha = getLastSha(client.repoId) ?? null;
+    const session = createSession(client, { lastSha });
     const block = await session.getAwarenessBlock();
     output.result({ awareness: block }, block || "");
     return 0;
@@ -1741,6 +1817,357 @@ var logoutCommand = {
   }
 };
 
+// dist/commands/power/connect.js
+import { execFileSync } from "node:child_process";
+import { existsSync as existsSync3 } from "node:fs";
+import { basename as basename2, join as join4 } from "node:path";
+function deriveNameFromOrigin(originUrl) {
+  const withoutQuery = originUrl.split(/[?#]/, 1)[0];
+  const last = withoutQuery.split("/").pop() || "connected-repo";
+  return last.replace(/\.git$/i, "") || "connected-repo";
+}
+function normalizeConnectOrigin(originUrl) {
+  const trimmed = originUrl.trim();
+  const scpLike = /^git@([^:]+):(.+)$/i.exec(trimmed);
+  if (scpLike) {
+    return `https://${scpLike[1]}/${scpLike[2]}`;
+  }
+  const sshLike = /^ssh:\/\/git@([^/]+)\/(.+)$/i.exec(trimmed);
+  if (sshLike) {
+    return `https://${sshLike[1]}/${sshLike[2]}`;
+  }
+  return trimmed;
+}
+function detectRepoFromCwd(cwd) {
+  try {
+    const inside = execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+    if (inside !== "true") {
+      throw new Error("not in a git repo");
+    }
+  } catch {
+    throw new Error("Current directory is not a git repository");
+  }
+  let repoRoot = "";
+  let originUrl = "";
+  try {
+    repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch {
+    throw new Error("Could not resolve git repository root");
+  }
+  try {
+    originUrl = execFileSync("git", ["remote", "get-url", "origin"], {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch {
+    throw new Error("No git remote named 'origin' found");
+  }
+  const markers = {
+    purpose: existsSync3(join4(repoRoot, "_agent", "purpose.md")),
+    now: existsSync3(join4(repoRoot, "_agent", "now.md")),
+    accessManifest: existsSync3(join4(repoRoot, "_access", "manifest.yml"))
+  };
+  let classification = "generic";
+  if (markers.purpose && markers.now) {
+    classification = "ideaspace_shaped";
+  } else if (markers.purpose || markers.now || markers.accessManifest) {
+    classification = "ambiguous";
+  }
+  return {
+    repoRoot,
+    originUrl,
+    normalizedOriginUrl: normalizeConnectOrigin(originUrl),
+    markers,
+    classification
+  };
+}
+var connectCommand = {
+  name: "connect",
+  description: "Connect an existing git repo to IdeaSpaces",
+  usage: "ideaspaces power connect [origin_url] [--name NAME] [--slug SLUG] [--hostname HOST] [--from-cwd]",
+  examples: [
+    "ideaspaces power connect https://github.com/IdeaSpaces-xyz/ideaspace.git --name IdeaSpace",
+    "ideaspaces power connect --from-cwd"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run: ideaspaces login");
+      return 2;
+    }
+    const fromCwd = Boolean(flags2["from-cwd"]);
+    let originUrl = args2[0]?.trim() || "";
+    let normalizedOriginUrl = originUrl ? normalizeConnectOrigin(originUrl) : "";
+    let name = flags2.name?.trim() || "";
+    let detection = null;
+    if (fromCwd || !originUrl) {
+      try {
+        detection = detectRepoFromCwd(process.cwd());
+      } catch (e) {
+        output.error(e instanceof Error ? e.message : String(e));
+        return 1;
+      }
+      originUrl = detection.originUrl;
+      normalizedOriginUrl = detection.normalizedOriginUrl;
+      if (!name)
+        name = basename2(detection.repoRoot);
+    }
+    if (!originUrl) {
+      output.error("origin_url is required (or use --from-cwd)");
+      return 1;
+    }
+    if (!name) {
+      name = deriveNameFromOrigin(normalizedOriginUrl || originUrl);
+    }
+    const slug = flags2.slug || void 0;
+    const hostname = flags2.hostname || void 0;
+    const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
+    const clientAny = client;
+    if (typeof clientAny.connectRepo !== "function") {
+      output.error("SDK in this CLI build does not support connectRepo(). Update @ideaspaces/sdk.");
+      return 1;
+    }
+    const { data } = await clientAny.connectRepo({
+      origin_url: normalizedOriginUrl || originUrl,
+      name,
+      slug,
+      hostname: hostname ?? null
+    });
+    if (!process.env.IS_API_KEY) {
+      saveCredentials({
+        api_url: config.apiUrl,
+        api_key: config.apiKey,
+        repo_id: data.repo_id
+      });
+    }
+    const result = {
+      repo: data,
+      source: {
+        origin_url: originUrl,
+        normalized_origin_url: normalizedOriginUrl || originUrl,
+        from_cwd: fromCwd || !args2[0],
+        repo_root: detection?.repoRoot || null,
+        markers: detection?.markers || null,
+        classification: detection?.classification || null
+      }
+    };
+    const lines = [
+      `Connected: ${data.name} (${data.repo_id})`,
+      `Slug: ${data.slug}`,
+      `Origin: ${normalizedOriginUrl || originUrl}`
+    ];
+    if (detection) {
+      lines.push(`Repo root: ${detection.repoRoot}`);
+      lines.push(`Classification: ${detection.classification}`);
+      lines.push(`Markers: purpose=${detection.markers.purpose}, now=${detection.markers.now}, _access=${detection.markers.accessManifest}`);
+    }
+    output.result(result, lines.join("\n"));
+    return 0;
+  }
+};
+
+// dist/commands/power/create.js
+var createCommand = {
+  name: "create",
+  description: "Create a new space",
+  usage: "ideaspaces power create <name> [--slug SLUG] [--purpose PURPOSE]",
+  examples: [
+    "ideaspaces power create 'My Notes'",
+    "ideaspaces power create 'Research' --purpose 'Track research findings'",
+    "ideaspaces power create 'Team' --slug team-notes"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run: ideaspaces login");
+      return 2;
+    }
+    const name = args2[0]?.trim();
+    if (!name) {
+      output.error("Name required. Usage: ideaspaces power create <name>");
+      return 1;
+    }
+    const slug = flags2.slug || void 0;
+    const purpose = flags2.purpose || void 0;
+    const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
+    const { data } = await client.createRepo({ name, slug, purpose });
+    if (!process.env.IS_API_KEY) {
+      saveCredentials({
+        api_url: config.apiUrl,
+        api_key: config.apiKey,
+        repo_id: data.repo_id
+      });
+    }
+    output.result({ repo_id: data.repo_id, slug: data.slug, name: data.name }, `Created and connected: ${data.name} (${data.slug})`);
+    return 0;
+  }
+};
+
+// dist/commands/power/reindex.js
+var reindexCommand = {
+  name: "reindex",
+  description: "Reindex the active space",
+  usage: "ideaspaces power reindex [--repo <slug|repo_id>]",
+  examples: [
+    "ideaspaces power reindex",
+    "ideaspaces --repo ideaspace power reindex"
+  ],
+  async run(_args, _flags, global2) {
+    const output = createOutput(global2);
+    const client = await initClient(global2);
+    const clientAny = client;
+    if (typeof clientAny.reindexRepo !== "function") {
+      output.error("SDK in this CLI build does not support reindexRepo(). Update @ideaspaces/sdk.");
+      return 1;
+    }
+    const { data: result } = await clientAny.reindexRepo(client.repoId);
+    output.result(result, `Reindexed: ${result.repo_id}
+Removed entries: ${result.removed_entries}
+Indexed files: ${result.indexed_files}`);
+    return 0;
+  }
+};
+
+// dist/commands/power/repo.js
+var repoCommand = {
+  name: "repo",
+  description: "Repo sync operations: status, pull, push, credentials",
+  usage: "ideaspaces power repo <status|pull|push|credential set|credential clear> [--value TOKEN]",
+  examples: [
+    "ideaspaces power repo status",
+    "ideaspaces power repo pull",
+    "ideaspaces power repo push",
+    "ideaspaces power repo credential set --value ghp_xxx",
+    "ideaspaces power repo credential clear"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const op = args2[0];
+    if (!op) {
+      output.error("Usage: ideaspaces power repo <status|pull|push|credential>");
+      return 1;
+    }
+    const client = await initClient(global2);
+    const clientAny = client;
+    const rawReq = typeof clientAny.req === "function" ? ((method, path, body) => clientAny.req(method, path, body)) : void 0;
+    switch (op) {
+      case "status": {
+        const syncStatus = clientAny.syncStatus;
+        const response = typeof syncStatus === "function" ? await syncStatus(client.repoId) : typeof rawReq === "function" ? await rawReq("GET", `/repos/${client.repoId}/sync/status`) : null;
+        if (!response) {
+          output.error("SDK in this CLI build cannot call sync status. Update @ideaspaces/sdk.");
+          return 1;
+        }
+        const data = response.data;
+        const lines = [
+          `Repo: ${data.repo_id}`,
+          `Status: ${data.status}${data.is_fresh ? " (fresh)" : ""}`,
+          `Repo HEAD: ${data.repo_head || "(empty)"}`,
+          `Indexed HEAD: ${data.indexed_head || "(none)"}`,
+          data.lag_commits != null ? `Lag commits: ${data.lag_commits}` : "",
+          data.last_indexed_at ? `Last indexed: ${data.last_indexed_at}` : "",
+          data.last_index_error ? `Last index error: ${data.last_index_error}` : ""
+        ].filter(Boolean);
+        output.result(data, lines.join("\n"));
+        return 0;
+      }
+      case "pull": {
+        const syncPullRepo = clientAny.syncPullRepo;
+        const response = typeof syncPullRepo === "function" ? await syncPullRepo(client.repoId) : typeof rawReq === "function" ? await rawReq("POST", `/repos/${client.repoId}/sync/pull`) : null;
+        if (!response) {
+          output.error("SDK in this CLI build cannot call sync pull. Update @ideaspaces/sdk.");
+          return 1;
+        }
+        const data = response.data;
+        if (data.new_head) {
+          try {
+            setLastSha(client.repoId, data.new_head);
+          } catch {
+          }
+        }
+        const lines = [
+          `Repo: ${data.repo_id}`,
+          data.diverged ? "Pull status: diverged (fast-forward only pull rejected)" : "Pull status: ok",
+          `Old HEAD: ${data.old_head || "(empty)"}`,
+          `New HEAD: ${data.new_head || "(empty)"}`,
+          `Indexed files: ${data.indexed_files}`,
+          `Removed entries: ${data.removed_entries}`,
+          data.changed_markdown_files.length ? `Changed markdown files: ${data.changed_markdown_files.length}` : "Changed markdown files: 0"
+        ];
+        output.result(data, lines.join("\n"));
+        return 0;
+      }
+      case "push": {
+        const syncPushRepo = clientAny.syncPushRepo;
+        const response = typeof syncPushRepo === "function" ? await syncPushRepo(client.repoId) : typeof rawReq === "function" ? await rawReq("POST", `/repos/${client.repoId}/sync/push`) : null;
+        if (!response) {
+          output.error("SDK in this CLI build cannot call sync push. Update @ideaspaces/sdk.");
+          return 1;
+        }
+        const data = response.data;
+        if (data.head) {
+          try {
+            setLastSha(client.repoId, data.head);
+          } catch {
+          }
+        }
+        const lines = [
+          `Repo: ${data.repo_id}`,
+          data.rejected ? `Push rejected${data.reason ? ` (${data.reason})` : ""}` : "Push status: ok",
+          `HEAD: ${data.head || "(empty)"}`
+        ];
+        output.result(data, lines.join("\n"));
+        return data.rejected ? 5 : 0;
+      }
+      case "credential": {
+        const sub = args2[1];
+        const setRepoCredential = clientAny.setRepoCredential;
+        if (sub === "set") {
+          const value = flags2.value;
+          if (!value) {
+            output.error("Usage: ideaspaces power repo credential set --value <token>");
+            return 1;
+          }
+          const response = typeof setRepoCredential === "function" ? await setRepoCredential(value, client.repoId) : typeof rawReq === "function" ? await rawReq("POST", `/repos/${client.repoId}/credentials`, { git_credential: value }) : null;
+          if (!response) {
+            output.error("SDK in this CLI build cannot set repo credentials. Update @ideaspaces/sdk.");
+            return 1;
+          }
+          const data = response.data;
+          output.result(data, `Repo credentials set for ${data.repo_id}.`);
+          return 0;
+        }
+        if (sub === "clear") {
+          const response = typeof setRepoCredential === "function" ? await setRepoCredential(null, client.repoId) : typeof rawReq === "function" ? await rawReq("POST", `/repos/${client.repoId}/credentials`, { git_credential: null }) : null;
+          if (!response) {
+            output.error("SDK in this CLI build cannot clear repo credentials. Update @ideaspaces/sdk.");
+            return 1;
+          }
+          const data = response.data;
+          output.result(data, `Repo credentials cleared for ${data.repo_id}.`);
+          return 0;
+        }
+        output.error("Usage: ideaspaces power repo credential <set|clear> [--value TOKEN]");
+        return 1;
+      }
+      default:
+        output.error("Usage: ideaspaces power repo <status|pull|push|credential>");
+        return 1;
+    }
+  }
+};
+
 // dist/router.js
 var topLevel = [
   loginCommand,
@@ -1762,7 +2189,11 @@ var power = [
   metadataCommand,
   reposCommand,
   statusCommand,
-  logoutCommand
+  logoutCommand,
+  connectCommand,
+  createCommand,
+  reindexCommand,
+  repoCommand
 ];
 function findCommand_(name) {
   return topLevel.find((c) => c.name === name) ?? power.find((c) => c.name === name);
@@ -1776,7 +2207,7 @@ function printHelp() {
   for (const cmd2 of topLevel) {
     lines.push(`  ${cmd2.name.padEnd(14)} ${cmd2.description}`);
   }
-  lines.push("", "  power          Advanced tools (grep, git, outline, find, move, delete, tags, metadata, ...)");
+  lines.push("", "  power          Advanced tools (grep, git, outline, find, move, delete, tags, metadata, connect, reindex, repo, ...)");
   lines.push("", "Global flags:");
   lines.push("  --json         Structured JSON output to stdout");
   lines.push("  --repo <slug>  Override space for this command");
@@ -1820,7 +2251,15 @@ var HINTS = {
 function handleError(err, output) {
   if (err instanceof SdkError) {
     const hint = HINTS[err.category] ?? "";
-    output.error(`Error: ${err.message}${hint ? `
+    const rawDetail = err.detail;
+    const detail = rawDetail && typeof rawDetail === "object" ? rawDetail.detail ?? rawDetail : null;
+    const pathHint = typeof detail?.path === "string" ? `
+Path: ${detail.path}` : "";
+    const expected = typeof detail?.expected_sha === "string" ? `
+Expected SHA: ${detail.expected_sha}` : "";
+    const actual = typeof detail?.actual_sha === "string" ? `
+Actual SHA:   ${detail.actual_sha}` : "";
+    output.error(`Error: ${err.message}${pathHint}${expected}${actual}${hint ? `
 ${hint}` : ""}`);
     return EXIT_CODES[err.category] ?? 1;
   }
