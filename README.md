@@ -42,3 +42,24 @@ The plugin ships a thin MCP server (~235 lines) that shells out to the [IdeaSpac
 ```
 Agent → MCP (5 tools) → spawn CLI --json → SDK → API
 ```
+
+## Rebuilding
+
+The plugin ships pre-built bundles from two source repos. To update after code changes:
+
+```bash
+# 1. Rebuild CLI bundle
+cd ../cli
+npm run build && npm run bundle
+
+# 2. Rebuild MCP server bundle
+cd ../mcp-server
+npm run build && npm run bundle
+
+# 3. Copy bundles to plugin
+cp ../mcp-server/bundle/index.js dist/index.js
+cp ../cli/bundle/ideaspaces.js cli/bundle/ideaspaces.js
+
+# 4. Commit, push, then update in Claude Code
+claude plugin add ideaspaces-xyz/claude-code-plugin
+```
