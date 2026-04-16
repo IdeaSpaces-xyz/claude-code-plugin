@@ -1932,12 +1932,7 @@ var connectCommand = {
     const slug = flags2.slug || void 0;
     const hostname = flags2.hostname || void 0;
     const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-    const clientAny = client;
-    if (typeof clientAny.connectRepo !== "function") {
-      output.error("SDK in this CLI build does not support connectRepo(). Update @ideaspaces/sdk.");
-      return 1;
-    }
-    const { data } = await clientAny.connectRepo({
+    const { data } = await client.connectRepo({
       origin_url: normalizedOriginUrl || originUrl,
       name,
       slug,
@@ -1980,11 +1975,11 @@ var connectCommand = {
 var createCommand = {
   name: "create",
   description: "Create a new space",
-  usage: "ideaspaces power create <name> [--slug SLUG] [--purpose PURPOSE]",
+  usage: "ideaspaces power create <name> [--slug SLUG] [--purpose PURPOSE] [--hostname ORG]",
   examples: [
     "ideaspaces power create 'My Notes'",
     "ideaspaces power create 'Research' --purpose 'Track research findings'",
-    "ideaspaces power create 'Team' --slug team-notes"
+    "ideaspaces power create 'Team' --slug team-notes --hostname ideaspaces.xyz"
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
@@ -2000,8 +1995,10 @@ var createCommand = {
     }
     const slug = flags2.slug || void 0;
     const purpose = flags2.purpose || void 0;
+    const hostnameFlag = flags2.hostname;
+    const hostname = hostnameFlag || null;
     const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-    const { data } = await client.createRepo({ name, slug, purpose });
+    const { data } = await client.createRepo({ name, slug, purpose, hostname });
     if (!process.env.IS_API_KEY) {
       saveCredentials({
         api_url: config.apiUrl,
@@ -2026,12 +2023,7 @@ var reindexCommand = {
   async run(_args, _flags, global2) {
     const output = createOutput(global2);
     const client = await initClient(global2);
-    const clientAny = client;
-    if (typeof clientAny.reindexRepo !== "function") {
-      output.error("SDK in this CLI build does not support reindexRepo(). Update @ideaspaces/sdk.");
-      return 1;
-    }
-    const { data: result } = await clientAny.reindexRepo(client.repoId);
+    const { data: result } = await client.reindexRepo(client.repoId);
     output.result(result, `Reindexed: ${result.repo_id}
 Removed entries: ${result.removed_entries}
 Indexed files: ${result.indexed_files}`);
@@ -2207,7 +2199,7 @@ function printHelp() {
   for (const cmd2 of topLevel) {
     lines.push(`  ${cmd2.name.padEnd(14)} ${cmd2.description}`);
   }
-  lines.push("", "  power          Advanced tools (grep, git, outline, find, move, delete, tags, metadata, connect, reindex, repo, ...)");
+  lines.push("", "  power          Advanced tools (grep, git, outline, find, move, delete, tags, metadata, connect, create, reindex, repo, ...)");
   lines.push("", "Global flags:");
   lines.push("  --json         Structured JSON output to stdout");
   lines.push("  --repo <slug>  Override space for this command");
@@ -2276,7 +2268,11 @@ Run: ideaspaces login`);
   return 1;
 }
 
-// dist/main.js
+// dist/argv.js
+function parseBool(value) {
+  const v = value.trim().toLowerCase();
+  return !(v === "false" || v === "0" || v === "no" || v === "off");
+}
 function parseArgs(argv) {
   const global2 = { json: false, quiet: false, yes: false, help: false };
   const flags2 = {};
@@ -2291,35 +2287,56 @@ function parseArgs(argv) {
     if (!stopFlags && arg.startsWith("--")) {
       const eqIdx = arg.indexOf("=");
       if (eqIdx !== -1) {
-        const key = arg.slice(2, eqIdx);
-        flags2[key] = arg.slice(eqIdx + 1);
+        const key2 = arg.slice(2, eqIdx);
+        const value = arg.slice(eqIdx + 1);
+        if (key2 === "json") {
+          global2.json = parseBool(value);
+          continue;
+        }
+        if (key2 === "quiet") {
+          global2.quiet = parseBool(value);
+          continue;
+        }
+        if (key2 === "yes") {
+          global2.yes = parseBool(value);
+          continue;
+        }
+        if (key2 === "help") {
+          global2.help = parseBool(value);
+          continue;
+        }
+        if (key2 === "repo") {
+          global2.repo = value;
+          continue;
+        }
+        flags2[key2] = value;
+        continue;
+      }
+      const key = arg.slice(2);
+      if (key === "json") {
+        global2.json = true;
+        continue;
+      }
+      if (key === "quiet") {
+        global2.quiet = true;
+        continue;
+      }
+      if (key === "yes") {
+        global2.yes = true;
+        continue;
+      }
+      if (key === "help") {
+        global2.help = true;
+        continue;
+      }
+      if (key === "repo" && i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
+        global2.repo = argv[++i];
+        continue;
+      }
+      if (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
+        flags2[key] = argv[++i];
       } else {
-        const key = arg.slice(2);
-        if (key === "json") {
-          global2.json = true;
-          continue;
-        }
-        if (key === "quiet") {
-          global2.quiet = true;
-          continue;
-        }
-        if (key === "yes") {
-          global2.yes = true;
-          continue;
-        }
-        if (key === "help") {
-          global2.help = true;
-          continue;
-        }
-        if (key === "repo" && i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
-          global2.repo = argv[++i];
-          continue;
-        }
-        if (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
-          flags2[key] = argv[++i];
-        } else {
-          flags2[key] = true;
-        }
+        flags2[key] = true;
       }
     } else {
       positional.push(arg);
@@ -2329,6 +2346,8 @@ function parseArgs(argv) {
   const args2 = positional.slice(1);
   return { global: global2, command: command2, args: args2, flags: flags2 };
 }
+
+// dist/main.js
 var { global, command, args, flags } = parseArgs(process.argv.slice(2));
 if (!command || global.help && !command) {
   printHelp();
