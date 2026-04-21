@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // dist/commands/login.js
-import { exec } from "node:child_process";
+import { exec as exec2 } from "node:child_process";
 import { platform } from "node:os";
 
 // ../sdk/dist/transport.js
@@ -10,8 +10,6 @@ var SdkError = class extends Error {
   status;
   retryable;
   retryAfterMs;
-  /** Structured error payload from the API, when available. */
-  detail;
   constructor(opts) {
     super(opts.message);
     this.name = "SdkError";
@@ -19,7 +17,6 @@ var SdkError = class extends Error {
     this.status = opts.status;
     this.retryable = opts.retryable;
     this.retryAfterMs = opts.retryAfterMs;
-    this.detail = opts.detail;
   }
 };
 function classifyStatus(status, headers) {
@@ -91,7 +88,6 @@ function createFetchTransport(config) {
             return {
               status: resp.status,
               headers: responseHeaders2,
-              retries: attempt,
               json: async () => JSON.parse(bodyText),
               text: async () => bodyText
             };
@@ -101,40 +97,31 @@ function createFetchTransport(config) {
             responseHeaders[k.toLowerCase()] = v;
           });
           const errorText = await resp.text().catch(() => "");
-          let parsed = void 0;
           let detail = errorText;
           try {
-            parsed = JSON.parse(errorText);
-            if (parsed && typeof parsed === "object") {
-              const payload = parsed;
-              detail = payload.detail ?? payload.error ?? parsed;
-            } else {
-              detail = parsed;
-            }
+            const json = JSON.parse(errorText);
+            detail = json.detail || json.error || errorText;
           } catch {
           }
-          const detailMessage = typeof detail === "string" ? detail : detail == null ? "" : JSON.stringify(detail);
           const { category, retryable, retryAfterMs } = classifyStatus(resp.status, responseHeaders);
           const canRetry = retryable && retryableStatuses.includes(resp.status) && attempt < maxRetries;
           if (!canRetry) {
             throw new SdkError({
-              message: `${method} ${path}: ${resp.status} \u2014 ${detailMessage}`,
+              message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
               category,
               status: resp.status,
               retryable,
-              retryAfterMs,
-              detail: parsed ?? detail
+              retryAfterMs
             });
           }
           const delayMs = retryAfterMs ?? backoffMs(attempt);
           await sleep(delayMs);
           lastError = new SdkError({
-            message: `${method} ${path}: ${resp.status} \u2014 ${detailMessage}`,
+            message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
             category,
             status: resp.status,
             retryable,
-            retryAfterMs,
-            detail: parsed ?? detail
+            retryAfterMs
           });
         } catch (err) {
           if (err instanceof SdkError)
@@ -197,14 +184,7 @@ var IsClient = class {
         resetAt: resetAt ? new Date(Number(resetAt) * 1e3) : /* @__PURE__ */ new Date()
       };
     }
-    return {
-      data,
-      meta: {
-        requestMs,
-        retries: resp.retries ?? 0,
-        rateLimit
-      }
-    };
+    return { data, meta: { requestMs, retries: 0, rateLimit } };
   }
   // ─── Repos ────────────────────────────────────────────────────
   async listRepos() {
@@ -216,22 +196,8 @@ var IsClient = class {
   async connectRepo(body) {
     return this.req("POST", "/repos/connect", body);
   }
-  async setRepoCredential(gitCredential, repoId = this.repoId) {
-    return this.req("POST", `/repos/${repoId}/credentials`, {
-      git_credential: gitCredential
-    });
-  }
   async reindexRepo(repoId = this.repoId) {
     return this.req("POST", `/repos/${repoId}/reindex`);
-  }
-  async syncPullRepo(repoId = this.repoId) {
-    return this.req("POST", `/repos/${repoId}/sync/pull`);
-  }
-  async syncPushRepo(repoId = this.repoId) {
-    return this.req("POST", `/repos/${repoId}/sync/push`);
-  }
-  async syncStatus(repoId = this.repoId) {
-    return this.req("GET", `/repos/${repoId}/sync/status`);
   }
   // ─── Outline ──────────────────────────────────────────────────
   async outline() {
@@ -547,204 +513,12 @@ async function autoSelectRepo(client) {
   return { repoId: null, repos };
 }
 
-// ../sdk/dist/patterns/sync.js
-import { createHash } from "node:crypto";
-import { readdir, readFile, writeFile } from "node:fs/promises";
-import { join, relative, basename, extname } from "node:path";
-function normalizeFilename(name) {
-  const ext = extname(name);
-  const base = basename(name, ext);
-  return base.toLowerCase().replace(/\s+/g, "-") + ext.toLowerCase();
-}
-function gitBlobHash(content) {
-  const header = `blob ${content.length}\0`;
-  const hash = createHash("sha1");
-  hash.update(header);
-  hash.update(content);
-  return hash.digest("hex");
-}
-var SYNC_STATE_FILE = ".sw-sync.json";
-async function loadSyncState(localPath) {
-  try {
-    const raw = await readFile(join(localPath, SYNC_STATE_FILE), "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-async function saveSyncState(localPath, state) {
-  await writeFile(join(localPath, SYNC_STATE_FILE), JSON.stringify(state, null, 2) + "\n");
-}
-async function collectLocalFiles(dirPath) {
-  const files = /* @__PURE__ */ new Map();
-  async function walk(dir) {
-    const entries = await readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.name.startsWith(".") || entry.name.startsWith("_"))
-        continue;
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === "archive" || entry.name === "node_modules")
-          continue;
-        await walk(fullPath);
-      } else if (entry.name.endsWith(".md") && entry.name !== "CLAUDE.md") {
-        const content = await readFile(fullPath);
-        const rel = relative(dirPath, fullPath);
-        files.set(rel, { localPath: fullPath, content });
-      }
-    }
-  }
-  await walk(dirPath);
-  return files;
-}
-async function syncToSpace(client, localPath, spacePath, options = {}) {
-  spacePath = spacePath.replace(/\/+$/, "");
-  const log = options.onProgress || (() => {
-  });
-  const result = {
-    uploaded: [],
-    skipped: [],
-    conflicts: [],
-    errors: [],
-    newHead: null
-  };
-  log("Fetching space status...");
-  let spaceFiles;
-  try {
-    const { data: spaceStatus } = await client.fileStatus(spacePath);
-    spaceFiles = new Map(spaceStatus.files.map((f) => [f.path, f.sha]));
-  } catch {
-    log("Status endpoint unavailable, using outline fallback...");
-    const { data: outline } = await client.outline();
-    spaceFiles = new Map(outline.items.filter((i) => i.path.startsWith(spacePath + "/") || spacePath === "").map((i) => [i.path, "unknown"]));
-  }
-  log("Scanning local files...");
-  const localFiles = await collectLocalFiles(localPath);
-  log(`Found ${localFiles.size} local files, ${spaceFiles.size} space files in scope`);
-  const prevState = await loadSyncState(localPath);
-  for (const [relPath, { content }] of localFiles) {
-    const normalized = relPath.split("/").map((p) => normalizeFilename(p)).join("/");
-    const targetPath = spacePath ? `${spacePath}/${normalized}` : normalized;
-    const localHash = gitBlobHash(content);
-    const existsInSpace = spaceFiles.has(targetPath);
-    if (prevState?.files[relPath]) {
-      const prev = prevState.files[relPath];
-      const localChanged = localHash !== prev.localHash;
-      if (!localChanged) {
-        result.skipped.push(relPath);
-        continue;
-      }
-      const spaceSha = spaceFiles.get(targetPath);
-      const spaceChanged = spaceSha !== prev.spaceSha;
-      if (spaceChanged && existsInSpace) {
-        result.conflicts.push(relPath);
-        continue;
-      }
-    } else if (existsInSpace) {
-      const spaceSha = spaceFiles.get(targetPath);
-      if (spaceSha && spaceSha !== "unknown" && localHash === spaceSha) {
-        result.skipped.push(relPath);
-        continue;
-      }
-    }
-    if (options.dryRun) {
-      result.uploaded.push(relPath);
-      continue;
-    }
-    try {
-      const contentStr = content.toString("utf-8");
-      const { body, name, summary } = extractFrontmatter(contentStr);
-      let ifMatch;
-      if (existsInSpace) {
-        try {
-          const { data: existing } = await client.readFile(targetPath);
-          ifMatch = existing.last_commit_sha || void 0;
-        } catch {
-        }
-      }
-      await client.writeFile(targetPath, {
-        content: body,
-        name: name || basename(relPath, ".md"),
-        summary,
-        if_match: ifMatch
-      });
-      log(`Uploaded: ${relPath} \u2192 ${targetPath}`);
-      result.uploaded.push(relPath);
-    } catch (error) {
-      if (error instanceof SdkError && error.status === 409) {
-        result.conflicts.push(relPath);
-      } else {
-        const msg = error instanceof Error ? error.message : String(error);
-        result.errors.push({ path: relPath, error: msg });
-      }
-    }
-  }
-  try {
-    const { data: head } = await client.gitOps({ op: "log", limit: 1 });
-    result.newHead = head.entries?.[0]?.sha || null;
-  } catch {
-  }
-  if (!options.dryRun && result.newHead) {
-    const newState = {
-      lastSyncHead: result.newHead,
-      spacePath,
-      files: {}
-    };
-    let newSpaceFiles;
-    try {
-      const { data: newSpaceStatus } = await client.fileStatus(spacePath);
-      newSpaceFiles = new Map(newSpaceStatus.files.map((f) => [f.path, f.sha]));
-    } catch {
-      newSpaceFiles = /* @__PURE__ */ new Map();
-    }
-    for (const [relPath, { content }] of localFiles) {
-      const normalized = relPath.split("/").map((p) => normalizeFilename(p)).join("/");
-      const targetPath = spacePath ? `${spacePath}/${normalized}` : normalized;
-      newState.files[relPath] = {
-        localHash: gitBlobHash(content),
-        spaceSha: newSpaceFiles.get(targetPath) || ""
-      };
-    }
-    await saveSyncState(localPath, newState);
-  }
-  return result;
-}
-function extractFrontmatter(content) {
-  const headingMatch = content.match(/^#\s+(.+)$/m);
-  const name = headingMatch?.[1]?.trim();
-  const lines = content.split("\n");
-  let summary;
-  let pastHeading = false;
-  for (const line of lines) {
-    if (line.startsWith("# ")) {
-      pastHeading = true;
-      continue;
-    }
-    if (!pastHeading)
-      continue;
-    const trimmed = line.trim();
-    if (!trimmed)
-      continue;
-    if (trimmed.startsWith("> **")) {
-      summary = trimmed.replace(/^>\s*\*\*/, "").replace(/\*\*$/, "").trim();
-      break;
-    }
-    if (trimmed.startsWith(">")) {
-      summary = trimmed.replace(/^>\s*/, "").trim();
-      break;
-    }
-    summary = trimmed.slice(0, 300);
-    break;
-  }
-  return { body: content, name, summary };
-}
-
 // dist/auth/credentials.js
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join as join2 } from "node:path";
-var CONFIG_DIR = join2(homedir(), ".ideaspaces");
-var CREDENTIALS_FILE = join2(CONFIG_DIR, "credentials.json");
+import { join } from "node:path";
+var CONFIG_DIR = join(homedir(), ".ideaspaces");
+var CREDENTIALS_FILE = join(CONFIG_DIR, "credentials.json");
 function loadStoredCredentials() {
   try {
     if (!existsSync(CREDENTIALS_FILE))
@@ -872,6 +646,23 @@ function startCallbackServer() {
   });
 }
 
+// dist/auth/git-credential-helper.js
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+var execAsync = promisify(exec);
+var GIT_HOSTS = [
+  "https://git.ideaspaces.xyz",
+  "https://git.ideaspaces.localhost"
+];
+async function registerGitCredentialHelper() {
+  for (const host of GIT_HOSTS) {
+    try {
+      await execAsync(`git config --global credential.${host}.helper "!ideaspaces credential"`);
+    } catch {
+    }
+  }
+}
+
 // dist/client.js
 function formatRepoList(repos) {
   return repos.map((r) => {
@@ -901,25 +692,42 @@ function resolveRepo(repos, ref) {
     return bySlug[0];
   return bySlug.find((r) => !r.hostname) || bySlug[0];
 }
+var REPO_ID_RE = /^repo_[a-f0-9]{12}$/;
 async function initClient(flags2) {
   const config = loadConfig();
   if (!config) {
     throw new Error("Not logged in. Run: ideaspaces login");
   }
-  const repo = flags2.repo || config.repo;
-  const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl, repo: repo || void 0 });
-  if (!repo) {
-    const { repoId, repos } = await autoSelectRepo(client);
-    if (repoId) {
-      return client;
+  const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
+  let repoId;
+  if (flags2.repo) {
+    if (REPO_ID_RE.test(flags2.repo)) {
+      repoId = flags2.repo;
+    } else {
+      const { data } = await client.listRepos();
+      const match = resolveRepo(data.repos, flags2.repo);
+      if (!match) {
+        throw new Error(`Space "${flags2.repo}" not found. Available:
+${formatRepoList(data.repos)}`);
+      }
+      repoId = match.repo_id;
     }
-    if (repos.length > 1) {
-      throw new Error(`Multiple spaces available. Use --repo or run: ideaspaces login <slug>
-${formatRepoList(repos)}`);
-    }
-    throw new Error("No spaces found for this account.");
+  } else if (config.repo) {
+    repoId = config.repo;
   }
-  return client;
+  if (repoId) {
+    client.setRepo(repoId);
+    return client;
+  }
+  const { repoId: autoId, repos } = await autoSelectRepo(client);
+  if (autoId) {
+    return client;
+  }
+  if (repos.length > 1) {
+    throw new Error(`Multiple spaces available. Use --repo or run: ideaspaces login <slug>
+${formatRepoList(repos)}`);
+  }
+  throw new Error("No spaces found for this account.");
 }
 
 // dist/output.js
@@ -951,7 +759,7 @@ function createOutput(flags2) {
 // dist/commands/login.js
 function openBrowser(url) {
   const cmd2 = platform() === "darwin" ? "open" : platform() === "win32" ? "start" : "xdg-open";
-  exec(`${cmd2} "${url}"`);
+  exec2(`${cmd2} "${url}"`);
 }
 var loginCommand = {
   name: "login",
@@ -1003,6 +811,7 @@ ${authUrl}`);
       return 1;
     }
     saveCredentials({ api_url: apiUrl, api_key: token });
+    await registerGitCredentialHelper();
     const client = createClient({ apiKey: token, apiUrl });
     const { repoId, repos } = await autoSelectRepo(client);
     if (repoId) {
@@ -1031,12 +840,121 @@ Run: ideaspaces login <slug>`);
   }
 };
 
+// dist/commands/init.js
+import { execFileSync, spawn } from "node:child_process";
+async function fetchAuthMe(config) {
+  const resp = await fetch(`${config.apiUrl}/auth/me`, {
+    headers: { Authorization: `Bearer ${config.apiKey}` }
+  });
+  if (!resp.ok) {
+    throw new Error(`/auth/me returned ${resp.status} \u2014 try 'ideaspaces login' again`);
+  }
+  return await resp.json();
+}
+function gitUrlFor(namespace, slug) {
+  const base = (process.env.IS_GIT_URL || "https://git.ideaspaces.xyz").replace(/\/+$/, "");
+  return `${base}/${namespace}/${slug}.git`;
+}
+function spawnGit(args2) {
+  return new Promise((resolve) => {
+    const proc = spawn("git", args2, { stdio: "inherit" });
+    proc.on("error", () => resolve(1));
+    proc.on("exit", (code) => resolve(code ?? 1));
+  });
+}
+function configureLocalGit(cwd, email, name) {
+  execFileSync("git", ["config", "--local", "user.email", email], { cwd, stdio: "ignore" });
+  execFileSync("git", ["config", "--local", "user.name", name], { cwd, stdio: "ignore" });
+}
+var initCommand = {
+  name: "init",
+  description: "Create a new space and clone it locally with git identity wired up",
+  usage: "ideaspaces init <name> [--slug SLUG] [--hostname HOST] [--purpose PURPOSE] [--dir DIR]",
+  examples: [
+    "ideaspaces init 'My Notes'",
+    "ideaspaces init 'Team Research' --hostname acme.com",
+    "ideaspaces init 'Architecture' --slug arch --dir ./arch-space"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run: ideaspaces login");
+      return 2;
+    }
+    const name = args2[0]?.trim();
+    if (!name) {
+      output.error("Name required. Usage: ideaspaces init <name>");
+      return 1;
+    }
+    const slug = flags2.slug || void 0;
+    const hostname = flags2.hostname || void 0;
+    const purpose = flags2.purpose || void 0;
+    const dirFlag = flags2.dir || void 0;
+    let me;
+    try {
+      me = await fetchAuthMe(config);
+    } catch (e) {
+      output.error(e instanceof Error ? e.message : String(e));
+      return 1;
+    }
+    if (!me.email) {
+      output.error("Your account has no email recorded. Re-login to refresh, then retry.");
+      return 1;
+    }
+    const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
+    output.progress(`Creating space "${name}"...`);
+    const { data: repo } = await client.createRepo({ name, slug, purpose });
+    const namespace = hostname || me.username;
+    if (!namespace) {
+      output.error("Could not resolve namespace (username missing from account). Complete onboarding at ideaspaces.xyz and retry.");
+      return 1;
+    }
+    const gitUrl = gitUrlFor(namespace, repo.slug);
+    const targetDir = dirFlag || repo.slug;
+    output.progress(`$ git clone ${gitUrl} ${targetDir}`);
+    const cloneExit = await spawnGit(["clone", gitUrl, targetDir]);
+    if (cloneExit !== 0) {
+      output.error(`git clone failed (exit ${cloneExit}) \u2014 space was created on the server.`);
+      return cloneExit;
+    }
+    try {
+      configureLocalGit(targetDir, me.email, me.name || me.username || me.email);
+    } catch (e) {
+      output.log(`warning: failed to set local git identity (${e instanceof Error ? e.message : e}). Run 'git config --local user.email ${me.email}' inside ${targetDir}.`);
+    }
+    if (!process.env.IS_API_KEY) {
+      saveCredentials({
+        api_url: config.apiUrl,
+        api_key: config.apiKey,
+        repo_id: repo.repo_id
+      });
+    }
+    output.result({
+      repo_id: repo.repo_id,
+      slug: repo.slug,
+      name: repo.name,
+      namespace,
+      git_url: gitUrl,
+      directory: targetDir,
+      identity: { email: me.email, name: me.name || me.username || me.email }
+    }, [
+      `Space created: ${repo.name} (${repo.slug})`,
+      `Cloned to: ${targetDir}`,
+      `Git identity: ${me.name || me.username} <${me.email}>`,
+      "",
+      `Next: cd ${targetDir}`
+    ].join("\n"));
+    return 0;
+  }
+};
+
 // dist/auth/session-state.js
 import { existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { join as join3 } from "node:path";
-var CONFIG_DIR2 = join3(homedir2(), ".ideaspaces");
-var SESSION_FILE = join3(CONFIG_DIR2, "session.json");
+import { join as join2 } from "node:path";
+var CONFIG_DIR2 = join2(homedir2(), ".ideaspaces");
+var SESSION_FILE = join2(CONFIG_DIR2, "session.json");
 function loadAll() {
   try {
     if (!existsSync2(SESSION_FILE))
@@ -1388,91 +1306,180 @@ var awarenessCommand = {
   }
 };
 
-// dist/commands/sync.js
-import { createInterface } from "node:readline";
-async function confirm(message) {
-  if (!process.stdin.isTTY)
-    return true;
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
-  return new Promise((resolve) => {
-    rl.question(`${message} (y/N) `, (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === "y");
-    });
-  });
-}
-var syncCommand = {
-  name: "sync",
-  description: "Sync a local directory to the space",
-  usage: "ideaspaces sync <local-path> <space-path> [--dry-run]",
-  examples: [
-    "ideaspaces sync Docs/core/ core/",
-    "ideaspaces sync Docs/core/ core/ --dry-run"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const localPath = args2[0];
-    const spacePath = args2[1];
-    if (!localPath || !spacePath) {
-      output.error("Usage: ideaspaces sync <local-path> <space-path>");
+// dist/commands/credential.js
+var credentialCommand = {
+  name: "credential",
+  description: "Git credential helper (invoked by git \u2014 usually not run directly)",
+  usage: "ideaspaces credential <get|store|erase>",
+  async run(args2) {
+    const action = args2[0];
+    if (action === "store" || action === "erase") {
+      await drainStdin();
+      return 0;
+    }
+    if (action !== "get") {
+      await drainStdin();
       return 1;
     }
-    const client = await initClient(global2);
-    const dryRun = !!flags2["dry-run"];
-    if (!dryRun && !global2.yes) {
-      const repoId = client.repoId;
-      let repoLabel = repoId;
-      try {
-        const { repos } = await autoSelectRepo(client);
-        const match = repos.find((r) => r.repo_id === repoId);
-        if (match) {
-          repoLabel = match.hostname ? `${match.hostname}/${match.slug} (${match.name || match.slug})` : `${match.slug} (personal)`;
-        }
-      } catch {
-      }
-      output.progress(`Destination: ${repoLabel}`);
-      output.progress(`Space path:  ${spacePath}/`);
-      output.progress(`Source:      ${localPath}`);
-      const ok = await confirm("Proceed with sync?");
-      if (!ok) {
-        output.log("Cancelled.");
-        return 0;
-      }
-    }
-    if (dryRun)
-      output.progress("Dry run \u2014 no files will be written.");
-    const result = await syncToSpace(client, localPath, spacePath, {
-      dryRun,
-      onProgress: (msg) => output.progress(msg)
-    });
-    if (result.newHead) {
-      try {
-        setLastSha(client.repoId, result.newHead);
-      } catch {
-      }
-    }
-    if (global2.json) {
-      output.result(result, "");
-    } else {
-      const lines = [];
-      if (result.uploaded.length)
-        lines.push(`Uploaded: ${result.uploaded.length} files`);
-      if (result.skipped.length)
-        lines.push(`Skipped: ${result.skipped.length} unchanged`);
-      if (result.conflicts.length)
-        lines.push(`Conflicts: ${result.conflicts.join(", ")}`);
-      if (result.errors.length) {
-        lines.push("Errors:");
-        for (const e of result.errors)
-          lines.push(`  ${e.path}: ${e.error}`);
-      }
-      if (!lines.length)
-        lines.push("Nothing to sync.");
-      output.result(result, lines.join("\n"));
-    }
-    return result.errors.length ? 1 : 0;
+    return handleGet();
   }
 };
+async function handleGet() {
+  const input = await readStdin2();
+  const params = parseCredentialInput(input);
+  if (!isIdeaspacesHost(params.host)) {
+    return 0;
+  }
+  const config = loadConfig();
+  if (!config) {
+    return 0;
+  }
+  const username = params.username && params.username.length > 0 ? params.username : "token";
+  const reply = [
+    `username=${username}`,
+    `password=${config.apiKey}`,
+    "",
+    ""
+  ].join("\n");
+  process.stdout.write(reply);
+  return 0;
+}
+function isIdeaspacesHost(host) {
+  if (!host)
+    return false;
+  return host === "git.ideaspaces.xyz" || host === "git.ideaspaces.localhost" || host.endsWith(".ideaspaces.xyz");
+}
+function parseCredentialInput(input) {
+  const params = {};
+  for (const line of input.split("\n")) {
+    const trimmed = line.replace(/\r$/, "");
+    if (!trimmed)
+      continue;
+    const idx = trimmed.indexOf("=");
+    if (idx < 0)
+      continue;
+    params[trimmed.slice(0, idx)] = trimmed.slice(idx + 1);
+  }
+  return params;
+}
+async function readStdin2() {
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString("utf-8");
+}
+async function drainStdin() {
+  for await (const _ of process.stdin) {
+  }
+}
+
+// dist/commands/clone.js
+import { spawn as spawn2 } from "node:child_process";
+var cloneCommand = {
+  name: "clone",
+  description: "Clone an IdeaSpaces space to your local machine via git",
+  usage: "ideaspaces clone <namespace>/<slug> [directory]",
+  examples: [
+    "ideaspaces clone my-notes",
+    "ideaspaces clone stripe.com/architecture",
+    "ideaspaces clone stripe.com/notes ./work/notes"
+  ],
+  async run(args2, _flags, global2) {
+    const output = createOutput(global2);
+    const target = args2[0];
+    const directory = args2[1];
+    if (!target) {
+      output.error("Usage: ideaspaces clone <namespace>/<slug> [directory]");
+      return 2;
+    }
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run: ideaspaces login");
+      return 1;
+    }
+    let namespace;
+    let slug;
+    if (target.includes("/")) {
+      const parts = target.split("/");
+      if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        output.error("Invalid target. Use <namespace>/<slug>.");
+        return 2;
+      }
+      namespace = parts[0];
+      slug = parts[1];
+    } else {
+      slug = target;
+      const resolved = await resolveBareSlug(config, slug, output);
+      if (!resolved)
+        return 4;
+      namespace = resolved.namespace;
+      if (resolved.hint)
+        output.progress(resolved.hint);
+    }
+    const gitUrl = gitUrlFor2(namespace, slug);
+    const gitArgs = ["clone", gitUrl];
+    if (directory)
+      gitArgs.push(directory);
+    output.progress(`$ git ${gitArgs.join(" ")}`);
+    return await spawnGit2(gitArgs);
+  }
+};
+function gitUrlFor2(namespace, slug) {
+  const base = (process.env.IS_GIT_URL || "https://git.ideaspaces.xyz").replace(/\/+$/, "");
+  return `${base}/${namespace}/${slug}.git`;
+}
+async function resolveBareSlug(config, slug, output) {
+  const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
+  const { data } = await client.listRepos();
+  const repos = data.repos;
+  const matches = repos.filter((r) => r.slug === slug);
+  if (matches.length === 0) {
+    output.error(`No space found with slug "${slug}".`);
+    return null;
+  }
+  const personal = matches.find((r) => !r.hostname);
+  const hostnameMatches = matches.filter((r) => r.hostname);
+  if (personal) {
+    const username = await fetchUsername(config);
+    if (!username) {
+      output.error(`Could not resolve your username. Try the explicit form: ideaspaces clone <namespace>/${slug}`);
+      return null;
+    }
+    let hint;
+    if (hostnameMatches.length > 0) {
+      const others = hostnameMatches.map((r) => `${r.hostname}/${slug}`).join(", ");
+      hint = `Cloning personal "${slug}". Hostname variants also exist: ${others}`;
+    }
+    return { namespace: username, hint };
+  }
+  if (hostnameMatches.length === 1) {
+    return { namespace: hostnameMatches[0].hostname };
+  }
+  const options = hostnameMatches.map((r) => `${r.hostname}/${slug}`).join(", ");
+  output.error(`Multiple spaces match "${slug}": ${options}. Specify explicitly: ideaspaces clone <namespace>/<slug>`);
+  return null;
+}
+async function fetchUsername(config) {
+  try {
+    const resp = await fetch(`${config.apiUrl}/auth/me`, {
+      headers: { Authorization: `Bearer ${config.apiKey}` }
+    });
+    if (!resp.ok)
+      return null;
+    const data = await resp.json();
+    return data.username ?? null;
+  } catch {
+    return null;
+  }
+}
+function spawnGit2(args2) {
+  return new Promise((resolve) => {
+    const proc = spawn2("git", args2, { stdio: "inherit" });
+    proc.on("error", () => resolve(1));
+    proc.on("exit", (code) => resolve(code ?? 1));
+  });
+}
 
 // dist/commands/power/grep.js
 var grepCommand = {
@@ -1677,11 +1684,11 @@ var moveCommand = {
 };
 
 // dist/commands/power/delete.js
-import { createInterface as createInterface2 } from "node:readline";
-async function confirm2(message) {
+import { createInterface } from "node:readline";
+async function confirm(message) {
   if (!process.stdin.isTTY)
     return true;
-  const rl = createInterface2({ input: process.stdin, output: process.stderr });
+  const rl = createInterface({ input: process.stdin, output: process.stderr });
   return new Promise((resolve) => {
     rl.question(`${message} (y/N) `, (answer) => {
       rl.close();
@@ -1707,7 +1714,7 @@ var deleteCommand = {
       return 4;
     }
     if (!global2.yes) {
-      const ok = await confirm2(`Delete ${path}?`);
+      const ok = await confirm(`Delete ${path}?`);
       if (!ok) {
         output.log("Cancelled.");
         return 0;
@@ -1852,9 +1859,6 @@ var logoutCommand = {
 };
 
 // dist/commands/power/connect.js
-import { execFileSync } from "node:child_process";
-import { existsSync as existsSync3 } from "node:fs";
-import { basename as basename2, join as join4 } from "node:path";
 function deriveNameFromOrigin(originUrl) {
   const withoutQuery = originUrl.split(/[?#]/, 1)[0];
   const last = withoutQuery.split("/").pop() || "connected-repo";
@@ -1872,65 +1876,12 @@ function normalizeConnectOrigin(originUrl) {
   }
   return trimmed;
 }
-function detectRepoFromCwd(cwd) {
-  try {
-    const inside = execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
-      cwd,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "ignore"]
-    }).trim();
-    if (inside !== "true") {
-      throw new Error("not in a git repo");
-    }
-  } catch {
-    throw new Error("Current directory is not a git repository");
-  }
-  let repoRoot = "";
-  let originUrl = "";
-  try {
-    repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-      cwd,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "ignore"]
-    }).trim();
-  } catch {
-    throw new Error("Could not resolve git repository root");
-  }
-  try {
-    originUrl = execFileSync("git", ["remote", "get-url", "origin"], {
-      cwd,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "ignore"]
-    }).trim();
-  } catch {
-    throw new Error("No git remote named 'origin' found");
-  }
-  const markers = {
-    purpose: existsSync3(join4(repoRoot, "_agent", "purpose.md")),
-    now: existsSync3(join4(repoRoot, "_agent", "now.md")),
-    accessManifest: existsSync3(join4(repoRoot, "_access", "manifest.yml"))
-  };
-  let classification = "generic";
-  if (markers.purpose && markers.now) {
-    classification = "ideaspace_shaped";
-  } else if (markers.purpose || markers.now || markers.accessManifest) {
-    classification = "ambiguous";
-  }
-  return {
-    repoRoot,
-    originUrl,
-    normalizedOriginUrl: normalizeConnectOrigin(originUrl),
-    markers,
-    classification
-  };
-}
 var connectCommand = {
   name: "connect",
-  description: "Connect an existing git repo to IdeaSpaces",
-  usage: "ideaspaces power connect [origin_url] [--name NAME] [--slug SLUG] [--hostname HOST] [--from-cwd]",
+  description: "Adopt an external git repo (GitHub, GitLab, \u2026) as an IdeaSpaces space",
+  usage: "ideaspaces power connect <origin_url> [--name NAME] [--slug SLUG] [--hostname HOST]",
   examples: [
-    "ideaspaces power connect https://github.com/IdeaSpaces-xyz/ideaspace.git --name IdeaSpace",
-    "ideaspaces power connect --from-cwd"
+    "ideaspaces power connect https://github.com/IdeaSpaces-xyz/ideaspace.git --name IdeaSpace"
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
@@ -1939,35 +1890,21 @@ var connectCommand = {
       output.error("Not logged in. Run: ideaspaces login");
       return 2;
     }
-    const fromCwd = Boolean(flags2["from-cwd"]);
-    let originUrl = args2[0]?.trim() || "";
-    let normalizedOriginUrl = originUrl ? normalizeConnectOrigin(originUrl) : "";
-    let name = flags2.name?.trim() || "";
-    let detection = null;
-    if (fromCwd || !originUrl) {
-      try {
-        detection = detectRepoFromCwd(process.cwd());
-      } catch (e) {
-        output.error(e instanceof Error ? e.message : String(e));
-        return 1;
-      }
-      originUrl = detection.originUrl;
-      normalizedOriginUrl = detection.normalizedOriginUrl;
-      if (!name)
-        name = basename2(detection.repoRoot);
-    }
+    const originUrl = args2[0]?.trim() || "";
     if (!originUrl) {
-      output.error("origin_url is required (or use --from-cwd)");
+      output.error("origin_url is required. For a brand-new space, use 'ideaspaces init <name>' instead.");
       return 1;
     }
+    const normalizedOriginUrl = normalizeConnectOrigin(originUrl);
+    let name = flags2.name?.trim() || "";
     if (!name) {
-      name = deriveNameFromOrigin(normalizedOriginUrl || originUrl);
+      name = deriveNameFromOrigin(normalizedOriginUrl);
     }
     const slug = flags2.slug || void 0;
     const hostname = flags2.hostname || void 0;
     const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
     const { data } = await client.connectRepo({
-      origin_url: normalizedOriginUrl || originUrl,
+      origin_url: normalizedOriginUrl,
       name,
       slug,
       hostname: hostname ?? null
@@ -1983,23 +1920,14 @@ var connectCommand = {
       repo: data,
       source: {
         origin_url: originUrl,
-        normalized_origin_url: normalizedOriginUrl || originUrl,
-        from_cwd: fromCwd || !args2[0],
-        repo_root: detection?.repoRoot || null,
-        markers: detection?.markers || null,
-        classification: detection?.classification || null
+        normalized_origin_url: normalizedOriginUrl
       }
     };
     const lines = [
       `Connected: ${data.name} (${data.repo_id})`,
       `Slug: ${data.slug}`,
-      `Origin: ${normalizedOriginUrl || originUrl}`
+      `Origin: ${normalizedOriginUrl}`
     ];
-    if (detection) {
-      lines.push(`Repo root: ${detection.repoRoot}`);
-      lines.push(`Classification: ${detection.classification}`);
-      lines.push(`Markers: purpose=${detection.markers.purpose}, now=${detection.markers.now}, _access=${detection.markers.accessManifest}`);
-    }
     output.result(result, lines.join("\n"));
     return 0;
   }
@@ -2009,11 +1937,11 @@ var connectCommand = {
 var createCommand = {
   name: "create",
   description: "Create a new space",
-  usage: "ideaspaces power create <name> [--slug SLUG] [--purpose PURPOSE] [--hostname ORG]",
+  usage: "ideaspaces power create <name> [--slug SLUG] [--purpose PURPOSE]",
   examples: [
     "ideaspaces power create 'My Notes'",
     "ideaspaces power create 'Research' --purpose 'Track research findings'",
-    "ideaspaces power create 'Team' --slug team-notes --hostname ideaspaces.xyz"
+    "ideaspaces power create 'Team' --slug team-notes"
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
@@ -2029,10 +1957,8 @@ var createCommand = {
     }
     const slug = flags2.slug || void 0;
     const purpose = flags2.purpose || void 0;
-    const hostnameFlag = flags2.hostname;
-    const hostname = hostnameFlag || null;
     const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-    const { data } = await client.createRepo({ name, slug, purpose, hostname });
+    const { data } = await client.createRepo({ name, slug, purpose });
     if (!process.env.IS_API_KEY) {
       saveCredentials({
         api_url: config.apiUrl,
@@ -2085,9 +2011,10 @@ var repoCommand = {
       return 1;
     }
     const client = await initClient(global2);
+    const clientAny = client;
     switch (op) {
       case "status": {
-        const { data } = await client.syncStatus();
+        const { data } = await clientAny.syncStatus(client.repoId);
         const lines = [
           `Repo: ${data.repo_id}`,
           `Status: ${data.status}${data.is_fresh ? " (fresh)" : ""}`,
@@ -2101,7 +2028,7 @@ var repoCommand = {
         return 0;
       }
       case "pull": {
-        const { data } = await client.syncPullRepo();
+        const { data } = await clientAny.syncPullRepo(client.repoId);
         if (data.new_head) {
           try {
             setLastSha(client.repoId, data.new_head);
@@ -2121,7 +2048,7 @@ var repoCommand = {
         return 0;
       }
       case "push": {
-        const { data } = await client.syncPushRepo();
+        const { data } = await clientAny.syncPushRepo(client.repoId);
         if (data.head) {
           try {
             setLastSha(client.repoId, data.head);
@@ -2144,12 +2071,12 @@ var repoCommand = {
             output.error("Usage: ideaspaces power repo credential set --value <token>");
             return 1;
           }
-          const { data } = await client.setRepoCredential(value);
+          const { data } = await clientAny.setRepoCredential(value, client.repoId);
           output.result(data, `Repo credentials set for ${data.repo_id}.`);
           return 0;
         }
         if (sub === "clear") {
-          const { data } = await client.setRepoCredential(null);
+          const { data } = await clientAny.setRepoCredential(null, client.repoId);
           output.result(data, `Repo credentials cleared for ${data.repo_id}.`);
           return 0;
         }
@@ -2166,12 +2093,14 @@ var repoCommand = {
 // dist/router.js
 var topLevel = [
   loginCommand,
+  initCommand,
   navigateCommand,
   searchCommand,
   readCommand,
   writeCommand,
   awarenessCommand,
-  syncCommand
+  cloneCommand,
+  credentialCommand
 ];
 var power = [
   grepCommand,
