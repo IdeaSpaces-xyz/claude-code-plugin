@@ -41,24 +41,34 @@ Run `is_explore` to see what exists. Check if `_agent/purpose.md` and `_agent/no
 
 If the space already has Purpose and Now filled in, confirm with the user: "Your space already has a direction set. Want to review it, update it, or skip to hook setup?"
 
-### 3. Offer "Connect this repo" (if in a git folder)
+### 3. Offer a space for the current folder
 
-Run a quick check with Bash:
+Run a quick check with Bash to understand the current state:
 
-- `git rev-parse --is-inside-work-tree`
-- if true: `git rev-parse --show-toplevel` and `git remote get-url origin`
+- `git rev-parse --is-inside-work-tree` — is this already a git repo?
+- `git remote get-url origin` (if inside a repo) — does it already have a remote?
 
-If this is a git repo, explicitly offer:
+Decide which path to offer based on what you see:
 
-> "I found a local git repo here. Want to connect it to IdeaSpaces so this repo becomes searchable and agent-visible?"
+**A. No external origin (folder is empty, or a local-only git repo).**
+The common case. Offer:
 
-If yes, run:
+> "Want me to create an IdeaSpaces space for this work? I'll create the space, clone it here so git push works, and wire up your identity."
 
-- `ideaspaces power connect --from-cwd`
+If yes:
 
-This command auto-detects origin URL, normalizes SSH remotes to HTTPS (Phase A policy), and reports a simple classification:
-- `ideaspace_shaped` (has `_agent/purpose.md` + `_agent/now.md`)
-- `generic` or `ambiguous`
+- `ideaspaces init "<name>"`
+
+This creates the space on the server, `git clone`s it into `./<slug>` (or `--dir <path>`), and sets `git config --local user.email` / `user.name` from your OAuth account — so every commit you push attributes to you correctly. No trailer workarounds.
+
+**B. Already has an external origin (GitHub, GitLab, etc.).**
+Offer to adopt the external repo:
+
+> "I see an origin pointing at <url>. Want to adopt this repo as an IdeaSpaces space? IdeaSpaces will clone from there and keep the canonical copy on your existing remote."
+
+If yes:
+
+- `ideaspaces power connect <origin_url> --name "<name>"`
 
 Always show the command result and ask for confirmation before proceeding.
 
