@@ -18,7 +18,9 @@ summary: Baseline for working in the ideaspaces-plugin repo. This is where we sh
 
 This repo defines the IdeaSpaces plugin for Claude Code. When we edit here, we change how the agent shows up on someone's machine — which tools it reaches for, which conventions it respects, how it orients at session start.
 
-Sibling repos `mcp-server/`, `cli/`, and `sdk/` are the source. This repo ships pre-built bundles via `.mcp.json` and `cli/bundle/`.
+Sibling repos `mcp-server/`, `cli/`, and `sdk/` are the source for the MCP server and CLI bundles, copied here as `dist/index.js` and `cli/bundle/ideaspaces.js`.
+
+Plugin-owned source lives in `src/` — currently the SessionStart hook (`src/awareness-hook.ts`), bundled into `dist/awareness-hook.js` via `npm run build:hook`. The hook is plugin behavior, not MCP-server behavior, so it's owned here.
 
 ---
 
@@ -27,6 +29,7 @@ Sibling repos `mcp-server/`, `cli/`, and `sdk/` are the source. This repo ships 
 - **Thin MCP server.** Shell out to `@ideaspaces/cli` with `--json`. One implementation, two surfaces.
 - **No forked logic.** New capabilities go in SDK / CLI first; MCP exposes.
 - **Bundles regenerate from source.** Don't hand-edit `dist/` or `cli/bundle/`. See [README.md](../README.md) rebuild section.
+- **Plugin-owned source is for plugin-specific behavior** (the SessionStart hook). Anything reusable across MCP / CLI surfaces stays in `mcp-server/`, `cli/`, or `sdk/`.
 - **Self-contained on install.** Rules inferred from this monorepo's layout don't travel. Session-start context goes in the plugin's hook output or skill descriptions, not in a parent `CLAUDE.md` the user may not have.
 
 ---
