@@ -1,0 +1,17 @@
+{
+  "name": "ideaspaces-plugin",
+  "version": "0.3.0",
+  "description": "Local-first knowledge space for Claude Code.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:hook": "node build-hook.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@ideaspaces/sdk": "github:IdeaSpaces-xyz/sdk",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
+}

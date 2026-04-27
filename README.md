@@ -44,9 +44,11 @@ The plugin ships a thin MCP server that shells out to the [IdeaSpaces CLI](https
 Agent → MCP (2 tools) → spawn CLI --json → SDK → local files (or remote when authed)
 ```
 
+A SessionStart hook (`dist/awareness-hook.js`, plugin-owned) walks up from `cwd` looking for `_agent/`, formats the awareness block via the SDK, and writes it to stdout — the agent lands oriented when Claude Code starts in an ideaspace.
+
 ## Rebuilding
 
-The plugin ships pre-built bundles from two source repos. To update after code changes:
+The plugin ships pre-built bundles from sibling source repos plus its own SessionStart hook. To update after code changes:
 
 ```bash
 # 1. Rebuild CLI bundle
@@ -58,9 +60,14 @@ cd ../mcp-server
 npm run build && npm run bundle
 
 # 3. Copy bundles to plugin
+cd ../ideaspaces-plugin
 cp ../mcp-server/bundle/index.js dist/index.js
 cp ../cli/bundle/ideaspaces.js cli/bundle/ideaspaces.js
 
-# 4. Commit, push, then update in Claude Code
+# 4. Rebuild the SessionStart hook (plugin-owned)
+npm install
+npm run build:hook
+
+# 5. Commit, push, then update in Claude Code
 claude plugin add ideaspaces-xyz/claude-code-plugin
 ```
