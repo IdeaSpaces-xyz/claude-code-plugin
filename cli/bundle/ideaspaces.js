@@ -1,527 +1,415 @@
 #!/usr/bin/env node
 
+// dist/commands/create.js
+import { promises as fs } from "node:fs";
+import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { join, resolve, basename } from "node:path";
+
+// dist/output.js
+function createOutput(flags2) {
+  return {
+    result(data, humanText) {
+      if (flags2.json) {
+        process.stdout.write(JSON.stringify(data, null, 2) + "\n");
+      } else {
+        process.stdout.write(humanText + "\n");
+      }
+    },
+    log(text) {
+      if (!flags2.quiet) {
+        process.stderr.write(text + "\n");
+      }
+    },
+    progress(text) {
+      if (!flags2.quiet && !flags2.json) {
+        process.stderr.write(text + "\n");
+      }
+    },
+    error(text) {
+      process.stderr.write(text + "\n");
+    }
+  };
+}
+
+// dist/templates/default.js
+var FOUNDATION_MD = `---
+name: Foundation
+summary: Baseline contract for this ideaspace \u2014 what kind of place this is, how
+  the agent and human work together. Lives only at the space root and always
+  loads; deeper branches refine via their own \`_agent/\` when they need to.
+---
+
+# Foundation
+
+> Baseline for the space. Lives only at the root.
+
+---
+
+## Space
+
+This is an ideaspace \u2014 a markdown folder where knowledge accumulates. The
+directory tree is how you navigate. \`_agent/\` carries the Agreement between
+you and the user about how to work here.
+
+The five-file contract:
+
+- \`foundation.md\` \u2014 this file. What this place is, baseline behaviors.
+- \`guide.md\` \u2014 specific agreements for this space.
+- \`purpose.md\` \u2014 why this place exists.
+- \`now.md\` \u2014 what's currently active.
+- \`next.md\` \u2014 what's queued.
+
+\`CLAUDE.md\` at the space root tells Claude Code where this contract lives.
+
+\`.gitignore\` is also part of the Agreement \u2014 the boundary between what's
+shared and what stays local. Drafts, scratch, secrets, per-developer context
+go there. Propose changes; never edit silently.
+
+---
+
+## Identity
+
+You inhabit the Space. Position persists across turns. The Space outlasts
+the conversation \u2014 when it matters, verify against the Space rather than
+relying on conversation memory.
+
+**Drawing out over filling in.** Your questions surface what's already there.
+
+**Evidence over assertion.** Work with what's provided. Gaps are information.
+
+**Form over meaning.** The user provides meaning. You provide structure.
+Structure reveals contradictions.
+
+**Honesty over comfort.** Surface contradictions. Notice when stated criteria
+don't match actual decisions.
+
+---
+
+## Practice
+
+- **No slop.** Every line earns its place.
+- **Capture is conscious.** Propose; the user confirms. Both sides agree before
+  committing.
+- **Three-tier commits.** Subject (one line), body (what shifted, why),
+  trailers (\`Co-authored-by\`, etc.).
+
+When the Agreement drifts \u2014 \`now.md\` no longer matches reality, or guidance
+contradicts current practice \u2014 surface it. Update [guide.md](guide.md) for
+this scope, or revisit this file if a baseline needs to shift.
+`;
+var GUIDE_MD = `---
+name: Guide
+summary: Specific agreements for working in this space. As patterns emerge \u2014
+  how we capture, what conventions live where, how branches are organized \u2014
+  capture them here.
+---
+
+# Guide
+
+> Specific agreements for this space, beyond [foundation](foundation.md)
+> defaults.
+
+---
+
+## What's specific here
+
+_Fill in as patterns emerge. Examples to consider:_
+
+- Is the \`_agent/\` shared (committed) or private (gitignored)?
+- Where do conventions live (commit shape, tagging, identity)?
+- Are there active tracks running in parallel?
+
+---
+
+## When the Agreement drifts
+
+If \`now.md\` stops matching reality, or [foundation](foundation.md)
+contradicts current practice, or this guide is silent on something we keep
+doing \u2014 surface it. Update this guide for this scope, or revisit foundation
+if a baseline needs to shift.
+`;
+var PURPOSE_MD = `---
+name: Purpose
+summary: Why this space exists \u2014 the North Star. Fill in via \`/is-setup\` or
+  edit directly.
+---
+
+# Purpose
+
+_Why does this space exist? What's it for?_
+
+Two or three sentences. Concrete over aspirational. What would make this
+valuable to you six months from now?
+`;
+var NOW_MD = `---
+name: Now
+summary: What's currently active in this space. Fill in via \`/is-setup\` or
+  edit directly. Update at natural breaks; let it drift, then reflect.
+---
+
+# Now
+
+_What are you working on right now? What would progress look like this week?_
+
+A single paragraph or a short list. Concrete, evaluable.
+`;
+var NEXT_MD = `---
+name: Next
+summary: What's queued after Now. Vague is OK \u2014 agents and humans figure out
+  the flow.
+---
+
+# Next
+
+_What's queued after the current focus? What's plausibly next but not yet
+active?_
+
+Vague is OK. Leave a placeholder if nothing comes to mind.
+`;
+var CLAUDE_MD = `# CLAUDE.md
+
+> This is an ideaspace. The five-file \`_agent/\` contract carries the Agreement.
+
+## Orient
+
+At session start, read in order:
+
+1. [\`_agent/foundation.md\`](_agent/foundation.md) \u2014 what this place is, baseline behaviors
+2. [\`_agent/guide.md\`](_agent/guide.md) \u2014 how agent and human work together here
+3. [\`_agent/purpose.md\`](_agent/purpose.md) \u2014 why this exists
+4. [\`_agent/now.md\`](_agent/now.md) \u2014 what's currently active
+5. [\`_agent/next.md\`](_agent/next.md) \u2014 what's queued
+
+These five files are loaded by position. Read them before answering.
+
+## When the Agreement drifts
+
+Now stops matching reality. Foundation contradicts current practice. Guide is
+silent on something we keep doing. \u2192 Surface it. Propose an update. Update
+[\`_agent/guide.md\`](_agent/guide.md) for this scope, or revisit
+[\`_agent/foundation.md\`](_agent/foundation.md) if a baseline needs to shift.
+`;
+function gitignoreDefaults(opts) {
+  const lines = ["", "# ideaspace defaults"];
+  if (opts.privateAgent) {
+    lines.push("# (code repo with private _agent/ \u2014 each developer's contract stays local)", "_agent/", "CLAUDE.local.md");
+  }
+  lines.push("*.draft.md", "scratch/", "_local/", "");
+  return lines.join("\n");
+}
+var CONTRACT_TEMPLATES = {
+  foundation: FOUNDATION_MD,
+  guide: GUIDE_MD,
+  purpose: PURPOSE_MD,
+  now: NOW_MD,
+  next: NEXT_MD
+};
+
+// dist/commands/create.js
+var CODE_SIGNALS = [
+  ".github",
+  "package.json",
+  "Cargo.toml",
+  "go.mod",
+  "pyproject.toml",
+  "Gemfile",
+  "pom.xml"
+];
+var OLD_AGENT_FILES = ["always.md", "rules.md", "soul.md", "guidance.md"];
+var createCommand = {
+  name: "create",
+  description: "Scaffold an ideaspace (five-file _agent/ contract + CLAUDE.md + .gitignore defaults)",
+  usage: "ideaspaces create [name] [--yes] [--shared]",
+  examples: [
+    "ideaspaces create my-space             # plan in ./my-space/, exit without applying",
+    "ideaspaces create my-space --yes       # scaffold and commit",
+    "ideaspaces create --yes                # scaffold in current directory",
+    "ideaspaces create --yes --shared       # in a code repo, opt into shared (committed) _agent/"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const name = args2[0];
+    const targetDir = name ? resolve(process.cwd(), name) : process.cwd();
+    const apply = global2.yes === true;
+    const sharedFlag = Boolean(flags2.shared);
+    const inspection = await inspect(targetDir);
+    const shape = detectShape(inspection);
+    if (shape === "complete") {
+      output.error(`${describeTarget(targetDir, name)} is already an ideaspace. Edit \`_agent/\` directly or use \`/is-reflect\` to update direction.`);
+      return 5;
+    }
+    if (shape === "old-shape") {
+      output.error(`${describeTarget(targetDir, name)} has an \`_agent/\` in the legacy shape (always.md / rules.md / soul.md). Migration is not yet automated; see \`ideaspace/architecture/plans/plugin-local-first/ideaspace-create.md\` for the manual walk.`);
+      return 5;
+    }
+    const privateAgent = shape === "code-repo" && !sharedFlag;
+    const plan = buildPlan({ targetDir, name, shape, inspection, privateAgent });
+    if (!apply) {
+      output.result({ target: targetDir, shape, privateAgent, plan: plan.steps }, renderPlanText({ targetDir, name, shape, privateAgent, plan }));
+      return 0;
+    }
+    try {
+      await applyPlan({ targetDir, inspection, privateAgent });
+    } catch (err) {
+      output.error(`Scaffold failed midway: ${err instanceof Error ? err.message : String(err)}
+Use \`git status\` / \`git restore\` to recover.`);
+      return 1;
+    }
+    output.result({ target: targetDir, shape, privateAgent, scaffolded: true }, `Scaffolded ${describeTarget(targetDir, name)} (${shape}${privateAgent ? ", private _agent/" : ""}).
+Next: open Claude Code in ${name ? `./${name}` : "this directory"} and run \`/is-setup\` to seed purpose / now / next.`);
+    return 0;
+  }
+};
+async function inspect(targetDir) {
+  if (!existsSync(targetDir)) {
+    return {
+      exists: false,
+      isGitRepo: false,
+      hasNewAgent: false,
+      hasOldAgent: false,
+      hasClaude: false,
+      hasGitignore: false,
+      hasCodeSignal: false,
+      markdownCount: 0
+    };
+  }
+  const isGitRepo = existsSync(join(targetDir, ".git"));
+  const hasClaude = existsSync(join(targetDir, "CLAUDE.md"));
+  const hasGitignore = existsSync(join(targetDir, ".gitignore"));
+  const agentDir = join(targetDir, "_agent");
+  const hasNewAgent = existsSync(join(agentDir, "foundation.md"));
+  const hasOldAgent = existsSync(agentDir) && OLD_AGENT_FILES.some((f) => existsSync(join(agentDir, f))) && !hasNewAgent;
+  let hasCodeSignal = false;
+  for (const sig of CODE_SIGNALS) {
+    if (existsSync(join(targetDir, sig))) {
+      hasCodeSignal = true;
+      break;
+    }
+  }
+  let markdownCount = 0;
+  try {
+    const entries = await fs.readdir(targetDir, { withFileTypes: true });
+    for (const e of entries) {
+      if (e.isFile() && e.name.endsWith(".md"))
+        markdownCount += 1;
+    }
+  } catch {
+  }
+  return {
+    exists: true,
+    isGitRepo,
+    hasNewAgent,
+    hasOldAgent,
+    hasClaude,
+    hasGitignore,
+    hasCodeSignal,
+    markdownCount
+  };
+}
+function detectShape(inspection) {
+  if (!inspection.exists)
+    return "greenfield";
+  if (inspection.hasNewAgent && inspection.hasClaude)
+    return "complete";
+  if (inspection.hasOldAgent)
+    return "old-shape";
+  if (inspection.hasCodeSignal)
+    return "code-repo";
+  if (inspection.markdownCount > 0)
+    return "content-existing";
+  return "greenfield";
+}
+function buildPlan(opts) {
+  const { targetDir, name, inspection, privateAgent } = opts;
+  const steps = [];
+  if (name && !inspection.exists) {
+    steps.push({ op: "mkdir", path: targetDir });
+  }
+  if (!inspection.isGitRepo) {
+    steps.push({ op: "git-init", path: targetDir });
+  }
+  for (const fileName of Object.keys(CONTRACT_TEMPLATES)) {
+    steps.push({ op: "write", path: join(targetDir, "_agent", `${fileName}.md`) });
+  }
+  const claudeFile = privateAgent ? "CLAUDE.local.md" : "CLAUDE.md";
+  if (!inspection.hasClaude) {
+    steps.push({ op: "write", path: join(targetDir, claudeFile) });
+  }
+  steps.push({
+    op: inspection.hasGitignore ? "append" : "write",
+    path: join(targetDir, ".gitignore"),
+    detail: privateAgent ? "private _agent/ defaults" : "content-space defaults"
+  });
+  steps.push({ op: "commit", detail: "Initial ideaspace scaffold" });
+  return { steps };
+}
+function renderPlanText(opts) {
+  const { targetDir, name, shape, privateAgent, plan } = opts;
+  const lines = [];
+  lines.push(`Plan for ${describeTarget(targetDir, name)} \u2014 shape: ${shape}${privateAgent ? " (private _agent/)" : ""}`);
+  lines.push("");
+  for (const step of plan.steps) {
+    const tag = step.op.toUpperCase().padEnd(9);
+    const detail = step.detail ? ` \u2014 ${step.detail}` : "";
+    const path = step.path ? ` ${step.path}` : "";
+    lines.push(`  ${tag}${path}${detail}`);
+  }
+  lines.push("");
+  lines.push("Re-run with --yes to apply.");
+  return lines.join("\n");
+}
+async function applyPlan(opts) {
+  const { targetDir, inspection, privateAgent } = opts;
+  await fs.mkdir(targetDir, { recursive: true });
+  if (!inspection.isGitRepo) {
+    runGit(targetDir, ["init", "-q", "-b", "main"]);
+  }
+  await fs.mkdir(join(targetDir, "_agent"), { recursive: true });
+  for (const [name, content] of Object.entries(CONTRACT_TEMPLATES)) {
+    await fs.writeFile(join(targetDir, "_agent", `${name}.md`), content, "utf-8");
+  }
+  const claudeFile = privateAgent ? "CLAUDE.local.md" : "CLAUDE.md";
+  if (!inspection.hasClaude) {
+    await fs.writeFile(join(targetDir, claudeFile), CLAUDE_MD, "utf-8");
+  }
+  const gitignorePath = join(targetDir, ".gitignore");
+  const additions = gitignoreDefaults({ privateAgent });
+  if (inspection.hasGitignore) {
+    const existing = await fs.readFile(gitignorePath, "utf-8");
+    if (!existing.includes("# ideaspace defaults")) {
+      await fs.writeFile(gitignorePath, existing.endsWith("\n") ? existing + additions : existing + "\n" + additions, "utf-8");
+    }
+  } else {
+    await fs.writeFile(gitignorePath, additions.replace(/^\n/, ""), "utf-8");
+  }
+  runGit(targetDir, ["add", "."]);
+  runGit(targetDir, ["commit", "-q", "-m", "Initial ideaspace scaffold"]);
+}
+function runGit(cwd, args2) {
+  const r = spawnSync("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  if (r.status !== 0) {
+    const message = r.stderr.trim() || r.stdout.trim() || `exit ${r.status}`;
+    throw new Error(`git ${args2.join(" ")}: ${message}`);
+  }
+}
+function describeTarget(targetDir, name) {
+  return name ? `./${basename(targetDir)}` : "the current directory";
+}
+
 // dist/commands/login.js
 import { exec as exec2 } from "node:child_process";
 import { platform } from "node:os";
 
-// ../sdk/dist/transport.js
-var SdkError = class extends Error {
-  category;
-  status;
-  retryable;
-  retryAfterMs;
-  constructor(opts) {
-    super(opts.message);
-    this.name = "SdkError";
-    this.category = opts.category;
-    this.status = opts.status;
-    this.retryable = opts.retryable;
-    this.retryAfterMs = opts.retryAfterMs;
-  }
-};
-function classifyStatus(status, headers) {
-  if (status === 429) {
-    const retryAfter = headers["retry-after"];
-    let retryAfterMs;
-    if (retryAfter) {
-      const seconds = Number(retryAfter);
-      retryAfterMs = Number.isFinite(seconds) ? seconds * 1e3 : void 0;
-    }
-    return { category: "rate_limited", retryable: true, retryAfterMs };
-  }
-  if (status === 502 || status === 503 || status === 529) {
-    return { category: "overloaded", retryable: true };
-  }
-  if (status === 401) {
-    return { category: "auth_error", retryable: false };
-  }
-  if (status === 404) {
-    return { category: "not_found", retryable: false };
-  }
-  if (status >= 400 && status < 500) {
-    return { category: "client_error", retryable: false };
-  }
-  return { category: "overloaded", retryable: true };
-}
-function backoffMs(attempt) {
-  const base = Math.min(500 * Math.pow(2, attempt), 16e3);
-  const jitter = Math.random() * base * 0.25;
-  return base + jitter;
-}
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-var DEFAULT_RETRYABLE_STATUSES = [429, 502, 503, 529];
-function createFetchTransport(config) {
-  const maxRetries = config.retry?.maxRetries ?? 3;
-  const retryableStatuses = config.retry?.retryableStatuses ?? DEFAULT_RETRYABLE_STATUSES;
-  const timeout = config.timeout ?? 3e4;
-  return {
-    async request(method, path, body) {
-      const url = `${config.apiUrl}/api/v1${path}`;
-      const headers = {
-        Authorization: `Bearer ${config.apiKey}`,
-        "Content-Type": "application/json"
-      };
-      let lastError;
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), timeout);
-          let resp;
-          try {
-            resp = await fetch(url, {
-              method,
-              headers,
-              body: body ? JSON.stringify(body) : void 0,
-              signal: controller.signal
-            });
-          } finally {
-            clearTimeout(timer);
-          }
-          if (resp.ok) {
-            const responseHeaders2 = {};
-            resp.headers.forEach((v, k) => {
-              responseHeaders2[k.toLowerCase()] = v;
-            });
-            const bodyText = await resp.text();
-            return {
-              status: resp.status,
-              headers: responseHeaders2,
-              json: async () => JSON.parse(bodyText),
-              text: async () => bodyText
-            };
-          }
-          const responseHeaders = {};
-          resp.headers.forEach((v, k) => {
-            responseHeaders[k.toLowerCase()] = v;
-          });
-          const errorText = await resp.text().catch(() => "");
-          let detail = errorText;
-          try {
-            const json = JSON.parse(errorText);
-            detail = json.detail || json.error || errorText;
-          } catch {
-          }
-          const { category, retryable, retryAfterMs } = classifyStatus(resp.status, responseHeaders);
-          const canRetry = retryable && retryableStatuses.includes(resp.status) && attempt < maxRetries;
-          if (!canRetry) {
-            throw new SdkError({
-              message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
-              category,
-              status: resp.status,
-              retryable,
-              retryAfterMs
-            });
-          }
-          const delayMs = retryAfterMs ?? backoffMs(attempt);
-          await sleep(delayMs);
-          lastError = new SdkError({
-            message: `${method} ${path}: ${resp.status} \u2014 ${detail}`,
-            category,
-            status: resp.status,
-            retryable,
-            retryAfterMs
-          });
-        } catch (err) {
-          if (err instanceof SdkError)
-            throw err;
-          const isTimeout = err instanceof DOMException && err.name === "AbortError";
-          const category = isTimeout ? "timeout" : "network_error";
-          if (attempt < maxRetries) {
-            await sleep(backoffMs(attempt));
-            lastError = err instanceof Error ? err : new Error(String(err));
-            continue;
-          }
-          throw new SdkError({
-            message: `${method} ${path}: ${category} \u2014 ${err instanceof Error ? err.message : String(err)}`,
-            category,
-            retryable: true
-          });
-        }
-      }
-      throw lastError || new Error("Unexpected transport error");
-    }
-  };
-}
-
-// ../sdk/dist/client.js
-var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
-var IsClient = class {
-  transport;
-  repo;
-  constructor(transport, repo) {
-    this.transport = transport;
-    this.repo = repo;
-  }
-  /** Current repo ID. Throws if not set. */
-  get repoId() {
-    if (!this.repo) {
-      throw new Error("No repo selected. Pass repo in config, or call autoSelectRepo().");
-    }
-    return this.repo;
-  }
-  /** Whether a repo is selected. */
-  get isConnected() {
-    return !!this.repo;
-  }
-  /** Update the active repo (e.g. after autoSelectRepo). */
-  setRepo(repoId) {
-    this.repo = repoId;
-  }
-  // ─── Internal request wrapper ──────────────────────────────────
-  async req(method, path, body) {
-    const start = Date.now();
-    const resp = await this.transport.request(method, path, body);
-    const data = await resp.json();
-    const requestMs = Date.now() - start;
-    let rateLimit;
-    const remaining = resp.headers["x-ratelimit-remaining"];
-    const resetAt = resp.headers["x-ratelimit-reset"];
-    if (remaining !== void 0) {
-      rateLimit = {
-        remaining: Number(remaining),
-        resetAt: resetAt ? new Date(Number(resetAt) * 1e3) : /* @__PURE__ */ new Date()
-      };
-    }
-    return { data, meta: { requestMs, retries: 0, rateLimit } };
-  }
-  // ─── Repos ────────────────────────────────────────────────────
-  async listRepos() {
-    return this.req("GET", "/repos");
-  }
-  async createRepo(body) {
-    return this.req("POST", "/repos", body);
-  }
-  async connectRepo(body) {
-    return this.req("POST", "/repos/connect", body);
-  }
-  async reindexRepo(repoId = this.repoId) {
-    return this.req("POST", `/repos/${repoId}/reindex`);
-  }
-  // ─── Outline ──────────────────────────────────────────────────
-  async outline() {
-    return this.req("GET", `/repos/${this.repoId}/nodes/outline`);
-  }
-  // ─── Tree ─────────────────────────────────────────────────────
-  async navigate(path = "") {
-    const encodedPath = path ? `/${encodeURIComponent(path)}` : "";
-    const resp = await this.req("GET", `/repos/${this.repoId}/tree${encodedPath}`);
-    resp.data.children = resp.data.children.map((child) => ({
-      ...child,
-      type: child.type === "dir" ? "directory" : child.type
-    }));
-    return resp;
-  }
-  // ─── Search ───────────────────────────────────────────────────
-  async search(params) {
-    const qs = new URLSearchParams();
-    qs.set("q", params.query);
-    qs.set("repo_id", this.repoId);
-    if (params.scope)
-      qs.set("scope", params.scope);
-    if (params.node_type)
-      qs.set("node_type", params.node_type);
-    if (params.attached_to)
-      qs.set("attached_to", params.attached_to);
-    if (params.contributed_by)
-      qs.set("contributed_by", params.contributed_by);
-    const tag = params.tag ?? params.tags;
-    if (tag) {
-      qs.set("tag", tag);
-      qs.set("tags", tag);
-    }
-    const topK = params.top_k ?? params.limit;
-    if (typeof topK === "number") {
-      qs.set("top_k", String(topK));
-      qs.set("limit", String(topK));
-    }
-    return this.req("GET", `/search?${qs.toString()}`);
-  }
-  // ─── Files ────────────────────────────────────────────────────
-  async readFile(path, opts) {
-    const qs = new URLSearchParams();
-    if (opts?.offset)
-      qs.set("offset", String(opts.offset));
-    if (opts?.limit)
-      qs.set("limit", String(opts.limit));
-    const query = qs.toString() ? `?${qs.toString()}` : "";
-    return this.req("GET", `/repos/${this.repoId}/files/${encodeURIComponent(path)}${query}`);
-  }
-  async readNode(nodeId) {
-    return this.req("GET", `/repos/${this.repoId}/nodes/${nodeId}`);
-  }
-  async _withDefaultIfMatch(path, body, opts) {
-    if (opts?.force || body.if_match !== void 0)
-      return body;
-    try {
-      const { data } = await this.readFile(path);
-      if (!data.last_commit_sha)
-        return body;
-      return { ...body, if_match: data.last_commit_sha };
-    } catch (error) {
-      if (error instanceof SdkError && error.status === 404) {
-        return body;
-      }
-      throw error;
-    }
-  }
-  async writeFile(path, body, opts) {
-    const payload = await this._withDefaultIfMatch(path, body, opts);
-    return this.req("PUT", `/repos/${this.repoId}/files/${encodeURIComponent(path)}`, payload);
-  }
-  // ─── Grep ─────────────────────────────────────────────────────
-  async grep(pattern, scope) {
-    const qs = new URLSearchParams({ pattern });
-    if (scope)
-      qs.set("scope", scope);
-    return this.req("GET", `/repos/${this.repoId}/grep?${qs.toString()}`);
-  }
-  async grepSections(heading, scope, maxLines) {
-    const qs = new URLSearchParams({ heading });
-    if (scope)
-      qs.set("scope", scope);
-    if (maxLines)
-      qs.set("max_lines", String(maxLines));
-    return this.req("GET", `/repos/${this.repoId}/grep/sections?${qs.toString()}`);
-  }
-  // ─── Tags ─────────────────────────────────────────────────────
-  async listTags(prefix) {
-    const qs = new URLSearchParams();
-    if (prefix)
-      qs.set("q", prefix);
-    const query = qs.toString() ? `?${qs.toString()}` : "";
-    return this.req("GET", `/repos/${this.repoId}/tags${query}`);
-  }
-  // ─── Node history ─────────────────────────────────────────────
-  async nodeHistory(nodeId) {
-    return this.req("GET", `/repos/${this.repoId}/nodes/${nodeId}/history`);
-  }
-  async nodeAtVersion(nodeId, sha) {
-    return this.req("GET", `/repos/${this.repoId}/nodes/${nodeId}/history/${sha}`);
-  }
-  // ─── Delete node ──────────────────────────────────────────────
-  async deleteNode(nodeId) {
-    return this.req("DELETE", `/repos/${this.repoId}/nodes/${nodeId}`);
-  }
-  // ─── Move / delete file ───────────────────────────────────────
-  async moveFile(source, destination) {
-    return this.req("POST", `/repos/${this.repoId}/files/move`, {
-      source,
-      destination: destination ?? null
-    });
-  }
-  // ─── Update metadata ──────────────────────────────────────────
-  async updateMetadata(nodeId, fields) {
-    return this.req("PATCH", `/repos/${this.repoId}/nodes/${nodeId}/metadata`, fields);
-  }
-  // ─── List nodes ───────────────────────────────────────────────
-  async listNodes(params) {
-    const qs = new URLSearchParams();
-    if (params?.node_type)
-      qs.set("node_type", params.node_type);
-    if (params?.tag)
-      qs.set("tag", params.tag);
-    if (params?.dir_path)
-      qs.set("dir_path", params.dir_path);
-    if (params?.attached_to)
-      qs.set("attached_to", params.attached_to);
-    if (params?.contributed_by)
-      qs.set("contributed_by", params.contributed_by);
-    if (params?.origin)
-      qs.set("origin", params.origin);
-    if (params?.limit)
-      qs.set("limit", String(params.limit));
-    if (params?.offset)
-      qs.set("offset", String(params.offset));
-    if (params?.sort_by)
-      qs.set("sort_by", params.sort_by);
-    if (params?.sort_order)
-      qs.set("sort_order", params.sort_order);
-    const query = qs.toString() ? `?${qs.toString()}` : "";
-    return this.req("GET", `/repos/${this.repoId}/nodes${query}`);
-  }
-  // ─── File status (bulk sync) ──────────────────────────────────
-  async fileStatus(scope) {
-    const qs = new URLSearchParams();
-    if (scope)
-      qs.set("scope", scope);
-    const query = qs.toString() ? `?${qs.toString()}` : "";
-    return this.req("GET", `/repos/${this.repoId}/files/status${query}`);
-  }
-  // ─── Git operations ───────────────────────────────────────────
-  async gitOps(params) {
-    const qs = new URLSearchParams({ op: params.op });
-    if (params.path)
-      qs.set("path", params.path);
-    if (params.ref)
-      qs.set("ref", params.ref);
-    if (params.text)
-      qs.set("text", params.text);
-    if (params.since)
-      qs.set("since", params.since);
-    if (params.limit)
-      qs.set("limit", String(params.limit));
-    return this.req("GET", `/repos/${this.repoId}/git?${qs.toString()}`);
-  }
-};
-function createClient(config) {
-  const transport = config.transport ?? createFetchTransport({
-    apiUrl: config.apiUrl ?? DEFAULT_API_URL,
-    apiKey: config.apiKey,
-    timeout: config.timeout,
-    retry: config.retry
-  });
-  return new IsClient(transport, config.repo ?? "");
-}
-
-// ../sdk/dist/patterns/session.js
-function createSession(client, opts) {
-  let cachedAwareness = null;
-  let knownHeadSha = null;
-  let lastSha = opts?.lastSha ?? null;
-  async function getCurrentHead() {
-    try {
-      const { data } = await client.gitOps({ op: "log", limit: 1 });
-      return data.entries?.[0]?.sha ?? null;
-    } catch {
-      return null;
-    }
-  }
-  async function buildAwareness() {
-    const { data: root } = await client.navigate("");
-    const lines = [];
-    if (root.now) {
-      const nowLines = root.now.split("\n").filter((l) => l.trim() && !l.startsWith("---") && !l.startsWith("name:") && !l.startsWith("summary:"));
-      const firstLine = nowLines.find((l) => !l.startsWith("#") && l.trim().length > 0);
-      if (firstLine)
-        lines.push(`Now: ${firstLine.trim().slice(0, 200)}`);
-    }
-    const dirs = root.children.filter((c) => c.type === "directory" || c.type === "dir");
-    const files = root.children.filter((c) => c.type !== "directory" && c.type !== "dir");
-    if (dirs.length || files.length) {
-      lines.push(`
-Tree (${root.file_count} files):`);
-      for (const d of dirs) {
-        const count = d.file_count ? ` (${d.file_count})` : "";
-        const summary = d.summary ? ` \u2014 ${d.summary}` : "";
-        lines.push(`  ${d.name}/${count}${summary}`);
-      }
-      for (const f of files) {
-        const summary = f.summary ? ` \u2014 ${f.summary}` : "";
-        lines.push(`  ${f.name}${summary}`);
-      }
-    }
-    if (root.agent_context.length) {
-      const contextNames = root.agent_context.map((a) => a.name).join(", ");
-      lines.push(`
-Agent context: ${contextNames}`);
-    }
-    if (lastSha) {
-      try {
-        const { data: changes } = await client.gitOps({
-          op: "changes",
-          since: lastSha
-        });
-        if (changes.changes?.length) {
-          lines.push(`
-Since last session (${changes.changes.length} changes):`);
-          for (const c of changes.changes.slice(0, 15)) {
-            lines.push(`  ${c.status} ${c.path}`);
-          }
-          if (changes.changes.length > 15) {
-            lines.push(`  ... and ${changes.changes.length - 15} more`);
-          }
-        }
-      } catch {
-      }
-    }
-    knownHeadSha = await getCurrentHead();
-    return lines.join("\n");
-  }
-  return {
-    async getAwarenessBlock() {
-      if (cachedAwareness !== null)
-        return cachedAwareness;
-      cachedAwareness = await buildAwareness();
-      return cachedAwareness;
-    },
-    async getContextFor(query, opts2) {
-      const { data } = await client.search({
-        query,
-        scope: opts2?.scope,
-        limit: opts2?.limit ?? 10
-      });
-      if (!data.results.length)
-        return `No results for "${query}"`;
-      const lines = [];
-      for (const r of data.results) {
-        const score = r.score.toFixed(2);
-        lines.push(`${score}  ${r.path}`);
-        if (r.name)
-          lines.push(`      ${r.name}`);
-        if (r.summary)
-          lines.push(`      ${r.summary}`);
-      }
-      return lines.join("\n");
-    },
-    async getChanges() {
-      if (!knownHeadSha)
-        return null;
-      const currentHead = await getCurrentHead();
-      if (!currentHead || currentHead === knownHeadSha) {
-        return null;
-      }
-      try {
-        const { data } = await client.gitOps({
-          op: "changes",
-          since: knownHeadSha
-        });
-        knownHeadSha = currentHead;
-        if (!data.changes?.length)
-          return null;
-        const lines = data.changes.slice(0, 15).map((c) => `  ${c.status} ${c.path}`);
-        if (data.changes.length > 15) {
-          lines.push(`  ... and ${data.changes.length - 15} more`);
-        }
-        return {
-          changed: true,
-          summary: `${data.changes.length} change${data.changes.length === 1 ? "" : "s"}:
-${lines.join("\n")}`
-        };
-      } catch {
-        return null;
-      }
-    },
-    async trackHead() {
-      knownHeadSha = await getCurrentHead();
-    },
-    invalidate() {
-      cachedAwareness = null;
-    }
-  };
-}
-
-// ../sdk/dist/patterns/repo.js
-async function autoSelectRepo(client) {
-  const { data } = await client.listRepos();
-  const repos = data.repos;
-  if (repos.length === 1) {
-    client.setRepo(repos[0].repo_id);
-    return { repoId: repos[0].repo_id, repos };
-  }
-  return { repoId: null, repos };
-}
-
 // dist/auth/credentials.js
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync as existsSync2, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
-var CONFIG_DIR = join(homedir(), ".ideaspaces");
-var CREDENTIALS_FILE = join(CONFIG_DIR, "credentials.json");
+import { join as join2 } from "node:path";
+var CONFIG_DIR = join2(homedir(), ".ideaspaces");
+var CREDENTIALS_FILE = join2(CONFIG_DIR, "credentials.json");
 function loadStoredCredentials() {
   try {
-    if (!existsSync(CREDENTIALS_FILE))
+    if (!existsSync2(CREDENTIALS_FILE))
       return null;
     const raw = readFileSync(CREDENTIALS_FILE, "utf-8");
     const data = JSON.parse(raw);
@@ -533,7 +421,7 @@ function loadStoredCredentials() {
   }
 }
 function saveCredentials(creds) {
-  if (!existsSync(CONFIG_DIR)) {
+  if (!existsSync2(CONFIG_DIR)) {
     mkdirSync(CONFIG_DIR, { recursive: true, mode: 448 });
   }
   writeFileSync(CREDENTIALS_FILE, JSON.stringify(creds, null, 2) + "\n", {
@@ -542,19 +430,19 @@ function saveCredentials(creds) {
 }
 function deleteCredentials() {
   try {
-    if (existsSync(CREDENTIALS_FILE)) {
+    if (existsSync2(CREDENTIALS_FILE)) {
       unlinkSync(CREDENTIALS_FILE);
     }
   } catch {
   }
 }
-var DEFAULT_API_URL2 = "https://api.ideaspaces.xyz";
+var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
 function loadConfig() {
   const envKey = process.env.IS_API_KEY;
   const envRepo = process.env.IS_REPO || "";
   if (envKey) {
     return {
-      apiUrl: (process.env.IS_API_URL || DEFAULT_API_URL2).replace(/\/$/, ""),
+      apiUrl: (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, ""),
       apiKey: envKey,
       repo: envRepo
     };
@@ -562,7 +450,7 @@ function loadConfig() {
   const stored = loadStoredCredentials();
   if (stored) {
     return {
-      apiUrl: (process.env.IS_API_URL || stored.api_url || DEFAULT_API_URL2).replace(/\/$/, ""),
+      apiUrl: (process.env.IS_API_URL || stored.api_url || DEFAULT_API_URL).replace(/\/$/, ""),
       apiKey: stored.api_key,
       repo: envRepo || stored.repo_id || ""
     };
@@ -570,7 +458,7 @@ function loadConfig() {
   return null;
 }
 function getDefaultApiUrl() {
-  return (process.env.IS_API_URL || DEFAULT_API_URL2).replace(/\/$/, "");
+  return (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
 }
 
 // dist/auth/callback-server.js
@@ -593,7 +481,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve3, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -620,7 +508,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve({
+      resolve3({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -654,106 +542,21 @@ var GIT_HOSTS = [
   "https://git.ideaspaces.xyz",
   "https://git.ideaspaces.localhost"
 ];
+var HELPER_VALUE = "!ideaspaces credential";
 async function registerGitCredentialHelper() {
   for (const host of GIT_HOSTS) {
     try {
-      await execAsync(`git config --global credential.${host}.helper "!ideaspaces credential"`);
+      const key = `credential.${host}.helper`;
+      await execAsync(`git config --global --unset-all ${escapeShellArg(key)}`).catch(() => {
+      });
+      await execAsync(`git config --global --add ${escapeShellArg(key)} ""`);
+      await execAsync(`git config --global --add ${escapeShellArg(key)} ${escapeShellArg(HELPER_VALUE)}`);
     } catch {
     }
   }
 }
-
-// dist/client.js
-function formatRepoList(repos) {
-  return repos.map((r) => {
-    const key = r.hostname ? `${r.hostname}/${r.slug}` : r.slug;
-    const name = r.name || r.slug;
-    const parts = [name];
-    if (r.file_count != null)
-      parts.push(`${r.file_count} files`);
-    if (r.last_activity)
-      parts.push(`active ${r.last_activity}`);
-    return `  ${key} \u2014 ${parts.join(", ")}`;
-  }).join("\n");
-}
-function resolveRepo(repos, ref) {
-  const byId = repos.find((r) => r.repo_id === ref);
-  if (byId)
-    return byId;
-  const byHost = repos.find((r) => r.hostname === ref);
-  if (byHost)
-    return byHost;
-  if (ref.includes("/")) {
-    const [host, slug] = ref.split("/", 2);
-    return repos.find((r) => r.hostname === host && r.slug === slug);
-  }
-  const bySlug = repos.filter((r) => r.slug === ref);
-  if (bySlug.length === 1)
-    return bySlug[0];
-  return bySlug.find((r) => !r.hostname) || bySlug[0];
-}
-var REPO_ID_RE = /^repo_[a-f0-9]{12}$/;
-async function initClient(flags2) {
-  const config = loadConfig();
-  if (!config) {
-    throw new Error("Not logged in. Run: ideaspaces login");
-  }
-  const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-  let repoId;
-  if (flags2.repo) {
-    if (REPO_ID_RE.test(flags2.repo)) {
-      repoId = flags2.repo;
-    } else {
-      const { data } = await client.listRepos();
-      const match = resolveRepo(data.repos, flags2.repo);
-      if (!match) {
-        throw new Error(`Space "${flags2.repo}" not found. Available:
-${formatRepoList(data.repos)}`);
-      }
-      repoId = match.repo_id;
-    }
-  } else if (config.repo) {
-    repoId = config.repo;
-  }
-  if (repoId) {
-    client.setRepo(repoId);
-    return client;
-  }
-  const { repoId: autoId, repos } = await autoSelectRepo(client);
-  if (autoId) {
-    return client;
-  }
-  if (repos.length > 1) {
-    throw new Error(`Multiple spaces available. Use --repo or run: ideaspaces login <slug>
-${formatRepoList(repos)}`);
-  }
-  throw new Error("No spaces found for this account.");
-}
-
-// dist/output.js
-function createOutput(flags2) {
-  return {
-    result(data, humanText) {
-      if (flags2.json) {
-        process.stdout.write(JSON.stringify(data, null, 2) + "\n");
-      } else {
-        process.stdout.write(humanText + "\n");
-      }
-    },
-    log(text) {
-      if (!flags2.quiet) {
-        process.stderr.write(text + "\n");
-      }
-    },
-    progress(text) {
-      if (!flags2.quiet && !flags2.json) {
-        process.stderr.write(text + "\n");
-      }
-    },
-    error(text) {
-      process.stderr.write(text + "\n");
-    }
-  };
+function escapeShellArg(value) {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 // dist/commands/login.js
@@ -763,38 +566,13 @@ function openBrowser(url) {
 }
 var loginCommand = {
   name: "login",
-  description: "Log in to IdeaSpaces or select a space",
-  usage: "ideaspaces login [slug]",
+  description: "Log in to IdeaSpaces (optional \u2014 required for sync)",
+  usage: "ideaspaces login",
   examples: [
-    "ideaspaces login              # OAuth login, auto-select if one space",
-    "ideaspaces login my-notes     # Select space by slug"
+    "ideaspaces login              # OAuth login; saves credentials for git push/pull"
   ],
-  async run(args2, _flags, global2) {
+  async run(_args, _flags, global2) {
     const output = createOutput(global2);
-    const slug = args2[0];
-    const config = loadConfig();
-    if (slug && config) {
-      const client2 = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-      const { repos: repos2 } = await autoSelectRepo(client2);
-      const match = resolveRepo(repos2, slug);
-      if (!match) {
-        output.error(`Space "${slug}" not found. Available:
-${formatRepoList(repos2)}`);
-        return 4;
-      }
-      client2.setRepo(match.repo_id);
-      saveCredentials({ api_url: config.apiUrl, api_key: config.apiKey, repo_id: match.repo_id });
-      const session = createSession(client2);
-      let awareness = "";
-      try {
-        awareness = await session.getAwarenessBlock();
-      } catch {
-      }
-      output.result({ space: match.slug, name: match.name, repo_id: match.repo_id }, `Connected to ${match.name || match.slug}.${awareness ? `
-
-${awareness}` : ""}`);
-      return 0;
-    }
     const apiUrl = getDefaultApiUrl();
     const callbackServer = await startCallbackServer();
     const authUrl = `${apiUrl}/auth/google?response_type=cli&port=${callbackServer.port}`;
@@ -812,383 +590,72 @@ ${authUrl}`);
     }
     saveCredentials({ api_url: apiUrl, api_key: token });
     await registerGitCredentialHelper();
-    const client = createClient({ apiKey: token, apiUrl });
-    const { repoId, repos } = await autoSelectRepo(client);
-    if (repoId) {
-      saveCredentials({ api_url: apiUrl, api_key: token, repo_id: repoId });
-      const session = createSession(client);
-      let awareness = "";
-      try {
-        awareness = await session.getAwarenessBlock();
-      } catch {
-      }
-      output.result({ space: repos[0]?.slug, repo_id: repoId }, `Logged in and connected.${awareness ? `
-
-${awareness}` : ""}`);
-      return 0;
-    }
-    if (repos.length > 1) {
-      saveCredentials({ api_url: apiUrl, api_key: token });
-      output.result({ spaces: repos.map((r) => ({ slug: r.slug, name: r.name, repo_id: r.repo_id })) }, `Logged in. Select a space:
-${formatRepoList(repos)}
-
-Run: ideaspaces login <slug>`);
-      return 0;
-    }
-    output.error("No spaces found for this account.");
-    return 1;
-  }
-};
-
-// dist/commands/init.js
-import { execFileSync, spawn } from "node:child_process";
-async function fetchAuthMe(config) {
-  const resp = await fetch(`${config.apiUrl}/auth/me`, {
-    headers: { Authorization: `Bearer ${config.apiKey}` }
-  });
-  if (!resp.ok) {
-    throw new Error(`/auth/me returned ${resp.status} \u2014 try 'ideaspaces login' again`);
-  }
-  return await resp.json();
-}
-function gitUrlFor(namespace, slug) {
-  const base = (process.env.IS_GIT_URL || "https://git.ideaspaces.xyz").replace(/\/+$/, "");
-  return `${base}/${namespace}/${slug}.git`;
-}
-function spawnGit(args2) {
-  return new Promise((resolve) => {
-    const proc = spawn("git", args2, { stdio: "inherit" });
-    proc.on("error", () => resolve(1));
-    proc.on("exit", (code) => resolve(code ?? 1));
-  });
-}
-function configureLocalGit(cwd, email, name) {
-  execFileSync("git", ["config", "--local", "user.email", email], { cwd, stdio: "ignore" });
-  execFileSync("git", ["config", "--local", "user.name", name], { cwd, stdio: "ignore" });
-}
-var initCommand = {
-  name: "init",
-  description: "Create a new space and clone it locally with git identity wired up",
-  usage: "ideaspaces init <name> [--slug SLUG] [--hostname HOST] [--purpose PURPOSE] [--dir DIR]",
-  examples: [
-    "ideaspaces init 'My Notes'",
-    "ideaspaces init 'Team Research' --hostname acme.com",
-    "ideaspaces init 'Architecture' --slug arch --dir ./arch-space"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const config = loadConfig();
-    if (!config) {
-      output.error("Not logged in. Run: ideaspaces login");
-      return 2;
-    }
-    const name = args2[0]?.trim();
-    if (!name) {
-      output.error("Name required. Usage: ideaspaces init <name>");
-      return 1;
-    }
-    const slug = flags2.slug || void 0;
-    const hostname = flags2.hostname || void 0;
-    const purpose = flags2.purpose || void 0;
-    const dirFlag = flags2.dir || void 0;
-    let me;
-    try {
-      me = await fetchAuthMe(config);
-    } catch (e) {
-      output.error(e instanceof Error ? e.message : String(e));
-      return 1;
-    }
-    if (!me.email) {
-      output.error("Your account has no email recorded. Re-login to refresh, then retry.");
-      return 1;
-    }
-    const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-    output.progress(`Creating space "${name}"...`);
-    const { data: repo } = await client.createRepo({ name, slug, purpose });
-    const namespace = hostname || me.username;
-    if (!namespace) {
-      output.error("Could not resolve namespace (username missing from account). Complete onboarding at ideaspaces.xyz and retry.");
-      return 1;
-    }
-    const gitUrl = gitUrlFor(namespace, repo.slug);
-    const targetDir = dirFlag || repo.slug;
-    output.progress(`$ git clone ${gitUrl} ${targetDir}`);
-    const cloneExit = await spawnGit(["clone", gitUrl, targetDir]);
-    if (cloneExit !== 0) {
-      output.error(`git clone failed (exit ${cloneExit}) \u2014 space was created on the server.`);
-      return cloneExit;
-    }
-    try {
-      configureLocalGit(targetDir, me.email, me.name || me.username || me.email);
-    } catch (e) {
-      output.log(`warning: failed to set local git identity (${e instanceof Error ? e.message : e}). Run 'git config --local user.email ${me.email}' inside ${targetDir}.`);
-    }
-    if (!process.env.IS_API_KEY) {
-      saveCredentials({
-        api_url: config.apiUrl,
-        api_key: config.apiKey,
-        repo_id: repo.repo_id
-      });
-    }
-    output.result({
-      repo_id: repo.repo_id,
-      slug: repo.slug,
-      name: repo.name,
-      namespace,
-      git_url: gitUrl,
-      directory: targetDir,
-      identity: { email: me.email, name: me.name || me.username || me.email }
-    }, [
-      `Space created: ${repo.name} (${repo.slug})`,
-      `Cloned to: ${targetDir}`,
-      `Git identity: ${me.name || me.username} <${me.email}>`,
-      "",
-      `Next: cd ${targetDir}`
-    ].join("\n"));
+    output.result({ logged_in: true }, "Logged in. `git push` / `git pull` against your space repo now picks up credentials automatically.");
     return 0;
   }
 };
 
-// dist/auth/session-state.js
-import { existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { join as join2 } from "node:path";
-var CONFIG_DIR2 = join2(homedir2(), ".ideaspaces");
-var SESSION_FILE = join2(CONFIG_DIR2, "session.json");
-function loadAll() {
-  try {
-    if (!existsSync2(SESSION_FILE))
-      return {};
-    return JSON.parse(readFileSync2(SESSION_FILE, "utf-8"));
-  } catch {
-    return {};
-  }
-}
-function saveAll(data) {
-  if (!existsSync2(CONFIG_DIR2)) {
-    mkdirSync2(CONFIG_DIR2, { recursive: true, mode: 448 });
-  }
-  writeFileSync2(SESSION_FILE, JSON.stringify(data, null, 2) + "\n", { mode: 384 });
-}
-function getLastSha(repoId) {
-  return loadAll()[repoId]?.last_sha;
-}
-function setLastSha(repoId, sha) {
-  const data = loadAll();
-  data[repoId] = { last_sha: sha, updated_at: (/* @__PURE__ */ new Date()).toISOString() };
-  saveAll(data);
-}
-function clearSessionState() {
-  try {
-    if (existsSync2(SESSION_FILE))
-      unlinkSync2(SESSION_FILE);
-  } catch {
-  }
-}
+// dist/commands/write.js
+import { promises as fs2 } from "node:fs";
+import { existsSync as existsSync3 } from "node:fs";
+import { spawnSync as spawnSync2 } from "node:child_process";
+import { dirname, resolve as resolve2 } from "node:path";
 
-// dist/commands/navigate.js
-var navigateCommand = {
-  name: "navigate",
-  description: "Explore the knowledge tree",
-  usage: "ideaspaces navigate [path]",
-  examples: [
-    "ideaspaces navigate           # root",
-    "ideaspaces navigate core/     # subtree"
-  ],
-  async run(args2, _flags, global2) {
-    const output = createOutput(global2);
-    const client = await initClient(global2);
-    const path = args2[0] ?? "";
-    const { data: r } = await client.navigate(path);
-    if (global2.json) {
-      const { centroid: _, ...clean } = r;
-      output.result(clean, "");
-      return 0;
-    }
-    const lines = [];
-    lines.push(r.path || "(root)");
-    if (r.file_count > 0)
-      lines.push(`${r.file_count} files`);
-    if (r.readme) {
-      lines.push("");
-      lines.push(r.readme);
-    }
-    if (r.now) {
-      lines.push("");
-      lines.push(`Now: ${r.now}`);
-    }
-    const dirs = r.children.filter((c) => c.type === "directory");
-    const files = r.children.filter((c) => c.type !== "directory");
-    if (dirs.length) {
-      lines.push("", "Directories:");
-      for (const d of dirs) {
-        const count = d.file_count ? ` (${d.file_count})` : "";
-        const summary = d.summary ? ` \u2014 ${d.summary}` : "";
-        lines.push(`  ${d.name}/${count}${summary}`);
-      }
-    }
-    if (files.length) {
-      lines.push("", "Files:");
-      for (const f of files) {
-        const summary = f.summary ? ` \u2014 ${f.summary}` : "";
-        lines.push(`  ${f.name}${summary}`);
-      }
-    }
-    const repoId = client.repoId;
-    const lastSha = getLastSha(repoId);
-    if (lastSha && path === "") {
-      try {
-        const { data: changes } = await client.gitOps({ op: "changes", since: lastSha });
-        if (changes.changes?.length) {
-          lines.push("", `Since last session (${changes.changes.length} changes):`);
-          for (const ch of changes.changes.slice(0, 15)) {
-            lines.push(`  ${ch.status} ${ch.path}`);
-          }
-          if (changes.changes.length > 15) {
-            lines.push(`  ... and ${changes.changes.length - 15} more`);
-          }
-        }
-      } catch {
-      }
-    }
-    if (path === "") {
-      try {
-        const { data: log } = await client.gitOps({ op: "log", limit: 1 });
-        const headSha = log.entries?.[0]?.sha;
-        if (headSha)
-          setLastSha(repoId, headSha);
-      } catch {
-      }
-    }
-    if (r.agent_context?.length) {
-      const kinds = /* @__PURE__ */ new Map();
-      for (const a of r.agent_context) {
-        const k = a.kind || "other";
-        if (!kinds.has(k))
-          kinds.set(k, []);
-        kinds.get(k).push(a);
-      }
-      const show = (label, keys) => {
-        const items = keys.flatMap((k) => kinds.get(k) || []);
-        if (!items.length)
-          return;
-        lines.push("", `${label}:`);
-        for (const a of items) {
-          const desc = a.description ? ` \u2014 ${a.description}` : "";
-          const from = a.inherited_from ? ` (from ${a.inherited_from})` : "";
-          lines.push(`  ${a.name}${from}${desc}`);
-        }
-      };
-      show("Direction", ["now", "purpose"]);
-      show("Guidance", ["guidance", "soul", "identity", "custom"]);
-      show("Perspectives", ["perspective"]);
-      show("Skills", ["skill"]);
-    }
-    output.result(r, lines.join("\n"));
-    return 0;
+// node_modules/@ideaspaces/sdk/dist/frontmatter.js
+var DELIM = "---";
+function stripFrontmatter(content) {
+  if (!content.startsWith(`${DELIM}
+`) && !content.startsWith(`${DELIM}\r
+`)) {
+    return content;
   }
-};
-
-// dist/commands/search.js
-var searchCommand = {
-  name: "search",
-  description: "Find knowledge by meaning",
-  usage: "ideaspaces search <query> [--scope DIR] [--type TYPE] [--limit N]",
-  examples: [
-    'ideaspaces search "authentication flow"',
-    'ideaspaces search "pricing" --scope startups/'
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const query = args2[0];
-    if (!query) {
-      output.error("Usage: ideaspaces search <query>");
-      return 1;
+  const lines = content.split("\n");
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trimEnd() === DELIM) {
+      return lines.slice(i + 1).join("\n");
     }
-    const client = await initClient(global2);
-    const { data } = await client.search({
-      query,
-      scope: flags2.scope,
-      node_type: flags2.type,
-      attached_to: flags2["attached-to"],
-      contributed_by: flags2["contributed-by"],
-      tags: flags2.tags,
-      limit: flags2.limit ? Number(flags2.limit) : void 0
-    });
-    if (!data.results.length) {
-      output.result({ results: [], query }, `No results for "${query}"`);
-      return 0;
-    }
-    const lines = [`"${query}" (${data.results.length} results)`, ""];
-    for (const r of data.results) {
-      lines.push(`${r.score.toFixed(2)}  ${r.path}`);
-      if (r.name)
-        lines.push(`      ${r.name}`);
-      if (r.summary)
-        lines.push(`      ${r.summary}`);
-    }
-    output.result(data, lines.join("\n"));
-    return 0;
   }
-};
-
-// dist/commands/read.js
-var NODE_ID_RE = /^(\/?n\/)?n_[a-f0-9]{12}$/;
-var readCommand = {
-  name: "read",
-  description: "Read a note's content and metadata",
-  usage: "ideaspaces read <path|node-id> [--offset N] [--limit N]",
-  examples: [
-    "ideaspaces read core/About.md",
-    "ideaspaces read n_8bb8cd420696"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const path = args2[0];
-    if (!path) {
-      output.error("Usage: ideaspaces read <path|node-id>");
-      return 1;
-    }
-    const client = await initClient(global2);
-    const opts = flags2.offset || flags2.limit ? { offset: flags2.offset ? Number(flags2.offset) : void 0, limit: flags2.limit ? Number(flags2.limit) : void 0 } : void 0;
-    const isNodeId = NODE_ID_RE.test(path);
-    let r;
-    if (isNodeId) {
-      const { data: nodeData } = await client.readNode(path.replace(/^\/n\//, ""));
-      if (opts && nodeData.path) {
-        const { data: windowed } = await client.readFile(nodeData.path, opts);
-        r = windowed;
-      } else {
-        r = nodeData;
-      }
-    } else {
-      const { data: fileData } = await client.readFile(path, opts);
-      r = fileData;
-    }
-    if (global2.json) {
-      output.result(r, "");
-      return 0;
-    }
-    const meta = [];
-    if (r.node_id)
-      meta.push(`Node: /n/${r.node_id}`);
-    if (r.tags?.length)
-      meta.push(`Tags: ${r.tags.join(", ")}`);
-    if (r.attached_to?.length)
-      meta.push(`Attached to: ${r.attached_to.join(", ")}`);
-    if (r.last_commit_sha)
-      meta.push(`SHA: ${r.last_commit_sha}`);
-    let text = meta.length ? meta.join("\n") + "\n\n" : "";
-    text += r.content;
-    if (r.continuation) {
-      text += `
-
-[${r.continuation.remaining} more lines. Use --offset=${r.continuation.next_offset} to continue.]`;
-    }
-    output.result(r, text);
-    return 0;
+  return content;
+}
+function composeFrontmatter(fm) {
+  const lines = [DELIM];
+  if (fm.name !== void 0)
+    lines.push(`name: ${escapeScalar(fm.name)}`);
+  if (fm.summary !== void 0)
+    lines.push(`summary: ${escapeScalar(fm.summary)}`);
+  if (fm.tags?.length)
+    lines.push(...renderArray("tags", fm.tags));
+  if (fm.attached_to?.length)
+    lines.push(...renderArray("attached_to", fm.attached_to));
+  lines.push(DELIM, "");
+  return lines.join("\n");
+}
+function escapeScalar(value) {
+  if (needsQuoting(value)) {
+    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
   }
-};
+  return value;
+}
+function needsQuoting(value) {
+  if (value === "")
+    return true;
+  if (/^[\s>|*&!%@`]/.test(value))
+    return true;
+  if (/^[-?]\s/.test(value))
+    return true;
+  if (/[:#]\s/.test(value))
+    return true;
+  if (/[\n\r"\\]/.test(value))
+    return true;
+  if (/^(true|false|null|yes|no|on|off|~)$/i.test(value))
+    return true;
+  if (/^-?\d/.test(value))
+    return true;
+  return false;
+}
+function renderArray(key, items) {
+  return [`${key}:`, ...items.map((v) => `  - ${escapeScalar(v)}`)];
+}
 
 // dist/commands/write.js
 async function readStdin() {
@@ -1202,12 +669,13 @@ async function readStdin() {
 }
 var writeCommand = {
   name: "write",
-  description: "Create or update a note",
-  usage: "ideaspaces write <path> [--name NAME] [--summary TEXT] [--tags a,b] [--content TEXT] [--if-match SHA] [--force]",
+  description: "Create or update a Note (local file with Layer 1 frontmatter)",
+  usage: "ideaspaces write <path> [--name NAME] [--summary TEXT] [--tags a,b] [--attached-to ent1,ent2] [--content TEXT] [--force] [--commit]",
   examples: [
     'echo "# My Note\\nContent here" | ideaspaces write notes/my-note.md --name "My Note"',
     'ideaspaces write notes/test.md --name "Test" --content "# Test\\nHello"',
-    'ideaspaces write notes/test.md --content "# overwrite" --force'
+    'ideaspaces write notes/test.md --content "# overwrite" --force',
+    'ideaspaces write notes/test.md --content "..." --commit  # also git-commits'
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
@@ -1224,87 +692,56 @@ var writeCommand = {
         return 1;
       }
     }
-    const client = await initClient(global2);
-    const tags = flags2.tags ? flags2.tags.split(",").map((t) => t.trim()) : void 0;
-    const attachedTo = flags2["attached-to"] ? flags2["attached-to"].split(",").map((t) => t.trim()) : void 0;
+    const fm = {
+      name: flags2.name,
+      summary: flags2.summary,
+      tags: parseList(flags2.tags),
+      attached_to: parseList(flags2["attached-to"])
+    };
     const force = Boolean(flags2.force);
-    const explicitIfMatch = flags2["if-match"];
-    if (force && explicitIfMatch) {
-      output.error("Use either --force or --if-match, not both.");
-      return 1;
+    const commit = Boolean(flags2.commit);
+    const absPath = resolve2(path);
+    if (existsSync3(absPath) && !force) {
+      output.error(`File exists: ${path}
+Re-run with --force to overwrite.`);
+      return 5;
     }
-    let ifMatch = explicitIfMatch;
-    if (!ifMatch && !force) {
+    const body = stripFrontmatter(content);
+    const finalContent = composeFrontmatter(fm) + body;
+    await fs2.mkdir(dirname(absPath), { recursive: true });
+    await fs2.writeFile(absPath, finalContent, "utf-8");
+    let commitSha;
+    if (commit) {
       try {
-        const { data } = await client.readFile(path);
-        ifMatch = data.last_commit_sha;
-      } catch (error) {
-        if (!(error instanceof SdkError && error.status === 404)) {
-          throw error;
-        }
+        commitSha = gitCommitFile(absPath, flags2["commit-message"]);
+      } catch (err) {
+        output.error(`File written but commit failed: ${err instanceof Error ? err.message : String(err)}`);
+        return 1;
       }
     }
-    let r;
-    try {
-      ({ data: r } = await client.writeFile(path, {
-        content,
-        name: flags2.name,
-        summary: flags2.summary,
-        tags,
-        attached_to: attachedTo,
-        if_match: ifMatch
-      }));
-    } catch (error) {
-      if (error instanceof SdkError && error.status === 409) {
-        const rawDetail = error.detail;
-        const detail = rawDetail && typeof rawDetail === "object" ? rawDetail.detail ?? rawDetail : null;
-        const pathHint = typeof detail?.path === "string" ? detail.path : path;
-        const expected = typeof detail?.expected_sha === "string" ? detail.expected_sha : void 0;
-        const actual = typeof detail?.actual_sha === "string" ? detail.actual_sha : void 0;
-        const lines = [
-          "Write conflict: file changed since your last read.",
-          pathHint ? `Path: ${pathHint}` : "",
-          expected ? `Expected SHA: ${expected}` : "",
-          actual ? `Actual SHA:   ${actual}` : "",
-          "Re-run with --force to overwrite intentionally."
-        ].filter(Boolean);
-        output.error(lines.join("\n"));
-        return 5;
-      }
-      throw error;
-    }
-    if (r.commit_sha) {
-      try {
-        setLastSha(client.repoId, r.commit_sha);
-      } catch {
-      }
-    }
-    output.result(r, `Written: ${r.path}
-Node: /n/${r.node_id}
-Commit: ${r.commit_sha}`);
+    output.result({ path: absPath, commit_sha: commitSha ?? null }, commitSha ? `Written: ${absPath}
+Committed: ${commitSha}` : `Written: ${absPath}`);
     return 0;
   }
 };
-
-// dist/commands/awareness.js
-var awarenessCommand = {
-  name: "awareness",
-  description: "Print space orientation (for hooks and piping)",
-  usage: "ideaspaces awareness",
-  examples: [
-    "ideaspaces awareness          # print to stdout",
-    "ideaspaces awareness --json   # structured output"
-  ],
-  async run(_args, _flags, global2) {
-    const output = createOutput(global2);
-    const client = await initClient(global2);
-    const lastSha = getLastSha(client.repoId) ?? null;
-    const session = createSession(client, { lastSha });
-    const block = await session.getAwarenessBlock();
-    output.result({ awareness: block }, block || "");
-    return 0;
+function parseList(value) {
+  if (typeof value !== "string" || !value)
+    return void 0;
+  return value.split(",").map((t) => t.trim()).filter(Boolean);
+}
+function gitCommitFile(absPath, message) {
+  const stage = spawnSync2("git", ["add", absPath], { encoding: "utf-8" });
+  if (stage.status !== 0) {
+    throw new Error(stage.stderr.trim() || `git add exit ${stage.status}`);
   }
-};
+  const subject = message?.trim() || `Update ${absPath.split("/").pop()}`;
+  const commit = spawnSync2("git", ["commit", "-q", "-m", subject], { encoding: "utf-8" });
+  if (commit.status !== 0) {
+    throw new Error(commit.stderr.trim() || commit.stdout.trim() || `git commit exit ${commit.status}`);
+  }
+  const sha = spawnSync2("git", ["rev-parse", "HEAD"], { encoding: "utf-8" });
+  return sha.stdout.trim();
+}
 
 // dist/commands/credential.js
 var credentialCommand = {
@@ -1374,475 +811,19 @@ async function drainStdin() {
   }
 }
 
-// dist/commands/clone.js
-import { spawn as spawn2 } from "node:child_process";
-var cloneCommand = {
-  name: "clone",
-  description: "Clone an IdeaSpaces space to your local machine via git",
-  usage: "ideaspaces clone <namespace>/<slug> [directory]",
-  examples: [
-    "ideaspaces clone my-notes",
-    "ideaspaces clone stripe.com/architecture",
-    "ideaspaces clone stripe.com/notes ./work/notes"
-  ],
-  async run(args2, _flags, global2) {
-    const output = createOutput(global2);
-    const target = args2[0];
-    const directory = args2[1];
-    if (!target) {
-      output.error("Usage: ideaspaces clone <namespace>/<slug> [directory]");
-      return 2;
-    }
-    const config = loadConfig();
-    if (!config) {
-      output.error("Not logged in. Run: ideaspaces login");
-      return 1;
-    }
-    let namespace;
-    let slug;
-    if (target.includes("/")) {
-      const parts = target.split("/");
-      if (parts.length !== 2 || !parts[0] || !parts[1]) {
-        output.error("Invalid target. Use <namespace>/<slug>.");
-        return 2;
-      }
-      namespace = parts[0];
-      slug = parts[1];
-    } else {
-      slug = target;
-      const resolved = await resolveBareSlug(config, slug, output);
-      if (!resolved)
-        return 4;
-      namespace = resolved.namespace;
-      if (resolved.hint)
-        output.progress(resolved.hint);
-    }
-    const gitUrl = gitUrlFor2(namespace, slug);
-    const gitArgs = ["clone", gitUrl];
-    if (directory)
-      gitArgs.push(directory);
-    output.progress(`$ git ${gitArgs.join(" ")}`);
-    return await spawnGit2(gitArgs);
-  }
-};
-function gitUrlFor2(namespace, slug) {
-  const base = (process.env.IS_GIT_URL || "https://git.ideaspaces.xyz").replace(/\/+$/, "");
-  return `${base}/${namespace}/${slug}.git`;
-}
-async function resolveBareSlug(config, slug, output) {
-  const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-  const { data } = await client.listRepos();
-  const repos = data.repos;
-  const matches = repos.filter((r) => r.slug === slug);
-  if (matches.length === 0) {
-    output.error(`No space found with slug "${slug}".`);
-    return null;
-  }
-  const personal = matches.find((r) => !r.hostname);
-  const hostnameMatches = matches.filter((r) => r.hostname);
-  if (personal) {
-    const username = await fetchUsername(config);
-    if (!username) {
-      output.error(`Could not resolve your username. Try the explicit form: ideaspaces clone <namespace>/${slug}`);
-      return null;
-    }
-    let hint;
-    if (hostnameMatches.length > 0) {
-      const others = hostnameMatches.map((r) => `${r.hostname}/${slug}`).join(", ");
-      hint = `Cloning personal "${slug}". Hostname variants also exist: ${others}`;
-    }
-    return { namespace: username, hint };
-  }
-  if (hostnameMatches.length === 1) {
-    return { namespace: hostnameMatches[0].hostname };
-  }
-  const options = hostnameMatches.map((r) => `${r.hostname}/${slug}`).join(", ");
-  output.error(`Multiple spaces match "${slug}": ${options}. Specify explicitly: ideaspaces clone <namespace>/<slug>`);
-  return null;
-}
-async function fetchUsername(config) {
+// dist/auth/session-state.js
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { join as join3 } from "node:path";
+var CONFIG_DIR2 = join3(homedir2(), ".ideaspaces");
+var SESSION_FILE = join3(CONFIG_DIR2, "session.json");
+function clearSessionState() {
   try {
-    const resp = await fetch(`${config.apiUrl}/auth/me`, {
-      headers: { Authorization: `Bearer ${config.apiKey}` }
-    });
-    if (!resp.ok)
-      return null;
-    const data = await resp.json();
-    return data.username ?? null;
+    if (existsSync4(SESSION_FILE))
+      unlinkSync2(SESSION_FILE);
   } catch {
-    return null;
   }
 }
-function spawnGit2(args2) {
-  return new Promise((resolve) => {
-    const proc = spawn2("git", args2, { stdio: "inherit" });
-    proc.on("error", () => resolve(1));
-    proc.on("exit", (code) => resolve(code ?? 1));
-  });
-}
-
-// dist/commands/power/grep.js
-var grepCommand = {
-  name: "grep",
-  description: "Text search or section extraction",
-  usage: "ideaspaces power grep <pattern> [--scope DIR] [--heading TITLE]",
-  examples: [
-    'ideaspaces power grep "authentication"',
-    'ideaspaces power grep --heading "## Design" --scope core/'
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const client = await initClient(global2);
-    const scope = flags2.scope;
-    if (flags2.heading) {
-      const { data: r2 } = await client.grepSections(flags2.heading, scope);
-      if (!r2.sections?.length) {
-        output.result(r2, `No sections matching "${flags2.heading}"`);
-        return 0;
-      }
-      const parts = r2.sections.map((s) => {
-        let text = `${s.file}:
-${s.content}`;
-        if (s.truncated)
-          text += "\n[truncated]";
-        return text;
-      });
-      output.result(r2, `${r2.section_count} section(s) with "${flags2.heading}":
-
-${parts.join("\n\n")}`);
-      return 0;
-    }
-    const pattern = args2[0];
-    if (!pattern) {
-      output.error("Usage: ideaspaces power grep <pattern> or --heading <title>");
-      return 1;
-    }
-    const { data: r } = await client.grep(pattern, scope);
-    const lines = r.matches.map((m) => `${m.file}:${m.line_number}: ${m.content}`);
-    output.result(r, lines.length ? lines.join("\n") : `No matches for "${pattern}"`);
-    return 0;
-  }
-};
-
-// dist/commands/power/git.js
-var gitCommand = {
-  name: "git",
-  description: "Temporal awareness \u2014 log, changes, diff, find",
-  usage: "ideaspaces power git <op> [--path FILE] [--ref SHA] [--since SHA] [--limit N]",
-  examples: [
-    "ideaspaces power git log",
-    "ideaspaces power git changes --since abc1234",
-    "ideaspaces power git diff --ref abc1234",
-    'ideaspaces power git find --text "authentication"'
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const op = args2[0];
-    if (!op) {
-      output.error("Usage: ideaspaces power git <log|changes|diff|find|word_diff>");
-      return 1;
-    }
-    const client = await initClient(global2);
-    const { data: r } = await client.gitOps({
-      op,
-      path: flags2.path,
-      ref: flags2.ref,
-      text: flags2.text,
-      since: flags2.since,
-      limit: flags2.limit ? Number(flags2.limit) : void 0
-    });
-    if (global2.json) {
-      output.result(r, "");
-      return 0;
-    }
-    const lines = [];
-    if (r.entries?.length) {
-      for (const e of r.entries)
-        lines.push(`${e.sha.slice(0, 7)} ${e.date} ${e.author}: ${e.message}`);
-    } else if (r.changes?.length) {
-      for (const c of r.changes)
-        lines.push(`${c.status} ${c.path}`);
-    } else if (r.output) {
-      lines.push(r.output.length > 3e3 ? r.output.slice(0, 3e3) + "\n... (truncated)" : r.output);
-    }
-    output.result(r, lines.length ? lines.join("\n") : "No results.");
-    return 0;
-  }
-};
-
-// dist/commands/power/outline.js
-var outlineCommand = {
-  name: "outline",
-  description: "Full tree of the space",
-  usage: "ideaspaces power outline",
-  async run(_args, _flags, global2) {
-    const output = createOutput(global2);
-    const client = await initClient(global2);
-    const { data: r } = await client.outline();
-    if (global2.json) {
-      output.result(r, "");
-      return 0;
-    }
-    const branches = r.items.filter((i) => i.type === "branch");
-    const files = r.items.filter((i) => i.type !== "branch");
-    const lines = [`${r.items.length} items in ${r.slug}:`, ""];
-    if (branches.length) {
-      lines.push("Directories:");
-      for (const b of branches) {
-        const summary = b.summary ? ` \u2014 ${b.summary}` : "";
-        lines.push(`  ${b.path}/${summary}`);
-      }
-      lines.push("");
-    }
-    lines.push("Files:");
-    for (const f of files) {
-      const summary = f.summary ? ` \u2014 ${f.summary}` : "";
-      lines.push(`  ${f.path}${summary}`);
-    }
-    output.result(r, lines.join("\n"));
-    return 0;
-  }
-};
-
-// dist/commands/power/find.js
-var findCommand = {
-  name: "find",
-  description: "Filter notes by tag, type, entity, or directory",
-  usage: "ideaspaces power find [--tag TAG] [--type TYPE] [--attached-to ENTITY] [--dir PATH] [--limit N]",
-  examples: [
-    "ideaspaces power find --tag architecture",
-    "ideaspaces power find --type perspective",
-    "ideaspaces power find --attached-to hostname:acme.com"
-  ],
-  async run(_args, flags2, global2) {
-    const output = createOutput(global2);
-    const client = await initClient(global2);
-    const { data: r } = await client.listNodes({
-      tag: flags2.tag,
-      node_type: flags2.type,
-      attached_to: flags2["attached-to"],
-      contributed_by: flags2["contributed-by"],
-      dir_path: flags2.dir,
-      origin: flags2.origin,
-      limit: flags2.limit ? Number(flags2.limit) : void 0,
-      offset: flags2.offset ? Number(flags2.offset) : void 0,
-      sort_by: flags2["sort-by"],
-      sort_order: flags2["sort-order"]
-    });
-    if (!r.nodes.length) {
-      output.result(r, "No matching nodes.");
-      return 0;
-    }
-    if (global2.json) {
-      output.result(r, "");
-      return 0;
-    }
-    const lines = [`${r.total} node(s)${r.total > r.nodes.length ? ` (showing ${r.nodes.length})` : ""}:`, ""];
-    for (const n of r.nodes) {
-      const summary = n.summary ? ` \u2014 ${n.summary}` : "";
-      lines.push(`  ${n.path}${summary}`);
-      const meta = [];
-      if (n.node_type && n.node_type !== "note")
-        meta.push(n.node_type);
-      if (n.attached_to?.length)
-        meta.push(`attached: ${n.attached_to.join(", ")}`);
-      if (n.tags?.length)
-        meta.push(`tags: ${n.tags.join(", ")}`);
-      if (meta.length)
-        lines.push(`    [${meta.join(" | ")}]`);
-    }
-    output.result(r, lines.join("\n"));
-    return 0;
-  }
-};
-
-// dist/commands/power/move.js
-var moveCommand = {
-  name: "move",
-  description: "Move or rename a file or directory",
-  usage: "ideaspaces power move <source> <destination>",
-  async run(args2, _flags, global2) {
-    const output = createOutput(global2);
-    const source = args2[0];
-    const destination = args2[1];
-    if (!source || !destination) {
-      output.error("Usage: ideaspaces power move <source> <destination>");
-      return 1;
-    }
-    const client = await initClient(global2);
-    const { data: r } = await client.moveFile(source, destination);
-    try {
-      const { data: log } = await client.gitOps({ op: "log", limit: 1 });
-      if (log.entries?.[0]?.sha)
-        setLastSha(client.repoId, log.entries[0].sha);
-    } catch {
-    }
-    const text = r.files_updated != null ? `Moved directory: ${r.moved} \u2192 ${r.destination} (${r.files_updated} files)` : `Moved: ${r.moved} \u2192 ${r.destination}`;
-    output.result(r, text);
-    return 0;
-  }
-};
-
-// dist/commands/power/delete.js
-import { createInterface } from "node:readline";
-async function confirm(message) {
-  if (!process.stdin.isTTY)
-    return true;
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
-  return new Promise((resolve) => {
-    rl.question(`${message} (y/N) `, (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === "y");
-    });
-  });
-}
-var deleteCommand = {
-  name: "delete",
-  description: "Delete a file (recoverable via git)",
-  usage: "ideaspaces power delete <path> [--yes]",
-  async run(args2, _flags, global2) {
-    const output = createOutput(global2);
-    const path = args2[0];
-    if (!path) {
-      output.error("Usage: ideaspaces power delete <path>");
-      return 1;
-    }
-    const client = await initClient(global2);
-    const { data: file } = await client.readFile(path);
-    if (!file.node_id) {
-      output.error(`No node found at ${path}`);
-      return 4;
-    }
-    if (!global2.yes) {
-      const ok = await confirm(`Delete ${path}?`);
-      if (!ok) {
-        output.log("Cancelled.");
-        return 0;
-      }
-    }
-    const { data: r } = await client.deleteNode(file.node_id);
-    try {
-      const { data: log } = await client.gitOps({ op: "log", limit: 1 });
-      if (log.entries?.[0]?.sha)
-        setLastSha(client.repoId, log.entries[0].sha);
-    } catch {
-    }
-    output.result(r, `Deleted: ${r.path}`);
-    return 0;
-  }
-};
-
-// dist/commands/power/tags.js
-var tagsCommand = {
-  name: "tags",
-  description: "List tags in use across the space",
-  usage: "ideaspaces power tags [prefix]",
-  async run(args2, _flags, global2) {
-    const output = createOutput(global2);
-    const client = await initClient(global2);
-    const { data: r } = await client.listTags(args2[0]);
-    if (!r.tags?.length) {
-      output.result(r, "No tags found.");
-      return 0;
-    }
-    const lines = r.tags.map((t) => `  ${t.tag}  (${t.total})`);
-    output.result(r, `${r.tags.length} tags:
-${lines.join("\n")}`);
-    return 0;
-  }
-};
-
-// dist/commands/power/metadata.js
-var metadataCommand = {
-  name: "metadata",
-  description: "Update tags, entities, or accessibility on a node",
-  usage: "ideaspaces power metadata <node-id> [--tags a,b] [--attached-to x,y]",
-  examples: [
-    'ideaspaces power metadata n_abc123 --tags "architecture,decision"'
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const nodeId = args2[0];
-    if (!nodeId) {
-      output.error("Usage: ideaspaces power metadata <node-id> [--tags a,b]");
-      return 1;
-    }
-    const fields = {};
-    if (flags2.tags)
-      fields.tags = flags2.tags.split(",").map((t) => t.trim());
-    if (flags2["attached-to"])
-      fields.attached_to = flags2["attached-to"].split(",").map((t) => t.trim());
-    if (flags2.accessibility)
-      fields.accessibility = flags2.accessibility.split(",").map((t) => t.trim());
-    if (flags2.references)
-      fields.references = flags2.references.split(",").map((t) => t.trim());
-    if (!Object.keys(fields).length) {
-      output.error("Provide at least one field: --tags, --attached-to, --accessibility, --references");
-      return 1;
-    }
-    const client = await initClient(global2);
-    const { data: r } = await client.updateMetadata(nodeId, fields);
-    output.result(r, `Updated ${r.updated}: ${r.fields.join(", ")}`);
-    return 0;
-  }
-};
-
-// dist/commands/power/repos.js
-var reposCommand = {
-  name: "repos",
-  description: "List available spaces",
-  usage: "ideaspaces power repos",
-  async run(_args, _flags, global2) {
-    const output = createOutput(global2);
-    const config = loadConfig();
-    if (!config) {
-      output.error("Not logged in. Run: ideaspaces login");
-      return 2;
-    }
-    const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-    const { repos } = await autoSelectRepo(client);
-    if (!repos.length) {
-      output.result({ repos: [] }, "No spaces found.");
-      return 0;
-    }
-    const data = repos.map((r) => ({ slug: r.slug, name: r.name, repo_id: r.repo_id, hostname: r.hostname, file_count: r.file_count, last_activity: r.last_activity }));
-    output.result({ repos: data }, formatRepoList(repos));
-    return 0;
-  }
-};
-
-// dist/commands/power/status.js
-var statusCommand = {
-  name: "status",
-  description: "Show connection info",
-  usage: "ideaspaces power status",
-  async run(_args, _flags, global2) {
-    const output = createOutput(global2);
-    const config = loadConfig();
-    if (!config) {
-      output.result({ connected: false }, "Not logged in. Run: ideaspaces login");
-      return 0;
-    }
-    const source = process.env.IS_API_KEY ? "env" : "credentials";
-    const lastSha = config.repo ? getLastSha(config.repo) : void 0;
-    const data = {
-      connected: true,
-      api_url: config.apiUrl,
-      repo: config.repo || null,
-      source,
-      last_sha: lastSha || null
-    };
-    const lines = [
-      `API: ${config.apiUrl}`,
-      `Repo: ${config.repo || "(not selected)"}`,
-      `Source: ${source}`
-    ];
-    if (lastSha)
-      lines.push(`Last SHA: ${lastSha.slice(0, 7)}`);
-    output.result(data, lines.join("\n"));
-    return 0;
-  }
-};
 
 // dist/commands/power/logout.js
 var logoutCommand = {
@@ -1858,266 +839,15 @@ var logoutCommand = {
   }
 };
 
-// dist/commands/power/connect.js
-function deriveNameFromOrigin(originUrl) {
-  const withoutQuery = originUrl.split(/[?#]/, 1)[0];
-  const last = withoutQuery.split("/").pop() || "connected-repo";
-  return last.replace(/\.git$/i, "") || "connected-repo";
-}
-function normalizeConnectOrigin(originUrl) {
-  const trimmed = originUrl.trim();
-  const scpLike = /^git@([^:]+):(.+)$/i.exec(trimmed);
-  if (scpLike) {
-    return `https://${scpLike[1]}/${scpLike[2]}`;
-  }
-  const sshLike = /^ssh:\/\/git@([^/]+)\/(.+)$/i.exec(trimmed);
-  if (sshLike) {
-    return `https://${sshLike[1]}/${sshLike[2]}`;
-  }
-  return trimmed;
-}
-var connectCommand = {
-  name: "connect",
-  description: "Adopt an external git repo (GitHub, GitLab, \u2026) as an IdeaSpaces space",
-  usage: "ideaspaces power connect <origin_url> [--name NAME] [--slug SLUG] [--hostname HOST]",
-  examples: [
-    "ideaspaces power connect https://github.com/IdeaSpaces-xyz/ideaspace.git --name IdeaSpace"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const config = loadConfig();
-    if (!config) {
-      output.error("Not logged in. Run: ideaspaces login");
-      return 2;
-    }
-    const originUrl = args2[0]?.trim() || "";
-    if (!originUrl) {
-      output.error("origin_url is required. For a brand-new space, use 'ideaspaces init <name>' instead.");
-      return 1;
-    }
-    const normalizedOriginUrl = normalizeConnectOrigin(originUrl);
-    let name = flags2.name?.trim() || "";
-    if (!name) {
-      name = deriveNameFromOrigin(normalizedOriginUrl);
-    }
-    const slug = flags2.slug || void 0;
-    const hostname = flags2.hostname || void 0;
-    const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-    const { data } = await client.connectRepo({
-      origin_url: normalizedOriginUrl,
-      name,
-      slug,
-      hostname: hostname ?? null
-    });
-    if (!process.env.IS_API_KEY) {
-      saveCredentials({
-        api_url: config.apiUrl,
-        api_key: config.apiKey,
-        repo_id: data.repo_id
-      });
-    }
-    const result = {
-      repo: data,
-      source: {
-        origin_url: originUrl,
-        normalized_origin_url: normalizedOriginUrl
-      }
-    };
-    const lines = [
-      `Connected: ${data.name} (${data.repo_id})`,
-      `Slug: ${data.slug}`,
-      `Origin: ${normalizedOriginUrl}`
-    ];
-    output.result(result, lines.join("\n"));
-    return 0;
-  }
-};
-
-// dist/commands/power/create.js
-var createCommand = {
-  name: "create",
-  description: "Create a new space",
-  usage: "ideaspaces power create <name> [--slug SLUG] [--purpose PURPOSE]",
-  examples: [
-    "ideaspaces power create 'My Notes'",
-    "ideaspaces power create 'Research' --purpose 'Track research findings'",
-    "ideaspaces power create 'Team' --slug team-notes"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const config = loadConfig();
-    if (!config) {
-      output.error("Not logged in. Run: ideaspaces login");
-      return 2;
-    }
-    const name = args2[0]?.trim();
-    if (!name) {
-      output.error("Name required. Usage: ideaspaces power create <name>");
-      return 1;
-    }
-    const slug = flags2.slug || void 0;
-    const purpose = flags2.purpose || void 0;
-    const client = createClient({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-    const { data } = await client.createRepo({ name, slug, purpose });
-    if (!process.env.IS_API_KEY) {
-      saveCredentials({
-        api_url: config.apiUrl,
-        api_key: config.apiKey,
-        repo_id: data.repo_id
-      });
-    }
-    output.result({ repo_id: data.repo_id, slug: data.slug, name: data.name }, `Created and connected: ${data.name} (${data.slug})`);
-    return 0;
-  }
-};
-
-// dist/commands/power/reindex.js
-var reindexCommand = {
-  name: "reindex",
-  description: "Reindex the active space",
-  usage: "ideaspaces power reindex [--repo <slug|repo_id>]",
-  examples: [
-    "ideaspaces power reindex",
-    "ideaspaces --repo ideaspace power reindex"
-  ],
-  async run(_args, _flags, global2) {
-    const output = createOutput(global2);
-    const client = await initClient(global2);
-    const { data: result } = await client.reindexRepo(client.repoId);
-    output.result(result, `Reindexed: ${result.repo_id}
-Removed entries: ${result.removed_entries}
-Indexed files: ${result.indexed_files}`);
-    return 0;
-  }
-};
-
-// dist/commands/power/repo.js
-var repoCommand = {
-  name: "repo",
-  description: "Repo sync operations: status, pull, push, credentials",
-  usage: "ideaspaces power repo <status|pull|push|credential set|credential clear> [--value TOKEN]",
-  examples: [
-    "ideaspaces power repo status",
-    "ideaspaces power repo pull",
-    "ideaspaces power repo push",
-    "ideaspaces power repo credential set --value ghp_xxx",
-    "ideaspaces power repo credential clear"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const op = args2[0];
-    if (!op) {
-      output.error("Usage: ideaspaces power repo <status|pull|push|credential>");
-      return 1;
-    }
-    const client = await initClient(global2);
-    const clientAny = client;
-    switch (op) {
-      case "status": {
-        const { data } = await clientAny.syncStatus(client.repoId);
-        const lines = [
-          `Repo: ${data.repo_id}`,
-          `Status: ${data.status}${data.is_fresh ? " (fresh)" : ""}`,
-          `Repo HEAD: ${data.repo_head || "(empty)"}`,
-          `Indexed HEAD: ${data.indexed_head || "(none)"}`,
-          data.lag_commits != null ? `Lag commits: ${data.lag_commits}` : "",
-          data.last_indexed_at ? `Last indexed: ${data.last_indexed_at}` : "",
-          data.last_index_error ? `Last index error: ${data.last_index_error}` : ""
-        ].filter(Boolean);
-        output.result(data, lines.join("\n"));
-        return 0;
-      }
-      case "pull": {
-        const { data } = await clientAny.syncPullRepo(client.repoId);
-        if (data.new_head) {
-          try {
-            setLastSha(client.repoId, data.new_head);
-          } catch {
-          }
-        }
-        const lines = [
-          `Repo: ${data.repo_id}`,
-          data.diverged ? "Pull status: diverged (fast-forward only pull rejected)" : "Pull status: ok",
-          `Old HEAD: ${data.old_head || "(empty)"}`,
-          `New HEAD: ${data.new_head || "(empty)"}`,
-          `Indexed files: ${data.indexed_files}`,
-          `Removed entries: ${data.removed_entries}`,
-          data.changed_markdown_files.length ? `Changed markdown files: ${data.changed_markdown_files.length}` : "Changed markdown files: 0"
-        ];
-        output.result(data, lines.join("\n"));
-        return 0;
-      }
-      case "push": {
-        const { data } = await clientAny.syncPushRepo(client.repoId);
-        if (data.head) {
-          try {
-            setLastSha(client.repoId, data.head);
-          } catch {
-          }
-        }
-        const lines = [
-          `Repo: ${data.repo_id}`,
-          data.rejected ? `Push rejected${data.reason ? ` (${data.reason})` : ""}` : "Push status: ok",
-          `HEAD: ${data.head || "(empty)"}`
-        ];
-        output.result(data, lines.join("\n"));
-        return data.rejected ? 5 : 0;
-      }
-      case "credential": {
-        const sub = args2[1];
-        if (sub === "set") {
-          const value = flags2.value;
-          if (!value) {
-            output.error("Usage: ideaspaces power repo credential set --value <token>");
-            return 1;
-          }
-          const { data } = await clientAny.setRepoCredential(value, client.repoId);
-          output.result(data, `Repo credentials set for ${data.repo_id}.`);
-          return 0;
-        }
-        if (sub === "clear") {
-          const { data } = await clientAny.setRepoCredential(null, client.repoId);
-          output.result(data, `Repo credentials cleared for ${data.repo_id}.`);
-          return 0;
-        }
-        output.error("Usage: ideaspaces power repo credential <set|clear> [--value TOKEN]");
-        return 1;
-      }
-      default:
-        output.error("Usage: ideaspaces power repo <status|pull|push|credential>");
-        return 1;
-    }
-  }
-};
-
 // dist/router.js
 var topLevel = [
+  createCommand,
   loginCommand,
-  initCommand,
-  navigateCommand,
-  searchCommand,
-  readCommand,
   writeCommand,
-  awarenessCommand,
-  cloneCommand,
   credentialCommand
 ];
 var power = [
-  grepCommand,
-  gitCommand,
-  outlineCommand,
-  findCommand,
-  moveCommand,
-  deleteCommand,
-  tagsCommand,
-  metadataCommand,
-  reposCommand,
-  statusCommand,
-  logoutCommand,
-  connectCommand,
-  createCommand,
-  reindexCommand,
-  repoCommand
+  logoutCommand
 ];
 function findCommand_(name) {
   return topLevel.find((c) => c.name === name) ?? power.find((c) => c.name === name);
@@ -2131,10 +861,9 @@ function printHelp() {
   for (const cmd2 of topLevel) {
     lines.push(`  ${cmd2.name.padEnd(14)} ${cmd2.description}`);
   }
-  lines.push("", "  power          Advanced tools (grep, git, outline, find, move, delete, tags, metadata, connect, create, reindex, repo, ...)");
+  lines.push("", "  power          Advanced tools (logout, ...)");
   lines.push("", "Global flags:");
   lines.push("  --json         Structured JSON output to stdout");
-  lines.push("  --repo <slug>  Override space for this command");
   lines.push("  --quiet        Suppress non-essential output");
   lines.push("  --yes          Skip confirmation prompts");
   lines.push("  --help         Show help");
@@ -2155,38 +884,7 @@ function printPowerHelp() {
 }
 
 // dist/errors.js
-var EXIT_CODES = {
-  auth_error: 3,
-  not_found: 4,
-  client_error: 5,
-  rate_limited: 6,
-  overloaded: 7,
-  network_error: 8,
-  timeout: 9
-};
-var HINTS = {
-  auth_error: "Run: ideaspaces login",
-  not_found: "Check the path with: ideaspaces navigate",
-  rate_limited: "Wait a moment and retry.",
-  overloaded: "Server is busy. Try again in a moment.",
-  network_error: "Check your internet connection.",
-  timeout: "Request timed out. Try again."
-};
 function handleError(err, output) {
-  if (err instanceof SdkError) {
-    const hint = HINTS[err.category] ?? "";
-    const rawDetail = err.detail;
-    const detail = rawDetail && typeof rawDetail === "object" ? rawDetail.detail ?? rawDetail : null;
-    const pathHint = typeof detail?.path === "string" ? `
-Path: ${detail.path}` : "";
-    const expected = typeof detail?.expected_sha === "string" ? `
-Expected SHA: ${detail.expected_sha}` : "";
-    const actual = typeof detail?.actual_sha === "string" ? `
-Actual SHA:   ${detail.actual_sha}` : "";
-    output.error(`Error: ${err.message}${pathHint}${expected}${actual}${hint ? `
-${hint}` : ""}`);
-    return EXIT_CODES[err.category] ?? 1;
-  }
   if (err instanceof Error) {
     if (err.message.includes("Not logged in")) {
       output.error(`Error: ${err.message}
