@@ -55,7 +55,7 @@ Optional but valuable:
 
 ## Placement
 
-Always `is_navigate` the target area first. Understand what branches mean (READMEs). Place content where it compounds with related knowledge. Reuse existing locations before creating new ones.
+Always `Glob` and `Read` the target area first. Understand what branches mean (READMEs). Place content where it compounds with related knowledge. Reuse existing locations before creating new ones.
 
 ## Progressive Disclosure
 

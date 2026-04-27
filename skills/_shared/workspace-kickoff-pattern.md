@@ -50,8 +50,8 @@ No scaffolding without explicit confirmation.
 
 Create only approved directories/files:
 - Branch `README.md`
-- Optional branch `_agent/guidance.md`
-- Root `_agent/purpose.md`, `_agent/now.md`, `_agent/guidance.md` as needed
+- Optional branch `_agent/guide.md`, `purpose.md`, `now.md`, `next.md` as needed
+- Root `_agent/foundation.md`, `guide.md`, `purpose.md`, `now.md`, `next.md`
 
 Do not create placeholder notes.
 

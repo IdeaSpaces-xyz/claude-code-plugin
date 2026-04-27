@@ -5,7 +5,7 @@ description: >
   is made, understanding shifts, research produces a finding, or context would
   save the next session time. Proposes, doesn't auto-save. NOT for code, tasks,
   or preferences.
-allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideaspaces_ideaspaces__is_find mcp__plugin_ideaspaces_ideaspaces__is_read mcp__plugin_ideaspaces_ideaspaces__is_write"
+allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write Read Glob Grep"
 user-invocable: false
 ---
 
@@ -27,7 +27,7 @@ Brief. Don't interrupt flow.
 
 > "That decision about [X] is worth capturing. Want me to write it to the space?"
 
-If yes: `is_find` first (avoid duplicates), `is_explore` the target area, then `is_write`. Follow `is-writing` standard.
+If yes: `Glob` / `Grep` first to avoid duplicates, `Read` the target area for context, then `is_write` to capture with Layer 1 frontmatter (`name`, `summary`). Follow [is-writing](../is-writing/SKILL.md) standard.
 
 If no: drop it. Don't re-ask.
 

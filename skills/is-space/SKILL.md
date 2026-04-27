@@ -1,95 +1,102 @@
 ---
 name: is-space
 description: >
-  Tool reference for the IdeaSpaces knowledge space. How to use is_explore,
-  is_find, is_read, is_write, is_auth. Read this when working with is_* tools
-  or when the user asks about their space. NOT for code, config, or local files.
-allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideaspaces_ideaspaces__is_find mcp__plugin_ideaspaces_ideaspaces__is_read mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth"
+  Reference for working in an ideaspace — the five-file `_agent/` contract,
+  Two Roles convention (user content vs agent context), and tool surface.
+  Read this when working with `is_*` tools or when the user asks how to
+  navigate their space. Native Read/Glob/Grep/Edit/Write/Bash cover most
+  navigation; `is_*` adds frontmatter-aware capture and sync state.
+allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth Read Glob Grep Edit Write Bash"
 ---
 
-# Working with IdeaSpaces
+# Working in an Ideaspace
 
-You have two sets of tools: local file tools (Read, Write, Edit, Bash) and IdeaSpaces tools (is_*). Use the right set for the task.
+An ideaspace is a markdown folder where knowledge accumulates. The plugin makes the agent fluent in the conventions: how the tree is shaped, where agent context lives, when to capture.
 
-**IdeaSpaces (is_* tools)** — knowledge that should be findable by meaning, connected to entities, and shared across sessions. Decisions, research, architecture, plans, profiles, analysis.
+You have two sets of tools:
 
-**Local file tools** — source code, config, temporary artifacts, build outputs.
+- **Native** — `Read`, `Glob`, `Grep`, `Edit`, `Write`, `Bash`. Default for navigation, search, and source-code work.
+- **`is_*` tools** — frontmatter-aware capture (`is_write`) and sync state (`is_auth`). Use when knowledge needs Layer 1 frontmatter or when you need to know whether sync is wired.
 
-## Start Here
+## Start here
 
-**No Purpose or Now?** Suggest `/is-setup` — it handles connection, direction, and hook installation.
+**No `_agent/` yet?** Suggest `/is-setup` — it walks the user through the contract scaffold and conversational seeding.
 
-**Returning?** `is_explore` at session start. If the SessionStart hook is installed, this happens automatically.
+**Returning?** Read `_agent/foundation.md`, `guide.md`, `purpose.md`, `now.md`, `next.md` to orient. The SessionStart hook (forthcoming) will surface this inline.
 
-## Tools
+## The five-file `_agent/` contract
 
-### is_explore — see what's there
-Navigate the knowledge tree. Returns branch context, children with summaries, agent guidance (Direction, Perspectives, Skills).
+Every ideaspace carries an `_agent/` folder at root:
 
-- `is_explore` — root of the space
-- `is_explore path="core/"` — subtree
-- `is_explore full=true` — full outline of every file and directory
+| File | Role |
+|---|---|
+| `foundation.md` | What this place is, baseline behaviors. Lives only at the space root and always loads. |
+| `guide.md` | How agent and human work together at this scope, anchored to foundation. |
+| `purpose.md` | Why this space exists. The North Star. |
+| `now.md` | What's currently active. |
+| `next.md` | What's queued. |
 
-### is_find — search for knowledge
-Three methods in one tool. Automatically picks the right approach.
+These five files are loaded by position. Read them at session start to orient.
 
-- `is_find query="MCP architecture"` — semantic search (default)
-- `is_find method="grep" query="TODO"` — text/regex in files
-- `is_find method="grep" heading="## Decision"` — extract sections by heading
-- `is_find method="list" tag="architecture"` — filter by metadata
-- `is_find method="list" attached_to="hostname:acme.com"` — find by entity
+`CLAUDE.md` at the space root tells Claude Code where the contract is — without it, the runtime reads ancestor `CLAUDE.md` only and misses the space-specific Agreement.
 
-Filters: `scope`, `type`, `tag`, `attached_to`, `contributed_by`, `limit`.
+Branches (deeper directories) can refine via their own `_agent/` (any of guide / purpose / now / next) without re-declaring foundation. Most branches don't need their own — a `README.md` is enough when the agreement is light.
 
-### is_read — read content
-Read a note's full content and metadata. Accepts paths or node IDs.
+`.gitignore` is also part of the Agreement — the boundary between what's shared and what stays local. Drafts, scratch, secrets, per-developer context go there. Propose changes; never edit silently.
 
-- `is_read path="core/About.md"` — by path
-- `is_read path="n_b4d942f682a0"` — by node ID
-- `is_read path="core/About.md" history=true` — include git log
-- `is_read path="core/About.md" offset=10 limit=50` — windowed read
+## Two Roles at every position
 
-### is_write — create, update, move, delete
-Four actions in one tool.
+Every position in the tree holds two kinds of content. The folder convention enforces the split.
 
-- `is_write path="analysis.md" content="# Analysis\n..." name="Analysis" summary="Key findings" tags=["research"]` — create/update
-- `is_write action="update_metadata" node_id="n_abc" tags=["core"] attached_to=["hostname:acme.com"]` — update metadata
-- `is_write action="move" source="old/path.md" destination="new/path.md"` — move/rename
-- `is_write action="delete" path="draft.md"` — delete (recoverable via git)
+| Role | What | Folder convention |
+|------|------|-------------------|
+| **User content** | Notes — knowledge that accumulates | regular `.md` files |
+| **Agent context** | Instructions that shape the agent | `_agent/`, `README.md` |
 
-Write fields: `name`, `summary`, `tags`, `attached_to`, `if_match` (conditional write).
+Within user content, voices can coexist at different branches. Don't mix them in one folder — use a subfolder to mark the shift:
 
-### is_auth — connect and manage
-- `is_auth` — login (opens browser for OAuth)
-- `is_auth repo="my-notes"` — select a specific space
-- `is_auth action="repos"` — list available spaces
+- **Raw personal thinking** — one person's voice, pre-refinement. Own folder (e.g., `slow-thoughts/`, `journal/`).
+- **Co-produced from conversation** — human + agent. Own folder or subfolder (e.g., `conversations/`, `captured/`). Every file carries `contributed_by: ["person:...", "agent:..."]` and `origin: "conversation:..."`.
+- **Stable concept docs** — refined, canonical. Top-level or `concepts/`.
+
+When capturing from a conversation, check the target folder's voice before writing. If the folder is someone's raw personal thinking, don't write co-produced notes there — create a subfolder. See [is-writing](../is-writing/SKILL.md) for voice guidance and [is-capture](../is-capture/SKILL.md) for when to propose capture.
+
+## `is_write` — create/update with Layer 1 frontmatter
+
+Use for capture. Carries the writing standard. Better than raw filesystem `Write` when the file should compound as a Note.
+
+- `is_write path="analysis.md" content="..." name="Analysis" summary="Dense orientation"` — create/update
+- `is_write action="update_metadata" path="analysis.md" tags=["research"]` — metadata only
+- `is_write action="move" source="old/path.md" destination="new/path.md"` — rename
+- `is_write action="delete" path="draft.md"` — recoverable via git
+
+Frontmatter fields: `name`, `summary` (Layer 1 — required); `tags`, `attached_to` (Layer 2 — optional).
+
+## `is_auth` — sync state
+
+- `is_auth` — log in (opens browser for OAuth)
 - `is_auth action="status"` — connection info
 - `is_auth action="logout"` — clear credentials
 
-## The `_agent/` Convention
+Sync is opt-in. The plugin works locally without auth.
 
-Any directory can have an `_agent/` folder. It holds agent-facing context that loads when navigating to that position:
+## Native tools for the rest
 
-- `_agent/purpose.md` — why this space (or branch) exists
-- `_agent/now.md` — current focus at this level
-- `_agent/guidance.md` — behavioral rules for this area
-- `_agent/soul.md` — agent personality (root level)
-- `_agent/perspectives/` — reusable thinking patterns
-- `_agent/skills/` — procedures
+- **`Glob`** — find by pattern. `**/*.md`, `_agent/*.md`, etc.
+- **`Grep`** — search by content or regex. Replaces semantic search until a local index returns.
+- **`Read`** — read a file, optionally windowed.
+- **`Edit`**, **`Write`** — modify files. Use `is_write` when the result is a Note (frontmatter, capture); use native `Write` for source code, config, plain `README.md`.
+- **`Bash`** — git operations and ad-hoc shell.
 
-This is fractal — root `_agent/` sets global direction, branch-level `_agent/` adds specificity. `is_explore` returns these as `agent_context`. Read them with `is_read` when you need depth.
+## Patterns
 
-Agent-specific subdirectories (`_agent/{agent_id}/`) are private to that agent. Everything else under `_agent/` is shared.
+- **Navigate before writing.** `Glob` and `Read` the target area first.
+- **Search before creating.** `Grep` to check if something similar exists.
+- **Entities connect.** Add `attached_to` when writing a Note: `hostname:acme.com`, `person:alice`.
 
-## Key Patterns
-
-- **Navigate before writing.** `is_explore` the target area first.
-- **Search before creating.** `is_find` to check if something similar exists.
-- **Entities connect.** Add `attached_to` when writing: `hostname:acme.com`, `person:alice`.
-- **IDs are stable.** Node IDs survive moves and renames. Use them for references.
-
-## Related Skills
+## Related skills
 
 - **is-capture** — when to propose saving knowledge during work
-- **is-writing** — quality standard for summaries, sections, entities
 - **is-reflect** — when to propose updating Purpose, Now, or structure
+- **is-writing** — quality standard for summaries, sections, entities
+- **is-setup** — onboarding flow for a new or existing space (will become the conversational layer for `ideaspace create`)

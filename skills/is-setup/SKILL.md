@@ -1,167 +1,112 @@
 ---
 name: is-setup
 description: >
-  Set up a knowledge space — connect, set purpose and focus, install automatic
-  session check-in. Use when: user says "set up my space", "connect to IdeaSpaces",
-  asks about persistent memory or cross-session context, is_auth shows no
-  connection, OR the connected space is effectively empty (blank Purpose/Now
-  and little or no structure). One-time flow, ~5 minutes.
-allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_explore mcp__plugin_ideaspaces_ideaspaces__is_find mcp__plugin_ideaspaces_ideaspaces__is_read mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth Edit Read Bash"
+  Conversational onboarding for an ideaspace. Inspects what's here (greenfield,
+  existing markdowns, old `_agent/`, code repo), reflects findings, gets
+  confirmation, scaffolds the five-file `_agent/` contract + `CLAUDE.md` +
+  `.gitignore` defaults, then conversationally seeds purpose/now/next. The
+  conversational layer that `ideaspace create` will wrap. Use when: user says
+  "set up a space", "add ideaspaces here", or asks about the contract.
+allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth Edit Read Write Glob Bash"
 ---
 
-# IdeaSpaces Setup
+# Setup an Ideaspace
 
-**Goal:** Connect → Purpose → Now → SessionStart hook. The hook is the key deliverable — without it, the space is passive.
+**Goal:** detect → confirm → scaffold the five-file contract → seed Purpose / Now / Next.
 
-Do not offer unprompted. Wait for a signal.
+This skill is the conversational layer that `ideaspace create` (forthcoming) wraps. Until the CLI lands, invoke directly when the user wants to set up a space.
 
-## Trigger Note
+Do not offer unprompted. Wait for a signal — "set up a space", "add ideaspaces here", or detection of a directory the user wants structured.
 
-Treat an effectively empty space as a setup signal:
-- `_agent/purpose.md` blank template
-- `_agent/now.md` blank template
-- little or no meaningful directory structure yet
+## Inspect (read-only)
 
-When those are true, recommend this setup flow explicitly.
+Read the cwd before acting. Surface what was found in plain language. No side effects until the user confirms.
 
-## Flow
+| Signal | What it tells us |
+|---|---|
+| Markdown files | Content already here. Could be notes, docs, or both. |
+| `.git/` | Already a git repo. Don't `git init`. |
+| `_agent/` | Old shape (`always.md`, `rules.md`, `soul.md`) or new (`foundation.md` etc.). |
+| `CLAUDE.md` | Claude Code orientation already configured. Don't overwrite. |
+| `.github/`, `package.json`, `Cargo.toml`, etc. | Code-repo signal. |
 
-### 1. Check Connection
+Use `Glob` and `Read` for inspection. `Bash` for `git rev-parse --is-inside-work-tree`.
 
-Run `is_auth action="status"`. If not connected:
-- Run `is_auth` to open browser login
-- Then `is_auth action="repos"` to list available spaces
-- If multiple spaces, ask which one. If one, select it.
+## Reflect
 
-If already connected, skip to step 2.
+Surface the findings:
 
-### 2. Read Current State
+> "I see 12 markdown files and a git repo here, no `_agent/` yet. Want to add ideaspace structure on top, treating these markdowns as Notes?"
 
-Run `is_explore` to see what exists. Check if `_agent/purpose.md` and `_agent/now.md` have content or are blank templates.
+Confirm intent. The skill doesn't auto-decide.
 
-If the space already has Purpose and Now filled in, confirm with the user: "Your space already has a direction set. Want to review it, update it, or skip to hook setup?"
+## Four shapes
 
-### 3. Offer a space for the current folder
+The flow adapts to what's there:
 
-Run a quick check with Bash to understand the current state:
+1. **Greenfield** — empty or near-empty. Standard scaffold.
+2. **Existing markdowns, no `_agent/`** — adopt as content space; markdowns are Notes; add `_agent/` alongside. Don't touch existing files.
+3. **Existing `_agent/` in old shape** — migration. Detect via `always.md` / `rules.md` / `soul.md` present, `foundation.md` missing. Walk the user file-by-file; each step a confirmation, each commit atomic.
+4. **Code repo** — ask shared-vs-private `_agent/`. Default **private** (gitignored `_agent/` + `CLAUDE.local.md`); shared is opt-in (each developer maintains private context, shared conventions live in `README.md` / `CONTRIBUTING.md`).
 
-- `git rev-parse --is-inside-work-tree` — is this already a git repo?
-- `git remote get-url origin` (if inside a repo) — does it already have a remote?
+## Scaffold
 
-Decide which path to offer based on what you see:
+Once confirmed:
 
-**A. No external origin (folder is empty, or a local-only git repo).**
-The common case. Offer:
+1. `git init` if not already a repo (ask first; default yes)
+2. Create `_agent/foundation.md`, `guide.md`, `purpose.md`, `now.md`, `next.md`
+3. Create `CLAUDE.md` (or `CLAUDE.local.md` for private code repos) at root pointing at the contract
+4. Append `.gitignore` defaults under a `# ideaspace defaults` header. **Append, never replace.**
+   - Content space: `*.draft.md`, `scratch/`, `_local/`
+   - Code repo with private `_agent/`: add `_agent/`, `CLAUDE.local.md`
+5. Conversational seeding (next section)
+6. Initial commit
 
-> "Want me to create an IdeaSpaces space for this work? I'll create the space, clone it here so git push works, and wire up your identity."
+## Seed conversationally
 
-If yes:
+For purpose / now / next:
 
-- `ideaspaces init "<name>"`
+1. **Purpose** — *"Why does this space exist? What's it for?"* Two-sentence answer becomes `purpose.md`. If a `README.md` is already present, propose a draft from it.
+2. **Now** — *"What are you working on right now?"* Single paragraph becomes `now.md`.
+3. **Next** — *"What's queued after now?"* Optional. Vague is OK. Leave a placeholder if nothing comes to mind.
 
-This creates the space on the server, `git clone`s it into `./<slug>` (or `--dir <path>`), and sets `git config --local user.email` / `user.name` from your OAuth account — so every commit you push attributes to you correctly. No trailer workarounds.
+Each step is skippable — the user can fill in later. Capture is conscious; don't write Purpose for the user, elicit and reflect back.
 
-**B. Already has an external origin (GitHub, GitLab, etc.).**
-Offer to adopt the external repo:
+## Don'ts
 
-> "I see an origin pointing at <url>. Want to adopt this repo as an IdeaSpaces space? IdeaSpaces will clone from there and keep the canonical copy on your existing remote."
+- **Never overwrite existing `CLAUDE.md`.** Append a `## Ideaspace` section pointing at `_agent/`, or ask the user to merge. Show a diff.
+- **Never delete or modify existing markdowns.** They're the user's data.
+- **Never auto-`git init`.** Surface the question; default yes.
+- **Never overwrite existing `_agent/` files.** Propose changes; user confirms each.
+- **Never overwrite an existing `.gitignore`.** Append under a `# ideaspace defaults` header.
+- **Never silently add `.gitignore` patterns mid-session.** Gitignore edits are Agreement-level. Surface and confirm.
+- **Never push to a remote.** Local-first; the user pushes when they choose.
 
-If yes:
+## Optional: SessionStart hook
 
-- `ideaspaces power connect <origin_url> --name "<name>"`
+After scaffold, offer to install the SessionStart hook (lands in a subsequent step):
 
-Always show the command result and ask for confirmation before proceeding.
+> "Want me to set up automatic check-in? Each new session, I'll surface Purpose, Now, and recent changes inline so you don't have to re-explain context."
 
-If command fails because CLI is missing/outdated, tell the user exactly what failed and continue setup normally.
+Read `.claude/settings.local.json` first; merge under `hooks.SessionStart` rather than overwriting. The hook command lands when the rebuild ships — for now, the offer is the placeholder.
 
-### 4. Elicit Purpose
-
-If Purpose is blank or the user wants to set it, ask:
-
-> "What's this space for? Not a mission statement — what would make it valuable to you six months from now?"
-
-Listen for concrete signals. Probe with:
-- "What kind of things would you want to find here later?"
-- "When you start a new session, what context would save you time?"
-
-Write the answer to `_agent/purpose.md` using `is_write`. Keep it short — 3-5 sentences. Concrete over aspirational.
-
-### 5. Set Current Focus
-
-Ask:
-
-> "What are you working on right now? What would progress look like this week?"
-
-Write to `_agent/now.md` using `is_write`. Structure:
-- What you're working on (1-2 sentences)
-- What progress looks like (concrete, evaluable)
-- What to focus on (3-5 bullets)
-
-### 6. Scaffold Structure (Optional)
-
-If the user has a clear use case, offer to create initial directories:
-
-> "Want me to set up some structure? Based on what you described, I'd suggest: [directories]. Or we can let it grow organically."
-
-Only scaffold if the user agrees. Create directories with README.md files that explain what belongs there.
-
-### 7. Install SessionStart Hook
-
-Ask:
-
-> "Want me to set up automatic check-in? Every new session, I'll read your Purpose, current focus, and any recent changes — so you never have to re-explain context."
-
-If yes, write to `.claude/settings.local.json`:
-
-```json
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo 'IdeaSpaces connected. Orient: run is_explore to read Purpose, Now, and recent changes. Keep orientation to 2-3 lines.'"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Read the file first — if it exists, merge the hooks key rather than overwriting.
-
-### 8. Confirm
+## Confirm
 
 Summarize what was set up:
-- Space connected (which one)
-- Existing git repo connected (if done)
-- Purpose set (one line)
-- Current focus set (one line)
-- Structure created (if any)
+- `_agent/` scaffolded (five files)
+- `CLAUDE.md` (or `CLAUDE.local.md`) added
+- `.gitignore` defaults appended
+- Purpose / Now / Next seeded (one line each)
 - SessionStart hook installed (if yes)
+- Initial commit made
 
-> "You're set. Next session will start with context from your space."
+> "You're set. Next session will start oriented to your space."
 
-After confirming, offer a workspace package if the use case matches:
+## What comes next
 
-- **Founder / startup:** "I can also set up tracking for decisions, customers, progress, and docs — `/is-founder`. Want to try it?"
-- **VC / investor:** "I can set up deal flow tracking, industry research, and portfolio notes — `/is-vc`. Want to try it?"
+After setup:
 
-Don't push. One sentence. If they say no or it doesn't match, move on.
-
-## Rules
-
-- **Don't write Purpose for the user.** Elicit, reflect back, refine.
-- **Don't auto-connect repos without consent.** Detect, explain, ask, then run.
-- **Don't over-scaffold.** Purpose + Now + hook is enough. Structure grows from use.
-- **Merge, don't overwrite settings.** Read `.claude/settings.local.json` first, merge the hooks key.
-
-## What Comes Next
-
-Setup creates the foundation. From here:
-- **is-space** — tool reference for navigating and working in the space
-- **is-capture** — during work, notices when something is worth saving
-- **is-reflect** — after work, checks if Purpose and Now still match reality
+- **is-capture** — propose saving knowledge during work
+- **is-reflect** — propose updating direction when it drifts
+- **is-writing** — writing standard for Notes
+- **is-space** — navigation, Two Roles, the five-file contract reference
