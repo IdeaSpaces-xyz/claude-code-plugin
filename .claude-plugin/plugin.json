@@ -1,4 +1,4 @@
 {
   "name": "ideaspaces",
-  "description": "Connect to your IdeaSpaces knowledge space — persistent, searchable knowledge that compounds across sessions."
+  "description": "Local-first knowledge space for Claude Code. A markdown folder, agent skills, git as sync. Optional remote sync when you're ready."
 }

@@ -1,6 +1,10 @@
 # IdeaSpaces Plugin for Claude Code
 
-Connect Claude Code to your [IdeaSpaces](https://ideaspaces.xyz) knowledge space — persistent, searchable knowledge that compounds across sessions.
+> Local-first knowledge space for Claude Code. A markdown folder, agent skills, git as sync. Optional remote sync when you're ready.
+
+The plugin makes a local markdown folder a great place for an agent and a human to think together. The agent gets oriented from `_agent/` files at session start, captures decisions when understanding crystallizes, and tracks state via git.
+
+> **Status:** mid-pivot from server-first to local-first. The flagship `ideaspace create` command lands in a subsequent step. See [`ideaspace/architecture/plans/plugin-local-first/`](https://github.com/IdeaSpaces-xyz/ideaspace/tree/master/architecture/plans/plugin-local-first) for the plan.
 
 ## Install
 
@@ -8,39 +12,36 @@ Connect Claude Code to your [IdeaSpaces](https://ideaspaces.xyz) knowledge space
 claude plugin add ideaspaces-xyz/claude-code-plugin
 ```
 
-On first use, call `is_auth` to log in via browser. No API key needed.
+Server sync is optional — call `is_auth` to log in only when you want to share or back up.
 
 ## Tools
 
-5 tools — consolidated from the full CLI, optimized for agent use:
+Two MCP tools. Native `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover the rest of local navigation.
 
 | Tool | What |
 |---|---|
-| `is_explore` | See what's in the space — tree, README context, changes since last session |
-| `is_find` | Find by meaning (`search`), text pattern (`grep`), or metadata (`list`) |
-| `is_read` | Read content + metadata. Add `history=true` for git log |
-| `is_write` | Create, update, move, or delete notes |
-| `is_auth` | Login, logout, list spaces, connection status |
+| `is_write` | Create a Note with Layer 1 frontmatter (`name`, `summary`). Use for capture. |
+| `is_auth` | Log in / out, sync state, connection status. |
 
 ## Skills
 
 **Core:**
-- **is-setup** — First-run onboarding: connect, set purpose and focus, install SessionStart hook
-- **is-space** — Tool reference for navigating and working in the space
-- **is-writing** — Writing standard for Notes that compound
-- **is-capture** — When to propose saving knowledge (decisions, insights, findings)
-- **is-reflect** — When to propose updating Purpose, Now, and space structure
+- **is-capture** — propose writing a Note when conversation crystallizes
+- **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
+- **is-writing** — writing standard for Notes that compound
+- **is-space** — `_agent/` contract, navigation conventions, voice rules
+- **is-setup** — onboarding flow (becomes the conversational layer for `ideaspace create` once it lands)
 
-**Workspace packages:**
-- **is-founder** — Solo founder / small team: decisions, customers, progress, docs
-- **is-vc** — Investor: deal flow, industry research, portfolio tracking
+**Workspace packages** (parked until templates land):
+- **is-founder** — solo founder / small team
+- **is-vc** — investor
 
 ## Architecture
 
-The plugin ships a thin MCP server (~235 lines) that shells out to the [IdeaSpaces CLI](https://github.com/IdeaSpaces-xyz/cli) with `--json`. The CLI handles auth, formatting, session tracking, and error mapping. Same validation, same output — one implementation, two interfaces.
+The plugin ships a thin MCP server that shells out to the [IdeaSpaces CLI](https://github.com/IdeaSpaces-xyz/cli) with `--json`. One implementation, two surfaces.
 
 ```
-Agent → MCP (5 tools) → spawn CLI --json → SDK → API
+Agent → MCP (2 tools) → spawn CLI --json → SDK → local files (or remote when authed)
 ```
 
 ## Rebuilding
