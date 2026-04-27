@@ -1,0 +1,96 @@
+name: SLC Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+jobs:
+  slc-review:
+    if: |
+      !github.event.pull_request.draft &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-review') &&
+      !contains(github.event.pull_request.labels.*.name, 'tiny')
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run SLC Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Review this pull request using our SLC (Simple, Lovable, Complete) principles for the IdeaSpaces plugin.
+
+            ## Context
+            - This repo: Claude Code plugin (`ideaspaces`). Distributes pre-built bundles for MCP server (`dist/index.js`) and CLI (`cli/bundle/ideaspaces.js`) plus a plugin-owned SessionStart hook (`dist/awareness-hook.js` from `src/awareness-hook.ts`).
+            - Skills (`skills/`) describe agent behavior; hook surfaces awareness inline at session start; `.claude-plugin/plugin.json` is the manifest.
+            - Architectural invariants: thin MCP, no forked logic, bundles regenerate from sibling repos (`mcp-server/`, `cli/`, `sdk/`), self-contained on install (rules from this monorepo's layout don't travel).
+            - Plugin-owned source = plugin-specific behavior only (the SessionStart hook); reusable surface stays in source repos.
+            - Reference: `_agent/foundation.md` (plugin invariants), `_agent/guide.md` (this scope's agreements), root CLAUDE.md, ideaspace/architecture/plans/plugin-local-first/.
+
+            ## SLC label context
+            - `slc:simple` / `slc:lovable` / `slc:complete`: quick validation for labeled dimensions, deeper review for unlabeled.
+            - `needs:slc-review`: do deeper analysis.
+            - No SLC labels: standard full review.
+
+            ## SLC Framework Review
+
+            ### Simple 🎯
+            - Is this the simplest implementation that solves the problem?
+            - Plugin-owned source stays minimal — anything reusable across MCP / CLI surfaces belongs in `mcp-server/`, `cli/`, or `sdk/`.
+            - Bundles regenerated from documented sources; no hand-edits to `dist/index.js` or `cli/bundle/ideaspaces.js`.
+            - Skill descriptions are tight; no marketing prose.
+
+            ### Lovable ❤️
+            - SessionStart hook degrades silently (exit 0, no stdout) outside an ideaspace — never blocks session start.
+            - Tool descriptions and skill descriptions help an agent decide when to reach for them.
+            - Plugin works locally without auth; sync is opt-in.
+            - Errors land in stderr, not blocking; structured paths for action surface meaningful messages.
+
+            ### Complete 🏁
+            - `tsc --noEmit` clean; `npm run build:hook` produces a non-empty `dist/awareness-hook.js`.
+            - The SessionStart hook smoke-tested for the non-ideaspace silent path.
+            - No leftover references to stripped tools (`is_explore`, `is_find`, `is_read`) or legacy contract files (`always.md`, `rules.md`, `soul.md`, `guidance.md`).
+            - Skills cohesive: descriptions match what they actually do; capture/reflect/writing/space/setup framing local-first.
+
+            ## Plugin-specific checks
+            - **Bundle hygiene.** If `dist/index.js` or `cli/bundle/ideaspaces.js` changes, the source repos' main branches should also reflect that work — bundles aren't authored here.
+            - **Hook safety.** `awareness-hook.js` must always exit 0 and never block session start; errors go to stderr only.
+            - **`hooks/hooks.json` schema.** Matchers (`startup|resume`) and command paths use `${CLAUDE_PLUGIN_ROOT}` so the plugin works on any install location.
+            - **Skill descriptions.** `description` fields are agent-facing — they should help the agent decide when to invoke the skill, not just describe the file.
+            - **`.gitignore` discipline.** Code repo with shared `_agent/` (the plugin is collaborative agent-shaping work) — `_agent/` stays committed; per-developer drafts/scratch go to `*.draft.md`, `scratch/`, `_local/`.
+
+            ## Anti-pattern detection 🚨
+            - Authoring source for things that belong in the source repos (cli logic, MCP tools, SDK primitives).
+            - Reintroducing stripped MCP tools (`is_explore`, `is_find`, `is_read`) or stripped CLI commands.
+            - Skill descriptions that promise behavior the skill doesn't actually do.
+            - Hook code that could block session start (synchronous heavy work, throwing without catching, exits with non-zero).
+
+            ## Output format
+
+            **SLC Assessment:**
+            - ✅/⚠️/❌ Simple: [brief assessment]
+            - ✅/⚠️/❌ Lovable: [brief assessment]
+            - ✅/⚠️/❌ Complete: [brief assessment]
+
+            **Anti-Patterns Found:** [list or "None detected"]
+
+            **Plugin-Specific Issues:** [list or "None detected"]
+
+            **Detailed Feedback:** [specific issues and suggestions]
+
+            **Recommendation:** Approve / Request Changes / Comment
+
+            Use `gh pr comment` to post your review.
+
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'

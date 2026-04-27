@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'hooks/**'
+      - 'dist/**'
+      - 'cli/bundle/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'build-hook.mjs'
+      - '.mcp.json'
+      - '.claude-plugin/**'
+      - '.github/workflows/ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'hooks/**'
+      - 'dist/**'
+      - 'cli/bundle/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'build-hook.mjs'
+      - '.mcp.json'
+      - '.claude-plugin/**'
+      - '.github/workflows/ci.yml'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Typecheck, build hook
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      # @ideaspaces/sdk is a devDep used during hook bundling. The runner's
+      # default insteadOf rewrite would resolve git+https:// to ssh:// and
+      # fail because no key is loaded. Force HTTPS with a token that has
+      # read access to IdeaSpaces-xyz/sdk. Requires SDK_FETCH_TOKEN secret
+      # configured at the repo level.
+      - name: Configure git auth for private SDK fetch
+        run: |
+          if [ -z "${{ secrets.SDK_FETCH_TOKEN }}" ]; then
+            echo "::error::SDK_FETCH_TOKEN secret is not configured."
+            exit 1
+          fi
+          git config --global url."https://x-access-token:${{ secrets.SDK_FETCH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.SDK_FETCH_TOKEN }}@github.com/".insteadOf "ssh://git@github.com/"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build SessionStart hook
+        run: npm run build:hook
+
+      - name: Verify bundled hook is non-empty
+        run: |
+          if [ ! -s dist/awareness-hook.js ]; then
+            echo "::error::dist/awareness-hook.js missing or empty after build"
+            exit 1
+          fi
+
+      # The hook should silently no-op (exit 0, no stdout) outside an ideaspace.
+      - name: Smoke — hook in non-ideaspace dir
+        run: |
+          tmp=$(mktemp -d)
+          cd "$tmp"
+          out=$(node "$GITHUB_WORKSPACE/dist/awareness-hook.js")
+          if [ -n "$out" ]; then
+            echo "::error::hook produced output in non-ideaspace dir: $out"
+            exit 1
+          fi
