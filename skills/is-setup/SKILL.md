@@ -14,7 +14,7 @@ allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspac
 
 **Goal:** detect → confirm → scaffold the five-file contract → seed Purpose / Now / Next.
 
-This skill is the conversational layer that `ideaspace create` (forthcoming) wraps. Until the CLI lands, invoke directly when the user wants to set up a space.
+This skill is the conversational layer for setting up a space. The mechanical CLI equivalent is `ideaspaces create [name] [--yes]` — same inspect → confirm → scaffold flow without the conversation. Invoke this skill when the user wants to talk through the setup; reach for the CLI when the user just wants the bare scaffold.
 
 Do not offer unprompted. Wait for a signal — "set up a space", "add ideaspaces here", or detection of a directory the user wants structured.
 
