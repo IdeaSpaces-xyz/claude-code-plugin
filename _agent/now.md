@@ -1,25 +1,59 @@
+---
+name: Now
+summary: Plugin local-first pivot. Cleanup pass running first (Layer A migrating this
+  repo's `_agent/` to the five-file shape, then user-facing copy, skill descriptions,
+  source-repo strip). After cleanup — SessionStart hook rebuild, `ideaspace create`,
+  skills triad rewrite, dogfood test.
+---
+
 # Now
 
-> Close session-start blindness. The `_agent/` rule needs to travel.
+> Plugin local-first pivot. Strip to a great single-player experience; server sync becomes the optional upgrade.
 
-**Updated:** 2026-04-24
+**Updated:** 2026-04-27
 
 ---
 
 ## The thread
 
-Monorepo `CLAUDE.md` now teaches the `_agent/` marker rule. But the plugin installs on other machines, other folder shapes — the rule doesn't travel with it yet. When an agent lands in a Space-adjacent folder (not the connected root), the hook stays silent and the skill gets pulled too late. See `_agent/bugs/2026-04-17 Session-Start Blindness.md`.
+Plan: [`ideaspace/architecture/plans/plugin-local-first/`](../../ideaspace/architecture/plans/plugin-local-first/README.md). Strip the plugin to a great single-player experience — local markdown folder + agent skills + git as sync. Server sync becomes the optional upgrade.
 
-## What we're doing
+## Plan documents
 
-- Make the hook (or the default SessionStart output) carry the Two Roles + `_agent/` rule regardless of connection status.
-- Detect "I'm in a Space-adjacent place" — walk up, find neighbors, surface context.
-- Verify `is-space` description triggers reliably when an agent enters an `_agent/`-bearing directory.
-- Dogfood on real work. Notice where the agent didn't know something it should have. That's the signal.
+- [README.md](../../ideaspace/architecture/plans/plugin-local-first/README.md) — strategy, sequencing, dogfood test
+- [scope-review.md](../../ideaspace/architecture/plans/plugin-local-first/scope-review.md) — four-repo audit (keep/reframe/strip/drop)
+- [ideaspace-create.md](../../ideaspace/architecture/plans/plugin-local-first/ideaspace-create.md) — flagship CLI behavior
+- [enhancements.md](../../ideaspace/architecture/plans/plugin-local-first/enhancements.md) — Claude Code plugin features for polish
+- [identity-attribution.md](../../ideaspace/architecture/plans/plugin-local-first/identity-attribution.md) — trailer format, onboarding, agent identity
+
+## What's done
+
+- ideaspace `_agent/` migrated to the new five-file shape — dogfooded before shipping the template
+- CLAUDE.md added at the ideaspace root
+- Memory rescoped: `Co-Authored-By` format depends on repo type (GitHub vs ideaspace)
+- Monorepo CLAUDE.md updated to reference the five-file contract
+
+## What's active
+
+**Cleanup pass** — running before hook rebuild because it validates scope-review against reality:
+
+- **Layer A** — this repo's `_agent/` migration (foundation/guide/next added, `always.md` / `bugs/` / `docs/orientation-pr-plan.md` dropped, CLAUDE.md added at plugin root)
+- **Layer B** — plugin user-facing copy (manifest + README) goes local-first
+- **Layer C** — skill descriptions reframe (drop dropped-tool refs, reframe `is-space` and `is-setup`)
+- **Layer D** — strip `mcp-server/` / `cli/` / `sdk/` source per scope-review
+
+## What's next
+
+After cleanup pass:
+
+- SessionStart hook rebuild — walk-up detection + Purpose/Now content inline. Build `findSpaceRoot()` in SDK first.
+- Implement `ideaspace create` + canonical default template (per [ideaspace-create.md](../../ideaspace/architecture/plans/plugin-local-first/ideaspace-create.md)).
+- Skills triad rewrite — agent-voice, awareness triggers, chained.
+- Run dogfood test.
 
 ## Not now
 
-- New `is_*` tools. Five is enough.
-- New workspace skills beyond `is-founder` + `is-vc` until those prove out.
-- Update `is-setup` to scaffold the new four-file `_agent/` structure (`purpose`, `now`, `always`, `rules`) — let the structure live in `ideaspace/_agent/` for a session or two before encoding it in the setup flow.
-- Rename `"perspective"` → `"pov"` in schema. Touches LanceDB. Bigger move, not from one jam.
+- New `is_*` tools beyond `is_auth` + `is_write`
+- New workspace skills until `is-founder` + `is-vc` prove out as templates (likely `--template` flags for `ideaspace create`)
+- Local semantic search (returns when sync upgrade ships)
+- POV → schema rename (touches LanceDB)

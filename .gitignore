@@ -1,2 +1,7 @@
 node_modules/
 .DS_Store
+
+# ideaspace defaults
+*.draft.md
+scratch/
+_local/
