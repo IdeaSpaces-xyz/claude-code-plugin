@@ -65,17 +65,17 @@ When capturing from a conversation, check the target folder's voice before writi
 
 Use for capture. Carries the writing standard. Better than raw filesystem `Write` when the file should compound as a Note.
 
-- `is_write path="analysis.md" content="..." name="Analysis" summary="Dense orientation"` — create/update
-- `is_write action="update_metadata" path="analysis.md" tags=["research"]` — metadata only
-- `is_write action="move" source="old/path.md" destination="new/path.md"` — rename
-- `is_write action="delete" path="draft.md"` — recoverable via git
+- `is_write path="analysis.md" content="..." name="Analysis" summary="Dense orientation"` — create or replace the Note's frontmatter and body
+- Optional fields: `tags`, `attached_to`, `if_match`, `force`
 
-Frontmatter fields: `name`, `summary` (Layer 1 — required); `tags`, `attached_to` (Layer 2 — optional).
+Replace-semantics: callers specify all Layer 1 + 2 fields they want set; existing frontmatter is replaced wholesale and the body is preserved. For local file moves, deletions, and metadata-only edits, use native `Bash` (`git mv`, `rm`) and `Edit`.
+
+Layer 1 (required): `name`, `summary`.
+Layer 2 (optional): `tags`, `attached_to`.
 
 ## `is_auth` — sync state
 
-- `is_auth` — log in (opens browser for OAuth)
-- `is_auth action="status"` — connection info
+- `is_auth action="login"` — log in (opens browser for OAuth)
 - `is_auth action="logout"` — clear credentials
 
 Sync is opt-in. The plugin works locally without auth.
