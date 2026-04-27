@@ -12,7 +12,7 @@ What's identified to come after Now. Vague is allowed — agents and humans figu
 
 ## After local-first lands
 
-- Workspace skill packages refresh — `is-founder` / `is-vc` as `--template founder` / `--template vc` for `ideaspace create`
+- Workspace templates — build `is-founder` and `is-vc` from scratch as `--template founder` / `--template vc` for `ideaspace create` (the prior server-flavored skill files were removed; the concept returns as a template, not a refresh)
 - Default template registry / discovery story
 - Cross-space monorepo awareness (cwd is parent with multiple `_agent/`-shaped descendants)
 - SessionStart hook polish — `FileChanged`, `CwdChanged`, `PostToolBatch` prompt enhancements (see plan's [enhancements.md](../../ideaspace/architecture/plans/plugin-local-first/enhancements.md))

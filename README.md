@@ -25,16 +25,13 @@ Two MCP tools. Native `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover 
 
 ## Skills
 
-**Core:**
 - **is-capture** — propose writing a Note when conversation crystallizes
 - **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
 - **is-writing** — writing standard for Notes that compound
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
 - **is-setup** — onboarding flow (becomes the conversational layer for `ideaspace create` once it lands)
 
-**Workspace packages** (parked until templates land):
-- **is-founder** — solo founder / small team
-- **is-vc** — investor
+Workspace templates (`--template founder`, `--template vc`) for `ideaspace create` land in a future step — see `ideaspace/architecture/plans/plugin-local-first/`.
 
 ## Architecture
 
