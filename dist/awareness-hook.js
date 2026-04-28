@@ -67,6 +67,52 @@ function stripFrontmatter(content) {
   }
   return content;
 }
+function extractSummary(content) {
+  if (!content.startsWith(`${DELIM}
+`) && !content.startsWith(`${DELIM}\r
+`)) {
+    return null;
+  }
+  const lines = content.split(/\r?\n/);
+  let endIdx = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trimEnd() === DELIM) {
+      endIdx = i;
+      break;
+    }
+  }
+  if (endIdx === -1)
+    return null;
+  let summaryStart = -1;
+  for (let i = 1; i < endIdx; i++) {
+    if (/^summary:/.test(lines[i])) {
+      summaryStart = i;
+      break;
+    }
+  }
+  if (summaryStart === -1)
+    return null;
+  const parts = [];
+  const firstLineRaw = lines[summaryStart].slice("summary:".length).trim();
+  if (firstLineRaw && !/^[>|][+-]?$/.test(firstLineRaw)) {
+    parts.push(firstLineRaw);
+  }
+  for (let i = summaryStart + 1; i < endIdx; i++) {
+    const line = lines[i];
+    if (/^\s+\S/.test(line)) {
+      parts.push(line.trim());
+    } else {
+      break;
+    }
+  }
+  if (!parts.length)
+    return null;
+  let result = parts.join(" ");
+  if (result.startsWith('"') && result.endsWith('"') || result.startsWith("'") && result.endsWith("'")) {
+    result = result.slice(1, -1);
+  }
+  return result || null;
+}
 
 // node_modules/@ideaspaces/sdk/dist/awareness.js
 var SKIP_DIRS = /* @__PURE__ */ new Set([
@@ -81,7 +127,7 @@ var SKIP_DIRS = /* @__PURE__ */ new Set([
 ]);
 var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 async function assembleAwareness(opts) {
-  const { root, contract, lastSha, maxChanges = 15, nowExcerptLength = 200 } = opts;
+  const { root, contract, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
   const sections = [];
   const nowLine = extractNowLine(contract, nowExcerptLength);
   if (nowLine)
@@ -89,10 +135,12 @@ async function assembleAwareness(opts) {
   const tree = await buildTreeSection(root);
   if (tree)
     sections.push(tree);
-  const agentContext = CONTRACT_ORDER.filter((name) => contract[name]);
-  if (agentContext.length) {
-    sections.push(`Agent context: ${agentContext.join(", ")}`);
-  }
+  const agentContext = buildAgentContextSection(contract, summaryExcerptLength);
+  if (agentContext)
+    sections.push(agentContext);
+  const skills = await buildSkillsSection(root, summaryExcerptLength);
+  if (skills)
+    sections.push(skills);
   if (lastSha) {
     const changes = await gitChanges(root, lastSha);
     if (changes.length) {
@@ -107,6 +155,57 @@ async function assembleAwareness(opts) {
     }
   }
   return sections.join("\n\n");
+}
+function buildAgentContextSection(contract, max) {
+  const present = CONTRACT_ORDER.filter((name) => contract[name]);
+  if (!present.length)
+    return null;
+  const lines = ["Agent context:"];
+  for (const name of present) {
+    const entry = contract[name];
+    const blurb = describeFile(entry.content, max);
+    lines.push(blurb ? `  ${name} \u2014 ${blurb}` : `  ${name}`);
+  }
+  return lines.join("\n");
+}
+async function buildSkillsSection(root, max) {
+  const skillsDir = join2(root, "_agent", "skills");
+  let entries;
+  try {
+    entries = (await fs2.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
+  } catch {
+    return null;
+  }
+  if (!entries.length)
+    return null;
+  const blurbs = await Promise.all(entries.map(async (file) => {
+    try {
+      const content = await fs2.readFile(join2(skillsDir, file), "utf-8");
+      return describeFile(content, max);
+    } catch {
+      return null;
+    }
+  }));
+  const lines = ["Operating skills:"];
+  for (let i = 0; i < entries.length; i++) {
+    const name = entries[i].replace(/\.md$/, "");
+    const blurb = blurbs[i];
+    lines.push(blurb ? `  ${name} \u2014 ${blurb}` : `  ${name}`);
+  }
+  return lines.join("\n");
+}
+function describeFile(content, max) {
+  const summary = extractSummary(content);
+  if (summary)
+    return truncate(summary, max);
+  const body = stripFrontmatter(content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    return truncate(line, max);
+  }
+  return null;
 }
 function extractNowLine(contract, max) {
   if (!contract.now)

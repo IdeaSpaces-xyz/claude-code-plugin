@@ -22,7 +22,7 @@ You have two sets of tools:
 
 **No `_agent/` yet?** Suggest `/is-setup` — it walks the user through the contract scaffold and conversational seeding.
 
-**Returning?** Read `_agent/foundation.md`, `guide.md`, `purpose.md`, `now.md`, `next.md` to orient. The SessionStart hook (forthcoming) will surface this inline.
+**Returning?** Read `_agent/foundation.md`, `guide.md`, `purpose.md`, `now.md`, `next.md` to orient. The SessionStart hook surfaces this inline along with each file's summary and any operating skills present.
 
 ## The five-file `_agent/` contract
 
@@ -43,6 +43,12 @@ These five files are loaded by position. Read them at session start to orient.
 Branches (deeper directories) can refine via their own `_agent/` (any of guide / purpose / now / next) without re-declaring foundation. Most branches don't need their own — a `README.md` is enough when the agreement is light.
 
 `.gitignore` is also part of the Agreement — the boundary between what's shared and what stays local. Drafts, scratch, secrets, per-developer context go there. Propose changes; never edit silently.
+
+### Optional: `_agent/skills/`
+
+A space can carry **operating skills** as markdown files in `_agent/skills/`. Each skill describes a procedure the agent should follow when working in this space — for example, `_agent/skills/commit.md` defining a three-tier commit shape. Skills are surfaced at session start (the awareness block lists them by name + summary), with full content loaded on demand when invoked.
+
+Read a skill when the agent reaches for the procedure it describes. Don't preload — the listing is enough orientation; the body matters at the moment of use.
 
 ## Two Roles at every position
 
