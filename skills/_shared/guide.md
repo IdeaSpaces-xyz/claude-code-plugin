@@ -4,7 +4,7 @@ description: >
   How to establish and maintain shared understanding at any position.
   Always in awareness. Use when: a new folder has no _agent/, the user
   asks what this place is for, purpose or now feel stale, or the
-  the shared understanding needs renegotiating.
+  shared understanding needs renegotiating.
 ---
 
 # Guide
@@ -16,15 +16,15 @@ it. Propose an update. The understanding maintains itself through use.
 
 ## What to pay attention to
 
-`_agent/` shapes how we work here. Five dimensions:
+Every position has dimensions that shape how we work here:
 
 | Dimension | File | The question |
 |---|---|---|
 | What is this place | README.md | Does the contract match what's actually here? |
-| Why does it exist | purpose.md | Clear direction, or still emerging? |
-| What's active | now.md | Concrete and current, or stale? |
-| What's queued | next.md | Identified, even if vague? |
-| How we work here | guide.md | Scope-specific, beyond foundation? |
+| Why does it exist | `_agent/purpose.md` | Clear direction, or still emerging? |
+| What's active | `_agent/now.md` | Concrete and current, or stale? |
+| What's queued | `_agent/next.md` | Identified, even if vague? |
+| How we work here | `_agent/guide.md` | Scope-specific, beyond foundation? |
 
 Not every position needs all of them. A deep branch might only need
 a README. Root usually carries more. Each dimension can be empty,
