@@ -4,19 +4,19 @@ description: >
   How to establish and maintain shared understanding at any position.
   Always in awareness. Use when: a new folder has no _agent/, the user
   asks what this place is for, purpose or now feel stale, or the
-  Agreement needs renegotiating.
+  the shared understanding needs renegotiating.
 ---
 
 # Guide
 
-The Agreement is living. Foundation, guide, purpose, now, next — all
-part of `_agent/`. When any of them contradict current practice, or
-go silent on something we keep doing — surface it. Propose an update.
-The Agreement maintains itself through use.
+`_agent/` is how we work here, as far as we've figured it out.
+Foundation, guide, purpose, now, next — when any of them contradict
+current practice, or go silent on something we keep doing — surface
+it. Propose an update. The understanding maintains itself through use.
 
 ## What to pay attention to
 
-`_agent/` is the agreement about how to work here. Five dimensions:
+`_agent/` shapes how we work here. Five dimensions:
 
 | Dimension | File | The question |
 |---|---|---|
