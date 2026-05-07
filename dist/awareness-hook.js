@@ -298,6 +298,22 @@ async function main() {
     // lastSha can hook into session state once sync ships.
   });
   if (block.trim()) process.stdout.write(block);
+  const drift = [];
+  if (!space.contract.purpose) {
+    drift.push(
+      "\u26A0 `_agent/purpose.md` not yet captured. The contract names it; suggest capturing in conversation when there's a natural moment."
+    );
+  }
+  if (!space.contract.now) {
+    drift.push(
+      "\u26A0 `_agent/now.md` not yet captured. Suggest capturing what's currently active."
+    );
+  }
+  if (drift.length > 0) {
+    const prefix = block.trim() ? block.endsWith("\n") ? "\n" : "\n\n" : "";
+    process.stdout.write(`${prefix}${drift.join("\n")}
+`);
+  }
 }
 main().catch((err) => {
   const message = err instanceof Error ? err.message : String(err);
