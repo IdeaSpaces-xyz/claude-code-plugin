@@ -1,10 +1,8 @@
 # IdeaSpaces Plugin for Claude Code
 
-> Local-first knowledge space for Claude Code. A markdown folder, agent skills, git as sync. Optional remote sync when you're ready.
+> Local-first knowledge space for Claude Code. A markdown folder, agent skills, git as sync. Optional remote hosting when you're ready.
 
-The plugin makes a local markdown folder a great place for an agent and a human to think together. The agent gets oriented from `_agent/` files at session start, captures decisions when understanding crystallizes, and tracks state via git.
-
-> **Status:** mid-pivot from server-first to local-first. The flagship `ideaspace create` command lands in a subsequent step. See [`ideaspace/architecture/plans/plugin-local-first/`](https://github.com/IdeaSpaces-xyz/ideaspace/tree/master/architecture/plans/plugin-local-first) for the plan.
+The plugin makes a local markdown folder a good place for an agent and a human to think together. Start locally, capture shared understanding into markdown, and publish to IdeaSpaces only when you want the space hosted remotely.
 
 ## Install
 
@@ -12,36 +10,61 @@ The plugin makes a local markdown folder a great place for an agent and a human 
 claude plugin add ideaspaces-xyz/claude-code-plugin
 ```
 
-Server sync is optional — call `is_auth` to log in only when you want to share or back up.
+## Local-first flow
 
-## Tools
+```bash
+# Scaffold a local ideaspace
+node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create my-space --yes
+cd my-space
 
-Two MCP tools. Native `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover the rest of local navigation.
+# Later, after login, host it remotely
+node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js login
+node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js publish
+```
+
+In Claude Code, use `/is-setup` for conversational setup and `/is-publish` for conversational publishing. The skills invoke the bundled CLI; no global npm install is required.
+
+## Bundled CLI
+
+| Command | What |
+|---|---|
+| `ideaspaces create [name]` | Scaffold the seed `_agent/` contract, `CLAUDE.md`, git defaults, and initial commit. |
+| `ideaspaces write <path>` | Create/update a markdown Note with Layer 1 frontmatter and stable `node_id`. |
+| `ideaspaces id` | Check/repair local markdown `node_id` frontmatter before publishing. |
+| `ideaspaces login` | Save optional remote credentials. |
+| `ideaspaces publish` | Create/reuse a remote IdeaSpaces repo and push the current branch. |
+
+Every committed markdown file in a published ideaspace needs a stable `node_id`. The CLI handles this at create/write boundaries and `publish` preflights tracked markdown before pushing.
+
+## MCP tools
+
+Two tools. Native Claude Code `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover local navigation and editing.
 
 | Tool | What |
 |---|---|
 | `is_write` | Create a Note with Layer 1 frontmatter (`name`, `summary`). Use for capture. |
-| `is_auth` | Log in / out, sync state, connection status. |
+| `is_auth` | Log in / out for optional remote hosting. |
+
+MCP stays thin: it shells out to the bundled CLI with `--json`. One implementation, two surfaces.
 
 ## Skills
 
+- **is-setup** — conversational layer over `ideaspaces create`
+- **is-publish** — conversational layer over `ideaspaces publish`
 - **is-capture** — propose writing a Note when conversation crystallizes
 - **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
 - **is-writing** — writing standard for Notes that compound
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
-- **is-setup** — onboarding flow (becomes the conversational layer for `ideaspace create` once it lands)
 
-Workspace templates (`--template founder`, `--template vc`) for `ideaspace create` land in a future step — see `ideaspace/architecture/plans/plugin-local-first/`.
+## Awareness hook
 
-## Architecture
+The SessionStart hook (`dist/awareness-hook.js`) walks up from `cwd` looking for `_agent/`, formats the awareness block via the SDK, and writes it to stdout. If `purpose.md` or `now.md` are missing, it surfaces that as direction not yet captured.
 
-The plugin ships a thin MCP server that shells out to the [IdeaSpaces CLI](https://github.com/IdeaSpaces-xyz/cli) with `--json`. One implementation, two surfaces.
+## Repo-local agent context
 
-```
-Agent → MCP (2 tools) → spawn CLI --json → SDK → local files (or remote when authed)
-```
+This plugin repo's own `_agent/` is local working context and is gitignored. Public repo orientation lives in `README.md`, `CLAUDE.md`, skill files, and source.
 
-A SessionStart hook (`dist/awareness-hook.js`, plugin-owned) walks up from `cwd` looking for `_agent/`, formats the awareness block via the SDK, and writes it to stdout — the agent lands oriented when Claude Code starts in an ideaspace.
+Contributors who want local agent orientation can manually create a private `_agent/`, or run `ideaspaces create` from the repo root to preview the scaffold and copy the parts they want. Do not commit it.
 
 ## Rebuilding
 
@@ -65,6 +88,8 @@ cp ../cli/bundle/ideaspaces.js cli/bundle/ideaspaces.js
 npm install
 npm run build:hook
 
-# 5. Commit, push, then update in Claude Code
-claude plugin add ideaspaces-xyz/claude-code-plugin
+# 5. Smoke check
+node cli/bundle/ideaspaces.js --help
+node cli/bundle/ideaspaces.js id --help
+npm run typecheck
 ```

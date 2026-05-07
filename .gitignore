@@ -2,6 +2,9 @@ node_modules/
 .DS_Store
 
 # ideaspace defaults
+# Local agent context — private to this checkout, not part of the public repo.
+_agent/
+CLAUDE.local.md
 *.draft.md
 scratch/
 _local/

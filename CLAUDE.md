@@ -1,27 +1,24 @@
 # CLAUDE.md
 
-> This is the IdeaSpaces plugin for Claude Code — the agent's body. The five-file `_agent/` contract carries the Agreement.
+> This is the public IdeaSpaces Claude Code plugin repo. Local agent context is private.
 
 ## Orient
 
-At session start, read in order:
+Shared repo conventions live in:
 
-1. [`_agent/foundation.md`](_agent/foundation.md) — what this place is, baseline behaviors
-2. [`_agent/guide.md`](_agent/guide.md) — how agent and human work together here
-3. [`_agent/purpose.md`](_agent/purpose.md) — why this exists
-4. [`_agent/now.md`](_agent/now.md) — what's currently active
-5. [`_agent/next.md`](_agent/next.md) — what's queued
+- [README.md](README.md) — plugin purpose, install, tools, skills, rebuild flow
+- [skills/](skills/) — installed skill definitions
+- [src/awareness-hook.ts](src/awareness-hook.ts) — plugin-owned SessionStart behavior
+- [.mcp.json](.mcp.json) — MCP server registration
 
-These files are the source of truth for orientation — read them before answering.
+A local `_agent/` directory may exist in a checkout, but it is gitignored. Treat it as private working context, not public repo contract.
 
 ## Repo shape
 
 - `dist/`, `cli/bundle/` — pre-built bundles loaded by `.mcp.json`. Don't hand-edit; regenerate from sibling repos `mcp-server/` and `cli/`.
-- `skills/` — skill definitions installed by the plugin
-- `.claude-plugin/`, `.mcp.json` — plugin manifest and MCP server registration
+- `skills/` — skill definitions installed by the plugin.
+- `.claude-plugin/`, `.mcp.json` — plugin manifest and MCP server registration.
 
-See [README.md](README.md) for rebuild flow.
+## Rule
 
-## When the Agreement drifts
-
-Now stops matching reality. Foundation contradicts current practice. Guide is silent on something we keep doing. → Surface it. Propose an update. Update [`_agent/guide.md`](_agent/guide.md) for this scope, or revisit [`_agent/foundation.md`](_agent/foundation.md) if a baseline needs to shift.
+Keep the plugin small. MCP stays thin (`is_auth`, `is_write`). Local workflow goes through the bundled `ideaspaces` CLI and skills.
