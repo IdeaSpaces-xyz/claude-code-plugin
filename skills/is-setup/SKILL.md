@@ -3,16 +3,18 @@ name: is-setup
 description: >
   Conversational onboarding for an ideaspace. Inspects what's here (greenfield,
   existing markdowns, old `_agent/`, code repo), reflects findings, gets
-  confirmation, scaffolds the five-file `_agent/` contract + `CLAUDE.md` +
-  `.gitignore` defaults, then conversationally seeds purpose/now/next. The
-  conversational layer that `ideaspace create` will wrap. Use when: user says
-  "set up a space", "add ideaspaces here", or asks about the contract.
+  confirmation, scaffolds the seed of the contract (`foundation.md` +
+  `guide.md` + `CLAUDE.md` + `.gitignore` + `.gitattributes`), then
+  conversationally captures purpose/now/next as real files when content
+  emerges. The conversational layer that `ideaspaces create` wraps. Use
+  when: user says "set up a space", "add ideaspaces here", or asks about
+  the contract.
 allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth Edit Read Write Glob Bash"
 ---
 
 # Setup an Ideaspace
 
-**Goal:** detect → confirm → scaffold the five-file contract → seed Purpose / Now / Next.
+**Goal:** detect → confirm → scaffold the seed (foundation + guide) → capture purpose / now / next in conversation when content emerges.
 
 This skill is the conversational layer for setting up a space. The mechanical CLI equivalent is `ideaspaces create [name] [--yes]` — same inspect → confirm → scaffold flow without the conversation. Invoke this skill when the user wants to talk through the setup; reach for the CLI when the user just wants the bare scaffold.
 
@@ -51,26 +53,29 @@ The flow adapts to what's there:
 
 ## Scaffold
 
-Once confirmed:
+Once confirmed, scaffold the **seed** of the contract:
 
 1. `git init` if not already a repo (ask first; default yes)
-2. Create `_agent/foundation.md`, `guide.md`, `purpose.md`, `now.md`, `next.md`
-3. Create `CLAUDE.md` (or `CLAUDE.local.md` for private code repos) at root pointing at the contract
-4. Append `.gitignore` defaults under a `# ideaspace defaults` header. **Append, never replace.**
+2. Create `_agent/foundation.md` and `_agent/guide.md`
+3. Create `.gitattributes` (`*.md diff=markdown text eol=lf`) if not already present
+4. Create `CLAUDE.md` (or `CLAUDE.local.md` for private code repos) at root pointing at the contract
+5. Append `.gitignore` defaults under a `# ideaspace defaults` header. **Append, never replace.**
    - Content space: `*.draft.md`, `scratch/`, `_local/`
    - Code repo with private `_agent/`: add `_agent/`, `CLAUDE.local.md`
-5. Conversational seeding (next section)
-6. Initial commit
+6. Conversational seeding (next section) — purpose / now / next emerge here, not as scaffolded files
+7. Initial commit
+
+**Why seed-only:** `foundation.md` + `guide.md` describe the contract that names `purpose.md`, `now.md`, and `next.md`. Reading them, the agent sees those names without matching files and the drift rule fires — propose creating them. Real content from real exchange beats placeholder filler. An empty file is a clearer "no direction yet" signal than a placeholder masquerading as one.
 
 ## Seed conversationally
 
-For purpose / now / next:
+For purpose / now / next, draw the content out and capture each as a real file (no placeholder writes):
 
-1. **Purpose** — *"Why does this space exist? What's it for?"* Two-sentence answer becomes `purpose.md`. If a `README.md` is already present, propose a draft from it.
-2. **Now** — *"What are you working on right now?"* Single paragraph becomes `now.md`.
-3. **Next** — *"What's queued after now?"* Optional. Vague is OK. Leave a placeholder if nothing comes to mind.
+1. **Purpose** — *"Why does this space exist? What's it for?"* Two-sentence answer becomes `_agent/purpose.md`. If a `README.md` is already present, propose a draft from it.
+2. **Now** — *"What are you working on right now?"* Single paragraph becomes `_agent/now.md`.
+3. **Next** — *"What's queued after now?"* Optional. Vague is OK. Skip if nothing comes to mind — the user can capture it in a later session when something does.
 
-Each step is skippable — the user can fill in later. Capture is conscious; don't write Purpose for the user, elicit and reflect back.
+Each step is skippable — missing files are honest "not captured yet" signals; the next session's agent will surface them again. Capture is conscious; don't write Purpose for the user, elicit and reflect back.
 
 ## Don'ts
 
@@ -80,7 +85,15 @@ Each step is skippable — the user can fill in later. Capture is conscious; don
 - **Never overwrite existing `_agent/` files.** Propose changes; user confirms each.
 - **Never overwrite an existing `.gitignore`.** Append under a `# ideaspace defaults` header.
 - **Never silently add `.gitignore` patterns mid-session.** Gitignore edits are Agreement-level. Surface and confirm.
-- **Never push to a remote.** Local-first; the user pushes when they choose.
+- **Never push automatically.** Local-first by default. `ideaspaces publish` is the explicit step the user runs when they're ready to host the space remotely.
+
+## Optional: publish
+
+After scaffold, if the user is logged in (`ideaspaces login` previously) and wants to host the space remotely:
+
+> "Want to publish this to a remote space now? `ideaspaces publish` from this directory will create a server-side repo and push. Or do that later when you're ready."
+
+Don't run `ideaspaces publish` without explicit confirmation — pushing is structural and user-facing.
 
 ## Optional: SessionStart hook
 
@@ -93,10 +106,11 @@ Read `.claude/settings.local.json` first; merge under `hooks.SessionStart` rathe
 ## Confirm
 
 Summarize what was set up:
-- `_agent/` scaffolded (five files)
+- `_agent/foundation.md` + `_agent/guide.md` scaffolded (the seed)
+- `_agent/purpose.md` / `now.md` / `next.md` if captured in conversation; missing if skipped
 - `CLAUDE.md` (or `CLAUDE.local.md`) added
+- `.gitattributes` added
 - `.gitignore` defaults appended
-- Purpose / Now / Next seeded (one line each)
 - SessionStart hook installed (if yes)
 - Initial commit made
 
@@ -109,4 +123,4 @@ After setup:
 - **is-capture** — propose saving knowledge during work
 - **is-reflect** — propose updating direction when it drifts
 - **is-writing** — writing standard for Notes
-- **is-space** — navigation, Two Roles, the five-file contract reference
+- **is-space** — navigation, Two Roles, the contract reference

@@ -1,11 +1,12 @@
 ---
 name: is-space
 description: >
-  Reference for working in an ideaspace — the five-file `_agent/` contract,
-  Two Roles convention (user content vs agent context), and tool surface.
-  Read this when working with `is_*` tools or when the user asks how to
-  navigate their space. Native Read/Glob/Grep/Edit/Write/Bash cover most
-  navigation; `is_*` adds frontmatter-aware capture and sync state.
+  Reference for working in an ideaspace — the five-file `_agent/` contract
+  (seed: foundation + guide; emergent: purpose, now, next), Two Roles
+  convention (user content vs agent context), and tool surface. Read this
+  when working with `is_*` tools or when the user asks how to navigate
+  their space. Native Read/Glob/Grep/Edit/Write/Bash cover most navigation;
+  `is_*` adds frontmatter-aware capture and sync state.
 allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth Read Glob Grep Edit Write Bash"
 ---
 
@@ -22,21 +23,32 @@ You have two sets of tools:
 
 **No `_agent/` yet?** Suggest `/is-setup` — it walks the user through the contract scaffold and conversational seeding.
 
-**Returning?** Read `_agent/foundation.md`, `guide.md`, `purpose.md`, `now.md`, `next.md` to orient. The SessionStart hook surfaces this inline along with each file's summary and any operating skills present.
+**Returning?** Read `_agent/foundation.md` and `_agent/guide.md` first — they always exist on a scaffolded space. Then `_agent/purpose.md`, `now.md`, `next.md` — these may not exist yet. **Missing files are first-class drift signals**: the contract names them, so absence means direction hasn't been captured. Surface this and propose capturing them in conversation before doing other work.
+
+The SessionStart hook surfaces what's present inline along with each file's summary and any operating skills.
 
 ## The five-file `_agent/` contract
 
-Every ideaspace carries an `_agent/` folder at root:
+Every ideaspace carries an `_agent/` folder at root. Two layers:
+
+**Seed** (always scaffolded by `ideaspaces create` / `/is-setup`):
 
 | File | Role |
 |---|---|
 | `foundation.md` | What this place is, baseline behaviors. Lives only at the space root and always loads. |
 | `guide.md` | How agent and human work together at this scope, anchored to foundation. |
+
+**Emergent** (captured in conversation when content exists, not as placeholder writes):
+
+| File | Role |
+|---|---|
 | `purpose.md` | Why this space exists. The North Star. |
 | `now.md` | What's currently active. |
 | `next.md` | What's queued. |
 
-These five files are loaded by position. Read them at session start to orient.
+The contract is self-bootstrapping — `foundation.md` + `guide.md` name the emergent files, so an agent reading the seed sees the gap and proposes capturing the rest. Real content over placeholder filler.
+
+Read all five at session start when present; surface the gap when not.
 
 `CLAUDE.md` at the space root tells Claude Code where the contract is — without it, the runtime reads ancestor `CLAUDE.md` only and misses the space-specific Agreement.
 
@@ -85,6 +97,8 @@ Layer 2 (optional): `tags`, `attached_to`.
 - `is_auth action="logout"` — clear credentials
 
 Sync is opt-in. The plugin works locally without auth.
+
+To host a space remotely after login, run `ideaspaces publish` from inside the space directory. It creates a server-side bare repo, sets the local `user.email` to the OAuth-resolved identity, and pushes. Folder ↔ repo mapping persists at `~/.ideaspaces/spaces.json` so re-publishing from the same dir reuses the existing remote.
 
 ## Native tools for the rest
 

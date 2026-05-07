@@ -2,9 +2,9 @@
 
 // dist/commands/create.js
 import { promises as fs } from "node:fs";
-import { existsSync } from "node:fs";
+import { existsSync as existsSync2 } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { join, resolve, basename } from "node:path";
+import { join as join2, resolve, basename } from "node:path";
 
 // dist/output.js
 function createOutput(flags2) {
@@ -30,6 +30,70 @@ function createOutput(flags2) {
       process.stderr.write(text + "\n");
     }
   };
+}
+
+// dist/auth/credentials.js
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+function configDir() {
+  return join(homedir(), ".ideaspaces");
+}
+function credentialsFile() {
+  return join(configDir(), "credentials.json");
+}
+function loadStoredCredentials() {
+  try {
+    if (!existsSync(credentialsFile()))
+      return null;
+    const raw = readFileSync(credentialsFile(), "utf-8");
+    const data = JSON.parse(raw);
+    if (!data.api_key)
+      return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+function saveCredentials(creds) {
+  if (!existsSync(configDir())) {
+    mkdirSync(configDir(), { recursive: true, mode: 448 });
+  }
+  writeFileSync(credentialsFile(), JSON.stringify(creds, null, 2) + "\n", {
+    mode: 384
+  });
+}
+function deleteCredentials() {
+  try {
+    if (existsSync(credentialsFile())) {
+      unlinkSync(credentialsFile());
+    }
+  } catch {
+  }
+}
+var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
+function loadConfig() {
+  const envKey = process.env.IS_API_KEY;
+  const envRepo = process.env.IS_REPO || "";
+  if (envKey) {
+    return {
+      apiUrl: (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, ""),
+      apiKey: envKey,
+      repo: envRepo
+    };
+  }
+  const stored = loadStoredCredentials();
+  if (stored) {
+    return {
+      apiUrl: (process.env.IS_API_URL || stored.api_url || DEFAULT_API_URL).replace(/\/$/, ""),
+      apiKey: stored.api_key,
+      repo: envRepo
+    };
+  }
+  return null;
+}
+function getDefaultApiUrl() {
+  return (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
 }
 
 // dist/templates/default.js
@@ -59,6 +123,17 @@ The five-file contract:
 - \`purpose.md\` \u2014 why this place exists.
 - \`now.md\` \u2014 what's currently active.
 - \`next.md\` \u2014 what's queued.
+
+Only \`foundation.md\` and \`guide.md\` are scaffolded at create time.
+\`purpose.md\`, \`now.md\`, and \`next.md\` are emergent \u2014 when the agent
+reads this contract and finds those files missing, propose creating
+them in conversation. Real content from real exchange.
+
+Optional dimensions inside \`_agent/\` (add as the space earns them):
+
+- \`skills/\` \u2014 operating procedures the agent should follow here. Each
+  skill is a markdown file (e.g., \`commit.md\` for the commit shape).
+  Surfaced at session start by name + summary; body loads on demand.
 
 \`CLAUDE.md\` at the space root tells Claude Code where this contract lives.
 
@@ -129,43 +204,8 @@ contradicts current practice, or this guide is silent on something we keep
 doing \u2014 surface it. Update this guide for this scope, or revisit foundation
 if a baseline needs to shift.
 `;
-var PURPOSE_MD = `---
-name: Purpose
-summary: Why this space exists \u2014 the North Star. Fill in via \`/is-setup\` or
-  edit directly.
----
-
-# Purpose
-
-_Why does this space exist? What's it for?_
-
-Two or three sentences. Concrete over aspirational. What would make this
-valuable to you six months from now?
-`;
-var NOW_MD = `---
-name: Now
-summary: What's currently active in this space. Fill in via \`/is-setup\` or
-  edit directly. Update at natural breaks; let it drift, then reflect.
----
-
-# Now
-
-_What are you working on right now? What would progress look like this week?_
-
-A single paragraph or a short list. Concrete, evaluable.
-`;
-var NEXT_MD = `---
-name: Next
-summary: What's queued after Now. Vague is OK \u2014 agents and humans figure out
-  the flow.
----
-
-# Next
-
-_What's queued after the current focus? What's plausibly next but not yet
-active?_
-
-Vague is OK. Leave a placeholder if nothing comes to mind.
+var GITATTRIBUTES = `*.md diff=markdown
+*.md text eol=lf
 `;
 var CLAUDE_MD = `# CLAUDE.md
 
@@ -200,10 +240,7 @@ function gitignoreDefaults(opts) {
 }
 var CONTRACT_TEMPLATES = {
   foundation: FOUNDATION_MD,
-  guide: GUIDE_MD,
-  purpose: PURPOSE_MD,
-  now: NOW_MD,
-  next: NEXT_MD
+  guide: GUIDE_MD
 };
 
 // dist/commands/create.js
@@ -256,13 +293,20 @@ var createCommand = {
 Use \`git status\` / \`git restore\` to recover.`);
       return 1;
     }
-    output.result({ target: targetDir, shape, privateAgent, scaffolded: true }, `Scaffolded ${describeTarget(targetDir, name)} (${shape}${privateAgent ? ", private _agent/" : ""}).
-Next: open Claude Code in ${name ? `./${name}` : "this directory"} and run \`/is-setup\` to seed purpose / now / next.`);
+    const where = name ? `./${name}` : "this directory";
+    const lines = [
+      `Scaffolded ${describeTarget(targetDir, name)} (${shape}${privateAgent ? ", private _agent/" : ""}).`,
+      `Next: open Claude Code in ${where} \u2014 the agent will read foundation+guide and propose capturing purpose / now / next in conversation.`
+    ];
+    if (loadStoredCredentials()) {
+      lines.push(`When ready to host this remotely, run \`ideaspaces publish\` from inside ${where}.`);
+    }
+    output.result({ target: targetDir, shape, privateAgent, scaffolded: true }, lines.join("\n"));
     return 0;
   }
 };
 async function inspect(targetDir) {
-  if (!existsSync(targetDir)) {
+  if (!existsSync2(targetDir)) {
     return {
       exists: false,
       isGitRepo: false,
@@ -274,15 +318,15 @@ async function inspect(targetDir) {
       markdownCount: 0
     };
   }
-  const isGitRepo = existsSync(join(targetDir, ".git"));
-  const hasClaude = existsSync(join(targetDir, "CLAUDE.md"));
-  const hasGitignore = existsSync(join(targetDir, ".gitignore"));
-  const agentDir = join(targetDir, "_agent");
-  const hasNewAgent = existsSync(join(agentDir, "foundation.md"));
-  const hasOldAgent = existsSync(agentDir) && OLD_AGENT_FILES.some((f) => existsSync(join(agentDir, f))) && !hasNewAgent;
+  const isGitRepo = existsSync2(join2(targetDir, ".git"));
+  const hasClaude = existsSync2(join2(targetDir, "CLAUDE.md"));
+  const hasGitignore = existsSync2(join2(targetDir, ".gitignore"));
+  const agentDir = join2(targetDir, "_agent");
+  const hasNewAgent = existsSync2(join2(agentDir, "foundation.md"));
+  const hasOldAgent = existsSync2(agentDir) && OLD_AGENT_FILES.some((f) => existsSync2(join2(agentDir, f))) && !hasNewAgent;
   let hasCodeSignal = false;
   for (const sig of CODE_SIGNALS) {
-    if (existsSync(join(targetDir, sig))) {
+    if (existsSync2(join2(targetDir, sig))) {
       hasCodeSignal = true;
       break;
     }
@@ -330,15 +374,22 @@ function buildPlan(opts) {
     steps.push({ op: "git-init", path: targetDir });
   }
   for (const fileName of Object.keys(CONTRACT_TEMPLATES)) {
-    steps.push({ op: "write", path: join(targetDir, "_agent", `${fileName}.md`) });
+    steps.push({ op: "write", path: join2(targetDir, "_agent", `${fileName}.md`) });
   }
   const claudeFile = privateAgent ? "CLAUDE.local.md" : "CLAUDE.md";
   if (!inspection.hasClaude) {
-    steps.push({ op: "write", path: join(targetDir, claudeFile) });
+    steps.push({ op: "write", path: join2(targetDir, claudeFile) });
+  }
+  if (!existsSync2(join2(targetDir, ".gitattributes"))) {
+    steps.push({
+      op: "write",
+      path: join2(targetDir, ".gitattributes"),
+      detail: "markdown diff/eol attributes"
+    });
   }
   steps.push({
     op: inspection.hasGitignore ? "append" : "write",
-    path: join(targetDir, ".gitignore"),
+    path: join2(targetDir, ".gitignore"),
     detail: privateAgent ? "private _agent/ defaults" : "content-space defaults"
   });
   steps.push({ op: "commit", detail: "Initial ideaspace scaffold" });
@@ -365,15 +416,19 @@ async function applyPlan(opts) {
   if (!inspection.isGitRepo) {
     runGit(targetDir, ["init", "-q", "-b", "main"]);
   }
-  await fs.mkdir(join(targetDir, "_agent"), { recursive: true });
+  await fs.mkdir(join2(targetDir, "_agent"), { recursive: true });
   for (const [name, content] of Object.entries(CONTRACT_TEMPLATES)) {
-    await fs.writeFile(join(targetDir, "_agent", `${name}.md`), content, "utf-8");
+    await fs.writeFile(join2(targetDir, "_agent", `${name}.md`), content, "utf-8");
   }
   const claudeFile = privateAgent ? "CLAUDE.local.md" : "CLAUDE.md";
   if (!inspection.hasClaude) {
-    await fs.writeFile(join(targetDir, claudeFile), CLAUDE_MD, "utf-8");
+    await fs.writeFile(join2(targetDir, claudeFile), CLAUDE_MD, "utf-8");
   }
-  const gitignorePath = join(targetDir, ".gitignore");
+  const gitattributesPath = join2(targetDir, ".gitattributes");
+  if (!existsSync2(gitattributesPath)) {
+    await fs.writeFile(gitattributesPath, GITATTRIBUTES, "utf-8");
+  }
+  const gitignorePath = join2(targetDir, ".gitignore");
   const additions = gitignoreDefaults({ privateAgent });
   if (inspection.hasGitignore) {
     const existing = await fs.readFile(gitignorePath, "utf-8");
@@ -401,66 +456,6 @@ function describeTarget(targetDir, name) {
 import { exec as exec2 } from "node:child_process";
 import { platform } from "node:os";
 
-// dist/auth/credentials.js
-import { existsSync as existsSync2, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join as join2 } from "node:path";
-var CONFIG_DIR = join2(homedir(), ".ideaspaces");
-var CREDENTIALS_FILE = join2(CONFIG_DIR, "credentials.json");
-function loadStoredCredentials() {
-  try {
-    if (!existsSync2(CREDENTIALS_FILE))
-      return null;
-    const raw = readFileSync(CREDENTIALS_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    if (!data.api_key)
-      return null;
-    return data;
-  } catch {
-    return null;
-  }
-}
-function saveCredentials(creds) {
-  if (!existsSync2(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true, mode: 448 });
-  }
-  writeFileSync(CREDENTIALS_FILE, JSON.stringify(creds, null, 2) + "\n", {
-    mode: 384
-  });
-}
-function deleteCredentials() {
-  try {
-    if (existsSync2(CREDENTIALS_FILE)) {
-      unlinkSync(CREDENTIALS_FILE);
-    }
-  } catch {
-  }
-}
-var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
-function loadConfig() {
-  const envKey = process.env.IS_API_KEY;
-  const envRepo = process.env.IS_REPO || "";
-  if (envKey) {
-    return {
-      apiUrl: (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, ""),
-      apiKey: envKey,
-      repo: envRepo
-    };
-  }
-  const stored = loadStoredCredentials();
-  if (stored) {
-    return {
-      apiUrl: (process.env.IS_API_URL || stored.api_url || DEFAULT_API_URL).replace(/\/$/, ""),
-      apiKey: stored.api_key,
-      repo: envRepo || stored.repo_id || ""
-    };
-  }
-  return null;
-}
-function getDefaultApiUrl() {
-  return (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
-}
-
 // dist/auth/callback-server.js
 import { createServer } from "node:http";
 import { URL } from "node:url";
@@ -481,7 +476,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve5, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -508,7 +503,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve3({
+      resolve5({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -595,11 +590,178 @@ ${authUrl}`);
   }
 };
 
+// dist/commands/publish.js
+import { spawnSync as spawnSync2 } from "node:child_process";
+import { existsSync as existsSync4 } from "node:fs";
+import { basename as basename2, join as join4, resolve as resolve3 } from "node:path";
+
+// dist/auth/api.js
+async function request(config, method, path, body) {
+  const r = await fetch(`${config.apiUrl}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`
+    },
+    body: body !== void 0 ? JSON.stringify(body) : void 0
+  });
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`${method} ${path} \u2192 ${r.status}: ${text || r.statusText}`);
+  }
+  return await r.json();
+}
+async function fetchAuthMe(config) {
+  return request(config, "GET", "/auth/me");
+}
+async function createRepo(config, body) {
+  return request(config, "POST", "/repos", body);
+}
+
+// dist/auth/spaces.js
+import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { join as join3, resolve as resolve2 } from "node:path";
+function configDir2() {
+  return join3(homedir2(), ".ideaspaces");
+}
+function spacesFile() {
+  return join3(configDir2(), "spaces.json");
+}
+function loadSpaces() {
+  try {
+    if (!existsSync3(spacesFile()))
+      return {};
+    const raw = readFileSync2(spacesFile(), "utf-8");
+    const data = JSON.parse(raw);
+    if (typeof data !== "object" || data === null)
+      return {};
+    return data;
+  } catch {
+    return {};
+  }
+}
+function saveSpace(absolutePath, record) {
+  const key = resolve2(absolutePath);
+  const map = loadSpaces();
+  map[key] = record;
+  if (!existsSync3(configDir2())) {
+    mkdirSync2(configDir2(), { recursive: true, mode: 448 });
+  }
+  writeFileSync2(spacesFile(), JSON.stringify(map, null, 2) + "\n", { mode: 384 });
+}
+
+// dist/commands/publish.js
+var GIT_HOST = "git.ideaspaces.xyz";
+function runGit2(cwd, args2) {
+  const r = spawnSync2("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  return {
+    ok: r.status === 0,
+    stderr: (r.stderr || "").trim(),
+    stdout: (r.stdout || "").trim()
+  };
+}
+function defaultGitUrl(namespace, slug) {
+  const base = (process.env.IS_GIT_URL || `https://${GIT_HOST}`).replace(/\/+$/, "");
+  return `${base}/${namespace}/${slug}.git`;
+}
+var publishCommand = {
+  name: "publish",
+  description: "Publish this folder as a remote ideaspace (login required)",
+  usage: "ideaspaces publish [--slug <slug>] [--name <name>] [--hostname <host>]",
+  examples: [
+    "ideaspaces publish                     # publish current directory; slug from folder name",
+    "ideaspaces publish --slug my-notes     # explicit slug",
+    "ideaspaces publish --hostname acme.com # publish into an org space (must be a member)"
+  ],
+  async run(_args, rawFlags, global2) {
+    const output = createOutput(global2);
+    const flags2 = rawFlags;
+    const cwd = process.cwd();
+    if (!existsSync4(join4(cwd, ".git"))) {
+      output.error("Not a git repo. Run `ideaspaces create` first, or `git init` here.");
+      return 1;
+    }
+    const stored = loadStoredCredentials();
+    if (!stored) {
+      output.error("Not logged in. Run `ideaspaces login` first.");
+      return 1;
+    }
+    const config = { apiUrl: stored.api_url, apiKey: stored.api_key };
+    let me;
+    try {
+      me = await fetchAuthMe(config);
+    } catch (err) {
+      output.error(`/auth/me failed: ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    if (!me.username) {
+      output.error("Account has no username yet. Complete onboarding before publishing.");
+      return 1;
+    }
+    const name = flags2.name?.toString() || basename2(cwd);
+    const slug = flags2.slug?.toString();
+    const hostname = flags2.hostname?.toString() ?? null;
+    const namespace = hostname ?? me.username;
+    let repo;
+    try {
+      repo = await createRepo(config, { name, slug, hostname });
+    } catch (err) {
+      output.error(`createRepo failed: ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    const identityEmail = `person:${me.username}@ideaspaces`;
+    const setEmail = runGit2(cwd, ["config", "--local", "user.email", identityEmail]);
+    if (!setEmail.ok) {
+      output.error(`git config user.email failed: ${setEmail.stderr}`);
+      return 1;
+    }
+    const remoteUrl = defaultGitUrl(namespace, repo.slug);
+    const existingRemote = runGit2(cwd, ["remote", "get-url", "origin"]);
+    if (existingRemote.ok) {
+      const setUrl = runGit2(cwd, ["remote", "set-url", "origin", remoteUrl]);
+      if (!setUrl.ok) {
+        output.error(`git remote set-url failed: ${setUrl.stderr}`);
+        return 1;
+      }
+    } else {
+      const addRemote = runGit2(cwd, ["remote", "add", "origin", remoteUrl]);
+      if (!addRemote.ok) {
+        output.error(`git remote add failed: ${addRemote.stderr}`);
+        return 1;
+      }
+    }
+    output.progress(`Pushing to ${remoteUrl} ...`);
+    const push = runGit2(cwd, ["push", "-u", "origin", "main"]);
+    if (!push.ok) {
+      output.error(`git push failed:
+${push.stderr}`);
+      return 1;
+    }
+    saveSpace(resolve3(cwd), {
+      repo_id: repo.repo_id,
+      slug: repo.slug,
+      namespace
+    });
+    output.result({
+      repo_id: repo.repo_id,
+      slug: repo.slug,
+      namespace,
+      remote_url: remoteUrl,
+      identity_email: identityEmail
+    }, [
+      `Published ${repo.name} \u2192 ${remoteUrl}`,
+      `Local git identity set to ${identityEmail} (this dir only \u2014 your global git config is untouched).`
+    ].join("\n"));
+    return 0;
+  }
+};
+
 // dist/commands/write.js
 import { promises as fs2 } from "node:fs";
-import { existsSync as existsSync3 } from "node:fs";
-import { spawnSync as spawnSync2 } from "node:child_process";
-import { dirname, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync5 } from "node:fs";
+import { spawnSync as spawnSync3 } from "node:child_process";
+import { dirname, resolve as resolve4 } from "node:path";
 
 // node_modules/@ideaspaces/sdk/dist/frontmatter.js
 var DELIM = "---";
@@ -700,8 +862,8 @@ var writeCommand = {
     };
     const force = Boolean(flags2.force);
     const commit = Boolean(flags2.commit);
-    const absPath = resolve2(path);
-    if (existsSync3(absPath) && !force) {
+    const absPath = resolve4(path);
+    if (existsSync5(absPath) && !force) {
       output.error(`File exists: ${path}
 Re-run with --force to overwrite.`);
       return 5;
@@ -730,16 +892,16 @@ function parseList(value) {
   return value.split(",").map((t) => t.trim()).filter(Boolean);
 }
 function gitCommitFile(absPath, message) {
-  const stage = spawnSync2("git", ["add", absPath], { encoding: "utf-8" });
+  const stage = spawnSync3("git", ["add", absPath], { encoding: "utf-8" });
   if (stage.status !== 0) {
     throw new Error(stage.stderr.trim() || `git add exit ${stage.status}`);
   }
   const subject = message?.trim() || `Update ${absPath.split("/").pop()}`;
-  const commit = spawnSync2("git", ["commit", "-q", "-m", subject], { encoding: "utf-8" });
+  const commit = spawnSync3("git", ["commit", "-q", "-m", subject], { encoding: "utf-8" });
   if (commit.status !== 0) {
     throw new Error(commit.stderr.trim() || commit.stdout.trim() || `git commit exit ${commit.status}`);
   }
-  const sha = spawnSync2("git", ["rev-parse", "HEAD"], { encoding: "utf-8" });
+  const sha = spawnSync3("git", ["rev-parse", "HEAD"], { encoding: "utf-8" });
   return sha.stdout.trim();
 }
 
@@ -812,14 +974,14 @@ async function drainStdin() {
 }
 
 // dist/auth/session-state.js
-import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { join as join3 } from "node:path";
-var CONFIG_DIR2 = join3(homedir2(), ".ideaspaces");
-var SESSION_FILE = join3(CONFIG_DIR2, "session.json");
+import { existsSync as existsSync6, mkdirSync as mkdirSync3, readFileSync as readFileSync3, unlinkSync as unlinkSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { homedir as homedir3 } from "node:os";
+import { join as join5 } from "node:path";
+var CONFIG_DIR = join5(homedir3(), ".ideaspaces");
+var SESSION_FILE = join5(CONFIG_DIR, "session.json");
 function clearSessionState() {
   try {
-    if (existsSync4(SESSION_FILE))
+    if (existsSync6(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -843,6 +1005,7 @@ var logoutCommand = {
 var topLevel = [
   createCommand,
   loginCommand,
+  publishCommand,
   writeCommand,
   credentialCommand
 ];

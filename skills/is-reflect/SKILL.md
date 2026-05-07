@@ -30,7 +30,7 @@ Reflection is the trigger; recalibration is what it runs. Offered as a readiness
 
 ## How
 
-Read current state first — `Read` `_agent/purpose.md` and `_agent/now.md`. `Glob` recent activity if needed.
+Read current state first — `Read` `_agent/purpose.md` and `_agent/now.md`. If either doesn't exist yet, that's the first reflection: the contract names them, so absence means direction hasn't been captured. Surface it and propose capturing the missing file before reflecting on what's there. `Glob` recent activity if needed.
 
 Be specific: "The Now says 'build skill packages.' We've defined three. Update the bullets?" Not "should we update Now?"
 
