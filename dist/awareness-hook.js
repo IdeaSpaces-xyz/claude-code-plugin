@@ -1,10 +1,5 @@
 #!/usr/bin/env node
 
-// src/awareness-hook.ts
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join as join3 } from "node:path";
-
 // node_modules/@ideaspaces/sdk/dist/space.js
 import { promises as fs } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -294,17 +289,9 @@ async function gitChanges(root, since) {
 }
 
 // src/awareness-hook.ts
-function isLoggedIn() {
-  return existsSync(join3(homedir(), ".ideaspaces", "credentials.json"));
-}
 async function main() {
   const space = await findSpaceRoot(process.cwd());
-  if (space.source === "none" || !space.root) {
-    process.stdout.write(
-      "Not an ideaspace yet.\nIf the user wants this folder structured for knowledge work, suggest `/is-setup`.\n"
-    );
-    return;
-  }
+  if (space.source === "none" || !space.root) return;
   const block = await assembleAwareness({
     root: space.root,
     contract: space.contract
@@ -320,11 +307,6 @@ async function main() {
   if (!space.contract.now) {
     drift.push(
       "\u26A0 `_agent/now.md` not yet captured. Propose capturing what's currently active."
-    );
-  }
-  if (!isLoggedIn()) {
-    drift.push(
-      "(Not logged in to IdeaSpaces. `/is-publish` will offer login when the user is ready to host this remotely.)"
     );
   }
   if (drift.length > 0) {
