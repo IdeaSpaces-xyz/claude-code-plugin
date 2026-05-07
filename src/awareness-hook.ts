@@ -35,19 +35,20 @@ async function main(): Promise<void> {
 
   if (block.trim()) process.stdout.write(block);
 
-  // Drift signals for missing direction. The contract names purpose /
-  // now / next; their absence is direction-not-yet-captured. Surface as
-  // ⚠ so the agent treats them as first-class — not as ambiguity to be
-  // inferred from skill text.
+  // Drift signals for missing direction. The contract names purpose
+  // and now; their absence is direction-not-yet-captured. Surface as ⚠
+  // so the agent treats them as first-class — not as ambiguity to be
+  // inferred from skill text. `next` is intentionally not surfaced —
+  // it's a queue ("Vague is OK"), not load-bearing direction.
   const drift: string[] = [];
   if (!space.contract.purpose) {
     drift.push(
-      "⚠ `_agent/purpose.md` not yet captured. The contract names it; propose capturing in conversation before doing other work.",
+      "⚠ `_agent/purpose.md` not yet captured. The contract names it; suggest capturing in conversation when there's a natural moment.",
     );
   }
   if (!space.contract.now) {
     drift.push(
-      "⚠ `_agent/now.md` not yet captured. Propose capturing what's currently active.",
+      "⚠ `_agent/now.md` not yet captured. Suggest capturing what's currently active.",
     );
   }
 

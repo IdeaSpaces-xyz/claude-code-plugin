@@ -301,12 +301,12 @@ async function main() {
   const drift = [];
   if (!space.contract.purpose) {
     drift.push(
-      "\u26A0 `_agent/purpose.md` not yet captured. The contract names it; propose capturing in conversation before doing other work."
+      "\u26A0 `_agent/purpose.md` not yet captured. The contract names it; suggest capturing in conversation when there's a natural moment."
     );
   }
   if (!space.contract.now) {
     drift.push(
-      "\u26A0 `_agent/now.md` not yet captured. Propose capturing what's currently active."
+      "\u26A0 `_agent/now.md` not yet captured. Suggest capturing what's currently active."
     );
   }
   if (drift.length > 0) {
