@@ -119,4 +119,4 @@ To host a space remotely after login, run `ideaspaces publish` from inside the s
 - **is-capture** — when to propose saving knowledge during work
 - **is-reflect** — when to propose updating Purpose, Now, or structure
 - **is-writing** — quality standard for summaries, sections, entities
-- **is-setup** — onboarding flow for a new or existing space (will become the conversational layer for `ideaspace create`)
+- **is-setup** — conversational layer over `ideaspaces create` for a new or existing space
