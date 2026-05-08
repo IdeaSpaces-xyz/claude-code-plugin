@@ -21010,18 +21010,16 @@ var StdioServerTransport = class {
   }
 };
 
-// dist/index.js
+// src/index.ts
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
 function resolveCli() {
-  if (process.env.IS_CLI_PATH)
-    return process.env.IS_CLI_PATH;
+  if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
   const __dirname = dirname(fileURLToPath(import.meta.url));
   const relative = join(__dirname, "../cli/bundle/ideaspaces.js");
-  if (existsSync(relative))
-    return relative;
+  if (existsSync(relative)) return relative;
   return "ideaspaces";
 }
 var CLI = resolveCli();
@@ -21044,8 +21042,7 @@ function cli(args, stdin, cwd) {
     proc.stderr.on("data", (d) => err += d);
     proc.on("close", (code) => resolve({ out, err, code: code ?? 1 }));
     proc.on("error", (e) => resolve({ out: "", err: e.message, code: 1 }));
-    if (stdin != null)
-      proc.stdin.write(stdin);
+    if (stdin != null) proc.stdin.write(stdin);
     proc.stdin.end();
   });
 }
@@ -21057,46 +21054,51 @@ function fail(t) {
 }
 async function run(args, stdin, cwd) {
   const { out, err, code } = await cli(["--json", ...args], stdin, cwd);
-  if (code !== 0)
-    return fail(err.trim() || out.trim() || `Exit ${code}`);
+  if (code !== 0) return fail(err.trim() || out.trim() || `Exit ${code}`);
   return ok(out.trim() || err.trim() || "Done");
 }
 var server = new McpServer({ name: "ideaspaces", version: "0.3.0" });
-server.tool("is_auth", "Manage IdeaSpaces sync credentials. Sync is opt-in; the plugin works locally without auth.", {
-  action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
-}, async ({ action }) => {
-  switch (action) {
-    case "login":
-      return run(["login"]);
-    case "logout":
-      return run(["power", "logout"]);
+server.tool(
+  "is_auth",
+  "Manage IdeaSpaces sync credentials. Sync is opt-in; the plugin works locally without auth.",
+  {
+    action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
+  },
+  async ({ action }) => {
+    switch (action) {
+      case "login":
+        return run(["login"]);
+      case "logout":
+        return run(["power", "logout"]);
+    }
   }
-});
-server.tool("is_write", "Create or update a Note with Layer 1 frontmatter (name, summary). Use for capture; native Write covers source code and config.", {
-  path: external_exports.string().describe("File path within the ideaspace"),
-  content: external_exports.string().describe("Markdown content (frontmatter prepended automatically)"),
-  name: external_exports.string().optional().describe("Note name (Layer 1 frontmatter)"),
-  summary: external_exports.string().optional().describe("Dense summary for search (Layer 1 frontmatter)"),
-  tags: external_exports.array(external_exports.string()).optional(),
-  attached_to: external_exports.array(external_exports.string()).optional().describe("Entity bindings (e.g. 'hostname:acme.com')"),
-  if_match: external_exports.string().optional().describe("SHA for conditional write"),
-  force: external_exports.boolean().optional().describe("Overwrite without if_match"),
-  cwd: external_exports.string().optional().describe("Absolute working directory for path resolution. Pass this if the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so without an explicit `cwd` the path resolves against the dir Claude Code launched from.")
-}, async ({ path, content, name, summary, tags, attached_to, if_match, force, cwd }) => {
-  const a = ["write", path];
-  if (name)
-    a.push("--name", name);
-  if (summary)
-    a.push("--summary", summary);
-  if (tags?.length)
-    a.push("--tags", tags.join(","));
-  if (attached_to?.length)
-    a.push("--attached-to", attached_to.join(","));
-  if (if_match)
-    a.push("--if-match", if_match);
-  if (force)
-    a.push("--force");
-  return run(a, content, cwd);
-});
+);
+server.tool(
+  "is_write",
+  "Create or update a Note with Layer 1 frontmatter (name, summary). Use for capture; native Write covers source code and config.",
+  {
+    path: external_exports.string().describe("File path within the ideaspace"),
+    content: external_exports.string().describe("Markdown content (frontmatter prepended automatically)"),
+    name: external_exports.string().optional().describe("Note name (Layer 1 frontmatter)"),
+    summary: external_exports.string().optional().describe("Dense summary for search (Layer 1 frontmatter)"),
+    tags: external_exports.array(external_exports.string()).optional(),
+    attached_to: external_exports.array(external_exports.string()).optional().describe("Entity bindings (e.g. 'hostname:acme.com')"),
+    if_match: external_exports.string().optional().describe("SHA for conditional write"),
+    force: external_exports.boolean().optional().describe("Overwrite without if_match"),
+    cwd: external_exports.string().optional().describe(
+      "Absolute working directory for path resolution. Pass this if the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so without an explicit `cwd` the path resolves against the dir Claude Code launched from."
+    )
+  },
+  async ({ path, content, name, summary, tags, attached_to, if_match, force, cwd }) => {
+    const a = ["write", path];
+    if (name) a.push("--name", name);
+    if (summary) a.push("--summary", summary);
+    if (tags?.length) a.push("--tags", tags.join(","));
+    if (attached_to?.length) a.push("--attached-to", attached_to.join(","));
+    if (if_match) a.push("--if-match", if_match);
+    if (force) a.push("--force");
+    return run(a, content, cwd);
+  }
+);
 var transport = new StdioServerTransport();
 await server.connect(transport);

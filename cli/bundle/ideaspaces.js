@@ -101,6 +101,86 @@ function getDefaultApiUrl() {
   return (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
 }
 
+// dist/auth/api.js
+var API_V1 = "/api/v1";
+var DEFAULT_REQUEST_TIMEOUT_MS = 5e3;
+function deriveGitBase(apiUrl) {
+  const override = process.env.IS_GIT_URL;
+  if (override)
+    return override.replace(/\/+$/, "");
+  try {
+    const url = new URL(apiUrl);
+    if (url.hostname.startsWith("api.")) {
+      url.hostname = "git." + url.hostname.slice(4);
+    }
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return apiUrl.replace(/\/+$/, "");
+  }
+}
+function deriveWebBase(apiUrl) {
+  const override = process.env.IS_WEB_URL;
+  if (override)
+    return override.replace(/\/+$/, "");
+  try {
+    const url = new URL(apiUrl);
+    if (url.hostname.startsWith("api.")) {
+      url.hostname = url.hostname.slice(4);
+    }
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return apiUrl.replace(/\/+$/, "");
+  }
+}
+var UnauthorizedError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "UnauthorizedError";
+  }
+};
+async function request(config, method, path, body, opts = {}) {
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(`${config.apiUrl}${path}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`
+      },
+      body: body !== void 0 ? JSON.stringify(body) : void 0,
+      signal: ctrl.signal
+    });
+    if (!r.ok) {
+      const text = await r.text();
+      if (r.status === 401) {
+        throw new UnauthorizedError(`${method} ${path} \u2192 401: ${text || r.statusText}`);
+      }
+      throw new Error(`${method} ${path} \u2192 ${r.status}: ${text || r.statusText}`);
+    }
+    return await r.json();
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`${method} ${path} timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+async function fetchAuthMe(config, opts) {
+  return request(config, "GET", "/auth/me", void 0, opts);
+}
+async function createRepo(config, body, opts) {
+  return request(config, "POST", `${API_V1}/repos`, body, opts);
+}
+
+// dist/auth/identity.js
+function identityEmail(username) {
+  return `person:${username}@ideaspaces`;
+}
+
 // dist/templates/default.js
 var FOUNDATION_MD = `---
 name: Foundation
@@ -651,6 +731,7 @@ async function applyPlan(opts) {
   if (!inspection.isGitRepo) {
     runGit(targetDir, ["init", "-q", "-b", "main"]);
   }
+  await maybeSetIdentity(targetDir);
   await fs2.mkdir(join4(targetDir, "_agent"), { recursive: true });
   for (const [name, content] of Object.entries(CONTRACT_TEMPLATES)) {
     await fs2.writeFile(join4(targetDir, "_agent", `${name}.md`), withNodeId(content), "utf-8");
@@ -678,6 +759,18 @@ async function applyPlan(opts) {
 }
 function withNodeId(content) {
   return ensureMarkdownNodeId(content).content;
+}
+async function maybeSetIdentity(targetDir) {
+  const stored = loadStoredCredentials();
+  if (!stored)
+    return;
+  try {
+    const me = await fetchAuthMe({ apiUrl: stored.api_url, apiKey: stored.api_key }, { timeoutMs: 2e3 });
+    if (!me.username)
+      return;
+    runGit(targetDir, ["config", "--local", "user.email", identityEmail(me.username)]);
+  } catch {
+  }
 }
 function runGit(cwd, args2) {
   const r = spawnSync("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
@@ -823,7 +916,12 @@ ${authUrl}`);
     }
     saveCredentials({ api_url: apiUrl, api_key: token });
     await registerGitCredentialHelper();
-    output.result({ logged_in: true }, "Logged in. `git push` / `git pull` against your space repo now picks up credentials automatically.");
+    const webUrl = deriveWebBase(apiUrl);
+    output.result({ logged_in: true, web_url: webUrl }, [
+      "Logged in.",
+      `View your account: ${webUrl}`,
+      "`git push` / `git pull` against your space repos now picks up credentials automatically."
+    ].join("\n"));
     return 0;
   }
 };
@@ -832,30 +930,6 @@ ${authUrl}`);
 import { spawnSync as spawnSync2 } from "node:child_process";
 import { existsSync as existsSync4 } from "node:fs";
 import { basename as basename2, join as join6 } from "node:path";
-
-// dist/auth/api.js
-var API_V1 = "/api/v1";
-async function request(config, method, path, body) {
-  const r = await fetch(`${config.apiUrl}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`
-    },
-    body: body !== void 0 ? JSON.stringify(body) : void 0
-  });
-  if (!r.ok) {
-    const text = await r.text();
-    throw new Error(`${method} ${path} \u2192 ${r.status}: ${text || r.statusText}`);
-  }
-  return await r.json();
-}
-async function fetchAuthMe(config) {
-  return request(config, "GET", "/auth/me");
-}
-async function createRepo(config, body) {
-  return request(config, "POST", `${API_V1}/repos`, body);
-}
 
 // dist/auth/spaces.js
 import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
@@ -993,24 +1067,14 @@ function runGit2(cwd, args2) {
     stdout: (r.stdout || "").trim()
   };
 }
-function deriveGitBase(apiUrl) {
-  const override = process.env.IS_GIT_URL;
-  if (override)
-    return override.replace(/\/+$/, "");
-  try {
-    const url = new URL(apiUrl);
-    if (url.hostname.startsWith("api.")) {
-      url.hostname = "git." + url.hostname.slice(4);
-    }
-    return url.toString().replace(/\/+$/, "");
-  } catch {
-    return apiUrl.replace(/\/+$/, "");
-  }
-}
 function defaultGitUrl(apiUrl, namespace, slug) {
   return `${deriveGitBase(apiUrl)}/${namespace}/${slug}.git`;
 }
+function spaceWebUrl(apiUrl, namespace, slug) {
+  return `${deriveWebBase(apiUrl)}/${namespace}/${slug}`;
+}
 var SIZE_CAP_MARKERS = ["size cap", "too large", "exceeds"];
+var SESSION_EXPIRED_MSG = "Your IdeaSpaces session has expired. Run `ideaspaces login` to refresh, then retry publish.";
 function slugify(input) {
   let s = input.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   if (s.length === 0)
@@ -1071,6 +1135,10 @@ var publishCommand = {
       return 1;
     }
     const branch = branchResult.stdout;
+    if (branch !== "main") {
+      output.error(`Local branch is \`${branch}\`; IdeaSpaces uses \`main\` as the default. Rename with \`git branch -m main\` and retry, or use \`/is-publish\` from Claude Code which offers to rename for you.`);
+      return 1;
+    }
     let identityProblem;
     try {
       identityProblem = await checkMarkdownIdentities(cwd);
@@ -1092,6 +1160,10 @@ var publishCommand = {
     try {
       me = await fetchAuthMe(config);
     } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        output.error(SESSION_EXPIRED_MSG);
+        return 1;
+      }
       output.error(`Couldn't reach the IdeaSpaces server: ${err instanceof Error ? err.message : String(err)}`);
       return 1;
     }
@@ -1128,15 +1200,40 @@ var publishCommand = {
       try {
         repo = await createRepo(config, { name, slug, hostname });
       } catch (err) {
+        if (err instanceof UnauthorizedError) {
+          output.error(SESSION_EXPIRED_MSG);
+          return 1;
+        }
         output.error(`Couldn't create remote space: ${err instanceof Error ? err.message : String(err)}`);
         return 1;
       }
     }
-    const identityEmail = `person:${me.username}@ideaspaces`;
-    const setEmail = runGit2(cwd, ["config", "--local", "user.email", identityEmail]);
+    const identityEmail2 = identityEmail(me.username);
+    const setEmail = runGit2(cwd, ["config", "--local", "user.email", identityEmail2]);
     if (!setEmail.ok) {
       output.error(`git config user.email failed: ${setEmail.stderr}`);
       return 1;
+    }
+    if (!existing || flags2.force) {
+      const tipAuthor = runGit2(cwd, ["log", "-1", "--format=%ae"]);
+      if (!tipAuthor.ok) {
+        output.log("Could not read tip author; skipping author rewrite. If push fails the identity check, fix git history manually.");
+      } else if (tipAuthor.stdout && tipAuthor.stdout !== identityEmail2) {
+        output.log(`Rewriting tip commit author to ${identityEmail2} to satisfy the pre-receive identity check.`);
+        const amend = runGit2(cwd, ["commit", "--amend", "--no-edit", "--reset-author"]);
+        if (!amend.ok) {
+          let hint = "";
+          if (/gpg|signing|secret key/i.test(amend.stderr)) {
+            hint = `
+If you have commit signing on (\`commit.gpgsign=true\`), either configure a key for ${identityEmail2} or run \`git config --local commit.gpgsign false\` in this dir.`;
+          } else if (/please tell me who you are/i.test(amend.stderr)) {
+            hint = `
+Git needs a \`user.name\` to commit. Run \`git config --local user.name "Your Name"\` and retry.`;
+          }
+          output.error(`git commit --amend failed: ${amend.stderr}${hint}`);
+          return 1;
+        }
+      }
     }
     const remoteUrl = defaultGitUrl(config.apiUrl, namespace, repo.slug);
     const existingRemote = runGit2(cwd, ["remote", "get-url", "origin"]);
@@ -1156,8 +1253,8 @@ var publishCommand = {
         return 1;
       }
     }
-    output.progress(`Pushing ${branch} to ${remoteUrl} ...`);
-    const push = runGit2(cwd, ["push", "-u", "origin", branch]);
+    output.progress(`Pushing main to ${remoteUrl} ...`);
+    const push = runGit2(cwd, ["push", "-u", "origin", "main"]);
     if (!push.ok) {
       const sizeRelated = SIZE_CAP_MARKERS.some((m) => push.stderr.includes(m));
       const hint = sizeRelated ? "\nA blob exceeded the 200KB cap \u2014 shrink it or move it out of the repo." : "";
@@ -1170,15 +1267,19 @@ ${push.stderr}${hint}`);
       slug: repo.slug,
       namespace
     });
+    const webUrl = spaceWebUrl(config.apiUrl, namespace, repo.slug);
     output.result({
       repo_id: repo.repo_id,
       slug: repo.slug,
       namespace,
       remote_url: remoteUrl,
-      identity_email: identityEmail
+      web_url: webUrl,
+      identity_email: identityEmail2
     }, [
-      `Published ${repo.name} \u2192 ${remoteUrl}`,
-      `Local git identity set to ${identityEmail} (this dir only \u2014 your global git config is untouched).`
+      `Published ${repo.name}.`,
+      `View: ${webUrl}`,
+      `Git remote: ${remoteUrl}`,
+      `Local git identity set to ${identityEmail2} (this dir only \u2014 your global git config is untouched).`
     ].join("\n"));
     return 0;
   }
