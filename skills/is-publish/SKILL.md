@@ -113,6 +113,22 @@ The CLI:
 6. Pushes the current branch.
 7. Records folder ↔ space mapping in `~/.ideaspaces/spaces.json`.
 
+### Size-cap recovery (oversized tracked files)
+
+If the CLI exits 1 with `Cannot publish yet: N tracked file(s) exceed the 200,000-byte server limit.` followed by a list of `path (bytes)` lines, the offenders are tracked files larger than the server cap. The CLI fails fast locally — no push attempted. Parse the offender list and decide:
+
+**Known clutter** — if every offender path matches one of these patterns, offer the conversational fix as a single yes/no:
+
+```
+.obsidian/    node_modules/    .DS_Store    .cache/    .idea/    .vscode/
+```
+
+> *"I see `<matched paths>` tracked — that's <vault config / build output / editor metadata>, not your knowledge. I can append <patterns> to `.gitignore`, untrack with `git rm --cached -r <path>`, commit, and retry publish. OK?"*
+
+On confirm, run in this order: append the matching patterns to `.gitignore` (don't duplicate existing lines), `git rm --cached -r <path>` for each, `git commit -m "Untrack non-publishable clutter"`, then re-run `ideaspaces publish`.
+
+**Mixed or unknown offenders** — if any offender is outside the clutter list (e.g. a 5 MB image the user might want), don't auto-fix. Surface the CLI output verbatim and stop with: *"These files are over the 200KB cap. Shrink them, store externally, or link via frontmatter (`attached_to:`). Re-run `/is-publish` when resolved."* — the user might have intent for that file.
+
 ## 5. Narrate result
 
 On success, surface the remote URL and the local changes:
@@ -125,7 +141,8 @@ On success, surface the remote URL and the local changes:
 |---|---|---|
 | `markdown identity check failed` | Missing/malformed/duplicate `node_id` | Run `ideaspaces id --fix .`, or regenerate duplicate copied files. |
 | `Not logged in` | No stored credentials | Run `ideaspaces login`. |
-| `Push failed: ... size cap` | A tracked file exceeds 200KB | Shrink it or move it out of the repo. |
+| `Cannot publish yet: N tracked file(s) exceed the 200,000-byte server limit.` | CLI size preflight | See "Size-cap recovery" above — auto-handle known clutter, surface the rest. |
+| `Push failed: ... size cap` | Server-side cap (only if CLI preflight is bypassed) | Same as above; re-run `/is-publish` so the local preflight surfaces the offender list. |
 | `Push failed: ... attribution doesn't match` | Commit author doesn't match account | Re-run publish; it sets local `user.email`. Amend/recommit if needed. |
 | `Local branch is \`<x>\`; IdeaSpaces uses \`main\`` | Pre-flight didn't run / user invoked CLI directly | Rename via `git branch -m main` and retry, or use `/is-publish` which offers the rename. |
 | `Couldn't determine the current branch — is HEAD detached?` | Detached-HEAD state (rare; pre-flight catches via skill) | Check out a branch (`git checkout main`) and retry. |
