@@ -37,11 +37,13 @@ test -f _agent/foundation.md && test -d .git && echo "ok" || echo "missing"
 git rev-parse --abbrev-ref HEAD
 ```
 
-If output isn't `main`, ask the user before proceeding:
+If output is the literal string `HEAD`, the user is in detached-HEAD state. Don't offer a rename — short-circuit with: *"You're in detached-HEAD state. Check out a branch first (e.g. `git checkout main`) and re-run `/is-publish`."*
+
+Otherwise, if output isn't `main`, ask before proceeding:
 
 > "You're on `<current-branch>`. IdeaSpaces uses `main` as the default — keeping local and remote consistent makes future `git pull` / clones work without surprises. Rename `<current-branch>` → `main` for this folder?"
 
-If yes, run `git branch -m main`, then continue. If no, abort with: *"Switch to `main` (or rename) and re-run `/is-publish` when ready."* — don't try to push a non-main branch; `ideaspaces publish` refuses anyway.
+If yes, run `git branch -m main`, then continue. If no, abort: *"Switch to `main` and re-run `/is-publish` when ready."* — don't try to push a non-main branch; `ideaspaces publish` refuses anyway.
 
 **Logged in?** Read the credentials file directly — its presence is the login signal:
 
