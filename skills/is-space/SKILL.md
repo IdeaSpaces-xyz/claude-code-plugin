@@ -84,12 +84,23 @@ When capturing from a conversation, check the target folder's voice before writi
 Use for capture. Carries the writing standard. Better than raw filesystem `Write` when the file should compound as a Note.
 
 - `is_write path="analysis.md" content="..." name="Analysis" summary="Dense orientation"` — create or replace the Note's frontmatter and body
-- Optional fields: `tags`, `attached_to`, `if_match`, `force`
+- Optional fields: `tags`, `attached_to`, `if_match`, `force`, `cwd`
 
 Replace-semantics: callers specify all Layer 1 + 2 fields they want set; existing frontmatter is replaced wholesale and the body is preserved. For local file moves, deletions, and metadata-only edits, use native `Bash` (`git mv`, `rm`) and `Edit`.
 
 Layer 1 (required): `name`, `summary`.
 Layer 2 (optional): `tags`, `attached_to`.
+
+**`cwd` matters when you've `cd`-ed inside Bash.** The MCP server is a separate process from the agent's Bash tool. A `cd subdir` in a Bash invocation changes the *Bash subprocess's* cwd; it doesn't propagate to MCP tools. If you've worked in a subdir during the session and then call `is_write` with a relative `path`, the MCP server resolves it against the dir Claude Code launched from — likely the wrong tree.
+
+Pass `cwd` whenever the agent's intended working directory differs from session start:
+
+```
+is_write path="_agent/purpose.md" content="..." name="Purpose" summary="..."
+         cwd="/abs/path/to/the/space"
+```
+
+Default falls back to the MCP server's cwd, so calls that omit `cwd` keep the legacy behavior.
 
 ## `is_auth` — sync state
 
