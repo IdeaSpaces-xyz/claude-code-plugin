@@ -21025,11 +21025,18 @@ function resolveCli() {
   return "ideaspaces";
 }
 var CLI = resolveCli();
-function cli(args, stdin) {
+function cli(args, stdin, cwd) {
   return new Promise((resolve) => {
     const isFile = CLI.includes("/") || CLI.includes("\\") || CLI.endsWith(".js");
     const proc = spawn(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      // The MCP server starts in whatever cwd Claude Code launched it from
+      // (the user's session-start dir). The agent may have `cd`-ed inside
+      // a Bash invocation since — those changes don't propagate to MCP
+      // tools. Tools that touch the filesystem accept an explicit `cwd`
+      // and pass it through here so path resolution lands where the agent
+      // expects.
+      cwd: cwd || void 0
     });
     let out = "";
     let err = "";
@@ -21048,8 +21055,8 @@ function ok(t) {
 function fail(t) {
   return { content: [{ type: "text", text: t }], isError: true };
 }
-async function run(args, stdin) {
-  const { out, err, code } = await cli(["--json", ...args], stdin);
+async function run(args, stdin, cwd) {
+  const { out, err, code } = await cli(["--json", ...args], stdin, cwd);
   if (code !== 0)
     return fail(err.trim() || out.trim() || `Exit ${code}`);
   return ok(out.trim() || err.trim() || "Done");
@@ -21073,8 +21080,9 @@ server.tool("is_write", "Create or update a Note with Layer 1 frontmatter (name,
   tags: external_exports.array(external_exports.string()).optional(),
   attached_to: external_exports.array(external_exports.string()).optional().describe("Entity bindings (e.g. 'hostname:acme.com')"),
   if_match: external_exports.string().optional().describe("SHA for conditional write"),
-  force: external_exports.boolean().optional().describe("Overwrite without if_match")
-}, async ({ path, content, name, summary, tags, attached_to, if_match, force }) => {
+  force: external_exports.boolean().optional().describe("Overwrite without if_match"),
+  cwd: external_exports.string().optional().describe("Absolute working directory for path resolution. Pass this if the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so without an explicit `cwd` the path resolves against the dir Claude Code launched from.")
+}, async ({ path, content, name, summary, tags, attached_to, if_match, force, cwd }) => {
   const a = ["write", path];
   if (name)
     a.push("--name", name);
@@ -21088,7 +21096,7 @@ server.tool("is_write", "Create or update a Note with Layer 1 frontmatter (name,
     a.push("--if-match", if_match);
   if (force)
     a.push("--force");
-  return run(a, content);
+  return run(a, content, cwd);
 });
 var transport = new StdioServerTransport();
 await server.connect(transport);

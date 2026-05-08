@@ -834,6 +834,7 @@ import { existsSync as existsSync4 } from "node:fs";
 import { basename as basename2, join as join6 } from "node:path";
 
 // dist/auth/api.js
+var API_V1 = "/api/v1";
 async function request(config, method, path, body) {
   const r = await fetch(`${config.apiUrl}${path}`, {
     method,
@@ -853,7 +854,7 @@ async function fetchAuthMe(config) {
   return request(config, "GET", "/auth/me");
 }
 async function createRepo(config, body) {
-  return request(config, "POST", "/repos", body);
+  return request(config, "POST", `${API_V1}/repos`, body);
 }
 
 // dist/auth/spaces.js
@@ -1010,6 +1011,12 @@ function defaultGitUrl(apiUrl, namespace, slug) {
   return `${deriveGitBase(apiUrl)}/${namespace}/${slug}.git`;
 }
 var SIZE_CAP_MARKERS = ["size cap", "too large", "exceeds"];
+function slugify(input) {
+  let s = input.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  if (s.length === 0)
+    return "space";
+  return s.slice(0, 64).replace(/-+$/, "");
+}
 async function checkMarkdownIdentities(cwd) {
   const files = trackedMarkdownFiles(cwd);
   if (!files.length)
@@ -1109,8 +1116,13 @@ var publishCommand = {
       repo = { repo_id: existing.repo_id, slug: existing.slug, name: existing.slug };
       namespace = existing.namespace;
     } else {
-      const name = flags2.name?.toString() || basename2(cwd);
-      const slug = flags2.slug?.toString();
+      const folderName = basename2(cwd);
+      const name = flags2.name?.toString() || folderName;
+      const slugInput = flags2.slug?.toString() || folderName;
+      const slug = slugify(slugInput);
+      if (slug !== slugInput) {
+        output.log(`Using slug: ${slug} (normalized from "${slugInput}")`);
+      }
       const hostname = flags2.hostname?.toString() ?? null;
       namespace = hostname ?? me.username;
       try {
