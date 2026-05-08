@@ -31,6 +31,20 @@ test -f _agent/foundation.md && test -d .git && echo "ok" || echo "missing"
 
 **Markdown identities ready?** Don't run a separate broad `id .` check here. `ideaspaces publish` preflights the exact publish scope — tracked markdown files — before login/network/push. If that preflight fails, surface the CLI output and offer the fix commands it prints.
 
+**On the `main` branch?** IdeaSpaces uses `main` as the default branch — publishing requires the local branch to match so server and clones stay aligned. Detect:
+
+```bash
+git rev-parse --abbrev-ref HEAD
+```
+
+If output is the literal string `HEAD`, the user is in detached-HEAD state. Don't offer a rename — short-circuit with: *"You're in detached-HEAD state. Check out a branch first (e.g. `git checkout main`) and re-run `/is-publish`."*
+
+Otherwise, if output isn't `main`, ask before proceeding:
+
+> "You're on `<current-branch>`. IdeaSpaces uses `main` as the default — keeping local and remote consistent makes future `git pull` / clones work without surprises. Rename `<current-branch>` → `main` for this folder?"
+
+If yes, run `git branch -m main`. If the rename fails (most common cause: a local `main` branch already exists — perhaps stale or orphaned), surface git's error verbatim and stop with: *"You may already have a local `main` branch. Resolve manually (`git branch -d main` if it's stale, or `git checkout main` if it's the one you want) and re-run `/is-publish`."* On success, continue. If the user declines the rename, abort: *"Switch to `main` and re-run `/is-publish` when ready."* — don't try to push a non-main branch; `ideaspaces publish` refuses anyway.
+
 **Logged in?** Read the credentials file directly — its presence is the login signal:
 
 ```bash
@@ -113,7 +127,8 @@ On success, surface the remote URL and the local changes:
 | `Not logged in` | No stored credentials | Run `ideaspaces login`. |
 | `Push failed: ... size cap` | A tracked file exceeds 200KB | Shrink it or move it out of the repo. |
 | `Push failed: ... attribution doesn't match` | Commit author doesn't match account | Re-run publish; it sets local `user.email`. Amend/recommit if needed. |
-| `Couldn't determine the current branch` | Detached HEAD | Check out a branch first. |
+| `Local branch is \`<x>\`; IdeaSpaces uses \`main\`` | Pre-flight didn't run / user invoked CLI directly | Rename via `git branch -m main` and retry, or use `/is-publish` which offers the rename. |
+| `Couldn't determine the current branch — is HEAD detached?` | Detached-HEAD state (rare; pre-flight catches via skill) | Check out a branch (`git checkout main`) and retry. |
 | `--name only applies on first publish` | Re-publish path | Drop the flag or use `--force` for a fresh remote mapping. |
 
 Recovery posture: re-running publish is safe after failures. If `~/.ideaspaces/spaces.json` has a stale folder mapping, it is plain JSON — delete that entry and re-publish.
