@@ -1118,7 +1118,11 @@ var publishCommand = {
     } else {
       const folderName = basename2(cwd);
       const name = flags2.name?.toString() || folderName;
-      const slug = slugify(flags2.slug?.toString() || folderName);
+      const slugInput = flags2.slug?.toString() || folderName;
+      const slug = slugify(slugInput);
+      if (slug !== slugInput) {
+        output.log(`Using slug: ${slug} (normalized from "${slugInput}")`);
+      }
       const hostname = flags2.hostname?.toString() ?? null;
       namespace = hostname ?? me.username;
       try {
