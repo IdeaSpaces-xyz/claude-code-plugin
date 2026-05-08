@@ -128,6 +128,7 @@ On success, surface the remote URL and the local changes:
 | `Push failed: ... size cap` | A tracked file exceeds 200KB | Shrink it or move it out of the repo. |
 | `Push failed: ... attribution doesn't match` | Commit author doesn't match account | Re-run publish; it sets local `user.email`. Amend/recommit if needed. |
 | `Local branch is \`<x>\`; IdeaSpaces uses \`main\`` | Pre-flight didn't run / user invoked CLI directly | Rename via `git branch -m main` and retry, or use `/is-publish` which offers the rename. |
+| `Couldn't determine the current branch — is HEAD detached?` | Detached-HEAD state (rare; pre-flight catches via skill) | Check out a branch (`git checkout main`) and retry. |
 | `--name only applies on first publish` | Re-publish path | Drop the flag or use `--force` for a fresh remote mapping. |
 
 Recovery posture: re-running publish is safe after failures. If `~/.ideaspaces/spaces.json` has a stale folder mapping, it is plain JSON — delete that entry and re-publish.
