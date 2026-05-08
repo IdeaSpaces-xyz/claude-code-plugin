@@ -31,6 +31,18 @@ test -f _agent/foundation.md && test -d .git && echo "ok" || echo "missing"
 
 **Markdown identities ready?** Don't run a separate broad `id .` check here. `ideaspaces publish` preflights the exact publish scope — tracked markdown files — before login/network/push. If that preflight fails, surface the CLI output and offer the fix commands it prints.
 
+**On the `main` branch?** IdeaSpaces uses `main` as the default branch — publishing requires the local branch to match so server and clones stay aligned. Detect:
+
+```bash
+git rev-parse --abbrev-ref HEAD
+```
+
+If output isn't `main`, ask the user before proceeding:
+
+> "You're on `<current-branch>`. IdeaSpaces uses `main` as the default — keeping local and remote consistent makes future `git pull` / clones work without surprises. Rename `<current-branch>` → `main` for this folder?"
+
+If yes, run `git branch -m main`, then continue. If no, abort with: *"Switch to `main` (or rename) and re-run `/is-publish` when ready."* — don't try to push a non-main branch; `ideaspaces publish` refuses anyway.
+
 **Logged in?** Read the credentials file directly — its presence is the login signal:
 
 ```bash
