@@ -8304,7 +8304,7 @@ ${authUrl}`);
 
 // dist/commands/publish.js
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { existsSync as existsSync4 } from "node:fs";
+import { existsSync as existsSync4, statSync } from "node:fs";
 import { basename as basename2, join as join6 } from "node:path";
 
 // dist/auth/spaces.js
@@ -8487,7 +8487,42 @@ function defaultGitUrl(apiUrl, namespace, slug) {
 function spaceWebUrl(apiUrl, namespace, slug) {
   return `${deriveWebBase(apiUrl)}/${namespace}/${slug}`;
 }
+var SIZE_CAP_BYTES = 2e5;
 var SIZE_CAP_MARKERS = ["size cap", "too large", "exceeds"];
+function preflightSize(cwd) {
+  const r = spawnSync2("git", ["-C", cwd, "ls-files", "-z"], { encoding: "utf-8" });
+  if (r.error)
+    throw new Error(`git not available: ${r.error.message}`);
+  if (r.status !== 0) {
+    throw new Error(r.stderr.trim() || "git ls-files failed while checking blob sizes");
+  }
+  const offenders = [];
+  for (const rel of r.stdout.split("\0").filter(Boolean)) {
+    const abs = join6(cwd, rel);
+    let bytes;
+    try {
+      bytes = statSync(abs).size;
+    } catch {
+      continue;
+    }
+    if (bytes > SIZE_CAP_BYTES)
+      offenders.push({ path: rel, bytes });
+  }
+  return offenders;
+}
+function renderSizeProblems(offenders) {
+  const noun = offenders.length === 1 ? "file" : "files";
+  return [
+    `Cannot publish yet: ${offenders.length} tracked ${noun} exceed the ${SIZE_CAP_BYTES.toLocaleString("en-US")}-byte server limit.`,
+    "",
+    ...offenders.map((o) => `  ${o.path} (${o.bytes.toLocaleString("en-US")} bytes)`),
+    "",
+    "Fix: add the offending paths to `.gitignore` (especially vault config",
+    "like `.obsidian/`), untrack with `git rm --cached -r <path>`, commit,",
+    "and retry publish. Or shrink the file, store it externally, and link",
+    "it via frontmatter (`attached_to:`)."
+  ].join("\n");
+}
 var SESSION_EXPIRED_MSG = "Your IdeaSpaces session has expired. Run `ideaspaces login` to refresh, then retry publish.";
 function slugify(input) {
   let s = input.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -8563,6 +8598,17 @@ var publishCommand = {
     const branch = branchResult.stdout;
     if (branch !== "main") {
       output.error(`Local branch is \`${branch}\`; IdeaSpaces uses \`main\` as the default. Rename with \`git branch -m main\` and retry, or use \`/is-publish\` from Claude Code which offers to rename for you.`);
+      return 1;
+    }
+    let sizeOffenders;
+    try {
+      sizeOffenders = preflightSize(cwd);
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    if (sizeOffenders.length) {
+      output.error(renderSizeProblems(sizeOffenders));
       return 1;
     }
     let preflightProblem;
