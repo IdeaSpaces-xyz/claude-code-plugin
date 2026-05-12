@@ -129,6 +129,18 @@ On confirm, run in this order: append the matching patterns to `.gitignore` (don
 
 **Mixed or unknown offenders** — if any offender is outside the clutter list (e.g. a 5 MB image the user might want), don't auto-fix. Surface the CLI output verbatim and stop with: *"These files are over the 200KB cap. Shrink them, store externally, or link via frontmatter (`attached_to:`). Re-run `/is-publish` when resolved."* — the user might have intent for that file.
 
+### Stale-mapping recovery (remote deleted server-side)
+
+If the CLI exits 1 with `This folder is mapped to <namespace>/<slug> (repo_id=<id>) but that remote no longer exists on the server.`, the local `~/.ideaspaces/spaces.json` entry points at a repo that's been deleted (or the user lost access). The CLI catches this before any push attempt.
+
+Offer the conversational fix as a single yes/no:
+
+> *"This folder was published as `<namespace>/<slug>` but that remote is gone — likely deleted on the server. I can re-publish as a fresh space (new `repo_id`), which keeps the local content and history but creates a new server-side repo. OK?"*
+
+On confirm, re-run `ideaspaces publish --force`. The CLI replaces the stale mapping in `~/.ideaspaces/spaces.json` and provisions a fresh remote. The old `slug` is reused by default; pass `--slug` if the user wants to rename at the same time.
+
+If the user declines (e.g. they want to investigate which case it is first), stop with: *"Remove this folder's entry from `~/.ideaspaces/spaces.json` and re-run `/is-publish` for a fresh space, or restore the remote in the web UI if it was accidentally deleted."* — the spaces.json edit covers both deleted-repo and lost-access cases; the web-UI restore is specific to deletion the user can reverse.
+
 ## 5. Narrate result
 
 On success, surface the remote URL and the local changes:
@@ -143,6 +155,7 @@ On success, surface the remote URL and the local changes:
 | `Not logged in` | No stored credentials | Run `ideaspaces login`. |
 | `Cannot publish yet: N tracked file(s) exceed the 200,000-byte server limit.` | CLI size preflight | See "Size-cap recovery" above — auto-handle known clutter, surface the rest. |
 | `Push failed: ... size cap` | Server-side cap (only if CLI preflight is bypassed) | Same as above; re-run `/is-publish` so the local preflight surfaces the offender list. |
+| `This folder is mapped to ... but that remote no longer exists on the server.` | Server-side repo deleted, local mapping stale | See "Stale-mapping recovery" above — offer `--force` re-publish as a fresh space. |
 | `Push failed: ... attribution doesn't match` | Commit author doesn't match account | Re-run publish; it sets local `user.email`. Amend/recommit if needed. |
 | `Local branch is \`<x>\`; IdeaSpaces uses \`main\`` | Pre-flight didn't run / user invoked CLI directly | Rename via `git branch -m main` and retry, or use `/is-publish` which offers the rename. |
 | `Couldn't determine the current branch — is HEAD detached?` | Detached-HEAD state (rare; pre-flight catches via skill) | Check out a branch (`git checkout main`) and retry. |

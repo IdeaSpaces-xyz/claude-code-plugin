@@ -8647,6 +8647,11 @@ var publishCommand = {
     let repo;
     let namespace;
     if (existing && !flags2.force) {
+      const stillVisible = me.repos.some((r) => r.repo_id === existing.repo_id);
+      if (!stillVisible) {
+        output.error(`This folder is mapped to ${existing.namespace}/${existing.slug} (repo_id=${existing.repo_id}) but that remote no longer exists or you no longer have access to it. Re-run with --force to publish as a fresh space (new repo_id), or remove this folder's entry from ~/.ideaspaces/spaces.json and retry.`);
+        return 1;
+      }
       const ignored = [
         flags2.name && "--name",
         flags2.slug && "--slug",
