@@ -139,7 +139,7 @@ Offer the conversational fix as a single yes/no:
 
 On confirm, re-run `ideaspaces publish --force`. The CLI replaces the stale mapping in `~/.ideaspaces/spaces.json` and provisions a fresh remote. The old `slug` is reused by default; pass `--slug` if the user wants to rename at the same time.
 
-If the user declines (e.g. they want the old repo restored from a backup), stop with: *"Restore the remote in the web UI, or remove this folder's entry from `~/.ideaspaces/spaces.json` and re-run `/is-publish`."*
+If the user declines (e.g. they want to investigate which case it is first), stop with: *"Remove this folder's entry from `~/.ideaspaces/spaces.json` and re-run `/is-publish` for a fresh space, or restore the remote in the web UI if it was accidentally deleted."* — the spaces.json edit covers both deleted-repo and lost-access cases; the web-UI restore is specific to deletion the user can reverse.
 
 ## 5. Narrate result
 
