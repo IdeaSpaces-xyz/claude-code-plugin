@@ -41,6 +41,8 @@ What actually exists here:
 - the tree at this position — what children exist, how many files, what they're about
 - the actual content of this directory — what the material here is really about
 
+**Before asserting that something "shipped" / "is implemented" / "is pending" from a doc, check the code — and the code may live in a *different repo*.** A space often spans several repos in the active context: a doc describing access control may sit in a docs repo while the implementation lives in a code repo. Locate the code wherever it is (grep/search across the repos in context), read its git history, and compare timestamps to the doc. Don't trust a doc's status line on its own — verify against the actual code, even when that means looking outside this repo. (The session-start drift block flags *same-repo* staleness automatically; cross-repo staleness is yours to check by reasoning, since you have git and know the repos in play.)
+
 ### 3. Compare
 
 For each declaration, ask: does this still match?

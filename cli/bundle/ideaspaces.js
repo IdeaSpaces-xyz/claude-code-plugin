@@ -8639,7 +8639,7 @@ ${push2.stderr}${hint}`);
 // dist/commands/write.js
 import { promises as fs3 } from "node:fs";
 import { existsSync as existsSync5 } from "node:fs";
-import { dirname as dirname2, resolve as resolve4 } from "node:path";
+import { dirname as dirname2, resolve as resolve4, relative as relative2 } from "node:path";
 
 // dist/git.js
 import { spawnSync as spawnSync3 } from "node:child_process";
@@ -8889,6 +8889,11 @@ Re-run with --force to overwrite, or pass --if-match <sha> for a safe update.`);
       try {
         stagePaths([absPath]);
         staged = true;
+        try {
+          const root = repoRoot();
+          await sessionState(root).recordStagedPath(relative2(root, absPath));
+        } catch {
+        }
       } catch (err) {
         const msg = err instanceof GitError ? err.message : String(err);
         output.log(`Written but not staged: ${msg}`);
@@ -9184,11 +9189,10 @@ async function drainStdin() {
 }
 
 // dist/auth/session-state.js
-import { existsSync as existsSync6, mkdirSync as mkdirSync3, readFileSync as readFileSync3, unlinkSync as unlinkSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { existsSync as existsSync6, unlinkSync as unlinkSync2 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
 import { join as join7 } from "node:path";
-var CONFIG_DIR = join7(homedir3(), ".ideaspaces");
-var SESSION_FILE = join7(CONFIG_DIR, "session.json");
+var SESSION_FILE = join7(homedir3(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
     if (existsSync6(SESSION_FILE))
