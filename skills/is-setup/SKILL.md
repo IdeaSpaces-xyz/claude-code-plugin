@@ -7,7 +7,7 @@ description: >
   the seed of the contract. Captures purpose / now / next as real files in
   conversation when content emerges. Use when: user says "set up a space",
   "add ideaspaces here", or asks about the contract.
-allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth Edit Read Write Glob Bash"
+allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_auth Edit Read Write Glob Bash"
 ---
 
 # Setup an Ideaspace
