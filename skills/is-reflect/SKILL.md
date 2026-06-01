@@ -6,7 +6,7 @@ description: >
   structure outgrown. Offered as a readiness check (both sides decide whether
   to reflect now). Triggers at natural breaks or after state updates, not
   mid-task.
-allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write Read Glob"
+allowed-tools: "mcp__plugin_ideaspaces_core__is_write Read Glob"
 user-invocable: false
 ---
 

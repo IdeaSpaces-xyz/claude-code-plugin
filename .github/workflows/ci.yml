@@ -47,19 +47,12 @@ jobs:
           node-version: "22"
           cache: "npm"
 
-      # @ideaspaces/sdk is a devDep used during hook bundling. The runner's
-      # default insteadOf rewrite would resolve git+https:// to ssh:// and
-      # fail because no key is loaded. Force HTTPS with a token that has
-      # read access to IdeaSpaces-xyz/sdk. Requires SDK_FETCH_TOKEN secret
-      # configured at the repo level.
-      - name: Configure git auth for private SDK fetch
-        run: |
-          if [ -z "${{ secrets.SDK_FETCH_TOKEN }}" ]; then
-            echo "::error::SDK_FETCH_TOKEN secret is not configured."
-            exit 1
-          fi
-          git config --global url."https://x-access-token:${{ secrets.SDK_FETCH_TOKEN }}@github.com/".insteadOf "https://github.com/"
-          git config --global url."https://x-access-token:${{ secrets.SDK_FETCH_TOKEN }}@github.com/".insteadOf "ssh://git@github.com/"
+      # @ideaspaces/sdk is a public devDep, but package-lock pins it as
+      # git+ssh://git@github.com/... and the CI runner has no SSH key. Rewrite
+      # that to anonymous HTTPS, which works now that the SDK repo is public.
+      # No token needed.
+      - name: Force HTTPS for GitHub git fetch
+        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
 
       - name: Install dependencies
         run: npm ci

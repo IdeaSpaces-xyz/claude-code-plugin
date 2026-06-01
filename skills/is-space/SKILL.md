@@ -7,7 +7,7 @@ description: >
   when working with `is_*` tools or when the user asks how to navigate
   their space. Native Read/Glob/Grep/Edit/Write/Bash cover most navigation;
   `is_*` adds frontmatter-aware capture and sync state.
-allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write mcp__plugin_ideaspaces_ideaspaces__is_auth Read Glob Grep Edit Write Bash"
+allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_auth Read Glob Grep Edit Write Bash"
 ---
 
 # Working in an Ideaspace

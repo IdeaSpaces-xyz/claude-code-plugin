@@ -5,7 +5,7 @@ description: >
   is made, understanding shifts, research produces a finding, or context would
   save the next session time. Proposes, doesn't auto-save. NOT for code, tasks,
   or preferences.
-allowed-tools: "mcp__plugin_ideaspaces_ideaspaces__is_write Read Glob Grep"
+allowed-tools: "mcp__plugin_ideaspaces_core__is_write Read Glob Grep"
 user-invocable: false
 ---
 
