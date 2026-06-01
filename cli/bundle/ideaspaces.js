@@ -7222,7 +7222,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument2(source, options = {}) {
+    function parseDocument3(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -7248,7 +7248,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver && typeof reviver === "object") {
         options = reviver;
       }
-      const doc = parseDocument2(src, options);
+      const doc = parseDocument3(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning) => log.warn(doc.options.logLevel, warning));
@@ -7284,7 +7284,7 @@ var require_public_api = __commonJS({
     }
     exports.parse = parse;
     exports.parseAllDocuments = parseAllDocuments;
-    exports.parseDocument = parseDocument2;
+    exports.parseDocument = parseDocument3;
     exports.stringify = stringify;
   }
 });
@@ -7342,10 +7342,10 @@ var require_dist = __commonJS({
 });
 
 // dist/commands/create.js
-import { promises as fs2 } from "node:fs";
+import { promises as fs } from "node:fs";
 import { existsSync as existsSync2 } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { join as join4, resolve as resolve2, basename } from "node:path";
+import { join as join3, resolve, basename } from "node:path";
 
 // dist/output.js
 function createOutput(flags2) {
@@ -7680,260 +7680,6 @@ var CONTRACT_TEMPLATES = {
   guide: GUIDE_MD
 };
 
-// node_modules/@ideaspaces/sdk/dist/frontmatter.js
-var import_yaml = __toESM(require_dist(), 1);
-var DELIM = "---";
-function stripFrontmatter(content) {
-  const block = frontmatterBlock(content);
-  if (!block)
-    return content;
-  return block.lines.slice(block.endLineIndex + 1).join("\n");
-}
-function inspectFrontmatterSyntax(content) {
-  if (!startsFrontmatter(content))
-    return { status: "none" };
-  const block = frontmatterBlock(content);
-  if (!block) {
-    return {
-      status: "malformed",
-      message: "frontmatter block is missing closing ---",
-      line: 1,
-      column: 1
-    };
-  }
-  const source = block.lines.slice(1, block.endLineIndex).map((line) => line.replace(/\r$/, "")).join("\n");
-  const doc = (0, import_yaml.parseDocument)(source);
-  const err = doc.errors[0];
-  if (!err)
-    return { status: "valid" };
-  const linePos = err.linePos?.[0];
-  return {
-    status: "malformed",
-    message: err.message,
-    // YAML line 1 is content line 2 because line 1 is the opening delimiter.
-    line: linePos ? linePos.line + 1 : void 0,
-    column: linePos?.col
-  };
-}
-function composeFrontmatter(fm) {
-  const lines = [DELIM];
-  if (fm.name !== void 0)
-    lines.push(`name: ${escapeScalar(fm.name)}`);
-  if (fm.node_id !== void 0)
-    lines.push(`node_id: ${escapeScalar(fm.node_id)}`);
-  if (fm.summary !== void 0)
-    lines.push(`summary: ${escapeScalar(fm.summary)}`);
-  if (fm.tags?.length)
-    lines.push(...renderArray("tags", fm.tags));
-  if (fm.attached_to?.length)
-    lines.push(...renderArray("attached_to", fm.attached_to));
-  lines.push(DELIM, "");
-  return lines.join("\n");
-}
-function escapeScalar(value) {
-  if (needsQuoting(value)) {
-    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-  }
-  return value;
-}
-function needsQuoting(value) {
-  if (value === "")
-    return true;
-  if (/^[\s>|*&!%@`]/.test(value))
-    return true;
-  if (/^[-?]\s/.test(value))
-    return true;
-  if (/[:#]\s/.test(value))
-    return true;
-  if (/[{}[\],]/.test(value))
-    return true;
-  if (/[:#]$/.test(value))
-    return true;
-  if (/[\n\r"\\]/.test(value))
-    return true;
-  if (/^(true|false|null|yes|no|on|off|~)$/i.test(value))
-    return true;
-  if (/^-?\d/.test(value))
-    return true;
-  return false;
-}
-function renderArray(key, items) {
-  return [`${key}:`, ...items.map((v) => `  - ${escapeScalar(v)}`)];
-}
-function startsFrontmatter(content) {
-  return content.startsWith(`${DELIM}
-`) || content.startsWith(`${DELIM}\r
-`);
-}
-function frontmatterBlock(content) {
-  if (!startsFrontmatter(content))
-    return null;
-  const lines = content.split("\n");
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trimEnd() === DELIM) {
-      return { lines, endLineIndex: i };
-    }
-  }
-  return null;
-}
-
-// node_modules/@ideaspaces/sdk/dist/identity.js
-import { randomBytes } from "node:crypto";
-import { promises as fs } from "node:fs";
-import { join as join3, resolve } from "node:path";
-var NODE_ID_RE = /^n_[0-9a-f]{12}(?:[0-9a-f]{12})?$/;
-var FRONTMATTER_DELIM = "---";
-var SKIP_DIRS = /* @__PURE__ */ new Set([".git", "node_modules"]);
-function generateNodeId() {
-  return `n_${randomBytes(12).toString("hex")}`;
-}
-function isNodeId(value) {
-  return NODE_ID_RE.test(value);
-}
-function inspectMarkdownIdentity(content) {
-  const block = parseFrontmatter(content);
-  if (!block)
-    return { status: "missing", node_id: null };
-  const matches = findNodeIdLines(block.lines);
-  if (matches.length === 0)
-    return { status: "missing", node_id: null };
-  if (matches.length > 1) {
-    return { status: "malformed", node_id: null, message: "multiple node_id fields" };
-  }
-  const value = parseScalarValue(matches[0].line.slice(matches[0].line.indexOf(":") + 1));
-  if (!value || !isNodeId(value)) {
-    return { status: "malformed", node_id: value || null, message: "invalid node_id" };
-  }
-  return { status: "valid", node_id: value };
-}
-function ensureMarkdownNodeId(content, opts = {}) {
-  const block = parseFrontmatter(content);
-  if (!block) {
-    const nextId2 = generateNodeId();
-    return {
-      content: `${FRONTMATTER_DELIM}
-node_id: ${nextId2}
-${FRONTMATTER_DELIM}
-${content}`,
-      node_id: nextId2,
-      old_node_id: null,
-      changed: true
-    };
-  }
-  const matches = findNodeIdLines(block.lines);
-  if (matches.length > 1) {
-    throw new Error("multiple node_id fields");
-  }
-  if (matches.length === 1) {
-    const match = matches[0];
-    const oldValue = parseScalarValue(match.line.slice(match.line.indexOf(":") + 1));
-    if (!oldValue || !isNodeId(oldValue)) {
-      if (!opts.regenerate) {
-        throw new Error(`invalid node_id: ${oldValue || "(empty)"}`);
-      }
-    } else if (!opts.regenerate) {
-      return { content, node_id: oldValue, old_node_id: oldValue, changed: false };
-    }
-    const nextId2 = generateNodeId();
-    const lines2 = content.split(/\r?\n/);
-    lines2[match.index] = `node_id: ${nextId2}`;
-    return {
-      content: lines2.join("\n"),
-      node_id: nextId2,
-      old_node_id: oldValue || null,
-      changed: true
-    };
-  }
-  const nextId = generateNodeId();
-  const lines = content.split(/\r?\n/);
-  const insertAt = insertionIndexForNodeId(block.lines);
-  lines.splice(insertAt, 0, `node_id: ${nextId}`);
-  return {
-    content: lines.join("\n"),
-    node_id: nextId,
-    old_node_id: null,
-    changed: true
-  };
-}
-async function collectMarkdownFiles(target) {
-  const abs = resolve(target);
-  let stat2;
-  try {
-    stat2 = await fs.lstat(abs);
-  } catch (err) {
-    if (err.code === "ENOENT")
-      return [];
-    throw err;
-  }
-  if (stat2.isSymbolicLink())
-    return [];
-  if (stat2.isFile())
-    return isMarkdownPath(abs) ? [abs] : [];
-  if (!stat2.isDirectory())
-    return [];
-  const out = [];
-  await walk(abs, out);
-  return out.sort();
-}
-function isMarkdownPath(path) {
-  return path.toLowerCase().endsWith(".md");
-}
-async function walk(dir, out) {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name))
-        continue;
-      await walk(join3(dir, entry.name), out);
-      continue;
-    }
-    if (entry.isFile() && isMarkdownPath(entry.name)) {
-      out.push(join3(dir, entry.name));
-    }
-  }
-}
-function parseFrontmatter(content) {
-  if (!content.startsWith(`${FRONTMATTER_DELIM}
-`) && !content.startsWith(`${FRONTMATTER_DELIM}\r
-`)) {
-    return null;
-  }
-  const lines = content.split(/\r?\n/);
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trimEnd() === FRONTMATTER_DELIM) {
-      return { lines: lines.slice(0, i + 1) };
-    }
-  }
-  return null;
-}
-function findNodeIdLines(lines) {
-  const matches = [];
-  for (let i = 1; i < lines.length - 1; i++) {
-    const line = lines[i];
-    if (/^node_id\s*:/.test(line)) {
-      matches.push({ index: i, line });
-    }
-  }
-  return matches;
-}
-function insertionIndexForNodeId(lines) {
-  for (let i = 1; i < lines.length - 1; i++) {
-    if (/^name\s*:/.test(lines[i]))
-      return i + 1;
-  }
-  return 1;
-}
-function parseScalarValue(raw) {
-  let value = raw.trim();
-  const hashIndex = value.indexOf(" #");
-  if (hashIndex >= 0)
-    value = value.slice(0, hashIndex).trim();
-  if (value.startsWith('"') && value.endsWith('"') || value.startsWith("'") && value.endsWith("'")) {
-    value = value.slice(1, -1);
-  }
-  return value;
-}
-
 // dist/commands/create.js
 var CODE_SIGNALS = [
   ".github",
@@ -7958,7 +7704,7 @@ var createCommand = {
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const name = args2[0];
-    const targetDir = name ? resolve2(process.cwd(), name) : process.cwd();
+    const targetDir = name ? resolve(process.cwd(), name) : process.cwd();
     const apply = global2.yes === true;
     const sharedFlag = Boolean(flags2.shared);
     const inspection = await inspect(targetDir);
@@ -8009,22 +7755,22 @@ async function inspect(targetDir) {
       markdownCount: 0
     };
   }
-  const isGitRepo = existsSync2(join4(targetDir, ".git"));
-  const hasClaude = existsSync2(join4(targetDir, "CLAUDE.md"));
-  const hasGitignore = existsSync2(join4(targetDir, ".gitignore"));
-  const agentDir = join4(targetDir, "_agent");
-  const hasNewAgent = existsSync2(join4(agentDir, "foundation.md"));
-  const hasOldAgent = existsSync2(agentDir) && OLD_AGENT_FILES.some((f) => existsSync2(join4(agentDir, f))) && !hasNewAgent;
+  const isGitRepo = existsSync2(join3(targetDir, ".git"));
+  const hasClaude = existsSync2(join3(targetDir, "CLAUDE.md"));
+  const hasGitignore = existsSync2(join3(targetDir, ".gitignore"));
+  const agentDir = join3(targetDir, "_agent");
+  const hasNewAgent = existsSync2(join3(agentDir, "foundation.md"));
+  const hasOldAgent = existsSync2(agentDir) && OLD_AGENT_FILES.some((f) => existsSync2(join3(agentDir, f))) && !hasNewAgent;
   let hasCodeSignal = false;
   for (const sig of CODE_SIGNALS) {
-    if (existsSync2(join4(targetDir, sig))) {
+    if (existsSync2(join3(targetDir, sig))) {
       hasCodeSignal = true;
       break;
     }
   }
   let markdownCount = 0;
   try {
-    const entries = await fs2.readdir(targetDir, { withFileTypes: true });
+    const entries = await fs.readdir(targetDir, { withFileTypes: true });
     for (const e of entries) {
       if (e.isFile() && e.name.endsWith(".md"))
         markdownCount += 1;
@@ -8065,22 +7811,22 @@ function buildPlan(opts) {
     steps.push({ op: "git-init", path: targetDir });
   }
   for (const fileName of Object.keys(CONTRACT_TEMPLATES)) {
-    steps.push({ op: "write", path: join4(targetDir, "_agent", `${fileName}.md`) });
+    steps.push({ op: "write", path: join3(targetDir, "_agent", `${fileName}.md`) });
   }
   const claudeFile = privateAgent ? "CLAUDE.local.md" : "CLAUDE.md";
   if (!inspection.hasClaude) {
-    steps.push({ op: "write", path: join4(targetDir, claudeFile) });
+    steps.push({ op: "write", path: join3(targetDir, claudeFile) });
   }
-  if (!existsSync2(join4(targetDir, ".gitattributes"))) {
+  if (!existsSync2(join3(targetDir, ".gitattributes"))) {
     steps.push({
       op: "write",
-      path: join4(targetDir, ".gitattributes"),
+      path: join3(targetDir, ".gitattributes"),
       detail: "markdown diff/eol attributes"
     });
   }
   steps.push({
     op: inspection.hasGitignore ? "append" : "write",
-    path: join4(targetDir, ".gitignore"),
+    path: join3(targetDir, ".gitignore"),
     detail: privateAgent ? "private _agent/ defaults" : "content-space defaults"
   });
   steps.push({ op: "commit", detail: "Initial ideaspace scaffold" });
@@ -8103,38 +7849,35 @@ function renderPlanText(opts) {
 }
 async function applyPlan(opts) {
   const { targetDir, inspection, privateAgent } = opts;
-  await fs2.mkdir(targetDir, { recursive: true });
+  await fs.mkdir(targetDir, { recursive: true });
   if (!inspection.isGitRepo) {
     runGit(targetDir, ["init", "-q", "-b", "main"]);
   }
   await maybeSetIdentity(targetDir);
-  await fs2.mkdir(join4(targetDir, "_agent"), { recursive: true });
+  await fs.mkdir(join3(targetDir, "_agent"), { recursive: true });
   for (const [name, content] of Object.entries(CONTRACT_TEMPLATES)) {
-    await fs2.writeFile(join4(targetDir, "_agent", `${name}.md`), withNodeId(content), "utf-8");
+    await fs.writeFile(join3(targetDir, "_agent", `${name}.md`), content, "utf-8");
   }
   const claudeFile = privateAgent ? "CLAUDE.local.md" : "CLAUDE.md";
   if (!inspection.hasClaude) {
-    await fs2.writeFile(join4(targetDir, claudeFile), withNodeId(CLAUDE_MD), "utf-8");
+    await fs.writeFile(join3(targetDir, claudeFile), CLAUDE_MD, "utf-8");
   }
-  const gitattributesPath = join4(targetDir, ".gitattributes");
+  const gitattributesPath = join3(targetDir, ".gitattributes");
   if (!existsSync2(gitattributesPath)) {
-    await fs2.writeFile(gitattributesPath, GITATTRIBUTES, "utf-8");
+    await fs.writeFile(gitattributesPath, GITATTRIBUTES, "utf-8");
   }
-  const gitignorePath = join4(targetDir, ".gitignore");
+  const gitignorePath = join3(targetDir, ".gitignore");
   const additions = gitignoreDefaults({ privateAgent });
   if (inspection.hasGitignore) {
-    const existing = await fs2.readFile(gitignorePath, "utf-8");
+    const existing = await fs.readFile(gitignorePath, "utf-8");
     if (!existing.includes("# ideaspace defaults")) {
-      await fs2.writeFile(gitignorePath, existing.endsWith("\n") ? existing + additions : existing + "\n" + additions, "utf-8");
+      await fs.writeFile(gitignorePath, existing.endsWith("\n") ? existing + additions : existing + "\n" + additions, "utf-8");
     }
   } else {
-    await fs2.writeFile(gitignorePath, additions.replace(/^\n/, ""), "utf-8");
+    await fs.writeFile(gitignorePath, additions.replace(/^\n/, ""), "utf-8");
   }
   runGit(targetDir, ["add", "."]);
   runGit(targetDir, ["commit", "-q", "-m", "Initial ideaspace scaffold"]);
-}
-function withNodeId(content) {
-  return ensureMarkdownNodeId(content).content;
 }
 async function maybeSetIdentity(targetDir) {
   const stored = loadStoredCredentials();
@@ -8183,7 +7926,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve6, reject) => {
+  return new Promise((resolve7, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -8210,7 +7953,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve6({
+      resolve7({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -8309,9 +8052,9 @@ import { basename as basename2, join as join6 } from "node:path";
 
 // dist/auth/spaces.js
 import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join5, resolve as resolve3 } from "node:path";
+import { join as join4, resolve as resolve2 } from "node:path";
 function spacesFile() {
-  return join5(configDir(), "spaces.json");
+  return join4(configDir(), "spaces.json");
 }
 function loadSpaces() {
   const file = spacesFile();
@@ -8328,7 +8071,7 @@ function loadSpaces() {
   }
 }
 function saveSpace(absolutePath, record) {
-  const key = resolve3(absolutePath);
+  const key = resolve2(absolutePath);
   const map = loadSpaces();
   map[key] = record;
   const dir = configDir();
@@ -8338,105 +8081,252 @@ function saveSpace(absolutePath, record) {
   writeFileSync2(spacesFile(), JSON.stringify(map, null, 2) + "\n", { mode: 384 });
 }
 function findSpaceFor(absolutePath) {
-  return loadSpaces()[resolve3(absolutePath)] ?? null;
-}
-
-// dist/identity-report.js
-import { readFile } from "node:fs/promises";
-import { relative } from "node:path";
-async function scanMarkdownIdentityFiles(files) {
-  const statuses = await Promise.all(files.map(async (path) => {
-    const content = await readFile(path, "utf-8");
-    const identity = inspectMarkdownIdentity(content);
-    return {
-      path,
-      status: identity.status,
-      node_id: identity.node_id,
-      duplicate: false,
-      message: identity.message
-    };
-  }));
-  const byId = /* @__PURE__ */ new Map();
-  for (const status of statuses) {
-    if (status.status !== "valid" || !status.node_id)
-      continue;
-    const group = byId.get(status.node_id) ?? [];
-    group.push(status);
-    byId.set(status.node_id, group);
-  }
-  const duplicates = [];
-  for (const group of byId.values()) {
-    if (group.length <= 1)
-      continue;
-    for (const item of group) {
-      item.duplicate = true;
-      duplicates.push(item);
-    }
-  }
-  return {
-    files: statuses,
-    missing: statuses.filter((s) => s.status === "missing"),
-    malformed: statuses.filter((s) => s.status === "malformed"),
-    duplicates
-  };
-}
-function hasIdentityProblems(scan) {
-  return scan.missing.length > 0 || scan.malformed.length > 0 || scan.duplicates.length > 0;
-}
-function renderIdentityProblems(scan, opts = {}) {
-  if (!hasIdentityProblems(scan))
-    return "";
-  const cwd = opts.cwd ?? process.cwd();
-  const lines = [...opts.header ?? []];
-  if (scan.missing.length) {
-    lines.push(`Missing node_id (${scan.missing.length}):`);
-    for (const item of scan.missing)
-      lines.push(`  ${displayPath(cwd, item.path)}`);
-  }
-  if (scan.malformed.length) {
-    if (lines.length && lines.at(-1) !== "")
-      lines.push("");
-    lines.push(`Malformed node_id (${scan.malformed.length}):`);
-    for (const item of scan.malformed) {
-      const suffix = item.message ? ` \u2014 ${item.message}` : "";
-      lines.push(`  ${displayPath(cwd, item.path)}${suffix}`);
-    }
-  }
-  if (scan.duplicates.length) {
-    if (lines.length && lines.at(-1) !== "")
-      lines.push("");
-    lines.push(`Duplicate node_id (${scan.duplicates.length} files):`);
-    const byId = /* @__PURE__ */ new Map();
-    for (const item of scan.duplicates) {
-      if (!item.node_id)
-        continue;
-      const group = byId.get(item.node_id) ?? [];
-      group.push(item);
-      byId.set(item.node_id, group);
-    }
-    for (const [id, group] of byId) {
-      lines.push(`  ${id}`);
-      for (const item of group)
-        lines.push(`    ${displayPath(cwd, item.path)}`);
-    }
-  }
-  if (opts.footer?.length) {
-    if (lines.length && lines.at(-1) !== "")
-      lines.push("");
-    lines.push(...opts.footer);
-  }
-  return lines.join("\n");
-}
-function displayPath(cwd, path) {
-  return relative(cwd, path) || path;
+  return loadSpaces()[resolve2(absolutePath)] ?? null;
 }
 
 // dist/frontmatter-report.js
-import { readFile as readFile2 } from "node:fs/promises";
-import { relative as relative2 } from "node:path";
+import { readFile } from "node:fs/promises";
+import { relative } from "node:path";
+
+// node_modules/@ideaspaces/sdk/dist/frontmatter.js
+var import_yaml = __toESM(require_dist(), 1);
+var DELIM = "---";
+function stripFrontmatter(content) {
+  const block = frontmatterBlock(content);
+  if (!block)
+    return content;
+  return block.lines.slice(block.endLineIndex + 1).join("\n");
+}
+function inspectFrontmatterSyntax(content) {
+  if (!startsFrontmatter(content))
+    return { status: "none" };
+  const block = frontmatterBlock(content);
+  if (!block) {
+    return {
+      status: "malformed",
+      message: "frontmatter block is missing closing ---",
+      line: 1,
+      column: 1
+    };
+  }
+  const source = block.lines.slice(1, block.endLineIndex).map((line) => line.replace(/\r$/, "")).join("\n");
+  const doc = (0, import_yaml.parseDocument)(source);
+  const err = doc.errors[0];
+  if (!err)
+    return { status: "valid" };
+  const linePos = err.linePos?.[0];
+  return {
+    status: "malformed",
+    message: err.message,
+    // YAML line 1 is content line 2 because line 1 is the opening delimiter.
+    line: linePos ? linePos.line + 1 : void 0,
+    column: linePos?.col
+  };
+}
+function composeFrontmatter(fm) {
+  const lines = [DELIM];
+  if (fm.name !== void 0)
+    lines.push(`name: ${escapeScalar(fm.name)}`);
+  if (fm.node_id !== void 0)
+    lines.push(`node_id: ${escapeScalar(fm.node_id)}`);
+  if (fm.summary !== void 0)
+    lines.push(`summary: ${escapeScalar(fm.summary)}`);
+  if (fm.tags?.length)
+    lines.push(...renderArray("tags", fm.tags));
+  if (fm.attached_to?.length)
+    lines.push(...renderArray("attached_to", fm.attached_to));
+  lines.push(DELIM, "");
+  return lines.join("\n");
+}
+function escapeScalar(value) {
+  if (needsQuoting(value)) {
+    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  }
+  return value;
+}
+function needsQuoting(value) {
+  if (value === "")
+    return true;
+  if (/^[\s>|*&!%@`]/.test(value))
+    return true;
+  if (/^[-?]\s/.test(value))
+    return true;
+  if (/[:#]\s/.test(value))
+    return true;
+  if (/[{}[\],]/.test(value))
+    return true;
+  if (/[:#]$/.test(value))
+    return true;
+  if (/[\n\r"\\]/.test(value))
+    return true;
+  if (/^(true|false|null|yes|no|on|off|~)$/i.test(value))
+    return true;
+  if (/^-?\d/.test(value))
+    return true;
+  return false;
+}
+function renderArray(key, items) {
+  return [`${key}:`, ...items.map((v) => `  - ${escapeScalar(v)}`)];
+}
+function startsFrontmatter(content) {
+  return content.startsWith(`${DELIM}
+`) || content.startsWith(`${DELIM}\r
+`);
+}
+function frontmatterBlock(content) {
+  if (!startsFrontmatter(content))
+    return null;
+  const lines = content.split("\n");
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trimEnd() === DELIM) {
+      return { lines, endLineIndex: i };
+    }
+  }
+  return null;
+}
+
+// node_modules/@ideaspaces/sdk/dist/git.js
+import { spawn } from "node:child_process";
+function runGit2(repoRoot2, args2) {
+  return new Promise((resolve7) => {
+    const proc = spawn("git", ["-C", repoRoot2, ...args2], {
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let out = "";
+    proc.stdout.on("data", (d) => out += d);
+    proc.on("close", (code) => resolve7({ ok: code === 0, out }));
+    proc.on("error", () => resolve7({ ok: false, out: "" }));
+  });
+}
+async function gitState(repoRoot2) {
+  const top = await runGit2(repoRoot2, ["rev-parse", "--show-toplevel"]);
+  const root = top.ok ? top.out.trim() : repoRoot2;
+  const branchRes = await runGit2(root, ["rev-parse", "--abbrev-ref", "HEAD"]);
+  const branchRaw = branchRes.ok ? branchRes.out.trim() : "";
+  const branch = !branchRaw || branchRaw === "HEAD" ? null : branchRaw;
+  let ahead = null;
+  let behind = null;
+  const upstream = await runGit2(root, [
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{upstream}"
+  ]);
+  if (upstream.ok && upstream.out.trim()) {
+    const counts = await runGit2(root, [
+      "rev-list",
+      "--left-right",
+      "--count",
+      "@{upstream}...HEAD"
+    ]);
+    if (counts.ok) {
+      const [b, a] = counts.out.trim().split(/\s+/).map((n) => parseInt(n, 10));
+      if (Number.isFinite(b))
+        behind = b;
+      if (Number.isFinite(a))
+        ahead = a;
+    }
+  }
+  const status = await runGit2(root, ["status", "--porcelain"]);
+  let dirty = false;
+  const untrackedInTrackedDirs = [];
+  if (status.ok) {
+    for (const line of status.out.split("\n")) {
+      if (!line)
+        continue;
+      if (line.startsWith("??")) {
+        const path = line.slice(3).trim();
+        if (path && !path.endsWith("/"))
+          untrackedInTrackedDirs.push(path);
+      } else {
+        dirty = true;
+      }
+    }
+  }
+  return { repoRoot: root, branch, ahead, behind, dirty, untrackedInTrackedDirs };
+}
+
+// node_modules/@ideaspaces/sdk/dist/stale-docs.js
+var import_yaml2 = __toESM(require_dist(), 1);
+
+// node_modules/@ideaspaces/sdk/dist/session-state.js
+import { promises as fs2 } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { homedir as homedir2 } from "node:os";
+import { dirname, join as join5, resolve as resolve3 } from "node:path";
+function repoIdHash(repoRoot2) {
+  return createHash("sha256").update(resolve3(repoRoot2)).digest("hex").slice(0, 16);
+}
+function sessionFilePath(repoRoot2) {
+  return join5(homedir2(), ".ideaspaces", "sessions", `${repoIdHash(repoRoot2)}.json`);
+}
+function freshState() {
+  return {
+    session_id: randomUUID(),
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    staged_paths: []
+  };
+}
+function sessionState(repoRoot2) {
+  const file = sessionFilePath(repoRoot2);
+  async function load() {
+    try {
+      const parsed = JSON.parse(await fs2.readFile(file, "utf-8"));
+      if (!Array.isArray(parsed.staged_paths))
+        parsed.staged_paths = [];
+      if (!parsed.session_id)
+        parsed.session_id = randomUUID();
+      if (!parsed.started_at)
+        parsed.started_at = (/* @__PURE__ */ new Date()).toISOString();
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+  async function persist(state) {
+    await fs2.mkdir(dirname(file), { recursive: true });
+    const tmp = `${file}.tmp`;
+    await fs2.writeFile(tmp, JSON.stringify(state, null, 2), "utf-8");
+    await fs2.rename(tmp, file);
+    return state;
+  }
+  async function ensure() {
+    return await load() ?? freshState();
+  }
+  return {
+    async readState() {
+      return await load() ?? freshState();
+    },
+    async recordStagedPath(path) {
+      const state = await ensure();
+      if (!state.staged_paths.includes(path))
+        state.staged_paths.push(path);
+      return persist(state);
+    },
+    async clearStagedPath(path) {
+      const state = await ensure();
+      state.staged_paths = state.staged_paths.filter((p) => p !== path);
+      return persist(state);
+    },
+    async getStagedPaths() {
+      return (await load())?.staged_paths ?? [];
+    },
+    async setLastSha(sha) {
+      const state = await ensure();
+      state.lastSha = sha;
+      return persist(state);
+    }
+  };
+}
+
+// node_modules/@ideaspaces/sdk/dist/skills.js
+import { fileURLToPath } from "node:url";
+var SKILLS_DIR = fileURLToPath(new URL("../skills/", import.meta.url));
+
+// dist/frontmatter-report.js
 async function scanMarkdownFrontmatterSyntaxFiles(files) {
   const statuses = await Promise.all(files.map(async (path) => {
-    const content = await readFile2(path, "utf-8");
+    const content = await readFile(path, "utf-8");
     return { path, ...inspectFrontmatterSyntax(content) };
   }));
   return {
@@ -8457,7 +8347,7 @@ function renderFrontmatterSyntaxProblems(scan, opts = {}) {
   lines.push(`Malformed frontmatter (${scan.malformed.length}):`);
   for (const item of scan.malformed) {
     const loc = item.line ? `:${item.line}${item.column ? `:${item.column}` : ""}` : "";
-    lines.push(`  ${relative2(cwd, item.path) || item.path}${loc}`);
+    lines.push(`  ${relative(cwd, item.path) || item.path}${loc}`);
     if (item.message)
       lines.push(`    ${item.message}`);
   }
@@ -8470,7 +8360,7 @@ function renderFrontmatterSyntaxProblems(scan, opts = {}) {
 }
 
 // dist/commands/publish.js
-function runGit2(cwd, args2) {
+function runGit3(cwd, args2) {
   const r = spawnSync2("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
   if (r.error) {
     return { ok: false, stderr: `git not available: ${r.error.message}`, stdout: "" };
@@ -8530,37 +8420,21 @@ function slugify(input) {
     return "space";
   return s.slice(0, 64).replace(/-+$/, "");
 }
-async function checkMarkdownPreflight(cwd) {
+async function checkMarkdownFrontmatterSyntax(cwd) {
   const files = trackedMarkdownFiles(cwd);
   if (!files.length)
     return null;
   const syntaxScan = await scanMarkdownFrontmatterSyntaxFiles(files);
-  if (hasFrontmatterSyntaxProblems(syntaxScan)) {
-    return renderFrontmatterSyntaxProblems(syntaxScan, {
-      cwd,
-      header: [
-        "Cannot publish yet: markdown frontmatter is invalid.",
-        "Fix YAML syntax before publishing so the server can index these files.",
-        ""
-      ],
-      footer: ["Fix YAML first, commit the repair, and re-run `ideaspaces publish`."]
-    });
-  }
-  const scan = await scanMarkdownIdentityFiles(files);
-  if (!hasIdentityProblems(scan))
+  if (!hasFrontmatterSyntaxProblems(syntaxScan))
     return null;
-  return renderIdentityProblems(scan, {
+  return renderFrontmatterSyntaxProblems(syntaxScan, {
     cwd,
     header: [
-      "Cannot publish yet: markdown identity check failed.",
-      "Every committed markdown file needs a stable node_id before it can be pushed.",
+      "Cannot publish yet: markdown frontmatter is invalid.",
+      "Fix YAML syntax before publishing so the server can index these files.",
       ""
     ],
-    footer: [
-      "Fix missing IDs with: `ideaspaces id --fix .`",
-      "Fix copied/duplicate IDs with: `ideaspaces id --regenerate <path>`",
-      "Then commit the identity changes and re-run `ideaspaces publish`."
-    ]
+    footer: ["Fix YAML first, commit the repair, and re-run `ideaspaces publish`."]
   });
 }
 function trackedMarkdownFiles(cwd) {
@@ -8574,10 +8448,10 @@ function trackedMarkdownFiles(cwd) {
 }
 var publishCommand = {
   name: "publish",
-  description: "Publish this folder as a remote ideaspace (tracked .md files need node_id)",
+  description: "Publish this folder as a remote ideaspace",
   usage: "ideaspaces publish [--slug <slug>] [--name <name>] [--hostname <host>] [--force]",
   examples: [
-    "ideaspaces publish                     # publish current directory; preflights tracked .md node_id fields",
+    "ideaspaces publish                     # publish current directory",
     "ideaspaces publish --slug my-notes     # explicit slug",
     "ideaspaces publish --hostname acme.com # publish into an org space (must be a member)",
     "ideaspaces publish --force             # force a fresh remote even if this dir already mapped"
@@ -8590,7 +8464,7 @@ var publishCommand = {
       output.error("Not a git repo. Run `ideaspaces create` first, or `git init` here.");
       return 1;
     }
-    const branchResult = runGit2(cwd, ["symbolic-ref", "--short", "HEAD"]);
+    const branchResult = runGit3(cwd, ["symbolic-ref", "--short", "HEAD"]);
     if (!branchResult.ok) {
       output.error("Couldn't determine the current branch \u2014 is HEAD detached?");
       return 1;
@@ -8611,15 +8485,15 @@ var publishCommand = {
       output.error(renderSizeProblems(sizeOffenders));
       return 1;
     }
-    let preflightProblem;
+    let frontmatterProblem;
     try {
-      preflightProblem = await checkMarkdownPreflight(cwd);
+      frontmatterProblem = await checkMarkdownFrontmatterSyntax(cwd);
     } catch (err) {
       output.error(err instanceof Error ? err.message : String(err));
       return 1;
     }
-    if (preflightProblem) {
-      output.error(preflightProblem);
+    if (frontmatterProblem) {
+      output.error(frontmatterProblem);
       return 1;
     }
     const stored = loadStoredCredentials();
@@ -8686,18 +8560,18 @@ var publishCommand = {
       }
     }
     const identityEmail2 = identityEmail(me.username);
-    const setEmail = runGit2(cwd, ["config", "--local", "user.email", identityEmail2]);
+    const setEmail = runGit3(cwd, ["config", "--local", "user.email", identityEmail2]);
     if (!setEmail.ok) {
       output.error(`git config user.email failed: ${setEmail.stderr}`);
       return 1;
     }
     if (!existing || flags2.force) {
-      const tipAuthor = runGit2(cwd, ["log", "-1", "--format=%ae"]);
+      const tipAuthor = runGit3(cwd, ["log", "-1", "--format=%ae"]);
       if (!tipAuthor.ok) {
         output.log("Could not read tip author; skipping author rewrite. If push fails the identity check, fix git history manually.");
       } else if (tipAuthor.stdout && tipAuthor.stdout !== identityEmail2) {
         output.log(`Rewriting tip commit author to ${identityEmail2} to satisfy the pre-receive identity check.`);
-        const amend = runGit2(cwd, ["commit", "--amend", "--no-edit", "--reset-author"]);
+        const amend = runGit3(cwd, ["commit", "--amend", "--no-edit", "--reset-author"]);
         if (!amend.ok) {
           let hint = "";
           if (/gpg|signing|secret key/i.test(amend.stderr)) {
@@ -8713,30 +8587,30 @@ Git needs a \`user.name\` to commit. Run \`git config --local user.name "Your Na
       }
     }
     const remoteUrl = defaultGitUrl(config.apiUrl, namespace, repo.slug);
-    const existingRemote = runGit2(cwd, ["remote", "get-url", "origin"]);
+    const existingRemote = runGit3(cwd, ["remote", "get-url", "origin"]);
     if (existingRemote.ok) {
       if (existingRemote.stdout && existingRemote.stdout !== remoteUrl) {
         output.log(`Replacing existing origin: ${existingRemote.stdout} \u2192 ${remoteUrl}`);
       }
-      const setUrl = runGit2(cwd, ["remote", "set-url", "origin", remoteUrl]);
+      const setUrl = runGit3(cwd, ["remote", "set-url", "origin", remoteUrl]);
       if (!setUrl.ok) {
         output.error(`git remote set-url failed: ${setUrl.stderr}`);
         return 1;
       }
     } else {
-      const addRemote = runGit2(cwd, ["remote", "add", "origin", remoteUrl]);
+      const addRemote = runGit3(cwd, ["remote", "add", "origin", remoteUrl]);
       if (!addRemote.ok) {
         output.error(`git remote add failed: ${addRemote.stderr}`);
         return 1;
       }
     }
     output.progress(`Pushing main to ${remoteUrl} ...`);
-    const push = runGit2(cwd, ["push", "-u", "origin", "main"]);
-    if (!push.ok) {
-      const sizeRelated = SIZE_CAP_MARKERS.some((m) => push.stderr.includes(m));
+    const push2 = runGit3(cwd, ["push", "-u", "origin", "main"]);
+    if (!push2.ok) {
+      const sizeRelated = SIZE_CAP_MARKERS.some((m) => push2.stderr.includes(m));
       const hint = sizeRelated ? "\nA blob exceeded the 200KB cap \u2014 shrink it or move it out of the repo." : "";
       output.error(`Push failed:
-${push.stderr}${hint}`);
+${push2.stderr}${hint}`);
       return 1;
     }
     saveSpace(cwd, {
@@ -8765,8 +8639,188 @@ ${push.stderr}${hint}`);
 // dist/commands/write.js
 import { promises as fs3 } from "node:fs";
 import { existsSync as existsSync5 } from "node:fs";
+import { dirname as dirname2, resolve as resolve4 } from "node:path";
+
+// dist/git.js
 import { spawnSync as spawnSync3 } from "node:child_process";
-import { dirname, resolve as resolve4 } from "node:path";
+var GitError = class extends Error {
+};
+function git(args2, cwd) {
+  const r = spawnSync3("git", args2, { encoding: "utf-8", cwd });
+  return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() };
+}
+function gitExit(args2, cwd) {
+  const r = spawnSync3("git", args2, { encoding: "utf-8", cwd });
+  return r.status ?? -1;
+}
+function gitOrThrow(args2, cwd) {
+  const r = git(args2, cwd);
+  if (!r.ok)
+    throw new GitError(r.err || r.out || `git ${args2.join(" ")} failed`);
+  return r.out;
+}
+function repoRoot(cwd) {
+  const r = git(["rev-parse", "--show-toplevel"], cwd);
+  if (!r.ok)
+    throw new GitError("not inside a git repository");
+  return r.out;
+}
+function headSha(cwd) {
+  return gitOrThrow(["rev-parse", "HEAD"], cwd);
+}
+function stagePaths(paths, cwd) {
+  if (!paths.length)
+    return;
+  gitOrThrow(["add", "--", ...paths], cwd);
+}
+function commitPaths(message, paths, cwd) {
+  if (!paths.length)
+    throw new GitError("refusing to commit with no paths");
+  gitOrThrow(["add", "--", ...paths], cwd);
+  gitOrThrow(["commit", "-q", "-m", message, "--", ...paths], cwd);
+  return headSha(cwd);
+}
+function blobSha(path, cwd) {
+  const r = git(["hash-object", "--", path], cwd);
+  return r.ok ? r.out : null;
+}
+function pathStatus(path, cwd) {
+  const sha = blobSha(path, cwd);
+  return {
+    path,
+    exists: sha !== null,
+    sha,
+    inIndex: gitExit(["diff", "--cached", "--quiet", "--", path], cwd) === 1,
+    modified: gitExit(["diff", "--quiet", "--", path], cwd) === 1,
+    inTracked: git(["ls-files", "--error-unmatch", "--", path], cwd).ok
+  };
+}
+function statusEntries(cwd) {
+  const out = gitOrThrow(["status", "--porcelain"], cwd);
+  if (!out)
+    return [];
+  return out.split("\n").map((line) => ({
+    status: line.slice(0, 2),
+    path: line.slice(3)
+  }));
+}
+function isDirty(cwd) {
+  return statusEntries(cwd).some((e) => !e.status.startsWith("??"));
+}
+function fetch2(cwd) {
+  gitOrThrow(["fetch"], cwd);
+}
+function remoteState(cwd) {
+  const up = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], cwd);
+  if (!up.ok || !up.out)
+    return { upstream: null, ahead: 0, behind: 0 };
+  const counts = git(["rev-list", "--left-right", "--count", "@{upstream}...HEAD"], cwd);
+  if (!counts.ok)
+    return { upstream: up.out, ahead: 0, behind: 0 };
+  const [behind, ahead] = counts.out.split(/\s+/).map((n) => parseInt(n, 10) || 0);
+  return { upstream: up.out, ahead, behind };
+}
+function rebaseOntoUpstream(cwd) {
+  gitOrThrow(["rebase", "@{upstream}"], cwd);
+}
+function mergeUpstream(cwd) {
+  gitOrThrow(["merge", "--no-edit", "@{upstream}"], cwd);
+}
+function push(cwd) {
+  gitOrThrow(["push"], cwd);
+}
+
+// dist/argv.js
+function parseBool(value, dflt = true) {
+  if (value === void 0)
+    return dflt;
+  if (typeof value !== "string")
+    return Boolean(value);
+  const v = value.trim().toLowerCase();
+  return !(v === "false" || v === "0" || v === "no" || v === "off");
+}
+function parseArgs(argv) {
+  const global2 = { json: false, quiet: false, yes: false, help: false };
+  const flags2 = {};
+  const positional = [];
+  let stopFlags = false;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--") {
+      stopFlags = true;
+      continue;
+    }
+    if (!stopFlags && arg.startsWith("--")) {
+      const eqIdx = arg.indexOf("=");
+      if (eqIdx !== -1) {
+        const key2 = arg.slice(2, eqIdx);
+        const value = arg.slice(eqIdx + 1);
+        if (key2 === "json") {
+          global2.json = parseBool(value);
+          continue;
+        }
+        if (key2 === "quiet") {
+          global2.quiet = parseBool(value);
+          continue;
+        }
+        if (key2 === "yes") {
+          global2.yes = parseBool(value);
+          continue;
+        }
+        if (key2 === "help") {
+          global2.help = parseBool(value);
+          continue;
+        }
+        if (key2 === "repo") {
+          global2.repo = value;
+          continue;
+        }
+        flags2[key2] = value;
+        continue;
+      }
+      const key = arg.slice(2);
+      if (key === "json") {
+        global2.json = true;
+        continue;
+      }
+      if (key === "quiet") {
+        global2.quiet = true;
+        continue;
+      }
+      if (key === "yes") {
+        global2.yes = true;
+        continue;
+      }
+      if (key === "help") {
+        global2.help = true;
+        continue;
+      }
+      if (key === "repo" && i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
+        global2.repo = argv[++i];
+        continue;
+      }
+      if (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
+        flags2[key] = argv[++i];
+      } else {
+        flags2[key] = true;
+      }
+    } else if (!stopFlags && /^-[a-zA-Z]$/.test(arg)) {
+      const key = arg.slice(1);
+      if (i + 1 < argv.length && !argv[i + 1].startsWith("-")) {
+        flags2[key] = argv[++i];
+      } else {
+        flags2[key] = true;
+      }
+    } else {
+      positional.push(arg);
+    }
+  }
+  const command2 = positional[0];
+  const args2 = positional.slice(1);
+  return { global: global2, command: command2, args: args2, flags: flags2 };
+}
+
+// dist/commands/write.js
 async function readStdin() {
   if (process.stdin.isTTY)
     return "";
@@ -8779,12 +8833,13 @@ async function readStdin() {
 var writeCommand = {
   name: "write",
   description: "Create or update a Note (local file with Layer 1 frontmatter)",
-  usage: "ideaspaces write <path> [--name NAME] [--summary TEXT] [--tags a,b] [--attached-to ent1,ent2] [--content TEXT] [--force] [--commit]",
+  usage: "ideaspaces write <path> [--name NAME] [--summary TEXT] [--tags a,b] [--attached-to ent1,ent2] [--content TEXT] [--if-match SHA] [--force] [--stage=false]",
   examples: [
     'echo "# My Note\\nContent here" | ideaspaces write notes/my-note.md --name "My Note"',
     'ideaspaces write notes/test.md --name "Test" --content "# Test\\nHello"',
+    'ideaspaces write notes/test.md --content "# update" --if-match <sha>  # safe update',
     'ideaspaces write notes/test.md --content "# overwrite" --force',
-    'ideaspaces write notes/test.md --content "..." --commit  # also git-commits'
+    'ideaspaces write notes/test.md --content "..." --stage=false  # write without staging'
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
@@ -8808,41 +8863,39 @@ var writeCommand = {
       attached_to: parseList(flags2["attached-to"])
     };
     const force = Boolean(flags2.force);
-    const commit = Boolean(flags2.commit);
+    const stage = parseBool(flags2.stage, true);
+    const ifMatch = flags2["if-match"];
     const absPath = resolve4(path);
-    const exists = existsSync5(absPath);
-    if (exists && !force) {
-      output.error(`File exists: ${path}
-Re-run with --force to overwrite.`);
-      return 5;
-    }
-    if (exists) {
-      try {
-        const existing = await fs3.readFile(absPath, "utf-8");
-        fm.node_id = ensureMarkdownNodeId(existing).node_id;
-      } catch (err) {
-        output.error(`Existing file has a malformed node_id: ${err instanceof Error ? err.message : String(err)}
-Run \`ideaspaces id --regenerate ${path}\` if you intend to reset this file's identity.`);
-        return 1;
+    if (ifMatch !== void 0) {
+      const currentSha = blobSha(absPath);
+      if (currentSha !== ifMatch && !force) {
+        output.error(`if_match mismatch for ${path}.
+  expected: ${ifMatch}
+  current:  ${currentSha ?? "(file absent)"}
+Re-read the file for the current sha and retry, or pass --force to override.`);
+        return 6;
       }
-    } else {
-      fm.node_id = generateNodeId();
+    } else if (existsSync5(absPath) && !force) {
+      output.error(`File exists: ${path}
+Re-run with --force to overwrite, or pass --if-match <sha> for a safe update.`);
+      return 5;
     }
     const body = stripFrontmatter(content);
     const finalContent = composeFrontmatter(fm) + body;
-    await fs3.mkdir(dirname(absPath), { recursive: true });
+    await fs3.mkdir(dirname2(absPath), { recursive: true });
     await fs3.writeFile(absPath, finalContent, "utf-8");
-    let commitSha;
-    if (commit) {
+    let staged = false;
+    if (stage) {
       try {
-        commitSha = gitCommitFile(absPath, flags2["commit-message"]);
+        stagePaths([absPath]);
+        staged = true;
       } catch (err) {
-        output.error(`File written but commit failed: ${err instanceof Error ? err.message : String(err)}`);
-        return 1;
+        const msg = err instanceof GitError ? err.message : String(err);
+        output.log(`Written but not staged: ${msg}`);
       }
     }
-    output.result({ path: absPath, commit_sha: commitSha ?? null }, commitSha ? `Written: ${absPath}
-Committed: ${commitSha}` : `Written: ${absPath}`);
+    const sha = blobSha(absPath);
+    output.result({ path: absPath, staged, sha }, `${staged ? "Written + staged" : "Written"}: ${absPath} (${sha ?? "unknown sha"})`);
     return 0;
   }
 };
@@ -8851,19 +8904,216 @@ function parseList(value) {
     return void 0;
   return value.split(",").map((t) => t.trim()).filter(Boolean);
 }
-function gitCommitFile(absPath, message) {
-  const stage = spawnSync3("git", ["add", absPath], { encoding: "utf-8" });
-  if (stage.status !== 0) {
-    throw new Error(stage.stderr.trim() || `git add exit ${stage.status}`);
+
+// dist/commands/commit.js
+import { resolve as resolve5 } from "node:path";
+var commitCommand = {
+  name: "commit",
+  description: "Save staged captures \u2014 commits only the paths you name",
+  usage: 'ideaspaces commit -m "<message>" <path>... | --tracked',
+  examples: [
+    'ideaspaces commit -m "Capture auth decision" notes/auth.md',
+    'ideaspaces commit -m "Session captures" --tracked'
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const message = String(flags2.m ?? flags2.message ?? "").trim();
+    if (!message) {
+      output.error('A commit message is required: ideaspaces commit -m "<message>" <path>...');
+      return 1;
+    }
+    if (flags2.all) {
+      output.error("commit --all is not supported yet. Name the paths explicitly, or use --tracked\nto commit what the plugin staged this session.");
+      return 1;
+    }
+    let root;
+    try {
+      root = repoRoot();
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const store = flags2.tracked ? sessionState(root) : null;
+    let paths = args2.map((p) => resolve5(p));
+    if (store) {
+      if (paths.length) {
+        output.error("Pass either explicit paths or --tracked, not both.");
+        return 1;
+      }
+      paths = await store.getStagedPaths();
+      if (!paths.length) {
+        output.error("No plugin-tracked paths to commit (session state is empty).");
+        return 1;
+      }
+    }
+    if (!paths.length) {
+      output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --tracked to commit what the plugin staged this session.');
+      return 1;
+    }
+    let sha;
+    try {
+      sha = commitPaths(message, paths, root);
+    } catch (err) {
+      if (err instanceof GitError) {
+        output.error(`Commit failed: ${err.message}`);
+        return 1;
+      }
+      throw err;
+    }
+    if (store) {
+      for (const p of paths)
+        await store.clearStagedPath(p);
+    }
+    output.result({ commit_sha: sha, committed_paths: paths }, `Committed ${paths.length} path(s): ${sha}`);
+    return 0;
   }
-  const subject = message?.trim() || `Update ${absPath.split("/").pop()}`;
-  const commit = spawnSync3("git", ["commit", "-q", "-m", subject], { encoding: "utf-8" });
-  if (commit.status !== 0) {
-    throw new Error(commit.stderr.trim() || commit.stdout.trim() || `git commit exit ${commit.status}`);
+};
+
+// dist/commands/status.js
+import { resolve as resolve6 } from "node:path";
+var statusCommand = {
+  name: "status",
+  description: "Show git position and plugin-tracked captures awaiting commit",
+  usage: "ideaspaces status [--path FILE] [--json]",
+  examples: [
+    "ideaspaces status",
+    "ideaspaces status --json",
+    "ideaspaces status --path notes/a.md  # single-file state + sha (if_match source)"
+  ],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    let root;
+    try {
+      root = repoRoot();
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const pathArg = typeof flags2.path === "string" ? flags2.path : void 0;
+    if (pathArg) {
+      const ps = pathStatus(resolve6(pathArg), root);
+      output.result({
+        path: pathArg,
+        exists: ps.exists,
+        sha: ps.sha,
+        in_index: ps.inIndex,
+        modified: ps.modified,
+        in_tracked: ps.inTracked
+      }, ps.exists ? `${pathArg}: sha ${ps.sha}${ps.inIndex ? ", staged" : ""}${ps.modified ? ", modified" : ""}${ps.inTracked ? "" : ", untracked"}` : `${pathArg}: does not exist`);
+      return 0;
+    }
+    const gs = await gitState(root);
+    const tracked = await sessionState(root).getStagedPaths();
+    const data = {
+      repoRoot: gs.repoRoot,
+      branch: gs.branch,
+      ahead: gs.ahead,
+      behind: gs.behind,
+      dirty: gs.dirty,
+      untracked_in_tracked_dirs: gs.untrackedInTrackedDirs,
+      tracked_captures: tracked
+    };
+    const lines = [];
+    lines.push(`branch:  ${gs.branch ?? "(detached)"}`);
+    if (gs.ahead != null || gs.behind != null) {
+      lines.push(`remote:  ahead ${gs.ahead ?? 0}, behind ${gs.behind ?? 0}`);
+    } else {
+      lines.push("remote:  no upstream");
+    }
+    lines.push(`tree:    ${gs.dirty ? "dirty" : "clean"}`);
+    if (tracked.length) {
+      lines.push("", `captures awaiting commit (${tracked.length}):`);
+      for (const p of tracked)
+        lines.push(`  ${p}`);
+      lines.push("", 'Save them: ideaspaces commit -m "<message>" --tracked');
+    } else {
+      lines.push("", "no plugin-tracked captures awaiting commit");
+    }
+    output.result(data, lines.join("\n"));
+    return 0;
   }
-  const sha = spawnSync3("git", ["rev-parse", "HEAD"], { encoding: "utf-8" });
-  return sha.stdout.trim();
-}
+};
+
+// dist/commands/sync.js
+var syncCommand = {
+  name: "sync",
+  description: "Integrate remote changes and push committed captures",
+  usage: "ideaspaces sync [--dry-run] [--rebase=false]",
+  examples: ["ideaspaces sync", "ideaspaces sync --dry-run", "ideaspaces sync --rebase=false"],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const dryRun = Boolean(flags2["dry-run"]);
+    const useRebase = parseBool(flags2.rebase, true);
+    let root;
+    try {
+      root = repoRoot();
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const tracked = await sessionState(root).getStagedPaths();
+    if (tracked.length) {
+      output.error(`Refusing to sync: ${tracked.length} plugin-tracked capture(s) not yet committed.
+` + tracked.map((p) => `  ${p}`).join("\n") + '\nSave them first: ideaspaces commit -m "<message>" --tracked');
+      return 1;
+    }
+    if (dryRun) {
+      const rs = remoteState(root);
+      const plan = [];
+      if (!rs.upstream)
+        plan.push("no upstream configured \u2014 nothing to sync");
+      else {
+        plan.push(`upstream: ${rs.upstream} (ahead ${rs.ahead}, behind ${rs.behind})`);
+        if (rs.behind)
+          plan.push(`would ${useRebase ? "rebase onto" : "merge"} upstream (requires clean tree)`);
+        if (rs.ahead)
+          plan.push(`would push ${rs.ahead} commit(s)`);
+        if (!rs.ahead && !rs.behind)
+          plan.push("up to date");
+      }
+      plan.push("(dry run \u2014 nothing fetched or pushed)");
+      output.result({ dry_run: true, ...rs }, plan.join("\n"));
+      return 0;
+    }
+    try {
+      fetch2(root);
+      const rs = remoteState(root);
+      if (!rs.upstream) {
+        output.error("No upstream configured for the current branch.");
+        return 1;
+      }
+      if (rs.behind) {
+        if (isDirty(root)) {
+          output.error("Refusing to integrate remote changes: working tree is dirty.\nCommit or stash your changes first, then re-run sync.");
+          return 1;
+        }
+        try {
+          if (useRebase)
+            rebaseOntoUpstream(root);
+          else
+            mergeUpstream(root);
+        } catch (err) {
+          const msg = err instanceof GitError ? err.message : String(err);
+          const reset = useRebase ? "git rebase --abort" : "git merge --abort";
+          output.error(`Sync failed while integrating remote changes: ${msg}
+The repo may be mid-${useRebase ? "rebase" : "merge"}. Run \`${reset}\` to reset, resolve the conflict, then re-run sync.`);
+          return 1;
+        }
+      }
+      const after = remoteState(root);
+      if (after.ahead)
+        push(root);
+      output.result({ upstream: after.upstream, pushed: after.ahead, integrated: rs.behind }, after.ahead || rs.behind ? `Synced: integrated ${rs.behind} commit(s), pushed ${after.ahead} commit(s).` : "Already up to date.");
+      return 0;
+    } catch (err) {
+      if (err instanceof GitError) {
+        output.error(`Sync failed: ${err.message}`);
+        return 1;
+      }
+      throw err;
+    }
+  }
+};
 
 // dist/commands/credential.js
 var credentialCommand = {
@@ -8933,239 +9183,15 @@ async function drainStdin() {
   }
 }
 
-// dist/commands/id.js
-import { spawnSync as spawnSync4 } from "node:child_process";
-import { existsSync as existsSync6 } from "node:fs";
-import { chmod, mkdir, readFile as readFile3, stat, writeFile } from "node:fs/promises";
-import { dirname as dirname2, join as join7, relative as relative3, resolve as resolve5 } from "node:path";
-var HOOK_MARKER = "# ideaspaces-node-id-hook";
-var idCommand = {
-  name: "id",
-  description: "Check and repair local markdown node_id frontmatter",
-  usage: "ideaspaces id [path] [--fix] [--staged] | ideaspaces id --regenerate <path> | ideaspaces id install-hook",
-  examples: [
-    "ideaspaces id .                         # check all markdown files",
-    "ideaspaces id notes/acme.md             # check one file",
-    "ideaspaces id --fix .                   # inject missing node_id fields",
-    "ideaspaces id --fix --staged            # pre-commit mode: fix staged markdown files and re-stage",
-    "ideaspaces id --regenerate copy.md      # replace one file's node_id",
-    "ideaspaces id install-hook              # install repo-local pre-commit hook"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const cwd = process.cwd();
-    if (args2[0] === "install-hook") {
-      return installHook(output);
-    }
-    if (flags2.regenerate === true) {
-      output.error("Usage: ideaspaces id --regenerate <path>");
-      return 1;
-    }
-    const regeneratePath = typeof flags2.regenerate === "string" ? flags2.regenerate : void 0;
-    if (regeneratePath) {
-      return regenerateFile(regeneratePath, output, Boolean(flags2.staged), cwd);
-    }
-    const staged = Boolean(flags2.staged);
-    const fix = Boolean(flags2.fix);
-    const target = args2[0] ?? ".";
-    if (!staged && !existsSync6(resolve5(target))) {
-      output.error(`Path not found: ${target}`);
-      return 1;
-    }
-    let files;
-    if (staged) {
-      try {
-        files = stagedMarkdownFiles();
-      } catch (err) {
-        output.error(err instanceof Error ? err.message : String(err));
-        return 1;
-      }
-    } else {
-      files = await collectMarkdownFiles(target);
-    }
-    if (!files.length) {
-      output.result({ files: 0, ok: true }, "No markdown files found.");
-      return 0;
-    }
-    const syntaxScan = await scanMarkdownFrontmatterSyntaxFiles(files);
-    if (hasFrontmatterSyntaxProblems(syntaxScan)) {
-      output.error(renderFrontmatterSyntaxProblems(syntaxScan, {
-        cwd,
-        footer: ["Fix YAML frontmatter first, then rerun `ideaspaces id --fix .`."]
-      }));
-      return 1;
-    }
-    const scan = await scanMarkdownIdentityFiles(files);
-    if (fix) {
-      if (scan.malformed.length || scan.duplicates.length) {
-        output.error(renderIdentityProblems(scan));
-        output.error("Run `ideaspaces id --regenerate <path>` to intentionally reset a malformed or duplicate identity.");
-        return 1;
-      }
-      let fixed = 0;
-      for (const file of scan.missing) {
-        const content = await readFile3(file.path, "utf-8");
-        const result = ensureMarkdownNodeId(content);
-        if (result.changed) {
-          await writeFile(file.path, result.content, "utf-8");
-          fixed += 1;
-        }
-      }
-      if (staged && fixed > 0) {
-        try {
-          gitAdd(scan.missing.map((f) => f.path));
-        } catch (err) {
-          output.error(err instanceof Error ? err.message : String(err));
-          return 1;
-        }
-      }
-      output.result({ files: scan.files.length, fixed, ok: true }, fixed === 0 ? `OK: ${scan.files.length} markdown files already have node_id.` : `Fixed ${fixed} markdown files.`);
-      return 0;
-    }
-    if (scan.missing.length || scan.malformed.length || scan.duplicates.length) {
-      output.error(renderIdentityProblems(scan));
-      return 1;
-    }
-    output.result({ files: scan.files.length, ok: true }, `OK: ${scan.files.length} markdown files have valid node_id fields.`);
-    return 0;
-  }
-};
-async function regenerateFile(path, output, staged, cwd) {
-  const abs = resolve5(path);
-  if (!existsSync6(abs) || !isMarkdownPath(abs)) {
-    output.error(`Not a markdown file: ${path}`);
-    return 1;
-  }
-  const s = await stat(abs);
-  if (!s.isFile()) {
-    output.error(`Not a file: ${path}`);
-    return 1;
-  }
-  if (staged) {
-    try {
-      assertNoUnstagedMarkdown([abs]);
-    } catch (err) {
-      output.error(err instanceof Error ? err.message : String(err));
-      return 1;
-    }
-  }
-  const syntaxScan = await scanMarkdownFrontmatterSyntaxFiles([abs]);
-  if (hasFrontmatterSyntaxProblems(syntaxScan)) {
-    output.error(renderFrontmatterSyntaxProblems(syntaxScan, {
-      cwd,
-      footer: ["Fix YAML frontmatter first, then rerun `ideaspaces id --regenerate <path>`."]
-    }));
-    return 1;
-  }
-  const content = await readFile3(abs, "utf-8");
-  const result = ensureMarkdownNodeId(content, { regenerate: true });
-  await writeFile(abs, result.content, "utf-8");
-  if (staged) {
-    try {
-      gitAdd([abs]);
-    } catch (err) {
-      output.error(err instanceof Error ? err.message : String(err));
-      return 1;
-    }
-  }
-  output.result({ path: abs, node_id: result.node_id, old_node_id: result.old_node_id, regenerated: true }, result.old_node_id ? `Regenerated ${relative3(process.cwd(), abs) || abs}: ${result.old_node_id} \u2192 ${result.node_id}` : `Added ${relative3(process.cwd(), abs) || abs}: ${result.node_id}`);
-  return 0;
-}
-function stagedMarkdownFiles() {
-  const repoRoot = gitRepoRoot();
-  const staged = gitNameList(repoRoot, ["diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR", "--", "*.md"]);
-  assertNoUnstagedMarkdown(staged);
-  return staged;
-}
-function assertNoUnstagedMarkdown(paths) {
-  const repoRoot = gitRepoRoot();
-  const unstaged = new Set(gitNameList(repoRoot, ["diff", "--name-only", "-z", "--", "*.md"]));
-  const overlap = paths.filter((p) => unstaged.has(p));
-  if (overlap.length > 0) {
-    throw new Error("staged identity fix refuses partially-staged markdown files:\n" + overlap.map((p) => `  ${relative3(process.cwd(), p) || p}`).join("\n") + "\nStage or stash those changes, then retry.");
-  }
-}
-function gitRepoRoot() {
-  const r = spawnSync4("git", ["rev-parse", "--show-toplevel"], { encoding: "utf-8" });
-  if (r.status !== 0) {
-    throw new Error(r.stderr.trim() || "git rev-parse --show-toplevel failed");
-  }
-  return r.stdout.trim();
-}
-function gitNameList(repoRoot, args2) {
-  const r = spawnSync4("git", ["-C", repoRoot, ...args2], { encoding: "utf-8" });
-  if (r.status !== 0) {
-    throw new Error(r.stderr.trim() || `git ${args2.join(" ")} failed`);
-  }
-  return r.stdout.split("\0").filter(Boolean).map((p) => join7(repoRoot, p));
-}
-function gitAdd(paths) {
-  if (!paths.length)
-    return;
-  const r = spawnSync4("git", ["add", "--", ...paths], { encoding: "utf-8" });
-  if (r.status !== 0) {
-    throw new Error(r.stderr.trim() || "git add failed");
-  }
-}
-async function installHook(output) {
-  const gitDir = findGitDir();
-  if (!gitDir) {
-    output.error("Not a git repo. Run this from inside the repo where you want the hook installed.");
-    return 1;
-  }
-  const hookPath = join7(gitDir, "hooks", "pre-commit");
-  const hook = [
-    "#!/bin/sh",
-    HOOK_MARKER,
-    "set -e",
-    hookCommand(),
-    ""
-  ].join("\n");
-  if (existsSync6(hookPath)) {
-    const existing = await readFile3(hookPath, "utf-8");
-    if (existing.includes(HOOK_MARKER)) {
-      output.result({ installed: true, path: hookPath, already_installed: true }, `Pre-commit hook already installed: ${hookPath}`);
-      return 0;
-    }
-    output.error(`pre-commit hook already exists: ${hookPath}
-Refusing to overwrite it. Move it aside or merge \`ideaspaces id --fix --staged\` manually.`);
-    return 1;
-  }
-  await mkdir(dirname2(hookPath), { recursive: true });
-  await writeFile(hookPath, hook, "utf-8");
-  await chmod(hookPath, 493);
-  output.result({ installed: true, path: hookPath }, `Installed pre-commit hook: ${hookPath}`);
-  return 0;
-}
-function hookCommand() {
-  const entry = process.argv[1];
-  if (entry && existsSync6(entry)) {
-    return `node ${shellQuote(resolve5(entry))} id --fix --staged`;
-  }
-  return "ideaspaces id --fix --staged";
-}
-function shellQuote(value) {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
-}
-function findGitDir() {
-  const r = spawnSync4("git", ["rev-parse", "--git-dir"], { encoding: "utf-8" });
-  if (r.status !== 0)
-    return null;
-  const gitDir = r.stdout.trim();
-  if (!gitDir)
-    return null;
-  return resolve5(gitDir);
-}
-
 // dist/auth/session-state.js
-import { existsSync as existsSync7, mkdirSync as mkdirSync3, readFileSync as readFileSync3, unlinkSync as unlinkSync2, writeFileSync as writeFileSync3 } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { join as join8 } from "node:path";
-var CONFIG_DIR = join8(homedir2(), ".ideaspaces");
-var SESSION_FILE = join8(CONFIG_DIR, "session.json");
+import { existsSync as existsSync6, mkdirSync as mkdirSync3, readFileSync as readFileSync3, unlinkSync as unlinkSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { homedir as homedir3 } from "node:os";
+import { join as join7 } from "node:path";
+var CONFIG_DIR = join7(homedir3(), ".ideaspaces");
+var SESSION_FILE = join7(CONFIG_DIR, "session.json");
 function clearSessionState() {
   try {
-    if (existsSync7(SESSION_FILE))
+    if (existsSync6(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -9191,8 +9217,10 @@ var topLevel = [
   loginCommand,
   publishCommand,
   writeCommand,
-  credentialCommand,
-  idCommand
+  commitCommand,
+  statusCommand,
+  syncCommand,
+  credentialCommand
 ];
 var power = [
   logoutCommand
@@ -9244,85 +9272,6 @@ Run: ideaspaces login`);
   }
   output.error(`Error: ${String(err)}`);
   return 1;
-}
-
-// dist/argv.js
-function parseBool(value) {
-  const v = value.trim().toLowerCase();
-  return !(v === "false" || v === "0" || v === "no" || v === "off");
-}
-function parseArgs(argv) {
-  const global2 = { json: false, quiet: false, yes: false, help: false };
-  const flags2 = {};
-  const positional = [];
-  let stopFlags = false;
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === "--") {
-      stopFlags = true;
-      continue;
-    }
-    if (!stopFlags && arg.startsWith("--")) {
-      const eqIdx = arg.indexOf("=");
-      if (eqIdx !== -1) {
-        const key2 = arg.slice(2, eqIdx);
-        const value = arg.slice(eqIdx + 1);
-        if (key2 === "json") {
-          global2.json = parseBool(value);
-          continue;
-        }
-        if (key2 === "quiet") {
-          global2.quiet = parseBool(value);
-          continue;
-        }
-        if (key2 === "yes") {
-          global2.yes = parseBool(value);
-          continue;
-        }
-        if (key2 === "help") {
-          global2.help = parseBool(value);
-          continue;
-        }
-        if (key2 === "repo") {
-          global2.repo = value;
-          continue;
-        }
-        flags2[key2] = value;
-        continue;
-      }
-      const key = arg.slice(2);
-      if (key === "json") {
-        global2.json = true;
-        continue;
-      }
-      if (key === "quiet") {
-        global2.quiet = true;
-        continue;
-      }
-      if (key === "yes") {
-        global2.yes = true;
-        continue;
-      }
-      if (key === "help") {
-        global2.help = true;
-        continue;
-      }
-      if (key === "repo" && i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
-        global2.repo = argv[++i];
-        continue;
-      }
-      if (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
-        flags2[key] = argv[++i];
-      } else {
-        flags2[key] = true;
-      }
-    } else {
-      positional.push(arg);
-    }
-  }
-  const command2 = positional[0];
-  const args2 = positional.slice(1);
-  return { global: global2, command: command2, args: args2, flags: flags2 };
 }
 
 // dist/main.js

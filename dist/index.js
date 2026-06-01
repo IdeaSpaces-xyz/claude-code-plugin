@@ -21057,7 +21057,10 @@ async function run(args, stdin, cwd) {
   if (code !== 0) return fail(err.trim() || out.trim() || `Exit ${code}`);
   return ok(out.trim() || err.trim() || "Done");
 }
-var server = new McpServer({ name: "ideaspaces", version: "0.3.0" });
+var server = new McpServer({ name: "core", version: "0.3.0" });
+var cwdField = external_exports.string().optional().describe(
+  "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+);
 server.tool(
   "is_auth",
   "Manage IdeaSpaces sync credentials. Sync is opt-in; the plugin works locally without auth.",
@@ -21075,7 +21078,7 @@ server.tool(
 );
 server.tool(
   "is_write",
-  "Create or update a Note with Layer 1 frontmatter (name, summary). Use for capture; native Write covers source code and config.",
+  "Create or update a Note with Layer 1 frontmatter (name, summary); stages the file and returns its content sha. Use for capture; native Write covers source code and config.",
   {
     path: external_exports.string().describe("File path within the ideaspace"),
     content: external_exports.string().describe("Markdown content (frontmatter prepended automatically)"),
@@ -21083,11 +21086,11 @@ server.tool(
     summary: external_exports.string().optional().describe("Dense summary for search (Layer 1 frontmatter)"),
     tags: external_exports.array(external_exports.string()).optional(),
     attached_to: external_exports.array(external_exports.string()).optional().describe("Entity bindings (e.g. 'hostname:acme.com')"),
-    if_match: external_exports.string().optional().describe("SHA for conditional write"),
+    if_match: external_exports.string().optional().describe(
+      "Content sha from a prior is_write response or is_status \u2014 for a safe update. Refuses on mismatch unless force."
+    ),
     force: external_exports.boolean().optional().describe("Overwrite without if_match"),
-    cwd: external_exports.string().optional().describe(
-      "Absolute working directory for path resolution. Pass this if the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so without an explicit `cwd` the path resolves against the dir Claude Code launched from."
-    )
+    cwd: cwdField
   },
   async ({ path, content, name, summary, tags, attached_to, if_match, force, cwd }) => {
     const a = ["write", path];
@@ -21098,6 +21101,52 @@ server.tool(
     if (if_match) a.push("--if-match", if_match);
     if (force) a.push("--force");
     return run(a, content, cwd);
+  }
+);
+server.tool(
+  "is_commit",
+  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name (or the plugin's session-tracked set via tracked), never the user's unrelated staged work. Confirm with the user before calling.",
+  {
+    message: external_exports.string().describe("Commit message (user-provided or user-confirmed)"),
+    paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using tracked."),
+    tracked: external_exports.boolean().optional().describe("Commit the plugin's session-staged paths instead of explicit paths."),
+    cwd: cwdField
+  },
+  async ({ message, paths, tracked, cwd }) => {
+    const a = ["commit", "-m", message];
+    if (tracked) a.push("--tracked");
+    else if (paths?.length) a.push(...paths);
+    return run(a, void 0, cwd);
+  }
+);
+server.tool(
+  "is_status",
+  "Capture state: overall git position + plugin-tracked captures awaiting commit, or single-file state. With a path, the returned sha is the if_match token for a first update.",
+  {
+    path: external_exports.string().optional().describe(
+      "Single file \u2014 returns { exists, sha, in_index, modified, in_tracked }. The sha is what you pass as is_write's if_match."
+    ),
+    cwd: cwdField
+  },
+  async ({ path, cwd }) => {
+    const a = ["status"];
+    if (path) a.push("--path", path);
+    return run(a, void 0, cwd);
+  }
+);
+server.tool(
+  "is_sync",
+  "Push committed captures and integrate remote changes. Refuses if plugin-tracked captures are still uncommitted. Use dry_run to preview without mutating.",
+  {
+    dry_run: external_exports.boolean().optional().describe("Preview ahead/behind and what would push; mutates nothing."),
+    rebase: external_exports.boolean().optional().describe("Integrate via rebase (default true). Set false to merge instead."),
+    cwd: cwdField
+  },
+  async ({ dry_run, rebase, cwd }) => {
+    const a = ["sync"];
+    if (dry_run) a.push("--dry-run");
+    if (rebase === false) a.push("--rebase=false");
+    return run(a, void 0, cwd);
   }
 );
 var transport = new StdioServerTransport();
