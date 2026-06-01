@@ -12,6 +12,8 @@ allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_cor
 
 # Setup an Ideaspace
 
+Full protocol: read `${CLAUDE_PLUGIN_ROOT}/reference/purpose-elicitation.md` and `${CLAUDE_PLUGIN_ROOT}/reference/repo-context.md`.
+
 **Goal:** detect → confirm → run `ideaspaces create` → capture purpose / now / next in conversation when content emerges.
 
 This skill is the **conversational layer** around the bundled CLI. The conversation lives here; the file writes live in the CLI. That keeps one source of truth — change the CLI's templates, the skill's behavior updates automatically.

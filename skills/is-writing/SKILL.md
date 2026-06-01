@@ -6,6 +6,8 @@ user-invocable: false
 
 # Writing Standard for IdeaSpaces
 
+Full standard: read `${CLAUDE_PLUGIN_ROOT}/reference/writing.md`.
+
 When writing Notes to IdeaSpaces, follow these principles. They're functional requirements for knowledge that compounds — not style preferences.
 
 ## Summary Is Everything

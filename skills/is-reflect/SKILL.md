@@ -12,7 +12,11 @@ user-invocable: false
 
 # Reflect
 
+Full protocol: read `${CLAUDE_PLUGIN_ROOT}/reference/awareness.md` and `${CLAUDE_PLUGIN_ROOT}/reference/guide.md`.
+
 Reflection is the trigger; recalibration is what it runs. Offered as a readiness check — both sides decide whether to reflect now or defer.
+
+If `is_write` isn't in your palette when an update is agreed, load it with `ToolSearch` (`select:mcp__plugin_ideaspaces_core__is_write`).
 
 ## When
 

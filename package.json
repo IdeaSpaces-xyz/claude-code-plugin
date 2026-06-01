@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "build:hook": "node build-hook.mjs",
+    "build:reference": "node reference.mjs",
+    "vendor": "node vendor.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
