@@ -4,58 +4,129 @@
  * Walks up from cwd to find `_agent/`. Behavior:
  *   - No `_agent/` found → exit silently. Discovery of `/is-setup` flows
  *     through skill descriptions, not session-start noise. The plugin's
- *     positioning ("optional, opt-in") extends to the entry path.
- *   - `_agent/` found → format the awareness block via `assembleAwareness`
- *     from the SDK, then append drift signals for missing
- *     `_agent/purpose.md` / `_agent/now.md`. The contract names those
- *     files; their absence is direction-not-yet-captured, not ambiguity,
- *     and the agent should propose capturing them.
+ *     "optional, opt-in" positioning extends to the entry path.
+ *   - `_agent/` found → emit the orientation block (Now, tree, agent context,
+ *     skills, and — in a git repo — what changed since last session). In a git
+ *     repo, also emit a git-state line and a **stale-doc drift** block (docs
+ *     whose referenced code is newer), then persist HEAD for next session.
+ *   - Missing `_agent/purpose.md` / `_agent/now.md` surface as direction-not-
+ *     yet-captured drift.
  *
- * Login state is intentionally not surfaced here. `/is-publish` handles
- * the login prompt when the user actually needs to publish — nudging
- * about it on every session start works against the local-first framing.
+ * Composes the SDK's data primitives here (the plugin owns rendering). Output
+ * is bounded: `assembleAwareness` caps the tree/changes, the drift block is
+ * capped to a handful of signals.
  *
- * Claude Code surfaces stdout as session-start context for the agent.
+ * Claude Code surfaces stdout as session-start context for the agent. Hooks
+ * must never block session start — errors go to stderr and exit 0.
  *
- * Bundled with `npm run build:hook`. The output `dist/awareness-hook.js`
- * is committed so the plugin ships pre-built.
+ * Bundled with `npm run build:hook`; the committed `dist/awareness-hook.js`
+ * ships pre-built.
  */
 
-import { findSpaceRoot, assembleAwareness } from "@ideaspaces/sdk";
+import { spawnSync } from "node:child_process";
+import {
+  findSpaceRoot,
+  assembleAwareness,
+  gitState,
+  collectDocDependencies,
+  staleDocSignals,
+  sessionState,
+} from "@ideaspaces/sdk";
+
+/** Drift signals shown before the list is truncated. */
+const MAX_DRIFT = 10;
+
+function isGitRepo(cwd: string): boolean {
+  const r = spawnSync("git", ["-C", cwd, "rev-parse", "--is-inside-work-tree"], {
+    encoding: "utf-8",
+  });
+  return r.status === 0 && r.stdout.trim() === "true";
+}
+
+function headSha(cwd: string): string | null {
+  const r = spawnSync("git", ["-C", cwd, "rev-parse", "HEAD"], { encoding: "utf-8" });
+  return r.status === 0 ? r.stdout.trim() || null : null;
+}
 
 async function main(): Promise<void> {
-  const space = await findSpaceRoot(process.cwd());
+  const cwd = process.cwd();
+  const space = await findSpaceRoot(cwd);
   if (space.source === "none" || !space.root) return;
 
+  const sections: string[] = [];
+
+  // `lastSha` drives the "since last session" diff; only meaningful in a repo.
+  const git = isGitRepo(cwd);
+  let lastSha: string | undefined;
+  let repoRoot: string | undefined;
+  let store: ReturnType<typeof sessionState> | undefined;
+  let gs: Awaited<ReturnType<typeof gitState>> | undefined;
+  if (git) {
+    gs = await gitState(cwd);
+    repoRoot = gs.repoRoot;
+    store = sessionState(repoRoot);
+    lastSha = (await store.readState()).lastSha;
+  }
+
+  // Orientation: Now, tree, agent context, skills, since-last-session.
   const block = await assembleAwareness({
     root: space.root,
     contract: space.contract,
-    // lastSha can hook into session state once sync ships.
+    lastSha,
   });
+  if (block.trim()) sections.push(block);
 
-  if (block.trim()) process.stdout.write(block);
+  if (git && gs && repoRoot && store) {
+    // Compact git-state line.
+    const bits: string[] = [];
+    if (gs.branch) bits.push(`branch ${gs.branch}`);
+    if (gs.ahead != null && gs.behind != null && (gs.ahead || gs.behind)) {
+      bits.push(`↑${gs.ahead} ↓${gs.behind}`);
+    }
+    if (gs.dirty) bits.push("dirty");
+    if (gs.untrackedInTrackedDirs.length) {
+      bits.push(`${gs.untrackedInTrackedDirs.length} untracked`);
+    }
+    if (bits.length) sections.push(`Git: ${bits.join(", ")}`);
 
-  // Drift signals for missing direction. The contract names purpose
-  // and now; their absence is direction-not-yet-captured. Surface as ⚠
-  // so the agent treats them as first-class — not as ambiguity to be
-  // inferred from skill text. `next` is intentionally not surfaced —
-  // it's a queue ("Vague is OK"), not load-bearing direction.
-  const drift: string[] = [];
+    // Stale-doc drift — the headline. Opt-in: only docs declaring `code_paths`
+    // are checked, so most repos emit nothing here.
+    const deps = await collectDocDependencies(repoRoot, repoRoot);
+    const signals = await staleDocSignals(repoRoot, deps);
+    if (signals.length) {
+      const lines = ["⚠ Possible stale docs — verify before quoting their status:"];
+      for (const s of signals.slice(0, MAX_DRIFT)) {
+        lines.push(
+          s.kind === "stale"
+            ? `  ${s.doc} — \`${s.newestCode}\` was committed after the doc`
+            : `  ${s.doc} — references missing path(s): ${s.missing.join(", ")}`,
+        );
+      }
+      if (signals.length > MAX_DRIFT) {
+        lines.push(`  … and ${signals.length - MAX_DRIFT} more`);
+      }
+      sections.push(lines.join("\n"));
+    }
+
+    // Persist HEAD so the next session can diff against it.
+    const head = headSha(cwd);
+    if (head) await store.setLastSha(head);
+  }
+
+  // Missing-direction drift. The contract names purpose and now; their absence
+  // is direction-not-yet-captured. `next` is a queue, not load-bearing — skip.
+  const direction: string[] = [];
   if (!space.contract.purpose) {
-    drift.push(
-      "⚠ `_agent/purpose.md` not yet captured. The contract names it; suggest capturing in conversation when there's a natural moment.",
+    direction.push(
+      "⚠ `_agent/purpose.md` not yet captured. The contract names it; suggest capturing in conversation at a natural moment.",
     );
   }
   if (!space.contract.now) {
-    drift.push(
-      "⚠ `_agent/now.md` not yet captured. Suggest capturing what's currently active.",
-    );
+    direction.push("⚠ `_agent/now.md` not yet captured. Suggest capturing what's currently active.");
   }
+  if (direction.length) sections.push(direction.join("\n"));
 
-  if (drift.length > 0) {
-    const prefix = block.trim() ? (block.endsWith("\n") ? "\n" : "\n\n") : "";
-    process.stdout.write(`${prefix}${drift.join("\n")}\n`);
-  }
+  if (sections.length) process.stdout.write(sections.join("\n\n") + "\n");
 }
 
 main().catch((err: unknown) => {

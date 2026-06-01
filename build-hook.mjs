@@ -10,7 +10,17 @@ await esbuild.build({
   target: "node18",
   format: "esm",
   outfile: "dist/awareness-hook.js",
-  banner: { js: "#!/usr/bin/env node" },
+  // The SDK pulls in CJS deps (yaml) that `require("process")`/`require("buffer")`.
+  // esbuild's ESM `__require` shim uses a global `require` when one exists, so
+  // define it via createRequire — otherwise those dynamic requires throw at
+  // runtime ("Dynamic require of process is not supported").
+  banner: {
+    js: [
+      "#!/usr/bin/env node",
+      "import { createRequire as __createRequire } from 'node:module';",
+      "const require = __createRequire(import.meta.url);",
+    ].join("\n"),
+  },
   legalComments: "none",
   logLevel: "info",
 });
