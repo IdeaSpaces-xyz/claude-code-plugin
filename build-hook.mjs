@@ -1,15 +1,15 @@
-// Bundles src/awareness-hook.ts → dist/awareness-hook.js with the SDK inlined.
+// Bundles the plugin's hooks → dist/*.js with the SDK inlined.
 // The plugin ships pre-built; users / Claude Code never run npm install here.
 
 import * as esbuild from "esbuild";
 
 await esbuild.build({
-  entryPoints: ["src/awareness-hook.ts"],
+  entryPoints: ["src/awareness-hook.ts", "src/capture-nudge-hook.ts"],
   bundle: true,
   platform: "node",
   target: "node18",
   format: "esm",
-  outfile: "dist/awareness-hook.js",
+  outdir: "dist",
   // The SDK pulls in CJS deps (yaml) that `require("process")`/`require("buffer")`.
   // esbuild's ESM `__require` shim uses a global `require` when one exists, so
   // define it via createRequire — otherwise those dynamic requires throw at
