@@ -21,4 +21,4 @@ A local `_agent/` directory may exist in a checkout, but it is gitignored. Treat
 
 ## Rule
 
-Keep the plugin small. MCP stays thin (`is_auth`, `is_write`). Local workflow goes through the bundled `ideaspaces` CLI and skills.
+Keep the plugin small. MCP stays thin — `is_auth`, `is_write`, `is_commit`, `is_status`, `is_sync`, plus skill resources, all shelling the bundled `ideaspaces` CLI with `--json`. No logic in the MCP server: it stays out of the agent's context, and the CLI + SDK own the implementation. Local workflow goes through the bundled CLI and skills.

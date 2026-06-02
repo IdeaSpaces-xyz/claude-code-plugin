@@ -29,23 +29,31 @@ In Claude Code, use `/is-setup` for conversational setup and `/is-publish` for c
 | Command | What |
 |---|---|
 | `ideaspaces create [name]` | Scaffold the seed `_agent/` contract, `CLAUDE.md`, git defaults, and initial commit. |
-| `ideaspaces write <path>` | Create/update a markdown Note with Layer 1 frontmatter and stable `node_id`. |
-| `ideaspaces id` | Check/repair local markdown `node_id` frontmatter before publishing. |
+| `ideaspaces write <path>` | Create/update a Note with Layer 1 frontmatter; stages it and returns a content sha (`--if-match` for safe updates). |
+| `ideaspaces commit -m <msg> <path>…` | The explicit save — commits only the paths you name (`--tracked` / `--all`), never unrelated staged work. |
+| `ideaspaces status [--path FILE]` | Git position + plugin-tracked captures awaiting commit; single-file sha for `--if-match`. |
+| `ideaspaces sync` | Integrate remote changes and push committed captures (`--dry-run`). |
+| `ideaspaces skills [<name>]` | List the skill catalog, or print one skill's markdown. |
 | `ideaspaces login` | Save optional remote credentials. |
 | `ideaspaces publish` | Create/reuse a remote IdeaSpaces repo and push the current branch. |
 
-Every committed markdown file in a published ideaspace needs a stable `node_id`. The CLI handles this at create/write boundaries and `publish` preflights tracked markdown before pushing.
+`publish` preflights tracked markdown frontmatter before pushing.
 
 ## MCP tools
 
-Two tools. Native Claude Code `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover local navigation and editing.
+Five tools plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover local navigation and editing.
 
 | Tool | What |
 |---|---|
-| `is_write` | Create a Note with Layer 1 frontmatter (`name`, `summary`). Use for capture. |
+| `is_write` | Create/update a Note (Layer 1 frontmatter); stages it and returns a content sha. `if_match` for safe updates. |
+| `is_commit` | The explicit save — commits only the paths you name, never the user's other staged work. |
+| `is_status` | Capture state: git position + tracked captures, or a single file's sha for `if_match`. |
+| `is_sync` | Push committed captures; integrate remote changes; refuses on a dirty tree rather than touching it. |
 | `is_auth` | Log in / out for optional remote hosting. |
 
-MCP stays thin: it shells out to the bundled CLI with `--json`. One implementation, two surfaces.
+Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
+
+MCP stays thin: every tool and resource shells the bundled CLI with `--json`. One implementation, many surfaces — and the logic stays in the CLI + SDK, out of the agent's context.
 
 ## Skills
 
@@ -54,11 +62,16 @@ MCP stays thin: it shells out to the bundled CLI with `--json`. One implementati
 - **is-capture** — propose writing a Note when conversation crystallizes
 - **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
 - **is-writing** — writing standard for Notes that compound
+- **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
 
-## Awareness hook
+Skills read their full protocols from `reference/` (the SDK's canonical skill catalog, built via `readSkill()`).
 
-The SessionStart hook (`dist/awareness-hook.js`) walks up from `cwd` looking for `_agent/`, formats the awareness block via the SDK, and writes it to stdout. If `purpose.md` or `now.md` are missing, it surfaces that as direction not yet captured.
+## Hooks
+
+**SessionStart awareness** (`dist/awareness-hook.js`) — walks root → cwd and, in a git ideaspace, emits orientation (Now, tree, agent context, skills, since-last-session), a git-state line, and a **stale-doc drift** block: docs that declare `code_paths` whose referenced code was committed *after* the doc, flagged before the agent quotes their status. Missing `purpose.md`/`now.md` surface as direction not yet captured. Persists HEAD for the next session's diff. Same-repo only; cross-repo staleness is the Delta Protocol skill's job.
+
+**PostToolUse capture-nudge** (`dist/capture-nudge-hook.js`) — when a knowledge file (`*.md` or under `_agent/`) is written with native Write/Edit inside an ideaspace, nudges toward the `is_write` → `is_commit` capture flow. Silent for source, configs, build artifacts, and markdown outside an ideaspace.
 
 ## Repo-local agent context
 
@@ -68,28 +81,22 @@ Contributors who want local agent orientation can manually create a private `_ag
 
 ## Rebuilding
 
-The plugin ships pre-built bundles from sibling source repos plus its own SessionStart hook. To update after code changes:
+The plugin ships pre-built: the CLI and MCP bundles are vendored from the sibling repos, the skill `reference/` is built from the SDK, and the hooks are built here. To update after code changes:
 
 ```bash
-# 1. Rebuild CLI bundle
-cd ../cli
-npm run build && npm run bundle
+# 1. Rebuild the sibling bundles
+cd ../cli && npm run build && npm run bundle
+cd ../mcp-server && npm run build && npm run bundle
 
-# 2. Rebuild MCP server bundle
-cd ../mcp-server
-npm run build && npm run bundle
-
-# 3. Copy bundles to plugin
+# 2. In the plugin: refresh the SDK, vendor the bundles, build reference + hooks
 cd ../ideaspaces-plugin
-cp ../mcp-server/bundle/index.js dist/index.js
-cp ../cli/bundle/ideaspaces.js cli/bundle/ideaspaces.js
-
-# 4. Rebuild the SessionStart hook (plugin-owned)
-npm install
-npm run build:hook
-
-# 5. Smoke check
-node cli/bundle/ideaspaces.js --help
-node cli/bundle/ideaspaces.js id --help
+npm install                # pin the current SDK
+npm run vendor             # cli + mcp bundles ← sibling repos
+npm run build:reference    # reference/*.md ← SDK readSkill()
+npm run build:hook         # SessionStart + capture-nudge hooks
 npm run typecheck
+
+# 3. Smoke check
+node cli/bundle/ideaspaces.js --help
+node cli/bundle/ideaspaces.js skills
 ```
