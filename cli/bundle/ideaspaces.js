@@ -8123,6 +8123,56 @@ function inspectFrontmatterSyntax(content) {
     column: linePos?.col
   };
 }
+function extractDescription(content) {
+  return extractScalarField(content, "description") ?? extractScalarField(content, "summary");
+}
+function extractScalarField(content, field) {
+  if (!content.startsWith(`${DELIM}
+`) && !content.startsWith(`${DELIM}\r
+`)) {
+    return null;
+  }
+  const lines = content.split(/\r?\n/);
+  let endIdx = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trimEnd() === DELIM) {
+      endIdx = i;
+      break;
+    }
+  }
+  if (endIdx === -1)
+    return null;
+  const prefix = `${field}:`;
+  let summaryStart = -1;
+  for (let i = 1; i < endIdx; i++) {
+    if (lines[i].startsWith(prefix)) {
+      summaryStart = i;
+      break;
+    }
+  }
+  if (summaryStart === -1)
+    return null;
+  const parts = [];
+  const firstLineRaw = lines[summaryStart].slice(prefix.length).trim();
+  if (firstLineRaw && !/^[>|][+-]?$/.test(firstLineRaw)) {
+    parts.push(firstLineRaw);
+  }
+  for (let i = summaryStart + 1; i < endIdx; i++) {
+    const line = lines[i];
+    if (/^\s+\S/.test(line)) {
+      parts.push(line.trim());
+    } else {
+      break;
+    }
+  }
+  if (!parts.length)
+    return null;
+  let result = parts.join(" ");
+  if (result.startsWith('"') && result.endsWith('"') || result.startsWith("'") && result.endsWith("'")) {
+    result = result.slice(1, -1);
+  }
+  return result || null;
+}
 function composeFrontmatter(fm) {
   const lines = [DELIM];
   if (fm.name !== void 0)
@@ -8319,9 +8369,285 @@ function sessionState(repoRoot2) {
   };
 }
 
+// node_modules/@ideaspaces/sdk/dist/skill-catalog.generated.js
+var SKILL_CATALOG = {
+  "awareness": `---
+name: awareness
+description: >
+  Check alignment between declared understanding and actual state at any position.
+  Use after substantive work \u2014 multiple writes, restructuring, perspective application \u2014
+  or when asked "is this still accurate?", "has this drifted?", "does the README match?".
+  The protocol: read declarations, read reality, compare, propose updates or stay silent.
+---
+<!-- Ported from sw_space/resources/skills/awareness.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
+
+# Awareness \u2014 Delta Protocol
+
+After substantive changes at a position, check whether the shared understanding still holds \u2014 does the declared understanding match reality? Drift is the default. Recalibration is the work.
+
+## When to Run
+
+- After writing multiple Notes in a branch
+- After restructuring (moving files, creating new branches)
+- After applying perspectives that produce new content
+- At session start, if the branch has been active recently
+- When something feels off \u2014 the content doesn't match the branch description
+
+## The Protocol
+
+### 1. Read Declarations
+
+At the current position, read what's declared:
+
+- \`_agent/purpose.md\` \u2014 why this place exists
+- \`_agent/now.md\` \u2014 what we're focused on
+- \`_agent/guide.md\` \u2014 how to work here
+- \`README.md\` \u2014 what this branch is about
+
+Read each one. Some may not exist \u2014 that's information too (a branch without purpose is directionless).
+
+### 2. Read Reality
+
+What actually exists here:
+
+- recent changes \u2014 what changed recently in this subtree
+- the tree at this position \u2014 what children exist, how many files, what they're about
+- the actual content of this directory \u2014 what the material here is really about
+
+**Before asserting that something "shipped" / "is implemented" / "is pending" from a doc, check the code \u2014 and the code may live in a *different repo*.** A space often spans several repos in the active context: a doc describing access control may sit in a docs repo while the implementation lives in a code repo. Locate the code wherever it is (grep/search across the repos in context), read its git history, and compare timestamps to the doc. Don't trust a doc's status line on its own \u2014 verify against the actual code, even when that means looking outside this repo. (The session-start drift block flags *same-repo* staleness automatically; cross-repo staleness is yours to check by reasoning, since you have git and know the repos in play.)
+
+### 3. Compare
+
+For each declaration, ask: does this still match?
+
+| Declaration | Delta question |
+|---|---|
+| README.md says "this branch is about X" | Are the children actually about X? |
+| purpose.md says "we're here because Y" | Does recent work serve Y? |
+| now.md says "focused on Z" | Is Z done? Changed? Superseded? |
+| guide.md says "work this way" | Is the guidance still relevant? |
+
+### 4. Output
+
+**If aligned:** Say nothing. Don't generate a report for the sake of reporting.
+
+**If drifted:** Propose a specific change. Not an essay \u2014 a concrete edit:
+
+- "now.md says 'evaluate 20 companies' but 18 are done. Propose update: 'Finalize remaining 2 evaluations, then synthesize patterns across the batch.'"
+- "README says 'early stage startups' but 4 of 8 Notes are Series B. Either update README or consider splitting the branch."
+- "No purpose.md at this branch. Based on content, this is about regulatory risk in health-tech. Want me to create one?"
+
+Keep it terse. The user decides whether to accept the proposal.
+
+## What This Is Not
+
+- **Not memory.** The skill doesn't save facts or accumulate knowledge. It proposes changes to the Space's scaffolding.
+- **Not a report.** Don't generate awareness reports. Either there's drift to surface or there isn't.
+- **Not mandatory.** The agent uses judgment about when to run this. After a single quick edit, skip it. After a deep restructuring session, run it.
+`,
+  "capture": `---
+name: capture
+description: >
+  Draw out understanding through conversation, crystallize into Notes that
+  compound. Use when the user wants to persist knowledge, save what's been
+  discussed, or capture expertise from conversation.
+---
+<!-- Ported from sw_space/resources/skills/capture.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
+
+# Capture
+
+Draw out understanding through conversation, crystallize into Notes that compound.
+
+## Elicitation
+
+Indirect over direct. "Tell me about a case you evaluated recently" reveals real criteria \u2014 "What's your evaluation framework?" gets generic answers. Comparison reveals dimensions users can't name. Reflect to refine \u2014 each reflection is a checkpoint. Probe decision points: "What made this difficult?" Know when to stop: circling means ready to crystallize.
+
+## Crystallization
+
+Too early loses nuance, too late loses coherence. Ready: clarity reached, same points recurring. Not ready: still exploring, contradictions unresolved. Offer, don't announce: "I think I have enough to structure this. Want to see?"
+
+## Writing Standard
+
+Notes are retrieval artifacts \u2014 what you write now serves a future search.
+
+- **Signal density** \u2014 one clear thing per sentence. "Revenue grew 40% in Q3" not "significant growth."
+- **Summary first** \u2014 orient immediately, dense with meaning, stands alone. Anchors the embedding.
+- **Self-contained sections** \u2014 each independently meaningful. No "as mentioned above." Headings are contracts.
+- **Fact vs interpretation** \u2014 distinguish, attribute, never blend. Gaps are information.
+- **Progressive disclosure** \u2014 title \u2192 summary \u2192 sections. Each level adds detail without contradicting.
+
+## Workflow
+
+1. Elicit understanding through conversation
+2. Recognize crystallization readiness
+3. Draft \u2014 show the user before persisting
+4. User reviews, iterates, approves
+5. Persist with tags (retrieval decisions) and references (provenance)
+
+## URL Capture
+
+Fetch a page as markdown. From there: save directly as a Note, transform through a Perspective, or use in conversation. If fetching fails (site blocks, fetcher down), ask the user for the content directly. Structure it the same way.
+
+## Placement
+
+The directory tree is the structure. Place Notes where they compound with related content \u2014 the path IS the context.
+
+**Before placing:**
+1. Check the tree (loaded from your current position). What branches exist, how deep, what READMEs say.
+2. Prefer existing locations. New directories only when nothing fits.
+3. When many Notes share a tag, that's accumulation pressure \u2014 the tag may deserve to become a directory.
+
+**Tags** are descriptors for filtered search \u2014 not location. The path is location. Look at what tags already exist before tagging. 1-3 tags per Note. Reuse existing tags first.
+
+**Show your reasoning.** "I'd place this under \`venture/climate-tech/\` because your README there focuses on deep-tech teams with regulatory tailwinds, which matches this company."
+
+## Multiple Notes
+
+A conversation can produce multiple Notes. When the discussion covers distinct topics, draft each one separately. Each Note gets its own name, content, tags, and summary. Don't merge distinct ideas into one Note \u2014 self-contained sections within a Note is fine, but separate topics deserve separate Notes.
+`,
+  "form-perspective": `---
+name: form-perspective
+description: >
+  Codify a reusable thinking pattern through progressive elicitation. Use when
+  the user wants to make their evaluation criteria, analysis framework, or
+  judgment process repeatable and consistent.
+---
+<!-- Ported from sw_space/resources/skills/form-perspective.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
+
+# Form Perspective
+
+Codify a reusable thinking pattern through progressive elicitation.
+
+## Three Required Components
+
+Elicit progressively \u2014 don't demand all at once:
+
+1. **Object Definition** \u2014 what gets analyzed. Clear boundaries. What's in scope, what's not.
+2. **Thinking Structure** \u2014 operationalized criteria, sequenced attention, decision rules. Not "strong team" but "relevant exits + domain expertise + technical depth in the problem domain."
+3. **Expected Outcome** \u2014 section structure, detail level, conclusion format. What the output Note looks like.
+
+## Operationalization
+
+The gap between intention and execution is where Perspectives fail. "Evaluate the team" is intention. "For each team member: relevant exits (count, scale, domain), domain expertise (years, publications, prior companies), role fit (technical depth vs problem complexity)" \u2014 that's operationalized.
+
+Push every criterion until it's testable. If two people applying this Perspective would produce different results, it's not operationalized enough.
+
+## Workflow
+
+1. Understand what the user wants to make repeatable
+2. Elicit examples \u2014 "Tell me about a time you evaluated this well"
+3. Extract the implicit criteria from the examples
+4. Draft \u2014 show the Perspective definition before persisting
+5. Validate: would this produce the right output on a real case?
+6. Persist as a Perspective
+
+## Reference Material
+
+Look for existing Notes that exemplify good and bad cases, and read them. Real examples ground the Perspective in the user's actual thinking, not abstract criteria.
+`,
+  "form-primitive": '---\nname: form-primitive\ndescription: >\n  Help users create reusable agent instructions \u2014 procedures, checklists,\n  review patterns, memory routines, or any repeatable pattern. Use when the\n  user wants to define how the agent should work in specific situations.\n  Produces a file in _agent/ with name + description frontmatter.\n---\n<!-- Ported from sw_space/resources/skills/form-primitive.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->\n\n# Form Primitive\n\nHelp the user create a reusable instruction that shapes how you work together. Not a Perspective (those have a specific three-component structure and are applied as a structured transformation). A primitive is any part of `_agent/` \u2014 a procedure, a checklist, a review pattern, a memory routine, whatever helps at that position.\n\n## The L1 Contract\n\nEvery primitive needs frontmatter with `name` and `description`. The description tells the agent when to use it \u2014 like a trigger condition.\n\n```yaml\n---\nname: Weekly Review\ndescription: >\n  Review the week\'s captures, surface patterns, update Now.\n  Use at the end of each week or when the user asks to reflect.\n---\n```\n\nThe name says what it is. The description says when to use it. Both are required. Both show up when browsing the tree. The description is how the agent decides "this is relevant right now."\n\n## Elicitation\n\nThe user knows what they want to make repeatable. They may not know how to structure it.\n\n1. **Start with the trigger.** "When does this happen? What situation makes you think \'I should do X\'?" This becomes the description.\n\n2. **Walk through a real instance.** "Last time you did this, what did you do step by step?" Real examples beat abstract procedures.\n\n3. **Find the invariant.** What stays the same every time vs what changes with context? The invariant is the instruction. The variable parts are what the agent adapts.\n\n4. **Draft and validate.** Show the primitive before saving. "If I followed this next time, would it produce the right behavior?"\n\n## Structure\n\nNo prescribed format. The content should be whatever makes the instruction clear and followable. Common patterns:\n\n**Procedural** \u2014 step by step:\n```markdown\n## When to use\n[trigger condition]\n\n## Steps\n1. ...\n2. ...\n3. ...\n\n## Output\n[what gets produced]\n```\n\n**Checklist** \u2014 verify against criteria:\n```markdown\n## Check\n- [ ] Does it have X?\n- [ ] Is Y consistent with Z?\n- [ ] Flag if A but not B.\n\n## If issues found\n[what to do]\n```\n\n**Routine** \u2014 recurring pattern:\n```markdown\n## Trigger\n[when this runs \u2014 weekly, on entering a position, on capture, etc.]\n\n## What to do\n[the routine]\n\n## What to capture\n[what Note or update to produce]\n```\n\n**Review** \u2014 evaluate something:\n```markdown\n## What to review\n[scope \u2014 a Note, a branch, a set of captures]\n\n## Criteria\n[what good looks like]\n\n## Output\n[Note with findings, or update to the reviewed content]\n```\n\nThe user can invent any structure. These are starting points, not requirements.\n\n## Where It Lives\n\nPrimitives go in `_agent/` at the level where they apply. Everything in `_agent/` composes along the path, root \u2192 current position:\n\n- `_agent/reviewer.md` at repo root \u2192 applies everywhere\n- `startups/_agent/due-diligence-checklist.md` \u2192 applies in startups/ and below\n- `clients/acme/_agent/communication-style.md` \u2192 applies when working on Acme\n\n## Creating Agents\n\nA special case of primitive: a full agent definition. When the user wants a specialized agent (not just an instruction), create `_agent/{agent-name}/agent.md`:\n\n```yaml\n---\nname: "Regulatory Analyst"\ntools: ["read", "write", "search", "git"]\n---\n\nAn agent specialized in regulatory risk analysis. Evaluates compliance\nrequirements, flags regulatory gaps, tracks regulatory changes.\n```\n\nThe optional `tools` field restricts which tools the agent can use. Omit it for full access. The body describes what the agent does.\n\nAlso create `_agent/{agent-name}/soul.md` to define how the agent shows up \u2014 its character and approach. And optionally `purpose.md` and `now.md` for the agent\'s own direction. The agent becomes available for conversations once these files exist.\n\n## What It Is NOT\n\n- **Not a Perspective.** Perspectives have Object Definition, Thinking Structure, Expected Outcome. They\'re applied as a structured transformation. If the user wants to evaluate/analyze things consistently, use the **form-perspective** skill instead.\n- **Not a Note.** Notes are knowledge \u2014 content that accumulates in the Space. Primitives are instructions \u2014 they shape how the agent works, not what the agent knows.\n- **Not guide.md.** The guide is general behavioral guidance for a branch. A primitive is a specific, named, reusable pattern with a trigger condition. Both live in `_agent/` \u2014 both are part of the shared understanding about how we work here.\n\n## Validation\n\nBefore saving, check:\n- Does it have `name` and `description` in frontmatter?\n- Does the description clearly say when to use it?\n- Is the instruction clear enough that you could follow it without asking questions?\n- Would it produce consistent results across different situations?\n\nIf any of these fail, iterate with the user before persisting.\n',
+  "guide": "---\nname: guide\ndescription: >\n  How to establish and maintain shared understanding at any position.\n  Always in awareness. Use when: a new folder has no _agent/, the user\n  asks what this place is for, purpose or now feel stale, or the\n  shared understanding needs renegotiating.\n---\n<!-- Ported from sw_space/resources/skills/guide.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->\n\n# Guide\n\n`_agent/` is how we work here, as far as we've figured it out.\nFoundation, guide, purpose, now, next \u2014 when any of them contradict\ncurrent practice, or go silent on something we keep doing \u2014 surface\nit. Propose an update. The understanding maintains itself through use.\n\n## What to pay attention to\n\nEvery position has dimensions that shape how we work here:\n\n| Dimension | File | The question |\n|---|---|---|\n| What is this place | README.md | Does the contract match what's actually here? |\n| Why does it exist | `_agent/purpose.md` | Clear direction, or still emerging? |\n| What's active | `_agent/now.md` | Concrete and current, or stale? |\n| What's queued | `_agent/next.md` | Identified, even if vague? |\n| How we work here | `_agent/guide.md` | Scope-specific, beyond foundation? |\n\nNot every position needs all of them. A deep branch might only need\na README. Root usually carries more. Each dimension can be empty,\nemerging, established, or drifted.\n\nMost turns you're just working. The guide posture is background\nawareness \u2014 you notice the state of these dimensions while doing\nother things. When a gap matters, you feel it: the user is making\ndecisions without a purpose to anchor them, or now describes work\nthat's already done. That's when to surface it.\n\n## When a position is fresh\n\nStart with the user, not the system. \"What kind of work happens\nhere?\" \u2014 not \"Let me set up your _agent/ folder.\"\n\nCapture something real first. The best onboarding is a Note that\nmatters, sitting in a directory that makes sense. Structure follows\ncontent. One branch, one real thing. Depth follows use, not planning.\n\nWhen you have enough signal about what this place is \u2014 propose.\nPreview before writing. The user confirms, edits, or starts smaller.\nNothing writes without agreement.\n\n## The readiness check\n\nBefore every capture \u2014 writing a Note, updating purpose, creating\na README \u2014 pause. \"I'm about to commit X. Is this what you mean?\"\n\nThe readiness check is the anti-hallucination primitive. Hallucination\nis what happens when either side commits before both are ready.\n\n## What this guide does not cover\n\nTools self-describe. Domain skills (founder, vc, research) add their\nown structure. Platform setup (auth, hooks, sync) is handled by\nsetup skills. This guide is about shared understanding \u2014 how you\nand the user figure out what this place is and keep that agreement\nhonest.\n",
+  "purpose-elicitation": `---
+name: purpose-elicitation
+description: >
+  Help articulate the repo's North Star \u2014 why this place exists and where
+  it's heading. Use when working on _agent/purpose.md, when purpose is
+  missing, or when the user asks about direction, goals, or what matters.
+---
+<!-- Ported from sw_space/resources/skills/purpose-elicitation.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
+
+# Purpose Elicitation
+
+Help the user articulate why this Space exists and where it's heading.
+
+## What Purpose Is
+
+Purpose is the North Star \u2014 the organizing principle that makes every other decision easier. "Should I capture this?" becomes answerable when you know what this place is for. Purpose isn't a mission statement. It's a working document that evolves.
+
+## Elicitation Approach
+
+Don't ask "What's your purpose?" \u2014 that produces generic answers. Instead:
+
+- **Start with what's here.** Look at existing Notes, branches, perspectives. "You have 30 Notes about climate-tech startups and 5 about regulatory frameworks. What connects these?"
+- **Surface through contrast.** "What would NOT belong here?" reveals boundaries better than "What belongs?"
+- **Find the decision test.** "When you're deciding whether to capture something, what makes you say yes?" The answer is the purpose in operational form.
+- **Listen for energy.** What the user talks about with most specificity and excitement is often the real purpose, even if their stated purpose is different.
+
+## Structure
+
+Purpose typically has three layers:
+
+1. **What this place is for** \u2014 the domain, the scope, the boundary
+2. **Where it's heading** \u2014 the direction, what "more" looks like
+3. **The decision test** \u2014 how to know if something belongs
+
+## Writing It
+
+Keep it short. A paragraph or two. Written in the user's voice, not formal language. It should feel like the user explaining their Space to a friend.
+
+Persist to \`_agent/purpose.md\` \u2014 this loads at session start and orients every conversation.
+
+## When Purpose Is Missing
+
+If \`_agent/purpose.md\` doesn't exist and the Space has content, the content itself is evidence. Read a few Notes, look at the tree structure, and reflect what you see: "Based on what's here, this Space seems focused on X. Is that right?" Let the user correct and refine.
+
+If the Space is empty, explore what the user wants to build: "What kind of knowledge do you want to accumulate here?"
+`,
+  "repo-context": `---
+name: repo-context
+description: >
+  Help describe what this place is and who works here. Use when working on
+  _agent/repo-context.md, when onboarding to a new repo, or when the agent
+  needs to understand the repo's identity.
+---
+<!-- Ported from sw_space/resources/skills/repo-context.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
+
+# Repo Context
+
+Help the user describe what this Space is and who works here.
+
+## What Repo Context Is
+
+Repo context is the "What" and "Who" \u2014 it tells the agent what kind of place this is. A personal research repo, a team knowledge base, a client portfolio tracker. It shapes how the agent speaks, what it assumes, and how it names things.
+
+## What to Include
+
+- **What this place is** \u2014 domain, scope, what kind of knowledge lives here
+- **Who works here** \u2014 individual, team, organization. How they think about their work.
+- **Vocabulary** \u2014 terms that mean specific things here. "Deal" might mean venture investment or sales opportunity depending on context.
+- **Conventions** \u2014 naming patterns, preferred structure, anything the agent should follow
+
+## Elicitation
+
+If the user hasn't written repo context yet:
+
+1. Look at existing content \u2014 tree structure, Note names, README files
+2. Reflect what you see: "This looks like a personal research space focused on X"
+3. Ask what's missing from that picture
+4. Draft and refine together
+
+## Writing It
+
+Concise. A few paragraphs. Written for the agent \u2014 this loads at session start and orients every conversation. Focus on what would change the agent's behavior: vocabulary, assumptions, conventions.
+
+Persist to \`_agent/repo-context.md\`.
+`,
+  "writing": '---\nname: writing\ndescription: >\n  Writing standard for Notes. Structure for retrieval, summaries for discovery,\n  entities for connection. Use when creating or substantially revising Notes,\n  or when asked "write this well", "capture this", "create a Note about".\n  Derived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n---\n<!-- Ported from sw_space/resources/skills/writing.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->\n\n# Writing Standard\n\nNotes that compound follow these principles. They\'re functional requirements for knowledge that works \u2014 clear writing produces clean vectors, dense summaries drive discovery, structured sections enable precise retrieval.\n\nDerived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n\n## Summary Is Everything\n\nThe `summary` field is the most important thing you write. It\'s what search results show. It\'s what shows when browsing the tree. It\'s what loads in awareness context. Write it like the first thing someone reads \u2014 because it is.\n\nTwo sentences max. Dense. Immediate orientation. "What is this and why does it matter." Early tokens carry disproportionate influence on the embedding vector.\n\n## Conciseness (Strunk & White)\n\n"Omit needless words." Every word in a Note earns its place.\n\n| Padded | Clean |\n|--------|-------|\n| "The question as to whether" | "Whether" |\n| "This is a company that" | "This company" |\n| "It is important to note that" | (delete \u2014 just state it) |\n| "In terms of revenue growth" | "Revenue grew" |\n\nActive voice over passive. "The startup was analyzed" \u2192 "We analyzed the startup." Passive only when the actor is unknown or irrelevant.\n\n## Clarity (Zinsser)\n\n"Clear thinking becomes clear writing." If you can\'t write it clearly, you don\'t understand it yet.\n\n- Strip every sentence to its cleanest components\n- Clutter words add nothing: "basically," "actually," "in order to," "at this point in time"\n- The first paragraph orients the reader immediately \u2014 if someone reads only the summary, they know what this is about\n\n## Concreteness\n\nSpecifics cluster with related specifics in vector space. Abstractions diffuse.\n\n| Abstract | Concrete |\n|----------|----------|\n| "Significant growth" | "Revenue grew 40% in Q3" |\n| "Strong team" | "3 ex-Google engineers, 2 successful exits" |\n| "Large market" | "$4.2B TAM, growing 25% annually" |\n\nPrefer the specific to the general, the definite to the vague. Concrete facts can be abstracted later. You can\'t recover specifics from abstractions.\n\n## Objectivity (Kovach & Rosenstiel)\n\nDistinguish fact from interpretation. Never blend them.\n\n| Type | Example |\n|------|---------|\n| Fact | "Raised $10M Series A in March 2025" |\n| Interpretation | "The funding suggests investor confidence" |\n| Claim (attributed) | "The CEO states they are \'market leaders\'" |\n\nEvery claim traces to a source. "According to the landing page..." or "The pitch deck states..." \u2014 the reader knows provenance.\n\n**What the agent does NOT do:** verify claims, add information not in the source, editorialize ("impressive team"), fill gaps with plausible content. If the source doesn\'t mention revenue, note the absence \u2014 don\'t guess.\n\n## Sections Are the Semantic Fingerprint\n\nEach `## heading` creates a vector centroid. Well-scoped sections = precise retrieval.\n\n- A Note with five distinct sections has a 5-dimensional semantic fingerprint\n- A wall of text collapses to one dimension \u2014 hard to find, hard to compare\n- Each section makes a complete point independently\n- Headings are contracts \u2014 "Team Analysis" contains team analysis, not market commentary\n- Target: 3-10 paragraphs per section. Too short = insufficient signal. Too long = diluted topic.\n\nProgressive disclosure: Title \u2192 Summary \u2192 Sections. Each level complete at its depth.\n\n## Primary Attachment\n\nUse `attached_to` for the one thing this Note is primarily about \u2014 like putting a sticky note on an object. It is singular: choose zero or one primary anchor.\n\n- Company/org entity: `hostname:acme.com`\n- Person entity: `person:alice`\n- Agent entity: `agent:assistant`\n- External URL/document: `web_page:https://example.com/report.pdf`\n- Another Note: `note:n_abc123def456`\n- Another non-Note Node in this Space: `node:n_def456abc789`\n\nIf the Note mentions several things, don\'t put all of them in `attached_to`. Choose the primary anchor, split the Note, use tags, or link in prose. Use `references` only for hard source/provenance nodes.\n\n## Cross-Note Links\n\nUse standard markdown links with relative paths for reader navigation. They are portable across editors, Obsidian, print/exports, and plain LLM context.\n\n```markdown\nSee [Acme profile](../companies/acme.md) for background.\nSee [Market map](../markets/README.md) for the branch overview.\n```\n\nPath links are user-facing handles. They may break when the target is renamed unless the editor/tool rewrites links; use editor rename refactors when available. For durable platform references outside portable prose, use `/n/{node_id}` URLs.\n\nExisting inline `node:n_...` links remain resolvable, but don\'t write them as the default prose link form. Inline links are reader navigation, not provenance. They do not populate `references` or `referenced_by`.\n\nWhen renaming a Note and heavily rewriting it, commit the rename separately from the rewrite. Git rename detection is similarity-based; a rename plus large content change in one commit can lose node identity.\n\n## Sources and References\n\nUse `references` only for hard sources: the small set of node IDs this Note was produced from or grounded in. Perspective outputs and synthesis Notes use `references` for their input Notes. If a Note merely mentions or points to another Note, use an inline markdown link instead.\n\n## Sentence-Level Mechanics\n\n- **Put emphatic words at the end.** "In Q3, revenue grew 40%" not "Revenue is what grew 40% in Q3"\n- **Keep related words together.** Don\'t separate subject and verb with long interruptions\n- **Parallel construction.** "Fast, reliable, and affordable" not "speed, being reliable, and costs less"\n- **One idea per sentence.** Most of the time, two sentences are clearer than one compound one\n\n## Common Failure Modes\n\n- **Throat-clearing.** "Before we dive into the analysis..." \u2014 delete, start with the analysis\n- **Hedge stacking.** "It seems like it might possibly be somewhat relevant" \u2014 state or acknowledge uncertainty once\n- **Elegant variation.** If it\'s a "startup" in paragraph one, don\'t call it a "venture" in paragraph two for variety. Consistency aids retrieval.\n- **Nominalization.** "Make a determination" \u2192 "determine." "Performed an analysis" \u2192 "analyzed."\n- **Weasel words.** "Some experts say," "studies show" \u2014 without attribution, these are noise\n\n## The Standard\n\nKnowledge capture succeeds when:\n\n1. A human can scan the output and orient in seconds\n2. A machine can embed the output and retrieve it precisely\n3. Every sentence traces to a source or is explicitly marked as interpretation\n4. Nothing is added that wasn\'t in the input\n5. Nothing important from the input is lost without acknowledgment\n6. The reader trusts the capture because the method is transparent\n'
+};
+
 // node_modules/@ideaspaces/sdk/dist/skills.js
-import { fileURLToPath } from "node:url";
-var SKILLS_DIR = fileURLToPath(new URL("../skills/", import.meta.url));
+async function listSkills() {
+  return Object.keys(SKILL_CATALOG).sort().map((name) => ({ name, description: extractDescription(SKILL_CATALOG[name]) }));
+}
+async function readSkill(name) {
+  if (name.includes("/") || name.includes("\\") || name.includes("..")) {
+    throw new Error(`Invalid skill name: ${name}`);
+  }
+  const content = SKILL_CATALOG[name];
+  if (content === void 0)
+    throw new Error(`Unknown skill: ${name}`);
+  return { name, description: extractDescription(content), content };
+}
 
 // dist/frontmatter-report.js
 async function scanMarkdownFrontmatterSyntaxFiles(files) {
@@ -8707,6 +9033,12 @@ function statusEntries(cwd) {
 function isDirty(cwd) {
   return statusEntries(cwd).some((e) => !e.status.startsWith("??"));
 }
+function stagedPaths(cwd) {
+  const r = git(["diff", "--cached", "--name-only"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  return r.out.split("\n").filter(Boolean);
+}
 function fetch2(cwd) {
   gitOrThrow(["fetch"], cwd);
 }
@@ -8915,20 +9247,17 @@ import { resolve as resolve5 } from "node:path";
 var commitCommand = {
   name: "commit",
   description: "Save staged captures \u2014 commits only the paths you name",
-  usage: 'ideaspaces commit -m "<message>" <path>... | --tracked',
+  usage: 'ideaspaces commit -m "<message>" <path>... | --tracked | --all',
   examples: [
     'ideaspaces commit -m "Capture auth decision" notes/auth.md',
-    'ideaspaces commit -m "Session captures" --tracked'
+    'ideaspaces commit -m "Session captures" --tracked',
+    'ideaspaces commit -m "Save notes" --all   # all staged markdown / _agent/ paths'
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const message = String(flags2.m ?? flags2.message ?? "").trim();
     if (!message) {
       output.error('A commit message is required: ideaspaces commit -m "<message>" <path>...');
-      return 1;
-    }
-    if (flags2.all) {
-      output.error("commit --all is not supported yet. Name the paths explicitly, or use --tracked\nto commit what the plugin staged this session.");
       return 1;
     }
     let root;
@@ -8938,21 +9267,39 @@ var commitCommand = {
       output.error(err instanceof Error ? err.message : String(err));
       return 1;
     }
+    const sources = [args2.length > 0, Boolean(flags2.tracked), Boolean(flags2.all)].filter(Boolean);
+    if (sources.length > 1) {
+      output.error("Use exactly one of: explicit <path>..., --tracked, or --all.");
+      return 1;
+    }
     const store = flags2.tracked ? sessionState(root) : null;
-    let paths = args2.map((p) => resolve5(p));
-    if (store) {
-      if (paths.length) {
-        output.error("Pass either explicit paths or --tracked, not both.");
+    let paths;
+    if (flags2.all) {
+      const staged = stagedPaths(root);
+      if (!staged.length) {
+        output.error("Nothing staged to commit.");
         return 1;
       }
+      paths = staged.filter(isIdeaspacePath);
+      const other = staged.filter((p) => !isIdeaspacePath(p));
+      if (!paths.length) {
+        output.error("No staged ideaspace paths (markdown or _agent/). Staged non-knowledge files:\n" + other.map((p) => `  ${p}`).join("\n"));
+        return 1;
+      }
+      if (other.length) {
+        output.log(`Leaving ${other.length} non-ideaspace staged path(s) for you to commit: ${other.join(", ")}`);
+      }
+    } else if (store) {
       paths = await store.getStagedPaths();
       if (!paths.length) {
         output.error("No plugin-tracked paths to commit (session state is empty).");
         return 1;
       }
+    } else {
+      paths = args2.map((p) => resolve5(p));
     }
     if (!paths.length) {
-      output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --tracked to commit what the plugin staged this session.');
+      output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --tracked / --all.');
       return 1;
     }
     let sha;
@@ -8973,6 +9320,9 @@ var commitCommand = {
     return 0;
   }
 };
+function isIdeaspacePath(path) {
+  return path.endsWith(".md") || path.split("/").includes("_agent");
+}
 
 // dist/commands/status.js
 import { resolve as resolve6 } from "node:path";
@@ -9120,6 +9470,33 @@ The repo may be mid-${useRebase ? "rebase" : "merge"}. Run \`${reset}\` to reset
   }
 };
 
+// dist/commands/skills.js
+var skillsCommand = {
+  name: "skills",
+  description: "List the skill catalog, or print one skill's markdown",
+  usage: "ideaspaces skills [<name>]",
+  examples: ["ideaspaces skills", "ideaspaces skills capture", "ideaspaces skills --json"],
+  async run(args2, _flags, global2) {
+    const output = createOutput(global2);
+    const name = args2[0];
+    try {
+      if (name) {
+        const skill = await readSkill(name);
+        output.result({ name: skill.name, description: skill.description, content: skill.content }, skill.content);
+      } else {
+        const skills = await listSkills();
+        output.result(skills, skills.map((s) => `${s.name}${s.description ? `  \u2014  ${s.description}` : ""}`).join("\n"));
+      }
+      return 0;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      output.error(name ? `${msg}
+Run \`ideaspaces skills\` to list available skills.` : msg);
+      return 1;
+    }
+  }
+};
+
 // dist/commands/credential.js
 var credentialCommand = {
   name: "credential",
@@ -9224,6 +9601,7 @@ var topLevel = [
   commitCommand,
   statusCommand,
   syncCommand,
+  skillsCommand,
   credentialCommand
 ];
 var power = [

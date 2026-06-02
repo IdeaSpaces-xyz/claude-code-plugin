@@ -1,26 +1,24 @@
-// Build reference/ from the SDK's distribution-canonical skill catalog.
-//
-// The plugin's skills read shared protocol content from reference/<name>.md
-// (the arscontexta pattern) rather than duplicating it. That content is the
-// SDK's surface-neutral skill catalog — copied here at build time from the
-// installed @ideaspaces/sdk package so there's one canonical source.
+// Build reference/ from the SDK's canonical skill catalog via readSkill() —
+// the same API the embedded catalog backs and the MCP server serves. One
+// source for every surface: plugin reference/, MCP resources, and the CLI all
+// resolve to the same skill content.
 //
 // reference/ is committed (the plugin ships pre-built). Re-run after bumping
 // the SDK dependency.
 
-import { copyFile, mkdir, readdir, rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { listSkills, readSkill } from "@ideaspaces/sdk";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const src = join(root, "node_modules/@ideaspaces/sdk/skills");
 const dst = join(root, "reference");
 
-let files;
+let skills;
 try {
-  files = (await readdir(src)).filter((f) => f.endsWith(".md"));
+  skills = await listSkills();
 } catch {
-  console.error(`✗ SDK skills not found at ${src} — run \`npm install\` first.`);
+  console.error("✗ SDK skill catalog unavailable — run `npm install` first.");
   process.exit(1);
 }
 
@@ -28,8 +26,9 @@ try {
 await rm(dst, { recursive: true, force: true });
 await mkdir(dst, { recursive: true });
 
-for (const f of files.sort()) {
-  await copyFile(join(src, f), join(dst, f));
-  console.log(`✓ reference/${f}`);
+for (const s of skills) {
+  const skill = await readSkill(s.name);
+  await writeFile(join(dst, `${s.name}.md`), skill.content, "utf-8");
+  console.log(`✓ reference/${s.name}.md`);
 }
-console.log(`Built reference/ with ${files.length} skill(s).`);
+console.log(`Built reference/ with ${skills.length} skill(s) via readSkill().`);

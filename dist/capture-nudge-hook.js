@@ -7416,10 +7416,6 @@ var import_yaml = __toESM(require_dist(), 1);
 // node_modules/@ideaspaces/sdk/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
 
-// node_modules/@ideaspaces/sdk/dist/skills.js
-import { fileURLToPath } from "node:url";
-var SKILLS_DIR = fileURLToPath(new URL("../skills/", import.meta.url));
-
 // src/capture-nudge-hook.ts
 async function readStdin() {
   const chunks = [];
