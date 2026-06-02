@@ -7945,10 +7945,6 @@ function sessionState(repoRoot) {
   };
 }
 
-// node_modules/@ideaspaces/sdk/dist/skills.js
-import { fileURLToPath } from "node:url";
-var SKILLS_DIR = fileURLToPath(new URL("../skills/", import.meta.url));
-
 // src/awareness-hook.ts
 var MAX_DRIFT = 10;
 function isGitRepo(cwd) {

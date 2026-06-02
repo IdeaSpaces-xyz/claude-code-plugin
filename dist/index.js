@@ -21149,5 +21149,32 @@ server.tool(
     return run(a, void 0, cwd);
   }
 );
+try {
+  const listed = await cli(["--json", "skills"]);
+  if (listed.code === 0) {
+    const skills = JSON.parse(listed.out);
+    for (const skill of skills) {
+      server.registerResource(
+        `skill-${skill.name}`,
+        `ideaspaces://skill/${skill.name}`,
+        {
+          title: skill.name,
+          description: skill.description ?? void 0,
+          mimeType: "text/markdown"
+        },
+        async (uri) => {
+          const r = await cli(["--json", "skills", skill.name]);
+          if (r.code !== 0) throw new Error(r.err.trim() || `Failed to read skill: ${skill.name}`);
+          const text = JSON.parse(r.out).content;
+          return { contents: [{ uri: uri.href, mimeType: "text/markdown", text }] };
+        }
+      );
+    }
+  }
+} catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  process.stderr.write(`ideaspaces-mcp: skill resources unavailable: ${message}
+`);
+}
 var transport = new StdioServerTransport();
 await server.connect(transport);
