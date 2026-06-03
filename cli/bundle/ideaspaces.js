@@ -9274,6 +9274,7 @@ var commitCommand = {
     }
     const store = flags2.tracked ? sessionState(root) : null;
     let paths;
+    let clearedPaths = [];
     if (flags2.all) {
       const staged = stagedPaths(root);
       if (!staged.length) {
@@ -9295,6 +9296,37 @@ var commitCommand = {
         output.error("No plugin-tracked paths to commit (session state is empty).");
         return 1;
       }
+      const stageErrors = [];
+      for (const p of paths) {
+        try {
+          stagePaths([p], root);
+        } catch (err) {
+          if (!(err instanceof GitError))
+            throw err;
+          const ps = pathStatus(p, root);
+          if (!ps.exists && !ps.inTracked) {
+            clearedPaths.push(p);
+          } else {
+            stageErrors.push(`${p}: ${err.message}`);
+          }
+        }
+      }
+      if (stageErrors.length) {
+        output.error(`Staging tracked paths failed:
+${stageErrors.map((e) => `  ${e}`).join("\n")}`);
+        return 1;
+      }
+      const staged = new Set(stagedPaths(root));
+      clearedPaths = [
+        ...clearedPaths,
+        ...paths.filter((p) => !staged.has(p) && !clearedPaths.includes(p))
+      ];
+      paths = paths.filter((p) => staged.has(p));
+      await Promise.all(clearedPaths.map((p) => store.clearStagedPath(p)));
+      if (!paths.length) {
+        output.result({ commit_sha: null, committed_paths: [], cleared_paths: clearedPaths }, `No tracked changes to commit; cleared ${clearedPaths.length} stale marker(s).`);
+        return 0;
+      }
     } else {
       paths = args2.map((p) => resolve5(p));
     }
@@ -9313,10 +9345,9 @@ var commitCommand = {
       throw err;
     }
     if (store) {
-      for (const p of paths)
-        await store.clearStagedPath(p);
+      await Promise.all(paths.map((p) => store.clearStagedPath(p)));
     }
-    output.result({ commit_sha: sha, committed_paths: paths }, `Committed ${paths.length} path(s): ${sha}`);
+    output.result(store ? { commit_sha: sha, committed_paths: paths, cleared_paths: clearedPaths } : { commit_sha: sha, committed_paths: paths }, `Committed ${paths.length} path(s): ${sha}`);
     return 0;
   }
 };
