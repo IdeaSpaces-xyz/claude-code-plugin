@@ -21105,23 +21105,23 @@ server.tool(
 );
 server.tool(
   "is_commit",
-  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name (or the plugin's session-tracked set via tracked), never the user's unrelated staged work. Confirm with the user before calling.",
+  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name (or all staged knowledge via all), never the user's unrelated staged work. Confirm with the user before calling.",
   {
     message: external_exports.string().describe("Commit message (user-provided or user-confirmed)"),
-    paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using tracked."),
-    tracked: external_exports.boolean().optional().describe("Commit the plugin's session-staged paths instead of explicit paths."),
+    paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using all."),
+    all: external_exports.boolean().optional().describe("Commit all staged knowledge paths (markdown + _agent/) from git; staged code is left for the user."),
     cwd: cwdField
   },
-  async ({ message, paths, tracked, cwd }) => {
+  async ({ message, paths, all, cwd }) => {
     const a = ["commit", "-m", message];
-    if (tracked) a.push("--tracked");
+    if (all) a.push("--all");
     else if (paths?.length) a.push(...paths);
     return run(a, void 0, cwd);
   }
 );
 server.tool(
   "is_status",
-  "Capture state: overall git position + plugin-tracked captures awaiting commit, or single-file state. With a path, the returned sha is the if_match token for a first update.",
+  "Capture state: overall git position + staged knowledge awaiting commit, or single-file state. With a path, the returned sha is the if_match token for a first update.",
   {
     path: external_exports.string().optional().describe(
       "Single file \u2014 returns { exists, sha, in_index, modified, in_tracked }. The sha is what you pass as is_write's if_match."
@@ -21136,7 +21136,7 @@ server.tool(
 );
 server.tool(
   "is_sync",
-  "Push committed captures and integrate remote changes. Refuses if plugin-tracked captures are still uncommitted. Use dry_run to preview without mutating.",
+  "Push committed captures and integrate remote changes. Refuses if staged knowledge is still uncommitted. Use dry_run to preview without mutating.",
   {
     dry_run: external_exports.boolean().optional().describe("Preview ahead/behind and what would push; mutates nothing."),
     rebase: external_exports.boolean().optional().describe("Integrate via rebase (default true). Set false to merge instead."),

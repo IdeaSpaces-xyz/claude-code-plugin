@@ -6892,14 +6892,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs4 = this.flowScalar(this.type);
+              const fs3 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs4, sep: [] });
+                map.items.push({ start, key: fs3, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs4);
+                this.stack.push(fs3);
               } else {
-                Object.assign(it, { key: fs4, sep: [] });
+                Object.assign(it, { key: fs3, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7027,13 +7027,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs4 = this.flowScalar(this.type);
+              const fs3 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs4, sep: [] });
+                fc.items.push({ start: [], key: fs3, sep: [] });
               else if (it.sep)
-                this.stack.push(fs4);
+                this.stack.push(fs3);
               else
-                Object.assign(it, { key: fs4, sep: [] });
+                Object.assign(it, { key: fs3, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7926,7 +7926,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve7, reject) => {
+  return new Promise((resolve6, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -7953,7 +7953,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve7({
+      resolve6({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -8048,7 +8048,7 @@ ${authUrl}`);
 // dist/commands/publish.js
 import { spawnSync as spawnSync2 } from "node:child_process";
 import { existsSync as existsSync4, statSync } from "node:fs";
-import { basename as basename2, join as join6 } from "node:path";
+import { basename as basename2, join as join5 } from "node:path";
 
 // dist/auth/spaces.js
 import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
@@ -8238,14 +8238,14 @@ function frontmatterBlock(content) {
 // node_modules/@ideaspaces/sdk/dist/git.js
 import { spawn } from "node:child_process";
 function runGit2(repoRoot2, args2) {
-  return new Promise((resolve7) => {
+  return new Promise((resolve6) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve7({ ok: code === 0, out }));
-    proc.on("error", () => resolve7({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve6({ ok: code === 0, out }));
+    proc.on("error", () => resolve6({ ok: false, out: "" }));
   });
 }
 async function gitState(repoRoot2) {
@@ -8298,76 +8298,6 @@ async function gitState(repoRoot2) {
 
 // node_modules/@ideaspaces/sdk/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
-
-// node_modules/@ideaspaces/sdk/dist/session-state.js
-import { promises as fs2 } from "node:fs";
-import { createHash, randomUUID } from "node:crypto";
-import { homedir as homedir2 } from "node:os";
-import { dirname, join as join5, resolve as resolve3 } from "node:path";
-function repoIdHash(repoRoot2) {
-  return createHash("sha256").update(resolve3(repoRoot2)).digest("hex").slice(0, 16);
-}
-function sessionFilePath(repoRoot2) {
-  return join5(homedir2(), ".ideaspaces", "sessions", `${repoIdHash(repoRoot2)}.json`);
-}
-function freshState() {
-  return {
-    session_id: randomUUID(),
-    started_at: (/* @__PURE__ */ new Date()).toISOString(),
-    staged_paths: []
-  };
-}
-function sessionState(repoRoot2) {
-  const file = sessionFilePath(repoRoot2);
-  async function load() {
-    try {
-      const parsed = JSON.parse(await fs2.readFile(file, "utf-8"));
-      if (!Array.isArray(parsed.staged_paths))
-        parsed.staged_paths = [];
-      if (!parsed.session_id)
-        parsed.session_id = randomUUID();
-      if (!parsed.started_at)
-        parsed.started_at = (/* @__PURE__ */ new Date()).toISOString();
-      return parsed;
-    } catch {
-      return null;
-    }
-  }
-  async function persist(state) {
-    await fs2.mkdir(dirname(file), { recursive: true });
-    const tmp = `${file}.tmp`;
-    await fs2.writeFile(tmp, JSON.stringify(state, null, 2), "utf-8");
-    await fs2.rename(tmp, file);
-    return state;
-  }
-  async function ensure() {
-    return await load() ?? freshState();
-  }
-  return {
-    async readState() {
-      return await load() ?? freshState();
-    },
-    async recordStagedPath(path) {
-      const state = await ensure();
-      if (!state.staged_paths.includes(path))
-        state.staged_paths.push(path);
-      return persist(state);
-    },
-    async clearStagedPath(path) {
-      const state = await ensure();
-      state.staged_paths = state.staged_paths.filter((p) => p !== path);
-      return persist(state);
-    },
-    async getStagedPaths() {
-      return (await load())?.staged_paths ?? [];
-    },
-    async setLastSha(sha) {
-      const state = await ensure();
-      state.lastSha = sha;
-      return persist(state);
-    }
-  };
-}
 
 // node_modules/@ideaspaces/sdk/dist/skill-catalog.generated.js
 var SKILL_CATALOG = {
@@ -8714,7 +8644,7 @@ function preflightSize(cwd) {
   }
   const offenders = [];
   for (const rel of r.stdout.split("\0").filter(Boolean)) {
-    const abs = join6(cwd, rel);
+    const abs = join5(cwd, rel);
     let bytes;
     try {
       bytes = statSync(abs).size;
@@ -8770,7 +8700,7 @@ function trackedMarkdownFiles(cwd) {
   if (r.status !== 0) {
     throw new Error(r.stderr.trim() || "git ls-files failed while checking markdown identities");
   }
-  return r.stdout.split("\0").filter(Boolean).map((path) => join6(cwd, path));
+  return r.stdout.split("\0").filter(Boolean).map((path) => join5(cwd, path));
 }
 var publishCommand = {
   name: "publish",
@@ -8786,7 +8716,7 @@ var publishCommand = {
     const output = createOutput(global2);
     const flags2 = rawFlags;
     const cwd = process.cwd();
-    if (!existsSync4(join6(cwd, ".git"))) {
+    if (!existsSync4(join5(cwd, ".git"))) {
       output.error("Not a git repo. Run `ideaspaces create` first, or `git init` here.");
       return 1;
     }
@@ -8963,9 +8893,9 @@ ${push2.stderr}${hint}`);
 };
 
 // dist/commands/write.js
-import { promises as fs3 } from "node:fs";
+import { promises as fs2 } from "node:fs";
 import { existsSync as existsSync5 } from "node:fs";
-import { dirname as dirname2, resolve as resolve4, relative as relative2 } from "node:path";
+import { dirname, resolve as resolve3 } from "node:path";
 
 // dist/git.js
 import { spawnSync as spawnSync3 } from "node:child_process";
@@ -9038,6 +8968,12 @@ function stagedPaths(cwd) {
   if (!r.ok || !r.out)
     return [];
   return r.out.split("\n").filter(Boolean);
+}
+function isIdeaspacePath(path) {
+  return path.endsWith(".md") || path.split("/").includes("_agent");
+}
+function stagedIdeaspacePaths(cwd) {
+  return stagedPaths(cwd).filter(isIdeaspacePath);
 }
 function fetch2(cwd) {
   gitOrThrow(["fetch"], cwd);
@@ -9197,7 +9133,7 @@ var writeCommand = {
     const force = Boolean(flags2.force);
     const stage = parseBool(flags2.stage, true);
     const ifMatch = flags2["if-match"];
-    const absPath = resolve4(path);
+    const absPath = resolve3(path);
     if (ifMatch !== void 0) {
       const currentSha = blobSha(absPath);
       if (currentSha !== ifMatch && !force) {
@@ -9214,18 +9150,13 @@ Re-run with --force to overwrite, or pass --if-match <sha> for a safe update.`);
     }
     const body = stripFrontmatter(content);
     const finalContent = composeFrontmatter(fm) + body;
-    await fs3.mkdir(dirname2(absPath), { recursive: true });
-    await fs3.writeFile(absPath, finalContent, "utf-8");
+    await fs2.mkdir(dirname(absPath), { recursive: true });
+    await fs2.writeFile(absPath, finalContent, "utf-8");
     let staged = false;
     if (stage) {
       try {
         stagePaths([absPath]);
         staged = true;
-        try {
-          const root = repoRoot();
-          await sessionState(root).recordStagedPath(relative2(root, absPath));
-        } catch {
-        }
       } catch (err) {
         const msg = err instanceof GitError ? err.message : String(err);
         output.log(`Written but not staged: ${msg}`);
@@ -9243,14 +9174,13 @@ function parseList(value) {
 }
 
 // dist/commands/commit.js
-import { resolve as resolve5 } from "node:path";
+import { resolve as resolve4 } from "node:path";
 var commitCommand = {
   name: "commit",
   description: "Save staged captures \u2014 commits only the paths you name",
-  usage: 'ideaspaces commit -m "<message>" <path>... | --tracked | --all',
+  usage: 'ideaspaces commit -m "<message>" <path>... | --all',
   examples: [
     'ideaspaces commit -m "Capture auth decision" notes/auth.md',
-    'ideaspaces commit -m "Session captures" --tracked',
     'ideaspaces commit -m "Save notes" --all   # all staged markdown / _agent/ paths'
   ],
   async run(args2, flags2, global2) {
@@ -9267,14 +9197,11 @@ var commitCommand = {
       output.error(err instanceof Error ? err.message : String(err));
       return 1;
     }
-    const sources = [args2.length > 0, Boolean(flags2.tracked), Boolean(flags2.all)].filter(Boolean);
-    if (sources.length > 1) {
-      output.error("Use exactly one of: explicit <path>..., --tracked, or --all.");
+    if (args2.length > 0 && flags2.all) {
+      output.error("Use exactly one of: explicit <path>..., or --all.");
       return 1;
     }
-    const store = flags2.tracked ? sessionState(root) : null;
     let paths;
-    let clearedPaths = [];
     if (flags2.all) {
       const staged = stagedPaths(root);
       if (!staged.length) {
@@ -9290,48 +9217,11 @@ var commitCommand = {
       if (other.length) {
         output.log(`Leaving ${other.length} non-ideaspace staged path(s) for you to commit: ${other.join(", ")}`);
       }
-    } else if (store) {
-      paths = await store.getStagedPaths();
-      if (!paths.length) {
-        output.error("No plugin-tracked paths to commit (session state is empty).");
-        return 1;
-      }
-      const stageErrors = [];
-      for (const p of paths) {
-        try {
-          stagePaths([p], root);
-        } catch (err) {
-          if (!(err instanceof GitError))
-            throw err;
-          const ps = pathStatus(p, root);
-          if (!ps.exists && !ps.inTracked) {
-            clearedPaths.push(p);
-          } else {
-            stageErrors.push(`${p}: ${err.message}`);
-          }
-        }
-      }
-      if (stageErrors.length) {
-        output.error(`Staging tracked paths failed:
-${stageErrors.map((e) => `  ${e}`).join("\n")}`);
-        return 1;
-      }
-      const staged = new Set(stagedPaths(root));
-      clearedPaths = [
-        ...clearedPaths,
-        ...paths.filter((p) => !staged.has(p) && !clearedPaths.includes(p))
-      ];
-      paths = paths.filter((p) => staged.has(p));
-      await Promise.all(clearedPaths.map((p) => store.clearStagedPath(p)));
-      if (!paths.length) {
-        output.result({ commit_sha: null, committed_paths: [], cleared_paths: clearedPaths }, `No tracked changes to commit; cleared ${clearedPaths.length} stale marker(s).`);
-        return 0;
-      }
     } else {
-      paths = args2.map((p) => resolve5(p));
+      paths = args2.map((p) => resolve4(p));
     }
     if (!paths.length) {
-      output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --tracked / --all.');
+      output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --all.');
       return 1;
     }
     let sha;
@@ -9344,19 +9234,13 @@ ${stageErrors.map((e) => `  ${e}`).join("\n")}`);
       }
       throw err;
     }
-    if (store) {
-      await Promise.all(paths.map((p) => store.clearStagedPath(p)));
-    }
-    output.result(store ? { commit_sha: sha, committed_paths: paths, cleared_paths: clearedPaths } : { commit_sha: sha, committed_paths: paths }, `Committed ${paths.length} path(s): ${sha}`);
+    output.result({ commit_sha: sha, committed_paths: paths }, `Committed ${paths.length} path(s): ${sha}`);
     return 0;
   }
 };
-function isIdeaspacePath(path) {
-  return path.endsWith(".md") || path.split("/").includes("_agent");
-}
 
 // dist/commands/status.js
-import { resolve as resolve6 } from "node:path";
+import { resolve as resolve5 } from "node:path";
 var statusCommand = {
   name: "status",
   description: "Show git position and plugin-tracked captures awaiting commit",
@@ -9377,7 +9261,7 @@ var statusCommand = {
     }
     const pathArg = typeof flags2.path === "string" ? flags2.path : void 0;
     if (pathArg) {
-      const ps = pathStatus(resolve6(pathArg), root);
+      const ps = pathStatus(resolve5(pathArg), root);
       output.result({
         path: pathArg,
         exists: ps.exists,
@@ -9389,7 +9273,7 @@ var statusCommand = {
       return 0;
     }
     const gs = await gitState(root);
-    const tracked = await sessionState(root).getStagedPaths();
+    const tracked = stagedIdeaspacePaths(root);
     const data = {
       repoRoot: gs.repoRoot,
       branch: gs.branch,
@@ -9411,9 +9295,9 @@ var statusCommand = {
       lines.push("", `captures awaiting commit (${tracked.length}):`);
       for (const p of tracked)
         lines.push(`  ${p}`);
-      lines.push("", 'Save them: ideaspaces commit -m "<message>" --tracked');
+      lines.push("", 'Save them: ideaspaces commit -m "<message>" --all');
     } else {
-      lines.push("", "no plugin-tracked captures awaiting commit");
+      lines.push("", "no staged captures awaiting commit");
     }
     output.result(data, lines.join("\n"));
     return 0;
@@ -9437,10 +9321,10 @@ var syncCommand = {
       output.error(err instanceof Error ? err.message : String(err));
       return 1;
     }
-    const tracked = await sessionState(root).getStagedPaths();
-    if (tracked.length) {
-      output.error(`Refusing to sync: ${tracked.length} plugin-tracked capture(s) not yet committed.
-` + tracked.map((p) => `  ${p}`).join("\n") + '\nSave them first: ideaspaces commit -m "<message>" --tracked');
+    const staged = stagedIdeaspacePaths(root);
+    if (staged.length) {
+      output.error(`Refusing to sync: ${staged.length} staged capture(s) not yet committed.
+` + staged.map((p) => `  ${p}`).join("\n") + '\nSave them first: ideaspaces commit -m "<message>" --all');
       return 1;
     }
     if (dryRun) {
@@ -9598,9 +9482,9 @@ async function drainStdin() {
 
 // dist/auth/session-state.js
 import { existsSync as existsSync6, unlinkSync as unlinkSync2 } from "node:fs";
-import { homedir as homedir3 } from "node:os";
-import { join as join7 } from "node:path";
-var SESSION_FILE = join7(homedir3(), ".ideaspaces", "session.json");
+import { homedir as homedir2 } from "node:os";
+import { join as join6 } from "node:path";
+var SESSION_FILE = join6(homedir2(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
     if (existsSync6(SESSION_FILE))

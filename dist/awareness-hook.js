@@ -6911,14 +6911,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs5 = this.flowScalar(this.type);
+              const fs4 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs5, sep: [] });
+                map.items.push({ start, key: fs4, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs5);
+                this.stack.push(fs4);
               } else {
-                Object.assign(it, { key: fs5, sep: [] });
+                Object.assign(it, { key: fs4, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7046,13 +7046,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs5 = this.flowScalar(this.type);
+              const fs4 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs5, sep: [] });
+                fc.items.push({ start: [], key: fs4, sep: [] });
               else if (it.sep)
-                this.stack.push(fs5);
+                this.stack.push(fs4);
               else
-                Object.assign(it, { key: fs5, sep: [] });
+                Object.assign(it, { key: fs4, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7496,14 +7496,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot, args) {
-  return new Promise((resolve4) => {
+  return new Promise((resolve3) => {
     const proc = spawn("git", ["-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve4({ ok: code === 0, out }));
-    proc.on("error", () => resolve4({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve3({ ok: code === 0, out }));
+    proc.on("error", () => resolve3({ ok: false, out: "" }));
   });
 }
 async function lastCommitTime(repoRoot, path) {
@@ -7875,76 +7875,6 @@ async function exists(path) {
   }
 }
 
-// node_modules/@ideaspaces/sdk/dist/session-state.js
-import { promises as fs4 } from "node:fs";
-import { createHash, randomUUID } from "node:crypto";
-import { homedir } from "node:os";
-import { dirname as dirname2, join as join4, resolve as resolve3 } from "node:path";
-function repoIdHash(repoRoot) {
-  return createHash("sha256").update(resolve3(repoRoot)).digest("hex").slice(0, 16);
-}
-function sessionFilePath(repoRoot) {
-  return join4(homedir(), ".ideaspaces", "sessions", `${repoIdHash(repoRoot)}.json`);
-}
-function freshState() {
-  return {
-    session_id: randomUUID(),
-    started_at: (/* @__PURE__ */ new Date()).toISOString(),
-    staged_paths: []
-  };
-}
-function sessionState(repoRoot) {
-  const file = sessionFilePath(repoRoot);
-  async function load() {
-    try {
-      const parsed = JSON.parse(await fs4.readFile(file, "utf-8"));
-      if (!Array.isArray(parsed.staged_paths))
-        parsed.staged_paths = [];
-      if (!parsed.session_id)
-        parsed.session_id = randomUUID();
-      if (!parsed.started_at)
-        parsed.started_at = (/* @__PURE__ */ new Date()).toISOString();
-      return parsed;
-    } catch {
-      return null;
-    }
-  }
-  async function persist(state) {
-    await fs4.mkdir(dirname2(file), { recursive: true });
-    const tmp = `${file}.tmp`;
-    await fs4.writeFile(tmp, JSON.stringify(state, null, 2), "utf-8");
-    await fs4.rename(tmp, file);
-    return state;
-  }
-  async function ensure() {
-    return await load() ?? freshState();
-  }
-  return {
-    async readState() {
-      return await load() ?? freshState();
-    },
-    async recordStagedPath(path) {
-      const state = await ensure();
-      if (!state.staged_paths.includes(path))
-        state.staged_paths.push(path);
-      return persist(state);
-    },
-    async clearStagedPath(path) {
-      const state = await ensure();
-      state.staged_paths = state.staged_paths.filter((p) => p !== path);
-      return persist(state);
-    },
-    async getStagedPaths() {
-      return (await load())?.staged_paths ?? [];
-    },
-    async setLastSha(sha) {
-      const state = await ensure();
-      state.lastSha = sha;
-      return persist(state);
-    }
-  };
-}
-
 // src/awareness-hook.ts
 var MAX_DRIFT = 10;
 function isGitRepo(cwd) {
@@ -7957,6 +7887,16 @@ function headSha(cwd) {
   const r = spawnSync("git", ["-C", cwd, "rev-parse", "HEAD"], { encoding: "utf-8" });
   return r.status === 0 ? r.stdout.trim() || null : null;
 }
+var SEEN_REF = "refs/ideaspaces/seen";
+function readSeenMarker(cwd) {
+  const r = spawnSync("git", ["-C", cwd, "rev-parse", "--verify", "--quiet", SEEN_REF], {
+    encoding: "utf-8"
+  });
+  return r.status === 0 && r.stdout.trim() ? r.stdout.trim() : void 0;
+}
+function setSeenMarker(cwd, sha) {
+  spawnSync("git", ["-C", cwd, "update-ref", SEEN_REF, sha], { encoding: "utf-8" });
+}
 async function main() {
   const cwd = process.cwd();
   const space = await findSpaceRoot(cwd);
@@ -7965,13 +7905,11 @@ async function main() {
   const git = isGitRepo(cwd);
   let lastSha;
   let repoRoot;
-  let store;
   let gs;
   if (git) {
     gs = await gitState(cwd);
     repoRoot = gs.repoRoot;
-    store = sessionState(repoRoot);
-    lastSha = (await store.readState()).lastSha;
+    lastSha = readSeenMarker(cwd);
   }
   const block = await assembleAwareness({
     root: space.root,
@@ -7979,7 +7917,7 @@ async function main() {
     lastSha
   });
   if (block.trim()) sections.push(block);
-  if (git && gs && repoRoot && store) {
+  if (git && gs && repoRoot) {
     const bits = [];
     if (gs.branch) bits.push(`branch ${gs.branch}`);
     if (gs.ahead != null && gs.behind != null && (gs.ahead || gs.behind)) {
@@ -8005,7 +7943,7 @@ async function main() {
       sections.push(lines.join("\n"));
     }
     const head = headSha(cwd);
-    if (head) await store.setLastSha(head);
+    if (head) setSeenMarker(cwd, head);
   }
   const direction = [];
   if (!space.contract.purpose) {

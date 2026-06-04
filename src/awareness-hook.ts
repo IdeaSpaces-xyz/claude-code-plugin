@@ -30,7 +30,6 @@ import {
   gitState,
   collectDocDependencies,
   staleDocSignals,
-  sessionState,
 } from "@ideaspaces/sdk";
 
 /** Drift signals shown before the list is truncated. */
@@ -48,6 +47,24 @@ function headSha(cwd: string): string | null {
   return r.status === 0 ? r.stdout.trim() || null : null;
 }
 
+// The "last seen" marker — HEAD at the start of the previous session — lives in
+// a local git ref, not a file in HOME. Local refs aren't pushed, `update-ref` is
+// atomic, and `recentActivity` diffs HEAD against it for the since-last-session
+// view. (Replaces the SDK session-state file.)
+const SEEN_REF = "refs/ideaspaces/seen";
+
+function readSeenMarker(cwd: string): string | undefined {
+  const r = spawnSync("git", ["-C", cwd, "rev-parse", "--verify", "--quiet", SEEN_REF], {
+    encoding: "utf-8",
+  });
+  return r.status === 0 && r.stdout.trim() ? r.stdout.trim() : undefined;
+}
+
+function setSeenMarker(cwd: string, sha: string): void {
+  // Best-effort: a failed marker update must never block session start.
+  spawnSync("git", ["-C", cwd, "update-ref", SEEN_REF, sha], { encoding: "utf-8" });
+}
+
 async function main(): Promise<void> {
   const cwd = process.cwd();
   const space = await findSpaceRoot(cwd);
@@ -59,13 +76,11 @@ async function main(): Promise<void> {
   const git = isGitRepo(cwd);
   let lastSha: string | undefined;
   let repoRoot: string | undefined;
-  let store: ReturnType<typeof sessionState> | undefined;
   let gs: Awaited<ReturnType<typeof gitState>> | undefined;
   if (git) {
     gs = await gitState(cwd);
     repoRoot = gs.repoRoot;
-    store = sessionState(repoRoot);
-    lastSha = (await store.readState()).lastSha;
+    lastSha = readSeenMarker(cwd);
   }
 
   // Orientation: Now, tree, agent context, skills, since-last-session.
@@ -76,7 +91,7 @@ async function main(): Promise<void> {
   });
   if (block.trim()) sections.push(block);
 
-  if (git && gs && repoRoot && store) {
+  if (git && gs && repoRoot) {
     // Compact git-state line.
     const bits: string[] = [];
     if (gs.branch) bits.push(`branch ${gs.branch}`);
@@ -110,7 +125,7 @@ async function main(): Promise<void> {
 
     // Persist HEAD so the next session can diff against it.
     const head = headSha(cwd);
-    if (head) await store.setLastSha(head);
+    if (head) setSeenMarker(cwd, head);
   }
 
   // Missing-direction drift. The contract names purpose and now; their absence
