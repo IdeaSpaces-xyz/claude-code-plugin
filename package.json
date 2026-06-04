@@ -8,6 +8,7 @@
     "build:hook": "node build-hook.mjs",
     "build:reference": "node reference.mjs",
     "vendor": "node vendor.mjs",
+    "lint:skills": "node scripts/lint-skills.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
