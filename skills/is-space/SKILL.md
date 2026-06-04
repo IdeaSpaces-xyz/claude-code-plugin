@@ -74,7 +74,7 @@ Every position in the tree holds two kinds of content. The folder convention enf
 Within user content, voices can coexist at different branches. Don't mix them in one folder — use a subfolder to mark the shift:
 
 - **Raw personal thinking** — one person's voice, pre-refinement. Own folder (e.g., `slow-thoughts/`, `journal/`).
-- **Co-produced from conversation** — human + agent. Own folder or subfolder (e.g., `conversations/`, `captured/`). Who produced it is recorded in the commit — author + `Co-authored-by` trailer — which the platform projects into provenance (`contributed_by`); it is not frontmatter. Current local tooling conforms: `is_write` / `ideaspaces write` write Note fields (`name`, `summary`, `tags`, `attached_to`) and do not write `contributed_by` or conversation `origin` frontmatter.
+- **Co-produced from conversation** — human + agent. Own folder or subfolder (e.g., `conversations/`, `captured/`). Who made it is recorded in the commit, not in frontmatter.
 - **Stable concept docs** — refined, canonical. Top-level or `concepts/`.
 
 When capturing from a conversation, check the target folder's voice before writing. If the folder is someone's raw personal thinking, don't write co-produced notes there — create a subfolder. See [is-writing](../is-writing/SKILL.md) for voice guidance and [is-capture](../is-capture/SKILL.md) for when to propose capture.
