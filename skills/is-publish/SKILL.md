@@ -29,7 +29,7 @@ No separate install required.
 test -f _agent/foundation.md && test -d .git && echo "ok" || echo "missing"
 ```
 
-**Markdown identities ready?** Don't run a separate broad `id .` check here. `ideaspaces publish` preflights the exact publish scope — tracked markdown files — before login/network/push. If that preflight fails, surface the CLI output and offer the fix commands it prints.
+**Markdown frontmatter parses?** Don't run a separate identity check here. `node_id` frontmatter is no longer required. `ideaspaces publish` preflights tracked markdown for YAML syntax before login/network/push. If that preflight fails, surface the CLI output and ask the user to fix the reported YAML.
 
 **On the `main` branch?** IdeaSpaces uses `main` as the default branch — publishing requires the local branch to match so server and clones stay aligned. Detect:
 
@@ -105,7 +105,7 @@ node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js publish [--slug ...] [--name
 
 The CLI:
 
-1. Preflights tracked markdown `node_id`s before network work.
+1. Preflights tracked markdown frontmatter syntax before network work.
 2. Confirms login via stored credentials.
 3. Calls `/auth/me` and creates/reuses a server repo.
 4. Sets local `git config user.email = person:<username>@ideaspaces` for this folder only.
@@ -151,7 +151,6 @@ On success, surface the remote URL and the local changes:
 
 | Symptom | Likely cause | What to suggest |
 |---|---|---|
-| `markdown identity check failed` | Missing/malformed/duplicate `node_id` | Run `ideaspaces id --fix .`, or regenerate duplicate copied files. |
 | `Not logged in` | No stored credentials | Run `ideaspaces login`. |
 | `Cannot publish yet: N tracked file(s) exceed the 200,000-byte server limit.` | CLI size preflight | See "Size-cap recovery" above — auto-handle known clutter, surface the rest. |
 | `Push failed: ... size cap` | Server-side cap (only if CLI preflight is bypassed) | Same as above; re-run `/is-publish` so the local preflight surfaces the offender list. |
