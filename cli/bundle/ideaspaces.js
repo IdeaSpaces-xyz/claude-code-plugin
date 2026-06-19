@@ -7341,11 +7341,14 @@ var require_dist = __commonJS({
   }
 });
 
+// dist/main.js
+import { writeSync } from "node:fs";
+
 // dist/commands/create.js
 import { promises as fs } from "node:fs";
-import { existsSync as existsSync2 } from "node:fs";
-import { spawnSync } from "node:child_process";
-import { join as join3, resolve, basename } from "node:path";
+import { existsSync as existsSync2, realpathSync } from "node:fs";
+import { spawnSync as spawnSync2 } from "node:child_process";
+import { join as join3, resolve, relative, basename } from "node:path";
 
 // dist/output.js
 function createOutput(flags2) {
@@ -7479,6 +7482,13 @@ var UnauthorizedError = class extends Error {
     this.name = "UnauthorizedError";
   }
 };
+function authHeaders(config, extra) {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${config.apiKey}`,
+    ...extra
+  };
+}
 async function request(config, method, path, body, opts = {}) {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const ctrl = new AbortController();
@@ -7486,10 +7496,7 @@ async function request(config, method, path, body, opts = {}) {
   try {
     const r = await fetch(`${config.apiUrl}${path}`, {
       method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.apiKey}`
-      },
+      headers: authHeaders(config),
       body: body !== void 0 ? JSON.stringify(body) : void 0,
       signal: ctrl.signal
     });
@@ -7516,10 +7523,259 @@ async function fetchAuthMe(config, opts) {
 async function createRepo(config, body, opts) {
   return request(config, "POST", `${API_V1}/repos`, body, opts);
 }
+async function fetchConversations(config, repoId, opts) {
+  return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations?limit=50&offset=0`, void 0, opts);
+}
+async function createConversation(config, repoId, body = {}, opts) {
+  return request(config, "POST", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations`, body, opts);
+}
+async function fetchAgents(config, owner, opts) {
+  const qs = owner ? `?owner=${encodeURIComponent(owner)}` : "";
+  const res = await request(config, "GET", `${API_V1}/agents${qs}`, void 0, opts);
+  return res.agents;
+}
+async function fetchNode(config, repoId, nodeId, opts) {
+  return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/nodes/${encodeURIComponent(nodeId)}`, void 0, opts);
+}
+async function listParticipants(config, repoId, conversationId, opts) {
+  return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}/participants`, void 0, opts);
+}
+async function addParticipant(config, repoId, conversationId, participant, role = "member", opts) {
+  return request(config, "POST", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}/participants`, { participant, role }, opts);
+}
+async function removeParticipant(config, repoId, conversationId, participant, opts) {
+  return request(config, "DELETE", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}/participants/${encodeURIComponent(participant)}`, void 0, opts);
+}
+async function fetchRepoMembers(config, repoId, opts) {
+  return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/members`, void 0, opts);
+}
+async function getConversation(config, repoId, conversationId, opts) {
+  return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}`, void 0, opts);
+}
+async function cancelConversationTurn(config, repoId, conversationId, opts) {
+  return request(config, "DELETE", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}/current`, void 0, opts);
+}
+function parseSseBlock(block) {
+  const data = block.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).replace(/^ /, "")).join("\n");
+  if (!data || data === "[DONE]")
+    return null;
+  try {
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+async function* streamConversationMessage(config, repoId, conversationId, body, signal) {
+  const path = `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}/messages/stream`;
+  const r = await fetch(`${config.apiUrl}${path}`, {
+    method: "POST",
+    headers: authHeaders(config, { Accept: "text/event-stream" }),
+    body: JSON.stringify(body),
+    signal
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    if (r.status === 401) {
+      throw new UnauthorizedError(`POST ${path} \u2192 401: ${text || r.statusText}`);
+    }
+    throw new Error(`POST ${path} \u2192 ${r.status}: ${text || r.statusText}`);
+  }
+  if (!r.body)
+    throw new Error("stream: server returned no response body");
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done)
+        break;
+      buffer += decoder.decode(value, { stream: true });
+      const blocks = buffer.replace(/\r\n/g, "\n").split("\n\n");
+      buffer = blocks.pop() ?? "";
+      for (const block of blocks) {
+        const event = parseSseBlock(block);
+        if (event)
+          yield event;
+      }
+    }
+    const tail = (buffer + decoder.decode()).replace(/\r\n/g, "\n").trim();
+    if (tail) {
+      const event = parseSseBlock(tail);
+      if (event)
+        yield event;
+    }
+  } finally {
+    try {
+      await reader.cancel();
+    } catch {
+    }
+  }
+}
+
+// dist/git.js
+import { spawnSync } from "node:child_process";
+var GitError = class extends Error {
+};
+function git(args2, cwd) {
+  const r = spawnSync("git", args2, { encoding: "utf-8", cwd });
+  return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() };
+}
+function gitExit(args2, cwd) {
+  const r = spawnSync("git", args2, { encoding: "utf-8", cwd });
+  return r.status ?? -1;
+}
+function gitOrThrow(args2, cwd) {
+  const r = git(args2, cwd);
+  if (!r.ok)
+    throw new GitError(r.err || r.out || `git ${args2.join(" ")} failed`);
+  return r.out;
+}
+function cloneRepo(url, dir) {
+  gitOrThrow(["clone", url, dir]);
+}
+function isInsideWorkTree(cwd) {
+  const r = git(["rev-parse", "--is-inside-work-tree"], cwd);
+  return r.ok && r.out === "true";
+}
+function originUrl(cwd) {
+  const r = git(["remote", "get-url", "origin"], cwd);
+  return r.ok ? r.out || null : null;
+}
+function normalizeRepoUrl(raw) {
+  let s = raw.trim();
+  if (!s)
+    return null;
+  const scp = /^[^/@]+@([^:/]+):(.+)$/.exec(s);
+  if (scp)
+    s = `ssh://${scp[1]}/${scp[2]}`;
+  let host;
+  let path;
+  try {
+    const u = new URL(s);
+    host = u.hostname;
+    path = u.pathname;
+  } catch {
+    return null;
+  }
+  path = path.replace(/^\/+/, "").replace(/\.git$/i, "").replace(/\/+$/, "");
+  if (!host || !path)
+    return null;
+  return `${host.toLowerCase()}/${path}`;
+}
+function localConfig(key, cwd) {
+  const r = git(["config", "--local", key], cwd);
+  return r.ok ? r.out || null : null;
+}
+function setLocalConfig(key, value, cwd) {
+  gitOrThrow(["config", "--local", key, value], cwd);
+}
+function repoRoot(cwd) {
+  const r = git(["rev-parse", "--show-toplevel"], cwd);
+  if (!r.ok)
+    throw new GitError("not inside a git repository");
+  return r.out;
+}
+function headSha(cwd) {
+  return gitOrThrow(["rev-parse", "HEAD"], cwd);
+}
+function stagePaths(paths, cwd) {
+  if (!paths.length)
+    return;
+  gitOrThrow(["add", "--", ...paths], cwd);
+}
+function commitPaths(message, paths, cwd) {
+  if (!paths.length)
+    throw new GitError("refusing to commit with no paths");
+  gitOrThrow(["add", "--", ...paths], cwd);
+  gitOrThrow(["commit", "-q", "-m", message, "--", ...paths], cwd);
+  return headSha(cwd);
+}
+function blobSha(path, cwd) {
+  const r = git(["hash-object", "--", path], cwd);
+  return r.ok ? r.out : null;
+}
+function pathStatus(path, cwd) {
+  const sha = blobSha(path, cwd);
+  return {
+    path,
+    exists: sha !== null,
+    sha,
+    inIndex: gitExit(["diff", "--cached", "--quiet", "--", path], cwd) === 1,
+    modified: gitExit(["diff", "--quiet", "--", path], cwd) === 1,
+    inTracked: git(["ls-files", "--error-unmatch", "--", path], cwd).ok
+  };
+}
+function statusEntries(cwd) {
+  const out = gitOrThrow(["status", "--porcelain"], cwd);
+  if (!out)
+    return [];
+  return out.split("\n").map((line) => ({
+    status: line.slice(0, 2),
+    path: line.slice(3)
+  }));
+}
+function isDirty(cwd) {
+  return statusEntries(cwd).some((e) => !e.status.startsWith("??"));
+}
+function stagedPaths(cwd) {
+  const r = git(["diff", "--cached", "--name-only"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  return r.out.split("\n").filter(Boolean);
+}
+function isIdeaspacePath(path) {
+  return path.endsWith(".md") || path.split("/").includes("_agent");
+}
+function stagedIdeaspacePaths(cwd) {
+  return stagedPaths(cwd).filter(isIdeaspacePath);
+}
+function fetch2(cwd) {
+  gitOrThrow(["fetch"], cwd);
+}
+function remoteState(cwd) {
+  const up = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], cwd);
+  if (!up.ok || !up.out)
+    return { upstream: null, ahead: 0, behind: 0 };
+  const counts = git(["rev-list", "--left-right", "--count", "@{upstream}...HEAD"], cwd);
+  if (!counts.ok)
+    return { upstream: up.out, ahead: 0, behind: 0 };
+  const [behind, ahead] = counts.out.split(/\s+/).map((n) => parseInt(n, 10) || 0);
+  return { upstream: up.out, ahead, behind };
+}
+function rebaseOntoUpstream(cwd) {
+  gitOrThrow(["rebase", "@{upstream}"], cwd);
+}
+function mergeUpstream(cwd) {
+  gitOrThrow(["merge", "--no-edit", "@{upstream}"], cwd);
+}
+function push(cwd) {
+  gitOrThrow(["push"], cwd);
+}
 
 // dist/auth/identity.js
 function identityEmail(username) {
   return `person:${username}@ideaspaces`;
+}
+var isIdentityEmail = (email) => /^person:.+@ideaspaces$/.test(email);
+function identityName(me) {
+  return me.name ?? me.username;
+}
+async function ensureLocalIdentity(repoDir) {
+  try {
+    const current = localConfig("user.email", repoDir);
+    if (current && isIdentityEmail(current))
+      return;
+    const stored = loadStoredCredentials();
+    if (!stored)
+      return;
+    const me = await fetchAuthMe({ apiUrl: stored.api_url, apiKey: stored.api_key }, { timeoutMs: 2e3 });
+    if (!me.username)
+      return;
+    setLocalConfig("user.email", identityEmail(me.username), repoDir);
+    setLocalConfig("user.name", identityName({ name: me.name, username: me.username }), repoDir);
+  } catch {
+  }
 }
 
 // dist/templates/default.js
@@ -7720,7 +7976,7 @@ var createCommand = {
     const privateAgent = shape === "code-repo" && !sharedFlag;
     const plan = buildPlan({ targetDir, name, shape, inspection, privateAgent });
     if (!apply) {
-      output.result({ target: targetDir, shape, privateAgent, plan: plan.steps }, renderPlanText({ targetDir, name, shape, privateAgent, plan }));
+      output.result({ target: targetDir, shape, privateAgent, nestedInRepo: inspection.nestedInRepo, plan: plan.steps }, renderPlanText({ targetDir, name, shape, privateAgent, plan, nestedInRepo: inspection.nestedInRepo }));
       return 0;
     }
     try {
@@ -7732,9 +7988,12 @@ Use \`git status\` / \`git restore\` to recover.`);
     }
     const where = name ? `./${name}` : "this directory";
     const lines = [
-      `Scaffolded ${describeTarget(targetDir, name)} (${shape}${privateAgent ? ", private _agent/" : ""}).`,
-      `Next: open Claude Code in ${where} \u2014 the agent will read foundation+guide and propose capturing purpose / now / next in conversation.`
+      `Scaffolded ${describeTarget(targetDir, name)} (${shape}${privateAgent ? ", private _agent/" : ""}).`
     ];
+    if (inspection.nestedInRepo) {
+      lines.push(nestingNotice(targetDir, inspection.nestedInRepo));
+    }
+    lines.push(`Next: open Claude Code in ${where} \u2014 the agent will read foundation+guide and propose capturing purpose / now / next in conversation.`);
     if (loadStoredCredentials()) {
       lines.push(`When ready to host this remotely, run \`ideaspaces publish\` from inside ${where}.`);
     }
@@ -7743,10 +8002,12 @@ Use \`git status\` / \`git restore\` to recover.`);
   }
 };
 async function inspect(targetDir) {
+  const nestedInRepo = enclosingRepoRoot(targetDir);
   if (!existsSync2(targetDir)) {
     return {
       exists: false,
       isGitRepo: false,
+      nestedInRepo,
       hasNewAgent: false,
       hasOldAgent: false,
       hasClaude: false,
@@ -7780,6 +8041,7 @@ async function inspect(targetDir) {
   return {
     exists: true,
     isGitRepo,
+    nestedInRepo,
     hasNewAgent,
     hasOldAgent,
     hasClaude,
@@ -7833,9 +8095,13 @@ function buildPlan(opts) {
   return { steps };
 }
 function renderPlanText(opts) {
-  const { targetDir, name, shape, privateAgent, plan } = opts;
+  const { targetDir, name, shape, privateAgent, plan, nestedInRepo } = opts;
   const lines = [];
   lines.push(`Plan for ${describeTarget(targetDir, name)} \u2014 shape: ${shape}${privateAgent ? " (private _agent/)" : ""}`);
+  if (nestedInRepo) {
+    lines.push("");
+    lines.push(nestingNotice(targetDir, nestedInRepo));
+  }
   lines.push("");
   for (const step of plan.steps) {
     const tag = step.op.toUpperCase().padEnd(9);
@@ -7892,11 +8158,46 @@ async function maybeSetIdentity(targetDir) {
   }
 }
 function runGit(cwd, args2) {
-  const r = spawnSync("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  const r = spawnSync2("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
   if (r.status !== 0) {
     const message = r.stderr.trim() || r.stdout.trim() || `exit ${r.status}`;
     throw new Error(`git ${args2.join(" ")}: ${message}`);
   }
+}
+function effectiveRealPath(target) {
+  let probe = target;
+  const suffix = [];
+  while (!existsSync2(probe)) {
+    const parent = resolve(probe, "..");
+    if (parent === probe)
+      return target;
+    suffix.unshift(basename(probe));
+    probe = parent;
+  }
+  const real = realpathSync(probe);
+  return suffix.length ? join3(real, ...suffix) : real;
+}
+function enclosingRepoRoot(targetDir) {
+  let probe = targetDir;
+  while (!existsSync2(probe)) {
+    const parent = resolve(probe, "..");
+    if (parent === probe)
+      return null;
+    probe = parent;
+  }
+  const r = spawnSync2("git", ["-C", probe, "rev-parse", "--show-toplevel"], { encoding: "utf-8" });
+  if (r.status !== 0)
+    return null;
+  const root = r.stdout.trim();
+  if (!root)
+    return null;
+  return root !== effectiveRealPath(targetDir) ? root : null;
+}
+function nestingNotice(targetDir, parentRoot) {
+  const rel = relative(parentRoot, effectiveRealPath(targetDir)) || basename(targetDir);
+  return `Note: this folder is inside git repo ${parentRoot}.
+  Creating an independent ideaspace repo here \u2014 ${parentRoot} will see \`${rel}/\` as an untracked nested repo.
+  Add \`${rel}/\` to ${join3(parentRoot, ".gitignore")} to keep them separate.`;
 }
 function describeTarget(targetDir, name) {
   return name ? `./${basename(targetDir)}` : "the current directory";
@@ -7926,7 +8227,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve6, reject) => {
+  return new Promise((resolve8, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -7953,7 +8254,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve6({
+      resolve8({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -8046,7 +8347,7 @@ ${authUrl}`);
 };
 
 // dist/commands/publish.js
-import { spawnSync as spawnSync2 } from "node:child_process";
+import { spawnSync as spawnSync3 } from "node:child_process";
 import { existsSync as existsSync4, statSync } from "node:fs";
 import { basename as basename2, join as join5 } from "node:path";
 
@@ -8086,7 +8387,7 @@ function findSpaceFor(absolutePath) {
 
 // dist/frontmatter-report.js
 import { readFile } from "node:fs/promises";
-import { relative } from "node:path";
+import { relative as relative2 } from "node:path";
 
 // node_modules/@ideaspaces/sdk/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
@@ -8122,6 +8423,9 @@ function inspectFrontmatterSyntax(content) {
     line: linePos ? linePos.line + 1 : void 0,
     column: linePos?.col
   };
+}
+function extractSummary(content) {
+  return extractScalarField(content, "summary");
 }
 function extractDescription(content) {
   return extractScalarField(content, "description") ?? extractScalarField(content, "summary");
@@ -8238,14 +8542,14 @@ function frontmatterBlock(content) {
 // node_modules/@ideaspaces/sdk/dist/git.js
 import { spawn } from "node:child_process";
 function runGit2(repoRoot2, args2) {
-  return new Promise((resolve6) => {
+  return new Promise((resolve8) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve6({ ok: code === 0, out }));
-    proc.on("error", () => resolve6({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve8({ ok: code === 0, out }));
+    proc.on("error", () => resolve8({ ok: false, out: "" }));
   });
 }
 async function gitState(repoRoot2) {
@@ -8603,7 +8907,7 @@ function renderFrontmatterSyntaxProblems(scan, opts = {}) {
   lines.push(`Malformed frontmatter (${scan.malformed.length}):`);
   for (const item of scan.malformed) {
     const loc = item.line ? `:${item.line}${item.column ? `:${item.column}` : ""}` : "";
-    lines.push(`  ${relative(cwd, item.path) || item.path}${loc}`);
+    lines.push(`  ${relative2(cwd, item.path) || item.path}${loc}`);
     if (item.message)
       lines.push(`    ${item.message}`);
   }
@@ -8617,7 +8921,7 @@ function renderFrontmatterSyntaxProblems(scan, opts = {}) {
 
 // dist/commands/publish.js
 function runGit3(cwd, args2) {
-  const r = spawnSync2("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  const r = spawnSync3("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
   if (r.error) {
     return { ok: false, stderr: `git not available: ${r.error.message}`, stdout: "" };
   }
@@ -8636,7 +8940,7 @@ function spaceWebUrl(apiUrl, namespace, slug) {
 var SIZE_CAP_BYTES = 2e5;
 var SIZE_CAP_MARKERS = ["size cap", "too large", "exceeds"];
 function preflightSize(cwd) {
-  const r = spawnSync2("git", ["-C", cwd, "ls-files", "-z"], { encoding: "utf-8" });
+  const r = spawnSync3("git", ["-C", cwd, "ls-files", "-z"], { encoding: "utf-8" });
   if (r.error)
     throw new Error(`git not available: ${r.error.message}`);
   if (r.status !== 0) {
@@ -8694,7 +8998,7 @@ async function checkMarkdownFrontmatterSyntax(cwd) {
   });
 }
 function trackedMarkdownFiles(cwd) {
-  const r = spawnSync2("git", ["-C", cwd, "ls-files", "-z", "--", "*.md"], { encoding: "utf-8" });
+  const r = spawnSync3("git", ["-C", cwd, "ls-files", "-z", "--", "*.md"], { encoding: "utf-8" });
   if (r.error)
     throw new Error(`git not available: ${r.error.message}`);
   if (r.status !== 0) {
@@ -8894,109 +9198,8 @@ ${push2.stderr}${hint}`);
 
 // dist/commands/write.js
 import { promises as fs2 } from "node:fs";
-import { existsSync as existsSync5 } from "node:fs";
-import { dirname, resolve as resolve3 } from "node:path";
-
-// dist/git.js
-import { spawnSync as spawnSync3 } from "node:child_process";
-var GitError = class extends Error {
-};
-function git(args2, cwd) {
-  const r = spawnSync3("git", args2, { encoding: "utf-8", cwd });
-  return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() };
-}
-function gitExit(args2, cwd) {
-  const r = spawnSync3("git", args2, { encoding: "utf-8", cwd });
-  return r.status ?? -1;
-}
-function gitOrThrow(args2, cwd) {
-  const r = git(args2, cwd);
-  if (!r.ok)
-    throw new GitError(r.err || r.out || `git ${args2.join(" ")} failed`);
-  return r.out;
-}
-function repoRoot(cwd) {
-  const r = git(["rev-parse", "--show-toplevel"], cwd);
-  if (!r.ok)
-    throw new GitError("not inside a git repository");
-  return r.out;
-}
-function headSha(cwd) {
-  return gitOrThrow(["rev-parse", "HEAD"], cwd);
-}
-function stagePaths(paths, cwd) {
-  if (!paths.length)
-    return;
-  gitOrThrow(["add", "--", ...paths], cwd);
-}
-function commitPaths(message, paths, cwd) {
-  if (!paths.length)
-    throw new GitError("refusing to commit with no paths");
-  gitOrThrow(["add", "--", ...paths], cwd);
-  gitOrThrow(["commit", "-q", "-m", message, "--", ...paths], cwd);
-  return headSha(cwd);
-}
-function blobSha(path, cwd) {
-  const r = git(["hash-object", "--", path], cwd);
-  return r.ok ? r.out : null;
-}
-function pathStatus(path, cwd) {
-  const sha = blobSha(path, cwd);
-  return {
-    path,
-    exists: sha !== null,
-    sha,
-    inIndex: gitExit(["diff", "--cached", "--quiet", "--", path], cwd) === 1,
-    modified: gitExit(["diff", "--quiet", "--", path], cwd) === 1,
-    inTracked: git(["ls-files", "--error-unmatch", "--", path], cwd).ok
-  };
-}
-function statusEntries(cwd) {
-  const out = gitOrThrow(["status", "--porcelain"], cwd);
-  if (!out)
-    return [];
-  return out.split("\n").map((line) => ({
-    status: line.slice(0, 2),
-    path: line.slice(3)
-  }));
-}
-function isDirty(cwd) {
-  return statusEntries(cwd).some((e) => !e.status.startsWith("??"));
-}
-function stagedPaths(cwd) {
-  const r = git(["diff", "--cached", "--name-only"], cwd);
-  if (!r.ok || !r.out)
-    return [];
-  return r.out.split("\n").filter(Boolean);
-}
-function isIdeaspacePath(path) {
-  return path.endsWith(".md") || path.split("/").includes("_agent");
-}
-function stagedIdeaspacePaths(cwd) {
-  return stagedPaths(cwd).filter(isIdeaspacePath);
-}
-function fetch2(cwd) {
-  gitOrThrow(["fetch"], cwd);
-}
-function remoteState(cwd) {
-  const up = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], cwd);
-  if (!up.ok || !up.out)
-    return { upstream: null, ahead: 0, behind: 0 };
-  const counts = git(["rev-list", "--left-right", "--count", "@{upstream}...HEAD"], cwd);
-  if (!counts.ok)
-    return { upstream: up.out, ahead: 0, behind: 0 };
-  const [behind, ahead] = counts.out.split(/\s+/).map((n) => parseInt(n, 10) || 0);
-  return { upstream: up.out, ahead, behind };
-}
-function rebaseOntoUpstream(cwd) {
-  gitOrThrow(["rebase", "@{upstream}"], cwd);
-}
-function mergeUpstream(cwd) {
-  gitOrThrow(["merge", "--no-edit", "@{upstream}"], cwd);
-}
-function push(cwd) {
-  gitOrThrow(["push"], cwd);
-}
+import { existsSync as existsSync5, statSync as statSync2 } from "node:fs";
+import { dirname, join as join6, relative as relative3, resolve as resolve3 } from "node:path";
 
 // dist/argv.js
 function parseBool(value, dflt = true) {
@@ -9107,15 +9310,22 @@ var writeCommand = {
     'ideaspaces write notes/test.md --name "Test" --content "# Test\\nHello"',
     'ideaspaces write notes/test.md --content "# update" --if-match <sha>  # safe update',
     'ideaspaces write notes/test.md --content "# overwrite" --force',
-    'ideaspaces write notes/test.md --content "..." --stage=false  # write without staging'
+    'ideaspaces write notes/test.md --content "..." --stage=false  # write without staging',
+    "ideaspaces write notes/                # batch-stage every .md under notes/ + report health",
+    "ideaspaces write notes/a.md notes/b.md # batch-stage a set",
+    "ideaspaces write notes/ --stage=false  # health check only, no staging"
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
-    const path = args2[0];
-    if (!path) {
-      output.error("Usage: ideaspaces write <path> [--name NAME] [--summary TEXT]");
+    const targets = args2.filter(Boolean);
+    if (!targets.length) {
+      output.error("Usage: ideaspaces write <path> [--name NAME] [--summary TEXT]  |  write <dir>|<files...>  (batch stage)");
       return 1;
     }
+    if (isBatchTarget(targets)) {
+      return runBatchStage(targets, flags2, output);
+    }
+    const path = targets[0];
     let content = flags2.content;
     if (!content) {
       content = await readStdin();
@@ -9172,6 +9382,93 @@ function parseList(value) {
     return void 0;
   return value.split(",").map((t) => t.trim()).filter(Boolean);
 }
+function isBatchTarget(targets) {
+  if (targets.length > 1)
+    return true;
+  const abs = resolve3(targets[0]);
+  return existsSync5(abs) && statSync2(abs).isDirectory();
+}
+async function runBatchStage(targets, flags2, output) {
+  const stage = parseBool(flags2.stage, true);
+  const { files, missing, skipped } = await collectMarkdown(targets);
+  if (missing.length) {
+    output.log(`Not found: ${missing.join(", ")}`);
+  }
+  if (skipped.length) {
+    output.log(`Skipped (not .md): ${skipped.join(", ")}`);
+  }
+  if (!files.length) {
+    output.error(`No .md files found in: ${targets.join(", ")}`);
+    return 1;
+  }
+  const report = await Promise.all(files.map(async (path) => {
+    const content = await fs2.readFile(path, "utf-8");
+    return { path, issues: healthIssues(content) };
+  }));
+  let staged = false;
+  if (stage) {
+    try {
+      stagePaths(files);
+      staged = true;
+    } catch (err) {
+      const msg = err instanceof GitError ? err.message : String(err);
+      output.log(`Not staged: ${msg}`);
+    }
+  }
+  const flagged = report.filter((r) => r.issues.length);
+  const header = `${staged ? "Staged" : "Checked"} ${files.length} note${files.length === 1 ? "" : "s"}` + (flagged.length ? `; ${flagged.length} with issues:` : "; all healthy.");
+  const lines = [
+    header,
+    ...flagged.map((r) => `  ${relative3(process.cwd(), r.path)} \u2014 ${r.issues.join(", ")}`)
+  ];
+  output.result({ staged, count: files.length, files: report, missing, skipped }, lines.join("\n"));
+  return 0;
+}
+async function collectMarkdown(targets) {
+  const files = /* @__PURE__ */ new Set();
+  const missing = [];
+  const skipped = [];
+  for (const t of targets) {
+    const abs = resolve3(t);
+    if (!existsSync5(abs)) {
+      missing.push(t);
+    } else if (statSync2(abs).isDirectory()) {
+      await walkMarkdown(abs, files);
+    } else if (abs.endsWith(".md")) {
+      files.add(abs);
+    } else {
+      skipped.push(t);
+    }
+  }
+  return { files: [...files].sort(), missing, skipped };
+}
+async function walkMarkdown(dir, out) {
+  const entries = await fs2.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name.startsWith(".") || entry.name === "node_modules")
+      continue;
+    const p = join6(dir, entry.name);
+    if (entry.isDirectory()) {
+      await walkMarkdown(p, out);
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      out.add(p);
+    }
+  }
+}
+function healthIssues(content) {
+  const issues = [];
+  const syntax = inspectFrontmatterSyntax(content);
+  if (syntax.status === "none") {
+    issues.push("no frontmatter");
+  } else if (syntax.status === "malformed") {
+    issues.push(`malformed frontmatter (${syntax.message})`);
+  }
+  if (!extractSummary(content))
+    issues.push("no summary");
+  if (!/(?<!!)\[[^\]]*\]\([^)\s]+\)/.test(stripFrontmatter(content)))
+    issues.push("no outbound links");
+  return issues;
+}
 
 // dist/commands/commit.js
 import { resolve as resolve4 } from "node:path";
@@ -9224,6 +9521,7 @@ var commitCommand = {
       output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --all.');
       return 1;
     }
+    await ensureLocalIdentity(root);
     let sha;
     try {
       sha = commitPaths(message, paths, root);
@@ -9244,10 +9542,12 @@ import { resolve as resolve5 } from "node:path";
 var statusCommand = {
   name: "status",
   description: "Show git position and plugin-tracked captures awaiting commit",
-  usage: "ideaspaces status [--path FILE] [--json]",
+  usage: "ideaspaces status [--path FILE] [--fetch] [--json]",
   examples: [
     "ideaspaces status",
     "ideaspaces status --json",
+    "ideaspaces status --fetch  # fetch first, so ahead/behind reflect the remote",
+    "ideaspaces status --fetch --path notes/a.md",
     "ideaspaces status --path notes/a.md  # single-file state + sha (if_match source)"
   ],
   async run(_args, flags2, global2) {
@@ -9271,6 +9571,14 @@ var statusCommand = {
         in_tracked: ps.inTracked
       }, ps.exists ? `${pathArg}: sha ${ps.sha}${ps.inIndex ? ", staged" : ""}${ps.modified ? ", modified" : ""}${ps.inTracked ? "" : ", untracked"}` : `${pathArg}: does not exist`);
       return 0;
+    }
+    if (flags2.fetch) {
+      try {
+        fetch2(root);
+      } catch (err) {
+        output.error(`git fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+        return 1;
+      }
     }
     const gs = await gitState(root);
     const tracked = stagedIdeaspacePaths(root);
@@ -9480,11 +9788,661 @@ async function drainStdin() {
   }
 }
 
+// dist/commands/whoami.js
+var whoamiCommand = {
+  name: "whoami",
+  description: "Show login state \u2014 whether credentials are present, and the API URL",
+  usage: "ideaspaces whoami [--json]",
+  examples: [
+    "ideaspaces whoami",
+    "ideaspaces whoami --json"
+  ],
+  async run(_args, _flags, global2) {
+    const output = createOutput(global2);
+    const config = loadConfig();
+    if (!config) {
+      output.result({ logged_in: false }, "Not logged in. Run `ideaspaces login`.");
+      return 0;
+    }
+    output.result({ logged_in: true, api_url: config.apiUrl }, `Logged in to ${config.apiUrl}.`);
+    return 0;
+  }
+};
+
+// dist/commands/repos.js
+var reposCommand = {
+  name: "repos",
+  description: "List your spaces \u2014 slug, role, and member count",
+  usage: "ideaspaces repos [--json]",
+  examples: [
+    "ideaspaces repos",
+    "ideaspaces repos --json"
+  ],
+  async run(_args, _flags, global2) {
+    const output = createOutput(global2);
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run `ideaspaces login`.");
+      return 1;
+    }
+    let me;
+    try {
+      me = await fetchAuthMe(config);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        output.error("Session expired. Run `ideaspaces login`.");
+        return 1;
+      }
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const repos = me.repos.map((r) => ({
+      repo_id: r.repo_id,
+      slug: r.slug,
+      hostname: r.hostname,
+      // Namespace for clone-URL construction: org hostname, else the username.
+      namespace: r.hostname ?? me.username,
+      role: r.role,
+      member_count: r.member_count
+    }));
+    output.result({ username: me.username, repos }, repos.length ? repos.map((r) => `${r.slug} (${r.role}, ${r.member_count} member${r.member_count === 1 ? "" : "s"})`).join("\n") : "No spaces yet. Create one at your account, or `ideaspaces create`.");
+    return 0;
+  }
+};
+
+// dist/commands/clone.js
+import { resolve as resolve6 } from "node:path";
+var cloneCommand = {
+  name: "clone",
+  description: "Clone one of your spaces into a local folder",
+  usage: "ideaspaces clone <space> [dir]",
+  examples: [
+    "ideaspaces clone notes                 # clone into ./notes",
+    "ideaspaces clone ernests_s/notes ./n   # explicit namespace/slug + dir"
+  ],
+  async run(args2, _flags, global2) {
+    const output = createOutput(global2);
+    const target = args2[0];
+    if (!target) {
+      output.error("Usage: ideaspaces clone <space> [dir]");
+      return 1;
+    }
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run `ideaspaces login`.");
+      return 1;
+    }
+    let me;
+    try {
+      me = await fetchAuthMe(config);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        output.error("Session expired. Run `ideaspaces login`.");
+        return 1;
+      }
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const matches = me.repos.filter((r) => {
+      const namespace2 = r.hostname ?? me.username;
+      return r.repo_id === target || r.slug === target || `${namespace2}/${r.slug}` === target;
+    });
+    if (matches.length === 0) {
+      output.error(`No space matches "${target}". Run \`ideaspaces repos\` to list yours.`);
+      return 1;
+    }
+    if (matches.length > 1) {
+      output.error(`"${target}" is ambiguous \u2014 use namespace/slug or the repo_id.`);
+      return 1;
+    }
+    const repo = matches[0];
+    const namespace = repo.hostname ?? me.username;
+    if (!namespace) {
+      output.error("Could not resolve the space namespace.");
+      return 1;
+    }
+    const url = `${deriveGitBase(config.apiUrl)}/${namespace}/${repo.slug}.git`;
+    const dir = resolve6(args2[1] ?? repo.slug);
+    output.progress(`Cloning ${namespace}/${repo.slug}\u2026`);
+    try {
+      cloneRepo(url, dir);
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    try {
+      saveSpace(dir, { repo_id: repo.repo_id, slug: repo.slug, namespace });
+    } catch {
+      output.error("Clone succeeded but the folder could not be bound \u2014 re-run clone to bind it.");
+    }
+    if (me.username) {
+      try {
+        setLocalConfig("user.email", identityEmail(me.username), dir);
+        setLocalConfig("user.name", identityName({ name: me.name, username: me.username }), dir);
+      } catch {
+      }
+    }
+    output.result({ repo_id: repo.repo_id, slug: repo.slug, namespace, path: dir }, `Cloned ${namespace}/${repo.slug} \u2192 ${dir}`);
+    return 0;
+  }
+};
+
+// dist/commands/clones.js
+var clonesCommand = {
+  name: "clones",
+  description: "List local clones \u2014 which folders are bound to which spaces",
+  usage: "ideaspaces clones [--json]",
+  examples: [
+    "ideaspaces clones",
+    "ideaspaces clones --json"
+  ],
+  async run(_args, _flags, global2) {
+    const output = createOutput(global2);
+    const clones = Object.entries(loadSpaces()).map(([path, record]) => ({
+      path,
+      repo_id: record.repo_id,
+      slug: record.slug,
+      namespace: record.namespace
+    }));
+    output.result({ clones }, clones.length ? clones.map((c) => `${c.namespace}/${c.slug}  ${c.path}`).join("\n") : "No local clones yet. `ideaspaces clone <space>` to make one.");
+    return 0;
+  }
+};
+
+// dist/commands/link.js
+import { resolve as resolve7 } from "node:path";
+function repoKey(repo, me, gitBase) {
+  const namespace = repo.hostname ?? me.username;
+  if (!namespace)
+    return null;
+  return normalizeRepoUrl(`${gitBase}/${namespace}/${repo.slug}.git`);
+}
+var linkCommand = {
+  name: "link",
+  description: "Bind an existing local clone to one of your spaces",
+  usage: "ideaspaces link <dir> [space]",
+  examples: [
+    "ideaspaces link ./theone                  # auto-detect from the git remote",
+    "ideaspaces link ./theone ernests_s/theone # bind to a specific space"
+  ],
+  async run(args2, _flags, global2) {
+    const output = createOutput(global2);
+    const dirArg = args2[0];
+    if (!dirArg) {
+      output.error("Usage: ideaspaces link <dir> [space]");
+      return 1;
+    }
+    const dir = resolve7(dirArg);
+    if (!isInsideWorkTree(dir)) {
+      output.error(`${dir} is not a git repository. Use \`clone\` to make one, or point at an existing clone.`);
+      return 1;
+    }
+    const origin = originUrl(dir);
+    if (!origin) {
+      output.error(`${dir} has no \`origin\` remote \u2014 can't tell which space it belongs to.`);
+      return 1;
+    }
+    const originKey = normalizeRepoUrl(origin);
+    if (!originKey) {
+      output.error(`Could not parse the origin remote: ${origin}`);
+      return 1;
+    }
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run `ideaspaces login`.");
+      return 1;
+    }
+    output.progress(`Linking ${dir}\u2026`);
+    let me;
+    try {
+      me = await fetchAuthMe(config);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        output.error("Session expired. Run `ideaspaces login`.");
+        return 1;
+      }
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const gitBase = deriveGitBase(config.apiUrl);
+    const target = args2[1];
+    let repo;
+    if (target) {
+      const matches = me.repos.filter((r) => {
+        const namespace2 = r.hostname ?? me.username;
+        return r.repo_id === target || r.slug === target || `${namespace2}/${r.slug}` === target;
+      });
+      if (matches.length === 0) {
+        output.error(`No space matches "${target}". Run \`ideaspaces repos\` to list yours.`);
+        return 1;
+      }
+      if (matches.length > 1) {
+        output.error(`"${target}" is ambiguous \u2014 use namespace/slug or the repo_id.`);
+        return 1;
+      }
+      repo = matches[0];
+      if (repoKey(repo, me, gitBase) !== originKey) {
+        const namespace2 = repo.hostname ?? me.username;
+        output.error(`${dir}'s origin (${origin}) doesn't match ${repo.slug}.
+Expected a clone of ${gitBase}/${namespace2}/${repo.slug}.git.`);
+        return 1;
+      }
+    } else {
+      const matches = me.repos.filter((r) => repoKey(r, me, gitBase) === originKey);
+      if (matches.length === 0) {
+        output.error(`${dir}'s origin (${origin}) isn't a clone of one of your spaces.
+Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
+        return 1;
+      }
+      if (matches.length > 1) {
+        output.error(`${dir}'s origin matches more than one space \u2014 name it: ideaspaces link <dir> <space>.`);
+        return 1;
+      }
+      repo = matches[0];
+    }
+    const namespace = repo.hostname ?? me.username;
+    if (!namespace) {
+      output.error("Could not resolve the space namespace.");
+      return 1;
+    }
+    try {
+      saveSpace(dir, { repo_id: repo.repo_id, slug: repo.slug, namespace });
+    } catch {
+      output.error("Verified the folder, but could not write the clone registry.");
+      return 1;
+    }
+    if (me.username) {
+      try {
+        setLocalConfig("user.email", identityEmail(me.username), dir);
+        setLocalConfig("user.name", identityName({ name: me.name, username: me.username }), dir);
+      } catch {
+      }
+    }
+    output.result({ repo_id: repo.repo_id, slug: repo.slug, namespace, path: dir }, `Linked ${namespace}/${repo.slug} \u2192 ${dir}`);
+    return 0;
+  }
+};
+
+// dist/commands/conversations.js
+var conversationsCommand = {
+  name: "conversations",
+  description: "List a repo's conversations",
+  usage: "ideaspaces conversations <repo_id> [--json]",
+  examples: [
+    "ideaspaces conversations repo_abc123",
+    "ideaspaces conversations repo_abc123 --json"
+  ],
+  async run(args2, _flags, global2) {
+    const output = createOutput(global2);
+    const repoId = args2[0];
+    if (!repoId) {
+      output.error("Usage: ideaspaces conversations <repo_id>");
+      return 1;
+    }
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run `ideaspaces login`.");
+      return 1;
+    }
+    let res;
+    try {
+      res = await fetchConversations(config, repoId);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        output.error("Session expired. Run `ideaspaces login`.");
+        return 1;
+      }
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const { conversations, total } = res;
+    const has_more = total > conversations.length;
+    output.result({ repo_id: repoId, conversations, total, has_more }, conversations.length ? conversations.map((c) => `${c.name || "(untitled)"} \u2014 ${c.message_count} message${c.message_count === 1 ? "" : "s"}`).join("\n") + (has_more ? `
+\u2026 and ${total - conversations.length} more` : "") : "No conversations.");
+    return 0;
+  }
+};
+
+// dist/commands/conversation.js
+function toPrincipal(actor) {
+  return /^(person|agent|node):/.test(actor) ? actor : `person:${actor}`;
+}
+function parseRole(value) {
+  if (value === void 0 || value === "member")
+    return "member";
+  if (value === "reader")
+    return "reader";
+  return null;
+}
+function requireConfig(output) {
+  const config = loadConfig();
+  if (!config) {
+    output.error("Not logged in. Run `ideaspaces login`.");
+    return null;
+  }
+  return config;
+}
+function reportError(err, output) {
+  if (err instanceof UnauthorizedError) {
+    output.error("Session expired. Run `ideaspaces login`.");
+    return 1;
+  }
+  output.error(err instanceof Error ? err.message : String(err));
+  return 1;
+}
+async function cmdNew(args2, flags2, output) {
+  const repoId = args2[0];
+  if (!repoId) {
+    output.error("Usage: ideaspaces conversation new <repo_id> [--name <name>] [--agent <node_id>]");
+    return 1;
+  }
+  const config = requireConfig(output);
+  if (!config)
+    return 1;
+  const body = {};
+  if (typeof flags2.name === "string")
+    body.name = flags2.name;
+  if (typeof flags2.agent === "string")
+    body.agent_node_id = flags2.agent;
+  try {
+    const conv = await createConversation(config, repoId, body);
+    output.result(conv, `Created conversation ${conv.name || "(untitled)"} (${conv.conversation_id})`);
+    return 0;
+  } catch (err) {
+    return reportError(err, output);
+  }
+}
+async function cmdParticipants(args2, output) {
+  const [repoId, convId] = args2;
+  if (!repoId || !convId) {
+    output.error("Usage: ideaspaces conversation participants <repo_id> <conversation_id>");
+    return 1;
+  }
+  const config = requireConfig(output);
+  if (!config)
+    return 1;
+  try {
+    const res = await listParticipants(config, repoId, convId);
+    output.result(res, res.participants.length ? res.participants.map((p) => `${p.participant} \u2014 ${p.role}`).join("\n") : "No participants.");
+    return 0;
+  } catch (err) {
+    return reportError(err, output);
+  }
+}
+async function cmdAdd(args2, flags2, output) {
+  const [repoId, convId, actor] = args2;
+  if (!repoId || !convId || !actor) {
+    output.error("Usage: ideaspaces conversation add <repo_id> <conversation_id> <username|principal> [--role member|reader]");
+    return 1;
+  }
+  const role = parseRole(flags2.role);
+  if (role === null) {
+    output.error("--role must be 'member' or 'reader'.");
+    return 1;
+  }
+  const config = requireConfig(output);
+  if (!config)
+    return 1;
+  const participant = toPrincipal(actor);
+  try {
+    const p = await addParticipant(config, repoId, convId, participant, role);
+    output.result(p, `Added ${p.participant} as ${p.role}`);
+    return 0;
+  } catch (err) {
+    return reportError(err, output);
+  }
+}
+async function cmdRemove(args2, output) {
+  const [repoId, convId, actor] = args2;
+  if (!repoId || !convId || !actor) {
+    output.error("Usage: ideaspaces conversation remove <repo_id> <conversation_id> <username|principal>");
+    return 1;
+  }
+  const config = requireConfig(output);
+  if (!config)
+    return 1;
+  const participant = toPrincipal(actor);
+  try {
+    const p = await removeParticipant(config, repoId, convId, participant);
+    output.result(p, `Removed ${participant}`);
+    return 0;
+  } catch (err) {
+    return reportError(err, output);
+  }
+}
+async function cmdMembers(args2, output) {
+  const repoId = args2[0];
+  if (!repoId) {
+    output.error("Usage: ideaspaces conversation members <repo_id>");
+    return 1;
+  }
+  const config = requireConfig(output);
+  if (!config)
+    return 1;
+  try {
+    const members = await fetchRepoMembers(config, repoId);
+    output.result({ repo_id: repoId, members }, members.length ? members.map((m) => `${m.username ?? m.email ?? `user ${m.user_id}`} \u2014 ${m.role}`).join("\n") : "No members.");
+    return 0;
+  } catch (err) {
+    return reportError(err, output);
+  }
+}
+async function cmdSend(args2, flags2, output) {
+  const [repoId, convId] = args2;
+  if (!repoId || !convId) {
+    output.error("Usage: ideaspaces conversation send <repo_id> <conversation_id> --message <text> [--model opus] [--thinking]");
+    return 1;
+  }
+  const message = typeof flags2.message === "string" ? flags2.message : void 0;
+  if (!message) {
+    output.error("A message is required: --message <text>");
+    return 1;
+  }
+  const config = requireConfig(output);
+  if (!config)
+    return 1;
+  const body = {
+    message,
+    ...typeof flags2.model === "string" ? { model_tier: flags2.model } : {},
+    // `--thinking` parses to boolean true; `--thinking=true` to the string "true".
+    ...flags2.thinking === true || flags2.thinking === "true" ? { thinking: true } : {}
+  };
+  const controller = new AbortController();
+  let signalled = false;
+  const onSignal = () => {
+    if (signalled)
+      return;
+    signalled = true;
+    controller.abort();
+    void cancelConversationTurn(config, repoId, convId).catch(() => {
+    });
+  };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  try {
+    for await (const event of streamConversationMessage(config, repoId, convId, body, controller.signal)) {
+      process.stdout.write(JSON.stringify(event) + "\n");
+    }
+    return 0;
+  } catch (err) {
+    if (controller.signal.aborted)
+      return 0;
+    return reportError(err, output);
+  } finally {
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
+  }
+}
+async function cmdGet(args2, output) {
+  const [repoId, convId] = args2;
+  if (!repoId || !convId) {
+    output.error("Usage: ideaspaces conversation get <repo_id> <conversation_id>");
+    return 1;
+  }
+  const config = requireConfig(output);
+  if (!config)
+    return 1;
+  try {
+    const detail = await getConversation(config, repoId, convId);
+    output.result(detail, detail.history.length ? detail.history.map((m) => {
+      const preview = m.content.replace(/\s+/g, " ");
+      return `${m.role}: ${preview.length > 80 ? preview.slice(0, 79) + "\u2026" : preview}`;
+    }).join("\n") : "No messages yet.");
+    return 0;
+  } catch (err) {
+    return reportError(err, output);
+  }
+}
+async function cmdCancel(args2, output) {
+  const [repoId, convId] = args2;
+  if (!repoId || !convId) {
+    output.error("Usage: ideaspaces conversation cancel <repo_id> <conversation_id>");
+    return 1;
+  }
+  const config = requireConfig(output);
+  if (!config)
+    return 1;
+  try {
+    const res = await cancelConversationTurn(config, repoId, convId);
+    output.result(res, `Cancel: ${res.status}`);
+    return 0;
+  } catch (err) {
+    return reportError(err, output);
+  }
+}
+var USAGE = "Usage: ideaspaces conversation <new|participants|add|remove|members|send|get|cancel> \u2026";
+var conversationCommand = {
+  name: "conversation",
+  description: "Create a conversation and manage its participants",
+  usage: USAGE,
+  examples: [
+    "ideaspaces conversation new repo_abc --name 'Kickoff'",
+    "ideaspaces conversation new repo_abc --agent agent_node_xyz  # pick the agent",
+    "ideaspaces conversation members repo_abc          # who you can add",
+    "ideaspaces conversation add repo_abc c_123 alice  # add a person",
+    "ideaspaces conversation participants repo_abc c_123",
+    "ideaspaces conversation remove repo_abc c_123 alice",
+    "ideaspaces conversation send repo_abc c_123 --message 'Hi'  # streams JSON lines",
+    "ideaspaces conversation get repo_abc c_123        # detail + history",
+    "ideaspaces conversation cancel repo_abc c_123     # stop the active turn"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const [sub, ...rest] = args2;
+    switch (sub) {
+      case "new":
+        return cmdNew(rest, flags2, output);
+      case "participants":
+        return cmdParticipants(rest, output);
+      case "add":
+        return cmdAdd(rest, flags2, output);
+      case "remove":
+        return cmdRemove(rest, output);
+      case "members":
+        return cmdMembers(rest, output);
+      case "send":
+        return cmdSend(rest, flags2, output);
+      case "get":
+        return cmdGet(rest, output);
+      case "cancel":
+        return cmdCancel(rest, output);
+      default:
+        output.error(USAGE);
+        return 1;
+    }
+  }
+};
+
+// dist/commands/agents.js
+var agentsCommand = {
+  name: "agents",
+  description: "List Agent Actors you can use to run a conversation",
+  usage: "ideaspaces agents [--owner <person:user|hostname:domain>] [--json]",
+  examples: [
+    "ideaspaces agents",
+    "ideaspaces agents --owner hostname:acme.com",
+    "ideaspaces agents --json"
+  ],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run `ideaspaces login`.");
+      return 1;
+    }
+    const owner = typeof flags2.owner === "string" ? flags2.owner : void 0;
+    let agents;
+    try {
+      agents = await fetchAgents(config, owner);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        output.error("Session expired. Run `ideaspaces login`.");
+        return 1;
+      }
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    output.result({ agents }, agents.length ? agents.map((a) => `${a.name}${a.is_default ? " (default)" : ""}${a.can_use ? "" : " \u2014 no access"} \u2192 ${a.node_id}`).join("\n") : "No agents.");
+    return 0;
+  }
+};
+
+// dist/commands/node.js
+var USAGE2 = "Usage: ideaspaces node get <repo_id> <node_id>";
+async function cmdGet2(args2, output) {
+  const [repoId, nodeId] = args2;
+  if (!repoId || !nodeId) {
+    output.error(USAGE2);
+    return 1;
+  }
+  const config = loadConfig();
+  if (!config) {
+    output.error("Not logged in. Run `ideaspaces login`.");
+    return 1;
+  }
+  try {
+    const node = await fetchNode(config, repoId, nodeId);
+    const preview = node.content.replace(/\s+/g, " ").trim();
+    const snippet = preview.length > 120 ? `${preview.slice(0, 119)}\u2026` : preview;
+    const header = `${node.name_display || node.name} (${node.path})`;
+    output.result(node, snippet ? `${header}
+${snippet}` : header);
+    return 0;
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      output.error("Session expired. Run `ideaspaces login`.");
+      return 1;
+    }
+    output.error(err instanceof Error ? err.message : String(err));
+    return 1;
+  }
+}
+var nodeCommand = {
+  name: "node",
+  description: "Resolve a node by id \u2014 name, path, content (use --json for the full node)",
+  usage: USAGE2,
+  examples: [
+    "ideaspaces node get repo_abc node_xyz",
+    "ideaspaces node get repo_abc node_xyz --json"
+  ],
+  async run(args2, _flags, global2) {
+    const output = createOutput(global2);
+    const [sub, ...rest] = args2;
+    switch (sub) {
+      case "get":
+        return cmdGet2(rest, output);
+      default:
+        output.error(USAGE2);
+        return 1;
+    }
+  }
+};
+
 // dist/auth/session-state.js
 import { existsSync as existsSync6, unlinkSync as unlinkSync2 } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { join as join6 } from "node:path";
-var SESSION_FILE = join6(homedir2(), ".ideaspaces", "session.json");
+import { join as join7 } from "node:path";
+var SESSION_FILE = join7(homedir2(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
     if (existsSync6(SESSION_FILE))
@@ -9511,6 +10469,15 @@ var logoutCommand = {
 var topLevel = [
   createCommand,
   loginCommand,
+  whoamiCommand,
+  reposCommand,
+  cloneCommand,
+  clonesCommand,
+  linkCommand,
+  conversationsCommand,
+  conversationCommand,
+  agentsCommand,
+  nodeCommand,
   publishCommand,
   writeCommand,
   commitCommand,
@@ -9572,6 +10539,26 @@ Run: ideaspaces login`);
 }
 
 // dist/main.js
+function installSyncWriter(stream, fd) {
+  stream.write = ((chunk, ...rest) => {
+    const buf = typeof chunk === "string" ? Buffer.from(chunk, "utf8") : Buffer.from(chunk);
+    let offset = 0;
+    while (offset < buf.length) {
+      try {
+        offset += writeSync(fd, buf, offset, buf.length - offset);
+      } catch (err) {
+        if (err.code === "EAGAIN")
+          continue;
+        throw err;
+      }
+    }
+    const cb = rest.find((a) => typeof a === "function");
+    cb?.();
+    return true;
+  });
+}
+installSyncWriter(process.stdout, 1);
+installSyncWriter(process.stderr, 2);
 var { global, command, args, flags } = parseArgs(process.argv.slice(2));
 if (!command || global.help && !command) {
   printHelp();
