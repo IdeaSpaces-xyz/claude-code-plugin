@@ -48,7 +48,8 @@ Five tools plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, `Edi
 | `is_write` | Create/update a Note (Layer 1 frontmatter); stages it and returns a content sha. `if_match` for safe updates. |
 | `is_commit` | The explicit save — commits only the paths you name, never the user's other staged work. |
 | `is_status` | Capture state: git position + tracked captures, or a single file's sha for `if_match`. |
-| `is_sync` | Push committed captures; integrate remote changes; refuses on a dirty tree rather than touching it. |
+| `is_pull` | Integrate remote changes into the local space; never pushes; refuses on a dirty/uncommitted tree. |
+| `is_push` | Send committed captures to the remote; never pulls; refuses when behind — pull first. |
 | `is_auth` | Log in / out for optional remote hosting. |
 
 Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
