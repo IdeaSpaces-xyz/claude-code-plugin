@@ -7491,30 +7491,39 @@ function authHeaders(config, extra) {
 }
 async function request(config, method, path, body, opts = {}) {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const r = await fetch(`${config.apiUrl}${path}`, {
-      method,
-      headers: authHeaders(config),
-      body: body !== void 0 ? JSON.stringify(body) : void 0,
-      signal: ctrl.signal
-    });
-    if (!r.ok) {
-      const text = await r.text();
-      if (r.status === 401) {
-        throw new UnauthorizedError(`${method} ${path} \u2192 401: ${text || r.statusText}`);
+  const maxAttempts = method === "GET" && opts.retry !== false ? 2 : 1;
+  for (let attempt = 1; ; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const r = await fetch(`${config.apiUrl}${path}`, {
+        method,
+        headers: authHeaders(config),
+        body: body !== void 0 ? JSON.stringify(body) : void 0,
+        signal: ctrl.signal
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        if (r.status === 401) {
+          throw new UnauthorizedError(`${method} ${path} \u2192 401: ${text || r.statusText}`);
+        }
+        throw new Error(`${method} ${path} \u2192 ${r.status}: ${text || r.statusText}`);
       }
-      throw new Error(`${method} ${path} \u2192 ${r.status}: ${text || r.statusText}`);
+      if (r.status === 204)
+        return void 0;
+      const payload = await r.text();
+      return payload ? JSON.parse(payload) : void 0;
+    } catch (err) {
+      const timedOut = err instanceof Error && err.name === "AbortError";
+      if (timedOut && attempt < maxAttempts)
+        continue;
+      if (timedOut) {
+        throw new Error(`${method} ${path} timed out after ${timeoutMs}ms`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    return await r.json();
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`${method} ${path} timed out after ${timeoutMs}ms`);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
   }
 }
 async function fetchAuthMe(config, opts) {
@@ -7536,6 +7545,38 @@ async function fetchAgents(config, owner, opts) {
 }
 async function fetchNode(config, repoId, nodeId, opts) {
   return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/nodes/${encodeURIComponent(nodeId)}`, void 0, opts);
+}
+function filesPath(repoId, path) {
+  const segs = path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
+  return `${API_V1}/repos/${encodeURIComponent(repoId)}/files/${segs}`;
+}
+async function putFile(config, repoId, path, content, opts) {
+  return request(config, "PUT", filesPath(repoId, path), { content }, opts);
+}
+var repoBase = (repoId) => `${API_V1}/repos/${encodeURIComponent(repoId)}`;
+async function listRepoMembers(config, repoId) {
+  return request(config, "GET", `${repoBase(repoId)}/members`);
+}
+async function removeRepoMember(config, repoId, userId) {
+  await request(config, "DELETE", `${repoBase(repoId)}/members/${encodeURIComponent(String(userId))}`);
+}
+async function listRepoInvites(config, repoId) {
+  return request(config, "GET", `${repoBase(repoId)}/invites`);
+}
+async function createRepoInvites(config, repoId, emails, role) {
+  return request(config, "POST", `${repoBase(repoId)}/invites`, {
+    emails,
+    role
+  });
+}
+async function revokeRepoInvite(config, repoId, inviteId) {
+  await request(config, "DELETE", `${repoBase(repoId)}/invites/${encodeURIComponent(inviteId)}`);
+}
+async function getSpaceAccess(config, repoId) {
+  return request(config, "GET", `${repoBase(repoId)}/space-access`);
+}
+async function setSpaceAccess(config, repoId, update) {
+  return request(config, "PATCH", `${repoBase(repoId)}/space-access`, update);
 }
 async function listParticipants(config, repoId, conversationId, opts) {
   return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}/participants`, void 0, opts);
@@ -7727,8 +7768,39 @@ function stagedPaths(cwd) {
 function isIdeaspacePath(path) {
   return path.endsWith(".md") || path.split("/").includes("_agent");
 }
+function listFiles(cwd) {
+  const r = git(["ls-files", "--cached", "--others", "--exclude-standard"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  return r.out.split("\n").filter(Boolean);
+}
 function stagedIdeaspacePaths(cwd) {
   return stagedPaths(cwd).filter(isIdeaspacePath);
+}
+function fileTimes(cwd) {
+  const r = git(["log", "--format=%ct", "--name-only", "--no-renames"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  const created = /* @__PURE__ */ new Map();
+  const updated = /* @__PURE__ */ new Map();
+  let ms = 0;
+  for (const line of r.out.split("\n")) {
+    if (/^\d+$/.test(line)) {
+      ms = Number(line) * 1e3;
+      continue;
+    }
+    const path = line.trim();
+    if (!path || !(path.endsWith(".md") || path.endsWith(".markdown")))
+      continue;
+    if (!updated.has(path))
+      updated.set(path, ms);
+    created.set(path, ms);
+  }
+  return [...updated.keys()].map((path) => ({
+    path,
+    created_at: created.get(path) ?? updated.get(path),
+    updated_at: updated.get(path)
+  }));
 }
 function fetch2(cwd) {
   gitOrThrow(["fetch"], cwd);
@@ -7769,7 +7841,7 @@ async function ensureLocalIdentity(repoDir) {
     const stored = loadStoredCredentials();
     if (!stored)
       return;
-    const me = await fetchAuthMe({ apiUrl: stored.api_url, apiKey: stored.api_key }, { timeoutMs: 2e3 });
+    const me = await fetchAuthMe({ apiUrl: stored.api_url, apiKey: stored.api_key }, { timeoutMs: 2e3, retry: false });
     if (!me.username)
       return;
     setLocalConfig("user.email", identityEmail(me.username), repoDir);
@@ -8150,7 +8222,7 @@ async function maybeSetIdentity(targetDir) {
   if (!stored)
     return;
   try {
-    const me = await fetchAuthMe({ apiUrl: stored.api_url, apiKey: stored.api_key }, { timeoutMs: 2e3 });
+    const me = await fetchAuthMe({ apiUrl: stored.api_url, apiKey: stored.api_key }, { timeoutMs: 2e3, retry: false });
     if (!me.username)
       return;
     runGit(targetDir, ["config", "--local", "user.email", identityEmail(me.username)]);
@@ -8204,7 +8276,7 @@ function describeTarget(targetDir, name) {
 }
 
 // dist/commands/login.js
-import { exec as exec2 } from "node:child_process";
+import { exec } from "node:child_process";
 import { platform } from "node:os";
 
 // dist/auth/callback-server.js
@@ -8227,7 +8299,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve8, reject) => {
+  return new Promise((resolve9, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -8254,7 +8326,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve8({
+      resolve9({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -8281,34 +8353,41 @@ function startCallbackServer() {
 }
 
 // dist/auth/git-credential-helper.js
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-var execAsync = promisify(exec);
+var execFileAsync = promisify(execFile);
 var GIT_HOSTS = [
   "https://git.ideaspaces.xyz",
   "https://git.ideaspaces.localhost"
 ];
-var HELPER_VALUE = "!ideaspaces credential";
+function shellQuote(value) {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+function selfCredentialHelper() {
+  const exe = process.execPath;
+  const entry = process.argv[1];
+  const compiled = !entry || entry.includes("$bunfs");
+  const cmd2 = compiled ? shellQuote(exe) : `${shellQuote(exe)} ${shellQuote(entry)}`;
+  return `!${cmd2} credential`;
+}
 async function registerGitCredentialHelper() {
+  const helper = selfCredentialHelper();
   for (const host of GIT_HOSTS) {
     try {
       const key = `credential.${host}.helper`;
-      await execAsync(`git config --global --unset-all ${escapeShellArg(key)}`).catch(() => {
+      await execFileAsync("git", ["config", "--global", "--unset-all", key]).catch(() => {
       });
-      await execAsync(`git config --global --add ${escapeShellArg(key)} ""`);
-      await execAsync(`git config --global --add ${escapeShellArg(key)} ${escapeShellArg(HELPER_VALUE)}`);
+      await execFileAsync("git", ["config", "--global", "--add", key, ""]);
+      await execFileAsync("git", ["config", "--global", "--add", key, helper]);
     } catch {
     }
   }
-}
-function escapeShellArg(value) {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 // dist/commands/login.js
 function openBrowser(url) {
   const cmd2 = platform() === "darwin" ? "open" : platform() === "win32" ? "start" : "xdg-open";
-  exec2(`${cmd2} "${url}"`);
+  exec(`${cmd2} "${url}"`);
 }
 var loginCommand = {
   name: "login",
@@ -8383,6 +8462,19 @@ function saveSpace(absolutePath, record) {
 }
 function findSpaceFor(absolutePath) {
   return loadSpaces()[resolve2(absolutePath)] ?? null;
+}
+function removeSpace(absolutePath) {
+  const key = resolve2(absolutePath);
+  const map = loadSpaces();
+  if (!(key in map))
+    return false;
+  delete map[key];
+  const dir = configDir();
+  if (!existsSync3(dir)) {
+    mkdirSync2(dir, { recursive: true, mode: 448 });
+  }
+  writeFileSync2(spacesFile(), JSON.stringify(map, null, 2) + "\n", { mode: 384 });
+  return true;
 }
 
 // dist/frontmatter-report.js
@@ -8542,14 +8634,14 @@ function frontmatterBlock(content) {
 // node_modules/@ideaspaces/sdk/dist/git.js
 import { spawn } from "node:child_process";
 function runGit2(repoRoot2, args2) {
-  return new Promise((resolve8) => {
+  return new Promise((resolve9) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve8({ ok: code === 0, out }));
-    proc.on("error", () => resolve8({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve9({ ok: code === 0, out }));
+    proc.on("error", () => resolve9({ ok: false, out: "" }));
   });
 }
 async function gitState(repoRoot2) {
@@ -9615,9 +9707,91 @@ var statusCommand = {
 // dist/commands/sync.js
 var syncCommand = {
   name: "sync",
-  description: "Integrate remote changes and push committed captures",
-  usage: "ideaspaces sync [--dry-run] [--rebase=false]",
-  examples: ["ideaspaces sync", "ideaspaces sync --dry-run", "ideaspaces sync --rebase=false"],
+  description: "(removed) use `pull` then `push`",
+  usage: "ideaspaces pull | ideaspaces push",
+  async run(_args, _flags, global2) {
+    const output = createOutput(global2);
+    output.error("`ideaspaces sync` has been split into two directional commands:\n  ideaspaces pull   integrate remote changes into your local ideaspace\n  ideaspaces push   send your committed captures to the remote\nIf you're diverged: pull first, then push.");
+    return 1;
+  }
+};
+
+// dist/commands/push.js
+var pushCommand = {
+  name: "push",
+  description: "Send committed captures to the remote",
+  usage: "ideaspaces push [--dry-run]",
+  examples: ["ideaspaces push", "ideaspaces push --dry-run"],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const dryRun = Boolean(flags2["dry-run"]);
+    let root;
+    try {
+      root = repoRoot();
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const staged = stagedIdeaspacePaths(root);
+    if (staged.length) {
+      output.error(`Refusing to push: ${staged.length} staged capture(s) not yet committed.
+` + staged.map((p) => `  ${p}`).join("\n") + '\nSave them first: ideaspaces commit -m "<message>" --all');
+      return 1;
+    }
+    if (dryRun) {
+      const rs = remoteState(root);
+      const plan = [];
+      if (!rs.upstream)
+        plan.push("no upstream configured \u2014 nothing to push");
+      else {
+        plan.push(`upstream: ${rs.upstream} (ahead ${rs.ahead}, behind ${rs.behind})`);
+        if (rs.behind)
+          plan.push(`would refuse: ${rs.behind} commit(s) behind \u2014 pull first`);
+        else if (rs.ahead)
+          plan.push(`would push ${rs.ahead} commit(s)`);
+        else
+          plan.push("up to date \u2014 nothing to push");
+      }
+      plan.push("(dry run \u2014 nothing fetched or pushed)");
+      output.result({ dry_run: true, ...rs }, plan.join("\n"));
+      return 0;
+    }
+    await registerGitCredentialHelper();
+    try {
+      fetch2(root);
+      const rs = remoteState(root);
+      if (!rs.upstream) {
+        output.error("No upstream configured for the current branch.");
+        return 1;
+      }
+      if (rs.behind) {
+        output.error(`Refusing to push: ${rs.behind} commit(s) behind ${rs.upstream}.
+Pull first, then push: ideaspaces pull`);
+        return 1;
+      }
+      if (!rs.ahead) {
+        output.result({ upstream: rs.upstream, pushed: 0 }, "Already up to date \u2014 nothing to push.");
+        return 0;
+      }
+      push(root);
+      output.result({ upstream: rs.upstream, pushed: rs.ahead }, `Pushed ${rs.ahead} commit(s) to ${rs.upstream}.`);
+      return 0;
+    } catch (err) {
+      if (err instanceof GitError) {
+        output.error(`Push failed: ${err.message}`);
+        return 1;
+      }
+      throw err;
+    }
+  }
+};
+
+// dist/commands/pull.js
+var pullCommand = {
+  name: "pull",
+  description: "Integrate remote changes into the local ideaspace",
+  usage: "ideaspaces pull [--dry-run] [--rebase=false]",
+  examples: ["ideaspaces pull", "ideaspaces pull --dry-run", "ideaspaces pull --rebase=false"],
   async run(_args, flags2, global2) {
     const output = createOutput(global2);
     const dryRun = Boolean(flags2["dry-run"]);
@@ -9629,30 +9803,23 @@ var syncCommand = {
       output.error(err instanceof Error ? err.message : String(err));
       return 1;
     }
-    const staged = stagedIdeaspacePaths(root);
-    if (staged.length) {
-      output.error(`Refusing to sync: ${staged.length} staged capture(s) not yet committed.
-` + staged.map((p) => `  ${p}`).join("\n") + '\nSave them first: ideaspaces commit -m "<message>" --all');
-      return 1;
-    }
     if (dryRun) {
       const rs = remoteState(root);
       const plan = [];
       if (!rs.upstream)
-        plan.push("no upstream configured \u2014 nothing to sync");
+        plan.push("no upstream configured \u2014 nothing to pull");
       else {
         plan.push(`upstream: ${rs.upstream} (ahead ${rs.ahead}, behind ${rs.behind})`);
         if (rs.behind)
           plan.push(`would ${useRebase ? "rebase onto" : "merge"} upstream (requires clean tree)`);
-        if (rs.ahead)
-          plan.push(`would push ${rs.ahead} commit(s)`);
-        if (!rs.ahead && !rs.behind)
-          plan.push("up to date");
+        else
+          plan.push("up to date \u2014 nothing to integrate");
       }
-      plan.push("(dry run \u2014 nothing fetched or pushed)");
+      plan.push("(dry run \u2014 nothing fetched or integrated)");
       output.result({ dry_run: true, ...rs }, plan.join("\n"));
       return 0;
     }
+    await registerGitCredentialHelper();
     try {
       fetch2(root);
       const rs = remoteState(root);
@@ -9660,32 +9827,37 @@ var syncCommand = {
         output.error("No upstream configured for the current branch.");
         return 1;
       }
-      if (rs.behind) {
-        if (isDirty(root)) {
-          output.error("Refusing to integrate remote changes: working tree is dirty.\nCommit or stash your changes first, then re-run sync.");
-          return 1;
-        }
-        try {
-          if (useRebase)
-            rebaseOntoUpstream(root);
-          else
-            mergeUpstream(root);
-        } catch (err) {
-          const msg = err instanceof GitError ? err.message : String(err);
-          const reset = useRebase ? "git rebase --abort" : "git merge --abort";
-          output.error(`Sync failed while integrating remote changes: ${msg}
-The repo may be mid-${useRebase ? "rebase" : "merge"}. Run \`${reset}\` to reset, resolve the conflict, then re-run sync.`);
-          return 1;
-        }
+      if (!rs.behind) {
+        output.result({ upstream: rs.upstream, integrated: 0 }, "Already up to date \u2014 nothing to pull.");
+        return 0;
       }
-      const after = remoteState(root);
-      if (after.ahead)
-        push(root);
-      output.result({ upstream: after.upstream, pushed: after.ahead, integrated: rs.behind }, after.ahead || rs.behind ? `Synced: integrated ${rs.behind} commit(s), pushed ${after.ahead} commit(s).` : "Already up to date.");
+      const staged = stagedIdeaspacePaths(root);
+      if (staged.length) {
+        output.error(`Refusing to pull: ${staged.length} staged capture(s) not yet committed.
+` + staged.map((p) => `  ${p}`).join("\n") + '\nSave them first: ideaspaces commit -m "<message>" --all');
+        return 1;
+      }
+      if (isDirty(root)) {
+        output.error("Refusing to integrate remote changes: working tree is dirty.\nCommit your changes first, then re-run pull.");
+        return 1;
+      }
+      try {
+        if (useRebase)
+          rebaseOntoUpstream(root);
+        else
+          mergeUpstream(root);
+      } catch (err) {
+        const msg = err instanceof GitError ? err.message : String(err);
+        const reset = useRebase ? "git rebase --abort" : "git merge --abort";
+        output.error(`Pull failed while integrating remote changes: ${msg}
+The repo may be mid-${useRebase ? "rebase" : "merge"}. Run \`${reset}\` to reset, resolve the conflict, then re-run pull.`);
+        return 1;
+      }
+      output.result({ upstream: rs.upstream, integrated: rs.behind }, `Pulled: integrated ${rs.behind} commit(s) from ${rs.upstream}.`);
       return 0;
     } catch (err) {
       if (err instanceof GitError) {
-        output.error(`Sync failed: ${err.message}`);
+        output.error(`Pull failed: ${err.message}`);
         return 1;
       }
       throw err;
@@ -9903,6 +10075,7 @@ var cloneCommand = {
     }
     const url = `${deriveGitBase(config.apiUrl)}/${namespace}/${repo.slug}.git`;
     const dir = resolve6(args2[1] ?? repo.slug);
+    await registerGitCredentialHelper();
     output.progress(`Cloning ${namespace}/${repo.slug}\u2026`);
     try {
       cloneRepo(url, dir);
@@ -10059,6 +10232,51 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
       }
     }
     output.result({ repo_id: repo.repo_id, slug: repo.slug, namespace, path: dir }, `Linked ${namespace}/${repo.slug} \u2192 ${dir}`);
+    return 0;
+  }
+};
+
+// dist/commands/forget.js
+import { rmSync } from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { dirname as dirname2, resolve as resolve8 } from "node:path";
+var forgetCommand = {
+  name: "forget",
+  description: "Stop tracking a local clone (optionally delete its folder)",
+  usage: "ideaspaces forget <dir> [--delete]",
+  examples: [
+    "ideaspaces forget ./theone            # remove the binding, keep the files",
+    "ideaspaces forget ./theone --delete   # remove the binding AND delete the folder"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const dirArg = args2[0];
+    if (!dirArg) {
+      output.error("Usage: ideaspaces forget <dir> [--delete]");
+      return 1;
+    }
+    const dir = resolve8(dirArg);
+    const del = Boolean(flags2["delete"]);
+    if (del && (dir === resolve8(homedir2()) || dirname2(dir) === dir)) {
+      output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
+      return 1;
+    }
+    const wasTracked = removeSpace(dir);
+    if (!wasTracked && !del) {
+      output.error(`${dir} is not a tracked clone.`);
+      return 1;
+    }
+    let deleted = false;
+    if (del) {
+      try {
+        rmSync(dir, { recursive: true, force: true });
+        deleted = true;
+      } catch (err) {
+        output.error(`Removed the binding, but couldn't delete ${dir}: ${err instanceof Error ? err.message : String(err)}`);
+        return 1;
+      }
+    }
+    output.result({ forgotten: true, deleted, path: dir }, deleted ? `Freed up space \u2014 deleted ${dir}.` : `Forgot ${dir} (files kept).`);
     return 0;
   }
 };
@@ -10310,7 +10528,7 @@ async function cmdCancel(args2, output) {
     return reportError(err, output);
   }
 }
-var USAGE = "Usage: ideaspaces conversation <new|participants|add|remove|members|send|get|cancel> \u2026";
+var USAGE = "ideaspaces conversation <new|participants|add|remove|members|send|get|cancel> \u2026";
 var conversationCommand = {
   name: "conversation",
   description: "Create a conversation and manage its participants",
@@ -10347,7 +10565,7 @@ var conversationCommand = {
       case "cancel":
         return cmdCancel(rest, output);
       default:
-        output.error(USAGE);
+        output.error(`Usage: ${USAGE}`);
         return 1;
     }
   }
@@ -10388,11 +10606,21 @@ var agentsCommand = {
 };
 
 // dist/commands/node.js
-var USAGE2 = "Usage: ideaspaces node get <repo_id> <node_id>";
+var USAGE2 = "ideaspaces node <get <repo_id> <node_id> | put <repo_id> <path> --content ...>";
+var USAGE_GET = "ideaspaces node get <repo_id> <node_id>";
+var USAGE_PUT = "ideaspaces node put <repo_id> <path> [--content TEXT]  (else reads stdin)";
+async function readStdin3() {
+  if (process.stdin.isTTY)
+    return "";
+  const chunks = [];
+  for await (const chunk of process.stdin)
+    chunks.push(chunk);
+  return Buffer.concat(chunks).toString("utf-8");
+}
 async function cmdGet2(args2, output) {
   const [repoId, nodeId] = args2;
   if (!repoId || !nodeId) {
-    output.error(USAGE2);
+    output.error(`Usage: ${USAGE_GET}`);
     return 1;
   }
   const config = loadConfig();
@@ -10417,32 +10645,370 @@ ${snippet}` : header);
     return 1;
   }
 }
+async function cmdPut(args2, flags2, output) {
+  const [repoId, path] = args2;
+  if (!repoId || !path) {
+    output.error(`Usage: ${USAGE_PUT}`);
+    return 1;
+  }
+  const content = typeof flags2.content === "string" ? flags2.content : await readStdin3();
+  const config = loadConfig();
+  if (!config) {
+    output.error("Not logged in. Run `ideaspaces login`.");
+    return 1;
+  }
+  try {
+    const res = await putFile(config, repoId, path, content);
+    output.result(res, `Saved ${res.path}`);
+    return 0;
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      output.error("Session expired. Run `ideaspaces login`.");
+      return 1;
+    }
+    output.error(err instanceof Error ? err.message : String(err));
+    return 1;
+  }
+}
 var nodeCommand = {
   name: "node",
-  description: "Resolve a node by id \u2014 name, path, content (use --json for the full node)",
+  description: "Resolve (get) or write (put) a note \u2014 by id or path (use --json for the full node)",
   usage: USAGE2,
   examples: [
-    "ideaspaces node get repo_abc node_xyz",
-    "ideaspaces node get repo_abc node_xyz --json"
+    "ideaspaces node get repo_abc node_xyz --json",
+    "ideaspaces node put repo_abc notes/a.md --content '# Hi'",
+    "cat a.md | ideaspaces node put repo_abc notes/a.md --json"
   ],
-  async run(args2, _flags, global2) {
+  async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const [sub, ...rest] = args2;
     switch (sub) {
       case "get":
         return cmdGet2(rest, output);
+      case "put":
+        return cmdPut(rest, flags2, output);
       default:
-        output.error(USAGE2);
+        output.error(`Usage: ${USAGE2}`);
         return 1;
     }
   }
 };
 
+// dist/commands/search.js
+import { readFileSync as readFileSync3 } from "node:fs";
+import { join as join7 } from "node:path";
+
+// dist/search.js
+var K1 = 1.2;
+var B = 0.75;
+var NAME_BOOST = 2;
+var SNIPPET_MAX = 200;
+function tokenize(text) {
+  return text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+}
+function idf(n, df) {
+  return Math.log(1 + (n - df + 0.5) / (df + 0.5));
+}
+function nameTokens(path) {
+  const base = path.slice(path.lastIndexOf("/") + 1).replace(/\.[^.]+$/, "");
+  return new Set(tokenize(base));
+}
+function searchDocs(docs, query, limit = 20) {
+  const terms = [...new Set(tokenize(query))];
+  if (terms.length === 0)
+    return [];
+  const termSet = new Set(terms);
+  let n = 0;
+  let totalLen = 0;
+  const df = /* @__PURE__ */ new Map();
+  const hits = [];
+  for (const doc of docs) {
+    n++;
+    const lines = doc.content.split("\n");
+    const tf = /* @__PURE__ */ new Map();
+    let length = 0;
+    let bestLine = "";
+    let bestLineNo = null;
+    let bestLineHits = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const lineTokens = tokenize(lines[i]);
+      length += lineTokens.length;
+      let lineHits = 0;
+      for (const tok of lineTokens) {
+        if (termSet.has(tok)) {
+          tf.set(tok, (tf.get(tok) ?? 0) + 1);
+          lineHits++;
+        }
+      }
+      if (lineHits > bestLineHits) {
+        bestLineHits = lineHits;
+        bestLine = lines[i].trim();
+        bestLineNo = i + 1;
+      }
+    }
+    totalLen += length;
+    for (const term of tf.keys())
+      df.set(term, (df.get(term) ?? 0) + 1);
+    const nameHitSet = nameTokens(doc.path);
+    let nameHits = 0;
+    for (const term of terms)
+      if (nameHitSet.has(term))
+        nameHits++;
+    if (tf.size > 0 || nameHits > 0) {
+      const snippet = bestLine.length > SNIPPET_MAX ? `${bestLine.slice(0, SNIPPET_MAX - 1)}\u2026` : bestLine;
+      hits.push({ path: doc.path, length, tf, nameHits, snippet, line: bestLineNo });
+    }
+  }
+  if (n === 0)
+    return [];
+  const avgdl = totalLen / n || 1;
+  const scored = hits.map((h) => {
+    let bm25 = 0;
+    for (const [term, freq] of h.tf) {
+      const norm = freq + K1 * (1 - B + B * h.length / avgdl);
+      bm25 += idf(n, df.get(term) ?? 0) * (freq * (K1 + 1) / norm);
+    }
+    return {
+      path: h.path,
+      score: bm25 + h.nameHits * NAME_BOOST,
+      body_hits: h.tf.size,
+      name_hits: h.nameHits,
+      snippet: h.snippet,
+      line: h.line
+    };
+  });
+  scored.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  return scored.slice(0, Math.max(0, limit));
+}
+
+// dist/commands/search.js
+var USAGE3 = "ideaspaces search <query> [--limit N] [--json]";
+var DEFAULT_LIMIT = 20;
+function* readDocs(root, paths) {
+  for (const path of paths) {
+    try {
+      yield { path, content: readFileSync3(join7(root, path), "utf-8") };
+    } catch {
+      continue;
+    }
+  }
+}
+var searchCommand = {
+  name: "search",
+  description: "Search the current repo's Markdown locally (filename + BM25 full-text)",
+  usage: USAGE3,
+  examples: [
+    "ideaspaces search awareness loop",
+    'ideaspaces search "state and location" --limit 5',
+    "ideaspaces search conversation --json"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const query = args2.join(" ").trim();
+    if (!query) {
+      output.error(`Usage: ${USAGE3}`);
+      return 1;
+    }
+    let root;
+    try {
+      root = repoRoot();
+    } catch (err) {
+      output.error(err instanceof GitError ? err.message : String(err));
+      return 1;
+    }
+    const rawLimit = typeof flags2.limit === "string" ? Number.parseInt(flags2.limit, 10) : NaN;
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIMIT;
+    const markdown = listFiles(root).filter((p) => p.endsWith(".md"));
+    const results = searchDocs(readDocs(root, markdown), query, limit);
+    const data = { query, scanned: markdown.length, total: results.length, results };
+    if (results.length === 0) {
+      output.result(data, `No matches for "${query}" (${markdown.length} files searched).`);
+      return 0;
+    }
+    const lines = results.map((r) => {
+      const where = r.line ? `:${r.line}` : "";
+      const head = `${r.path}${where}`;
+      return r.snippet ? `${head}
+    ${r.snippet}` : head;
+    });
+    output.result(data, lines.join("\n"));
+    return 0;
+  }
+};
+
+// dist/commands/times.js
+var timesCommand = {
+  name: "times",
+  description: "Per-note git created/updated times (first & last commit) for this clone",
+  usage: "ideaspaces times [--json]",
+  examples: ["ideaspaces times --json"],
+  async run(_args, _flags, global2) {
+    const output = createOutput(global2);
+    let root;
+    try {
+      root = repoRoot();
+    } catch (err) {
+      output.error(err instanceof GitError ? err.message : err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const files = fileTimes(root);
+    const human = files.length ? files.map((f) => `${new Date(f.updated_at).toISOString().slice(0, 10)}  ${f.path}`).join("\n") : "no tracked notes";
+    output.result({ files }, human);
+    return 0;
+  }
+};
+
+// dist/commands/share.js
+var USAGE4 = "ideaspaces share <access|set-access|members|remove|invites|invite|revoke> <repo_id> \u2026";
+var INVITE_ROLES = ["MEMBER", "CLONER", "READER"];
+var COPY_LEVELS = ["owner", "member", "reader", "public"];
+function flagStr(flags2, key) {
+  return typeof flags2[key] === "string" ? flags2[key] : void 0;
+}
+function setup(repoId, usage, output) {
+  if (!repoId) {
+    output.error(`Usage: ${usage}`);
+    return null;
+  }
+  const config = loadConfig();
+  if (!config) {
+    output.error("Not logged in. Run `ideaspaces login`.");
+    return null;
+  }
+  return config;
+}
+async function run(sub, rest, flags2, output) {
+  const [repoId, arg] = rest;
+  try {
+    switch (sub) {
+      case "access": {
+        const config = setup(repoId, "ideaspaces share access <repo_id>", output);
+        if (!config)
+          return 1;
+        const a = await getSpaceAccess(config, repoId);
+        output.result(a, `read: ${a.read_public ? "public" : "private"}
+copy: ${a.copy_access}
+root: ${a.root_node_id}`);
+        return 0;
+      }
+      case "set-access": {
+        const config = setup(repoId, "ideaspaces share set-access <repo_id> --public <bool> --copy <level>", output);
+        if (!config)
+          return 1;
+        const publicRaw = flagStr(flags2, "public") ?? (flags2.public === true ? "true" : void 0);
+        const copy = flagStr(flags2, "copy");
+        if (publicRaw === void 0 || !copy) {
+          output.error("Both --public <bool> and --copy <level> are required.");
+          return 1;
+        }
+        if (!COPY_LEVELS.includes(copy)) {
+          output.error(`--copy must be one of: ${COPY_LEVELS.join(", ")}`);
+          return 1;
+        }
+        const read_public = publicRaw === "true";
+        const a = await setSpaceAccess(config, repoId, { read_public, copy_access: copy });
+        output.result(a, `read: ${a.read_public ? "public" : "private"}
+copy: ${a.copy_access}`);
+        return 0;
+      }
+      case "members": {
+        const config = setup(repoId, "ideaspaces share members <repo_id>", output);
+        if (!config)
+          return 1;
+        const members = await listRepoMembers(config, repoId);
+        const human = members.length ? members.map((m) => `${m.role.padEnd(7)} ${m.username ?? m.email ?? `user ${m.user_id}`}`).join("\n") : "no members";
+        output.result({ members }, human);
+        return 0;
+      }
+      case "remove": {
+        const config = setup(repoId, "ideaspaces share remove <repo_id> <user_id>", output);
+        if (!config)
+          return 1;
+        const userId = Number(arg);
+        if (!arg || !Number.isInteger(userId)) {
+          output.error("Usage: ideaspaces share remove <repo_id> <user_id>");
+          return 1;
+        }
+        await removeRepoMember(config, repoId, userId);
+        output.result({ removed: userId }, `Removed user ${userId}`);
+        return 0;
+      }
+      case "invites": {
+        const config = setup(repoId, "ideaspaces share invites <repo_id>", output);
+        if (!config)
+          return 1;
+        const invites = await listRepoInvites(config, repoId);
+        const human = invites.length ? invites.map((i) => `${i.role.padEnd(7)} ${i.invited_email}`).join("\n") : "no pending invites";
+        output.result({ invites }, human);
+        return 0;
+      }
+      case "invite": {
+        const config = setup(repoId, "ideaspaces share invite <repo_id> <email\u2026> --role <role>", output);
+        if (!config)
+          return 1;
+        const emails = rest.slice(1).filter(Boolean);
+        const role = flagStr(flags2, "role") ?? "READER";
+        if (!emails.length) {
+          output.error("Usage: ideaspaces share invite <repo_id> <email\u2026> --role <role>");
+          return 1;
+        }
+        if (!INVITE_ROLES.includes(role)) {
+          output.error(`--role must be one of: ${INVITE_ROLES.join(", ")}`);
+          return 1;
+        }
+        const res = await createRepoInvites(config, repoId, emails, role);
+        const human = res.results.map((r) => `${r.status.padEnd(16)} ${r.email}`).join("\n");
+        output.result(res, human);
+        return 0;
+      }
+      case "revoke": {
+        const config = setup(repoId, "ideaspaces share revoke <repo_id> <invite_id>", output);
+        if (!config)
+          return 1;
+        if (!arg) {
+          output.error("Usage: ideaspaces share revoke <repo_id> <invite_id>");
+          return 1;
+        }
+        await revokeRepoInvite(config, repoId, arg);
+        output.result({ revoked: arg }, `Revoked invite ${arg}`);
+        return 0;
+      }
+      default:
+        output.error(`Usage: ${USAGE4}`);
+        return 1;
+    }
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      output.error("Session expired. Run `ideaspaces login`.");
+      return 1;
+    }
+    output.error(err instanceof Error ? err.message : String(err));
+    return 1;
+  }
+}
+var shareCommand = {
+  name: "share",
+  description: "Manage repo access \u2014 members, invites, and the public-link policy",
+  usage: USAGE4,
+  examples: [
+    "ideaspaces share access repo_abc --json",
+    "ideaspaces share set-access repo_abc --public true --copy reader",
+    "ideaspaces share members repo_abc --json",
+    "ideaspaces share invite repo_abc a@x.com b@x.com --role MEMBER",
+    "ideaspaces share revoke repo_abc inv_123"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const [sub, ...rest] = args2;
+    return run(sub ?? "", rest, flags2, output);
+  }
+};
+
 // dist/auth/session-state.js
 import { existsSync as existsSync6, unlinkSync as unlinkSync2 } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { join as join7 } from "node:path";
-var SESSION_FILE = join7(homedir2(), ".ideaspaces", "session.json");
+import { homedir as homedir3 } from "node:os";
+import { join as join8 } from "node:path";
+var SESSION_FILE = join8(homedir3(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
     if (existsSync6(SESSION_FILE))
@@ -10474,14 +11040,20 @@ var topLevel = [
   cloneCommand,
   clonesCommand,
   linkCommand,
+  forgetCommand,
   conversationsCommand,
   conversationCommand,
   agentsCommand,
   nodeCommand,
+  searchCommand,
   publishCommand,
   writeCommand,
   commitCommand,
   statusCommand,
+  timesCommand,
+  shareCommand,
+  pullCommand,
+  pushCommand,
   syncCommand,
   skillsCommand,
   credentialCommand

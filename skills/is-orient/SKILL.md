@@ -36,6 +36,6 @@ The plugin already injects an awareness block at session start. Use this skill w
 ## Next intents
 
 - If the user wants to preserve understanding → **is-capture**.
-- If the user wants to push/pull/share state → **is-sync**.
+- If the user wants to push/share state → **is-push**; to pull/get the latest → **is-pull**.
 - If the agreement no longer matches reality → **is-reflect**.
 - If the user wants to change how agents work here → **is-shape**.

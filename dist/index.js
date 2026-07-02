@@ -21135,17 +21135,30 @@ server.tool(
   }
 );
 server.tool(
-  "is_sync",
-  "Push committed captures and integrate remote changes. Refuses if staged knowledge is still uncommitted. Use dry_run to preview without mutating.",
+  "is_pull",
+  "Integrate remote changes into the local space (fetch + rebase/merge). Never pushes. Refuses to integrate while staged captures are uncommitted or the tree is dirty. Use dry_run to preview without mutating.",
   {
-    dry_run: external_exports.boolean().optional().describe("Preview ahead/behind and what would push; mutates nothing."),
+    dry_run: external_exports.boolean().optional().describe("Preview behind/what would integrate; mutates nothing."),
     rebase: external_exports.boolean().optional().describe("Integrate via rebase (default true). Set false to merge instead."),
     cwd: cwdField
   },
   async ({ dry_run, rebase, cwd }) => {
-    const a = ["sync"];
+    const a = ["pull"];
     if (dry_run) a.push("--dry-run");
     if (rebase === false) a.push("--rebase=false");
+    return run(a, void 0, cwd);
+  }
+);
+server.tool(
+  "is_push",
+  "Send committed captures to the remote. Never pulls. Refuses while staged knowledge is uncommitted, and refuses when behind the remote \u2014 pull first. Use dry_run to preview without mutating.",
+  {
+    dry_run: external_exports.boolean().optional().describe("Preview ahead/what would push; mutates nothing."),
+    cwd: cwdField
+  },
+  async ({ dry_run, cwd }) => {
+    const a = ["push"];
+    if (dry_run) a.push("--dry-run");
     return run(a, void 0, cwd);
   }
 );

@@ -5,7 +5,7 @@ description: >
   is made, understanding shifts, research produces a finding, or context would
   save the next session time. Proposes, doesn't auto-save. NOT for code, tasks,
   or preferences.
-allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_sync ToolSearch Read Glob Grep"
+allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_push ToolSearch Read Glob Grep"
 user-invocable: false
 ---
 
@@ -42,13 +42,13 @@ If yes:
 1. `Glob` / `Grep` first to avoid duplicates; `Read` the target area for context.
 2. `is_write` to capture with Layer 1 frontmatter (`name`, `summary`) — it stages the file and returns a content `sha`. Refine by calling `is_write` again with `if_match: <sha>` (no separate query needed). For an update to a file you didn't just write, `is_status({ path })` first for the current `sha`. Follow the [is-writing](../is-writing/SKILL.md) standard.
 3. **Confirm before saving.** On agreement, `is_commit({ message })` — it commits only what you captured, never the user's other staged work.
-4. Optionally `is_sync` to ship it.
+4. Optionally `is_push` to ship it (or `is_pull` first to get the latest).
 
 If no: drop it. Don't re-ask.
 
 ### Reaching the tools
 
-Prefer the plugin's `is_*` MCP tools over native `Write` + `git`: they stage, track captures in session state, and keep the user's parallel git work out of the commit boundary. If an `is_*` tool isn't in your palette, load it with `ToolSearch` — e.g. query `select:mcp__plugin_ideaspaces_core__is_write` (same for `is_commit`, `is_status`, `is_sync`).
+Prefer the plugin's `is_*` MCP tools over native `Write` + `git`: they stage, track captures in session state, and keep the user's parallel git work out of the commit boundary. If an `is_*` tool isn't in your palette, load it with `ToolSearch` — e.g. query `select:mcp__plugin_ideaspaces_core__is_write` (same for `is_commit`, `is_status`, `is_push`, `is_pull`).
 
 ## Rhythm
 
