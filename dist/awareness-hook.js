@@ -7886,14 +7886,16 @@ function sessionIdCachePath(homeDir, projectDir) {
   return join4(homeDir, ".ideaspaces", "sessions", key);
 }
 
-// src/awareness-hook.ts
-var MAX_DRIFT = 10;
+// src/stdin.ts
 async function readStdin() {
   if (process.stdin.isTTY) return "";
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
   return Buffer.concat(chunks).toString("utf-8");
 }
+
+// src/awareness-hook.ts
+var MAX_DRIFT = 10;
 function captureSessionId(raw) {
   if (!raw.trim()) return;
   let input;

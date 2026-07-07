@@ -35,18 +35,10 @@ import {
   staleDocSignals,
 } from "@ideaspaces/sdk";
 import { sessionIdCachePath } from "./session-path.js";
+import { readStdin } from "./stdin.js";
 
 /** Drift signals shown before the list is truncated. */
 const MAX_DRIFT = 10;
-
-/** Read the hook's stdin payload (Claude Code sends JSON). Guard the TTY case
- * so a manual run without piped input doesn't hang on an open stream. */
-async function readStdin(): Promise<string> {
-  if (process.stdin.isTTY) return "";
-  const chunks: Buffer[] = [];
-  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
-  return Buffer.concat(chunks).toString("utf-8");
-}
 
 /**
  * Bridge the Claude Code session id to the MCP server. The server can't read it
