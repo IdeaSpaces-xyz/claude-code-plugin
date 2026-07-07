@@ -7363,7 +7363,8 @@ var require_dist = __commonJS({
 // src/awareness-hook.ts
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join as join4 } from "node:path";
+import { dirname as dirname2 } from "node:path";
+import { homedir } from "node:os";
 
 // node_modules/@ideaspaces/sdk/dist/space.js
 import { promises as fs } from "node:fs";
@@ -7498,14 +7499,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot, args) {
-  return new Promise((resolve3) => {
+  return new Promise((resolve4) => {
     const proc = spawn("git", ["-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve3({ ok: code === 0, out }));
-    proc.on("error", () => resolve3({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve4({ ok: code === 0, out }));
+    proc.on("error", () => resolve4({ ok: false, out: "" }));
   });
 }
 async function lastCommitTime(repoRoot, path) {
@@ -7877,6 +7878,14 @@ async function exists(path) {
   }
 }
 
+// src/session-path.ts
+import { createHash } from "node:crypto";
+import { join as join4, resolve as resolve3 } from "node:path";
+function sessionIdCachePath(homeDir, projectDir) {
+  const key = createHash("sha256").update(resolve3(projectDir)).digest("hex").slice(0, 16);
+  return join4(homeDir, ".ideaspaces", "sessions", key);
+}
+
 // src/awareness-hook.ts
 var MAX_DRIFT = 10;
 async function readStdin() {
@@ -7895,10 +7904,11 @@ function captureSessionId(raw) {
   }
   const sessionId = input.session_id;
   if (typeof sessionId !== "string" || !sessionId) return;
-  const dir = process.env.CLAUDE_PROJECT_DIR?.trim() || (typeof input.cwd === "string" ? input.cwd : process.cwd());
+  const projectDir = process.env.CLAUDE_PROJECT_DIR?.trim() || (typeof input.cwd === "string" ? input.cwd : process.cwd());
   try {
-    mkdirSync(join4(dir, ".ideaspaces"), { recursive: true });
-    writeFileSync(join4(dir, ".ideaspaces", "session-id"), sessionId + "\n");
+    const file = sessionIdCachePath(homedir(), projectDir);
+    mkdirSync(dirname2(file), { recursive: true });
+    writeFileSync(file, sessionId + "\n");
   } catch {
   }
 }

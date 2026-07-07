@@ -1,10 +1,6 @@
 node_modules/
 .DS_Store
 
-# Session-id bridge — the SessionStart hook writes the Claude Code session id
-# here for the MCP server to stamp as the Conversation trailer. Local, per-session.
-.ideaspaces/
-
 # ideaspace defaults
 # Local agent context — private to this checkout, not part of the public repo.
 _agent/

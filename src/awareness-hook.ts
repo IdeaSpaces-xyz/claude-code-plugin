@@ -25,7 +25,8 @@
 
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname } from "node:path";
+import { homedir } from "node:os";
 import {
   findSpaceRoot,
   assembleAwareness,
@@ -33,6 +34,7 @@ import {
   collectDocDependencies,
   staleDocSignals,
 } from "@ideaspaces/sdk";
+import { sessionIdCachePath } from "./session-path.js";
 
 /** Drift signals shown before the list is truncated. */
 const MAX_DRIFT = 10;
@@ -49,10 +51,11 @@ async function readStdin(): Promise<string> {
 /**
  * Bridge the Claude Code session id to the MCP server. The server can't read it
  * from the MCP protocol (only CLAUDE_PROJECT_DIR is set on it), but this hook
- * *does* receive `session_id` on stdin — so we persist it to a file both sides
- * agree on (`${CLAUDE_PROJECT_DIR}/.ideaspaces/session-id`), where `is_commit`
- * reads it to stamp the Conversation trailer. Best-effort: a failed write must
- * never block session start, and the server omits the trailer when it's absent.
+ * *does* receive `session_id` on stdin — so we persist it to a user-level cache
+ * (`~/.ideaspaces/sessions/<hash(project-dir)>`, outside the project tree so no
+ * visited repo is touched), where `is_commit` reads it to stamp the Conversation
+ * trailer. Both sides key off CLAUDE_PROJECT_DIR. Best-effort: a failed write
+ * never blocks session start, and the server omits the trailer when it's absent.
  */
 function captureSessionId(raw: string): void {
   if (!raw.trim()) return;
@@ -64,14 +67,15 @@ function captureSessionId(raw: string): void {
   }
   const sessionId = input.session_id;
   if (typeof sessionId !== "string" || !sessionId) return;
-  // Write where the MCP server reads (CLAUDE_PROJECT_DIR); fall back to the
-  // payload cwd so a manual run still lands somewhere sensible.
-  const dir =
+  // Key off CLAUDE_PROJECT_DIR to match the server's read; fall back to the
+  // payload cwd only for manual runs (the real flow always has the env set).
+  const projectDir =
     process.env.CLAUDE_PROJECT_DIR?.trim() ||
     (typeof input.cwd === "string" ? input.cwd : process.cwd());
   try {
-    mkdirSync(join(dir, ".ideaspaces"), { recursive: true });
-    writeFileSync(join(dir, ".ideaspaces", "session-id"), sessionId + "\n");
+    const file = sessionIdCachePath(homedir(), projectDir);
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, sessionId + "\n");
   } catch {
     // Never block session start on a failed write.
   }
