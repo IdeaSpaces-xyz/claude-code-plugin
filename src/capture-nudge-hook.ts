@@ -17,13 +17,28 @@
  * Bundled with `npm run build:hook`; the committed bundle ships pre-built.
  */
 
-import { resolve, dirname, sep } from "node:path";
-import { findSpaceRoot } from "@ideaspaces/sdk";
+import { resolve, dirname, join, sep } from "node:path";
+import { existsSync } from "node:fs";
 import { readStdin } from "./stdin.js";
 
 /** A knowledge path: a markdown file, or anything under an `_agent/` dir. */
 function isKnowledgePath(path: string): boolean {
   return path.endsWith(".md") || path.split(sep).includes("_agent");
+}
+
+/**
+ * Whether `startDir` is inside an ideaspace — an ancestor holding `_agent/`.
+ * The same `_agent/`-marker convention as the SDK's `findSpaceRoot`, inlined as
+ * a small fs walk so this hook carries no SDK import (build:hook ships no SDK).
+ */
+function inIdeaspace(startDir: string): boolean {
+  let dir = resolve(startDir);
+  for (;;) {
+    if (existsSync(join(dir, "_agent"))) return true;
+    const parent = dirname(dir);
+    if (parent === dir) return false;
+    dir = parent;
+  }
 }
 
 async function main(): Promise<void> {
@@ -47,8 +62,7 @@ async function main(): Promise<void> {
 
   // Only inside an ideaspace (an `_agent/` ancestor). Stray markdown in a
   // non-ideaspace repo doesn't nudge.
-  const space = await findSpaceRoot(dirname(abs));
-  if (space.source === "none") return;
+  if (!inIdeaspace(dirname(abs))) return;
 
   const nudge =
     `Knowledge file written with native Write/Edit: \`${filePath}\`. ` +

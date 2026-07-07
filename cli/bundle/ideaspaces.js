@@ -3994,10 +3994,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep, value } = collItem;
+        const { start, key, sep: sep2, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep?.[0],
+          next: key ?? sep2?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -4011,7 +4011,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep) {
+          if (!keyProps.anchor && !keyProps.tag && !sep2) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -4035,7 +4035,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep ?? [], {
+        const valueProps = resolveProps.resolveProps(sep2 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -4051,7 +4051,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep2, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -4142,7 +4142,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep = "";
+        let sep2 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -4156,13 +4156,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep + cb;
-              sep = "";
+                comment += sep2 + cb;
+              sep2 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep += source;
+                sep2 += source;
               hasSpace = true;
               break;
             default:
@@ -4205,18 +4205,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep, value } = collItem;
+        const { start, key, sep: sep2, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep?.[0],
+          next: key ?? sep2?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep && !value) {
+          if (!props.anchor && !props.tag && !sep2 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -4270,8 +4270,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep, null, props, onError);
+        if (!isMap && !sep2 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep2, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -4283,7 +4283,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep ?? [], {
+          const valueProps = resolveProps.resolveProps(sep2 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -4294,8 +4294,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep)
-                for (const st of sep) {
+              if (sep2)
+                for (const st of sep2) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -4312,7 +4312,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep2, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -4492,7 +4492,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep = "";
+      let sep2 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -4509,24 +4509,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep + indent.slice(trimIndent) + content;
-          sep = "\n";
+          value += sep2 + indent.slice(trimIndent) + content;
+          sep2 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep === " ")
-            sep = "\n";
-          else if (!prevMoreIndented && sep === "\n")
-            sep = "\n\n";
-          value += sep + indent.slice(trimIndent) + content;
-          sep = "\n";
+          if (sep2 === " ")
+            sep2 = "\n";
+          else if (!prevMoreIndented && sep2 === "\n")
+            sep2 = "\n\n";
+          value += sep2 + indent.slice(trimIndent) + content;
+          sep2 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep === "\n")
+          if (sep2 === "\n")
             value += "\n";
           else
-            sep = "\n";
+            sep2 = "\n";
         } else {
-          value += sep + content;
-          sep = " ";
+          value += sep2 + content;
+          sep2 = " ";
           prevMoreIndented = false;
         }
       }
@@ -4708,25 +4708,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep = " ";
+      let sep2 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep === "\n")
-            res += sep;
+          if (sep2 === "\n")
+            res += sep2;
           else
-            sep = "\n";
+            sep2 = "\n";
         } else {
-          res += sep + match[1];
-          sep = " ";
+          res += sep2 + match[1];
+          sep2 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep + (match?.[1] ?? "");
+      return res + sep2 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -5534,14 +5534,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep, value }) {
+    function stringifyItem({ start, key, sep: sep2, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep)
-        for (const st of sep)
+      if (sep2)
+        for (const st of sep2)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -6691,18 +6691,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep;
+          let sep2;
           if (scalar.end) {
-            sep = scalar.end;
-            sep.push(this.sourceToken);
+            sep2 = scalar.end;
+            sep2.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep = [this.sourceToken];
+            sep2 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep }]
+            items: [{ start, key: scalar, sep: sep2 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -6855,15 +6855,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep = it.sep;
-                  sep.push(this.sourceToken);
+                  const sep2 = it.sep;
+                  sep2.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep }]
+                    items: [{ start: start2, key, sep: sep2 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -6892,14 +6892,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs3 = this.flowScalar(this.type);
+              const fs7 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs3, sep: [] });
+                map.items.push({ start, key: fs7, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs3);
+                this.stack.push(fs7);
               } else {
-                Object.assign(it, { key: fs3, sep: [] });
+                Object.assign(it, { key: fs7, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7027,13 +7027,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs3 = this.flowScalar(this.type);
+              const fs7 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs3, sep: [] });
+                fc.items.push({ start: [], key: fs7, sep: [] });
               else if (it.sep)
-                this.stack.push(fs3);
+                this.stack.push(fs7);
               else
-                Object.assign(it, { key: fs3, sep: [] });
+                Object.assign(it, { key: fs7, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7057,13 +7057,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep = fc.end.splice(1, fc.end.length);
-            sep.push(this.sourceToken);
+            const sep2 = fc.end.splice(1, fc.end.length);
+            sep2.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep }]
+              items: [{ start, key: fc, sep: sep2 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -8299,7 +8299,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve9, reject) => {
+  return new Promise((resolve13, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -8326,7 +8326,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve9({
+      resolve13({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -8428,7 +8428,7 @@ ${authUrl}`);
 // dist/commands/publish.js
 import { spawnSync as spawnSync3 } from "node:child_process";
 import { existsSync as existsSync4, statSync } from "node:fs";
-import { basename as basename2, join as join5 } from "node:path";
+import { basename as basename2, join as join9 } from "node:path";
 
 // dist/auth/spaces.js
 import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
@@ -8482,7 +8482,79 @@ function removeSpace(absolutePath) {
 
 // dist/frontmatter-report.js
 import { readFile } from "node:fs/promises";
-import { relative as relative2 } from "node:path";
+import { relative as relative4 } from "node:path";
+
+// node_modules/@ideaspaces/protocol/dist/space.js
+import { promises as fs2 } from "node:fs";
+import { dirname, join as join5, resolve as resolve3 } from "node:path";
+var CONTRACT_FILES = [
+  "foundation",
+  "guide",
+  "purpose",
+  "now",
+  "next"
+];
+async function isDirectory(path) {
+  try {
+    const stat = await fs2.stat(path);
+    return stat.isDirectory();
+  } catch {
+    return false;
+  }
+}
+async function readContract(agentDir) {
+  const entries = {};
+  await Promise.all(CONTRACT_FILES.map(async (name) => {
+    const path = join5(agentDir, `${name}.md`);
+    try {
+      const content = await fs2.readFile(path, "utf-8");
+      entries[name] = { path, content };
+    } catch {
+    }
+  }));
+  return entries;
+}
+async function composeContractAlongPath(position) {
+  const start = resolve3(position);
+  const found = [];
+  let spaceRoot = null;
+  let dir = start;
+  while (true) {
+    const agentDir = join5(dir, "_agent");
+    if (await isDirectory(agentDir)) {
+      const contract2 = await readContract(agentDir);
+      found.push({ dir, contract: contract2 });
+      if (contract2.foundation) {
+        spaceRoot = dir;
+        break;
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir)
+      break;
+    dir = parent;
+  }
+  const contract = {};
+  if (spaceRoot) {
+    const rootEntry = found.find((f) => f.dir === spaceRoot)?.contract.foundation;
+    if (rootEntry)
+      contract.foundation = { ...rootEntry, level: spaceRoot };
+  }
+  for (const name of ["guide", "purpose", "now", "next"]) {
+    for (const level of found) {
+      const entry = level.contract[name];
+      if (entry) {
+        contract[name] = { ...entry, level: level.dir };
+        break;
+      }
+    }
+  }
+  return { position: start, spaceRoot, contract, levels: found.map((f) => f.dir) };
+}
+
+// node_modules/@ideaspaces/protocol/dist/awareness.js
+import { promises as fs3 } from "node:fs";
+import { join as join6 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
@@ -8634,16 +8706,26 @@ function frontmatterBlock(content) {
 
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
+var FS = "";
+var REC = "";
+var DEFAULT_COMMIT_LIMIT = 20;
 function runGit2(repoRoot2, args2) {
-  return new Promise((resolve9) => {
+  return new Promise((resolve13) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve9({ ok: code === 0, out }));
-    proc.on("error", () => resolve9({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve13({ ok: code === 0, out }));
+    proc.on("error", () => resolve13({ ok: false, out: "" }));
   });
+}
+async function lastCommitTime(repoRoot2, path) {
+  const res = await runGit2(repoRoot2, ["log", "-1", "--format=%ct", "--", path]);
+  if (!res.ok)
+    return null;
+  const t = parseInt(res.out.trim(), 10);
+  return Number.isFinite(t) ? t : null;
 }
 async function gitState(repoRoot2) {
   const top = await runGit2(repoRoot2, ["rev-parse", "--show-toplevel"]);
@@ -8694,9 +8776,404 @@ async function gitState(repoRoot2) {
   }
   return { repoRoot: root, headSha: headSha2, branch, ahead, behind, dirty, untrackedInTrackedDirs };
 }
+async function recentActivity(repoRoot2, sinceSha, limit = DEFAULT_COMMIT_LIMIT) {
+  const selector = sinceSha ? [`${sinceSha}..HEAD`] : [`-n`, String(limit)];
+  const res = await runGit2(repoRoot2, [
+    "log",
+    ...selector,
+    "--name-status",
+    `--format=${REC}%H${FS}%s${FS}%cI${FS}%an`
+  ]);
+  if (!res.ok)
+    return { commits: [], changedFiles: [] };
+  const commits = [];
+  const seen = /* @__PURE__ */ new Set();
+  const changedFiles = [];
+  for (const raw of res.out.split("\n")) {
+    if (!raw)
+      continue;
+    if (raw.startsWith(REC)) {
+      const [sha, subject, date, author] = raw.slice(1).split(FS);
+      commits.push({ sha, subject, date, author });
+      continue;
+    }
+    const parts = raw.split("	");
+    if (parts.length < 2)
+      continue;
+    const status = parts[0][0];
+    const path = parts[parts.length - 1];
+    if (seen.has(path))
+      continue;
+    seen.add(path);
+    changedFiles.push({ status, path });
+  }
+  return { commits, changedFiles };
+}
+
+// node_modules/@ideaspaces/protocol/dist/awareness.js
+var SKIP_DIRS = /* @__PURE__ */ new Set([
+  "_agent",
+  "node_modules",
+  ".git",
+  ".github",
+  ".vscode",
+  ".idea",
+  "dist",
+  "build"
+]);
+var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
+async function assembleAwareness(opts) {
+  const { root, contract, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
+  const sections = [];
+  const nowLine = extractNowLine(contract, nowExcerptLength);
+  if (nowLine)
+    sections.push(`Now: ${nowLine}`);
+  const tree = await buildTreeSection(root);
+  if (tree)
+    sections.push(tree);
+  const agentContext = buildAgentContextSection(contract, summaryExcerptLength);
+  if (agentContext)
+    sections.push(agentContext);
+  const skills = await buildSkillsSection(root, summaryExcerptLength);
+  if (skills)
+    sections.push(skills);
+  if (lastSha) {
+    const { changedFiles } = await recentActivity(root, lastSha);
+    if (changedFiles.length) {
+      const total = changedFiles.length;
+      const head = changedFiles.slice(0, maxChanges);
+      const lines = [`Since last session (${total} changes):`];
+      for (const c of head)
+        lines.push(`  ${c.status}	${c.path}`);
+      if (total > maxChanges)
+        lines.push(`  ... and ${total - maxChanges} more`);
+      sections.push(lines.join("\n"));
+    }
+  }
+  return sections.join("\n\n");
+}
+function buildAgentContextSection(contract, max) {
+  const present = CONTRACT_ORDER.filter((name) => contract[name]);
+  if (!present.length)
+    return null;
+  const lines = ["Agent context:"];
+  for (const name of present) {
+    const entry = contract[name];
+    const blurb = describeFile(entry.content, max);
+    lines.push(blurb ? `  ${name} \u2014 ${blurb}` : `  ${name}`);
+  }
+  return lines.join("\n");
+}
+async function buildSkillsSection(root, max) {
+  const skillsDir = join6(root, "_agent", "skills");
+  let entries;
+  try {
+    entries = (await fs3.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
+  } catch {
+    return null;
+  }
+  if (!entries.length)
+    return null;
+  const blurbs = await Promise.all(entries.map(async (file) => {
+    try {
+      const content = await fs3.readFile(join6(skillsDir, file), "utf-8");
+      return describeFile(content, max);
+    } catch {
+      return null;
+    }
+  }));
+  const lines = ["Operating skills:"];
+  for (let i = 0; i < entries.length; i++) {
+    const name = entries[i].replace(/\.md$/, "");
+    const blurb = blurbs[i];
+    lines.push(blurb ? `  ${name} \u2014 ${blurb}` : `  ${name}`);
+  }
+  return lines.join("\n");
+}
+function describeFile(content, max) {
+  const summary = extractSummary(content);
+  if (summary)
+    return truncate(summary, max);
+  const body = stripFrontmatter(content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    return truncate(line, max);
+  }
+  return null;
+}
+function extractNowLine(contract, max) {
+  if (!contract.now)
+    return null;
+  const body = stripFrontmatter(contract.now.content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line)
+      continue;
+    if (line.startsWith("#"))
+      continue;
+    if (line.startsWith(">")) {
+      const stripped = line.replace(/^>+\s*/, "").trim();
+      if (stripped)
+        return truncate(stripped, max);
+      continue;
+    }
+    return truncate(line, max);
+  }
+  return null;
+}
+function truncate(s, max) {
+  return s.length <= max ? s : `${s.slice(0, max).trimEnd()}\u2026`;
+}
+async function buildTreeSection(root) {
+  let entries;
+  try {
+    const dirents = await fs3.readdir(root, { withFileTypes: true });
+    entries = dirents.filter((e) => !e.name.startsWith(".") || e.name === ".gitignore").map((e) => ({ name: e.name, isDir: e.isDirectory() }));
+  } catch {
+    return null;
+  }
+  const dirs = entries.filter((e) => e.isDir && !SKIP_DIRS.has(e.name)).map((e) => e.name).sort();
+  const files = entries.filter((e) => !e.isDir && e.name.endsWith(".md")).map((e) => e.name).sort();
+  if (!dirs.length && !files.length)
+    return null;
+  const totalFiles = await countMarkdown(root);
+  const lines = [`Tree (${totalFiles} files):`];
+  for (const d of dirs) {
+    const count = await countMarkdown(join6(root, d));
+    lines.push(count ? `  ${d}/ (${count})` : `  ${d}/`);
+  }
+  for (const f of files)
+    lines.push(`  ${f}`);
+  return lines.join("\n");
+}
+async function countMarkdown(dir) {
+  let count = 0;
+  let dirents;
+  try {
+    dirents = await fs3.readdir(dir, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  for (const entry of dirents) {
+    if (entry.name.startsWith("."))
+      continue;
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name))
+        continue;
+      count += await countMarkdown(join6(dir, entry.name));
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+// node_modules/@ideaspaces/protocol/dist/path-context.js
+import { promises as fs4 } from "node:fs";
+import { isAbsolute, join as join7, relative as relative2, resolve as resolve4, sep } from "node:path";
+function spaceRootLevel(ctx) {
+  return ctx.levels.find((l) => l.foundation) ?? null;
+}
+function currentBranchLevel(ctx) {
+  for (let i = ctx.levels.length - 1; i >= 0; i--) {
+    if (ctx.levels[i].hasAgent)
+      return ctx.levels[i];
+  }
+  return null;
+}
+async function walkPathContext(repoRoot2, currentPath, opts = {}) {
+  const { includeContent = false } = opts;
+  const root = resolve4(repoRoot2);
+  const rel = relative2(root, resolve4(root, currentPath));
+  const segments = rel === "" || rel.startsWith("..") || isAbsolute(rel) ? [] : rel.split(sep).filter(Boolean);
+  const relPaths = [""];
+  let acc = "";
+  for (const segment of segments) {
+    acc = acc ? `${acc}/${segment}` : segment;
+    relPaths.push(acc);
+  }
+  const levels = await Promise.all(relPaths.map((relPath) => readLevel(root, relPath, includeContent)));
+  const position = segments.join("/");
+  return { position, levels };
+}
+async function readLevel(root, relPath, includeContent) {
+  const absPath = relPath ? join7(root, relPath) : root;
+  const agentDir = join7(absPath, "_agent");
+  const [hasAgent, readme] = await Promise.all([
+    isDirectory2(agentDir),
+    readFileOrNull(join7(absPath, "README.md"))
+  ]);
+  let contract = {};
+  if (hasAgent)
+    contract = await readContract(agentDir);
+  const agentFiles = CONTRACT_FILES.filter((f) => contract[f]);
+  const contractSummaries = {};
+  for (const f of agentFiles) {
+    const summary = describe(contract[f].content);
+    if (summary)
+      contractSummaries[f] = summary;
+  }
+  return {
+    path: relPath,
+    absPath,
+    hasAgent,
+    foundation: Boolean(contract.foundation),
+    agentFiles,
+    contractSummaries,
+    readmeSummary: readme ? describe(readme) : null,
+    readmeContent: includeContent ? readme : null,
+    contract: includeContent && hasAgent ? contract : null
+  };
+}
+function describe(content) {
+  const summary = extractSummary(content);
+  if (summary)
+    return summary;
+  for (const raw of stripFrontmatter(content).split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    return line.replace(/^>+\s*/, "").trim() || null;
+  }
+  return null;
+}
+async function isDirectory2(path) {
+  try {
+    return (await fs4.stat(path)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+async function readFileOrNull(path) {
+  try {
+    return await fs4.readFile(path, "utf-8");
+  } catch {
+    return null;
+  }
+}
 
 // node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
+import { promises as fs5 } from "node:fs";
+import { join as join8, relative as relative3, resolve as resolve5 } from "node:path";
+var SKIP_DIRS2 = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
+async function collectDocDependencies(repoRoot2, docDir) {
+  const root = resolve5(repoRoot2);
+  const start = resolve5(root, docDir);
+  const out = [];
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = (await fs5.readdir(dir, { withFileTypes: true })).map((e) => ({
+        name: e.name,
+        isDir: e.isDirectory()
+      }));
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith("."))
+        continue;
+      const abs = join8(dir, entry.name);
+      if (entry.isDir) {
+        if (!SKIP_DIRS2.has(entry.name))
+          await walk(abs);
+      } else if (entry.name.endsWith(".md")) {
+        const content = await readFileOrNull2(abs);
+        if (!content)
+          continue;
+        const codePaths = readCodePaths(content);
+        if (codePaths.length) {
+          out.push({ path: relative3(root, abs), codePaths });
+        }
+      }
+    }
+  }
+  await walk(start);
+  return out;
+}
+async function staleDocSignals(repoRoot2, docs) {
+  const root = resolve5(repoRoot2);
+  const signals = [];
+  for (const { path, codePaths } of docs) {
+    const missing = [];
+    for (const code of codePaths) {
+      if (!await exists(join8(root, code)))
+        missing.push(code);
+    }
+    if (missing.length)
+      signals.push({ kind: "broken", doc: path, missing });
+    const docTime = await lastCommitTime(repoRoot2, path);
+    if (docTime == null)
+      continue;
+    let newestCode = "";
+    let codeTime = -1;
+    for (const code of codePaths) {
+      if (missing.includes(code))
+        continue;
+      const t = await lastCommitTime(repoRoot2, code);
+      if (t != null && t > codeTime) {
+        codeTime = t;
+        newestCode = code;
+      }
+    }
+    if (codeTime < 0)
+      continue;
+    if (codeTime > docTime) {
+      signals.push({
+        kind: "stale",
+        doc: path,
+        docTime,
+        newestCode,
+        codeTime,
+        staleBySeconds: codeTime - docTime
+      });
+    }
+  }
+  return signals;
+}
+function readCodePaths(content) {
+  if (!content.startsWith("---\n") && !content.startsWith("---\r\n"))
+    return [];
+  const lines = content.split(/\r?\n/);
+  let end = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trimEnd() === "---") {
+      end = i;
+      break;
+    }
+  }
+  if (end === -1)
+    return [];
+  try {
+    const data = (0, import_yaml2.parseDocument)(lines.slice(1, end).join("\n")).toJSON();
+    const raw = data?.code_paths;
+    if (Array.isArray(raw))
+      return raw.filter((x) => typeof x === "string");
+    if (typeof raw === "string")
+      return [raw];
+    return [];
+  } catch {
+    return [];
+  }
+}
+async function readFileOrNull2(path) {
+  try {
+    return await fs5.readFile(path, "utf-8");
+  } catch {
+    return null;
+  }
+}
+async function exists(path) {
+  try {
+    await fs5.stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // node_modules/@ideaspaces/protocol/dist/skill-catalog.generated.js
 var SKILL_CATALOG = {
@@ -9076,8 +9553,8 @@ function appendTrailers(message, add) {
   while (end >= 0 && lines[end].trim() === "")
     end--;
   const body = lines.slice(0, end + 1);
-  const sep = body.length > 0 ? [""] : [];
-  return [...body, ...sep, ...additions].join("\n");
+  const sep2 = body.length > 0 ? [""] : [];
+  return [...body, ...sep2, ...additions].join("\n");
 }
 function findTrailerBlock(rawLines) {
   let end = rawLines.length - 1;
@@ -9288,7 +9765,7 @@ function renderFrontmatterSyntaxProblems(scan, opts = {}) {
   lines.push(`Malformed frontmatter (${scan.malformed.length}):`);
   for (const item of scan.malformed) {
     const loc = item.line ? `:${item.line}${item.column ? `:${item.column}` : ""}` : "";
-    lines.push(`  ${relative2(cwd, item.path) || item.path}${loc}`);
+    lines.push(`  ${relative4(cwd, item.path) || item.path}${loc}`);
     if (item.message)
       lines.push(`    ${item.message}`);
   }
@@ -9329,7 +9806,7 @@ function preflightSize(cwd) {
   }
   const offenders = [];
   for (const rel of r.stdout.split("\0").filter(Boolean)) {
-    const abs = join5(cwd, rel);
+    const abs = join9(cwd, rel);
     let bytes;
     try {
       bytes = statSync(abs).size;
@@ -9385,7 +9862,7 @@ function trackedMarkdownFiles(cwd) {
   if (r.status !== 0) {
     throw new Error(r.stderr.trim() || "git ls-files failed while checking markdown identities");
   }
-  return r.stdout.split("\0").filter(Boolean).map((path) => join5(cwd, path));
+  return r.stdout.split("\0").filter(Boolean).map((path) => join9(cwd, path));
 }
 var publishCommand = {
   name: "publish",
@@ -9401,7 +9878,7 @@ var publishCommand = {
     const output = createOutput(global2);
     const flags2 = rawFlags;
     const cwd = process.cwd();
-    if (!existsSync4(join5(cwd, ".git"))) {
+    if (!existsSync4(join9(cwd, ".git"))) {
       output.error("Not a git repo. Run `ideaspaces create` first, or `git init` here.");
       return 1;
     }
@@ -9578,9 +10055,9 @@ ${push2.stderr}${hint}`);
 };
 
 // dist/commands/write.js
-import { promises as fs2 } from "node:fs";
+import { promises as fs6 } from "node:fs";
 import { existsSync as existsSync5, statSync as statSync2 } from "node:fs";
-import { dirname, join as join6, relative as relative3, resolve as resolve3 } from "node:path";
+import { dirname as dirname2, join as join10, relative as relative5, resolve as resolve6 } from "node:path";
 
 // dist/argv.js
 function parseBool(value, dflt = true) {
@@ -9724,7 +10201,7 @@ var writeCommand = {
     const force = Boolean(flags2.force);
     const stage = parseBool(flags2.stage, true);
     const ifMatch = flags2["if-match"];
-    const absPath = resolve3(path);
+    const absPath = resolve6(path);
     if (ifMatch !== void 0) {
       const currentSha = blobSha(absPath);
       if (currentSha !== ifMatch && !force) {
@@ -9741,8 +10218,8 @@ Re-run with --force to overwrite, or pass --if-match <sha> for a safe update.`);
     }
     const body = stripFrontmatter(content);
     const finalContent = composeFrontmatter(fm) + body;
-    await fs2.mkdir(dirname(absPath), { recursive: true });
-    await fs2.writeFile(absPath, finalContent, "utf-8");
+    await fs6.mkdir(dirname2(absPath), { recursive: true });
+    await fs6.writeFile(absPath, finalContent, "utf-8");
     let staged = false;
     if (stage) {
       try {
@@ -9766,7 +10243,7 @@ function parseList(value) {
 function isBatchTarget(targets) {
   if (targets.length > 1)
     return true;
-  const abs = resolve3(targets[0]);
+  const abs = resolve6(targets[0]);
   return existsSync5(abs) && statSync2(abs).isDirectory();
 }
 async function runBatchStage(targets, flags2, output) {
@@ -9783,7 +10260,7 @@ async function runBatchStage(targets, flags2, output) {
     return 1;
   }
   const report = await Promise.all(files.map(async (path) => {
-    const content = await fs2.readFile(path, "utf-8");
+    const content = await fs6.readFile(path, "utf-8");
     return { path, issues: healthIssues(content) };
   }));
   let staged = false;
@@ -9800,7 +10277,7 @@ async function runBatchStage(targets, flags2, output) {
   const header = `${staged ? "Staged" : "Checked"} ${files.length} note${files.length === 1 ? "" : "s"}` + (flagged.length ? `; ${flagged.length} with issues:` : "; all healthy.");
   const lines = [
     header,
-    ...flagged.map((r) => `  ${relative3(process.cwd(), r.path)} \u2014 ${r.issues.join(", ")}`)
+    ...flagged.map((r) => `  ${relative5(process.cwd(), r.path)} \u2014 ${r.issues.join(", ")}`)
   ];
   output.result({ staged, count: files.length, files: report, missing, skipped }, lines.join("\n"));
   return 0;
@@ -9810,7 +10287,7 @@ async function collectMarkdown(targets) {
   const missing = [];
   const skipped = [];
   for (const t of targets) {
-    const abs = resolve3(t);
+    const abs = resolve6(t);
     if (!existsSync5(abs)) {
       missing.push(t);
     } else if (statSync2(abs).isDirectory()) {
@@ -9824,11 +10301,11 @@ async function collectMarkdown(targets) {
   return { files: [...files].sort(), missing, skipped };
 }
 async function walkMarkdown(dir, out) {
-  const entries = await fs2.readdir(dir, { withFileTypes: true });
+  const entries = await fs6.readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.name.startsWith(".") || entry.name === "node_modules")
       continue;
-    const p = join6(dir, entry.name);
+    const p = join10(dir, entry.name);
     if (entry.isDirectory()) {
       await walkMarkdown(p, out);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
@@ -9852,7 +10329,7 @@ function healthIssues(content) {
 }
 
 // dist/commands/commit.js
-import { resolve as resolve4 } from "node:path";
+import { resolve as resolve7 } from "node:path";
 var OP_SET = {
   create: true,
   update: true,
@@ -9938,7 +10415,7 @@ var commitCommand = {
         output.log(`Leaving ${other.length} non-ideaspace staged path(s) for you to commit: ${other.join(", ")}`);
       }
     } else {
-      paths = args2.map((p) => resolve4(p));
+      paths = args2.map((p) => resolve7(p));
     }
     if (!paths.length) {
       output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --all.');
@@ -10000,8 +10477,118 @@ var changeCommand = {
   }
 };
 
+// dist/commands/navigate.js
+import { relative as relative6, resolve as resolve8 } from "node:path";
+import { statSync as statSync3, existsSync as existsSync6 } from "node:fs";
+import { spawnSync as spawnSync4 } from "node:child_process";
+var MAX_DRIFT = 10;
+var SEEN_REF = "refs/ideaspaces/seen";
+function gitRef(cwd, args2) {
+  const r = spawnSync4("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  return r.status === 0 ? r.stdout.trim() || null : null;
+}
+function formatPositionSection(pos, base, repoRoot2, pathContext) {
+  const spaceRoot = spaceRootLevel(pathContext);
+  const branch = currentBranchLevel(pathContext);
+  const lines = ["Position:"];
+  if (repoRoot2)
+    lines.push(`  repo: ${repoRoot2}`);
+  lines.push(`  cwd: ${relative6(base, pos) || "."}`);
+  if (spaceRoot)
+    lines.push(`  space root: ${spaceRoot.path || "."}`);
+  if (branch)
+    lines.push(`  active _agent: ${branch.path || "."}`);
+  return lines.join("\n");
+}
+var navigateCommand = {
+  name: "navigate",
+  description: "Re-derive orientation (fractal contract, tree, drift) at a position",
+  usage: "ideaspaces navigate [<path>] [--mark-seen]",
+  examples: [
+    "ideaspaces navigate --json            # orient at the current directory",
+    "ideaspaces navigate roadmap --json    # orient at a branch"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const raw = (args2[0] ?? ".").trim();
+    const target = resolve8(raw === "" ? "." : raw);
+    if (!existsSync6(target)) {
+      output.error(`No such path: ${target}`);
+      return 1;
+    }
+    if (!statSync3(target).isDirectory()) {
+      output.error(`Not a directory: ${target}`);
+      return 1;
+    }
+    let repoRoot2 = null;
+    let gs;
+    if (isInsideWorkTree(target)) {
+      gs = await gitState(target);
+      repoRoot2 = gs.repoRoot;
+    }
+    const composed = await composeContractAlongPath(target);
+    const position = relative6(repoRoot2 ?? composed.spaceRoot ?? target, target) || ".";
+    if (!composed.spaceRoot) {
+      output.result({ text: null, position, root: null, repoRoot: repoRoot2 }, "No _agent/ contract resolves at this position.");
+      return 0;
+    }
+    const base = repoRoot2 ?? composed.spaceRoot;
+    const lastSha = repoRoot2 ? gitRef(repoRoot2, ["rev-parse", "--verify", "--quiet", SEEN_REF]) ?? void 0 : void 0;
+    const [block, pathContext] = await Promise.all([
+      assembleAwareness({ root: target, contract: composed.contract, lastSha }),
+      base ? walkPathContext(base, target) : Promise.resolve(null)
+    ]);
+    const sections = [];
+    if (pathContext && base)
+      sections.push(formatPositionSection(target, base, repoRoot2, pathContext));
+    if (block.trim())
+      sections.push(block);
+    if (repoRoot2 && gs) {
+      const bits = [];
+      if (gs.branch)
+        bits.push(`branch ${gs.branch}`);
+      if (gs.ahead != null && gs.behind != null && (gs.ahead || gs.behind))
+        bits.push(`\u2191${gs.ahead} \u2193${gs.behind}`);
+      if (gs.dirty)
+        bits.push("dirty");
+      if (gs.untrackedInTrackedDirs.length)
+        bits.push(`${gs.untrackedInTrackedDirs.length} untracked`);
+      if (bits.length)
+        sections.push(`Git: ${bits.join(", ")}`);
+      const signals = await staleDocSignals(repoRoot2, await collectDocDependencies(repoRoot2, repoRoot2));
+      if (signals.length) {
+        const lines = ["\u26A0 Possible stale docs \u2014 verify before quoting their status:"];
+        for (const s of signals.slice(0, MAX_DRIFT)) {
+          lines.push(s.kind === "stale" ? `  ${s.doc} \u2014 \`${s.newestCode}\` was committed after the doc` : `  ${s.doc} \u2014 references missing path(s): ${s.missing.join(", ")}`);
+        }
+        if (signals.length > MAX_DRIFT)
+          lines.push(`  \u2026 and ${signals.length - MAX_DRIFT} more`);
+        sections.push(lines.join("\n"));
+      }
+      if (flags2["mark-seen"]) {
+        try {
+          gitRef(repoRoot2, ["update-ref", SEEN_REF, headSha(repoRoot2)]);
+        } catch {
+        }
+      }
+    }
+    const direction = [];
+    if (!composed.contract.purpose) {
+      direction.push("\u26A0 `_agent/purpose.md` not yet captured. The contract names it; suggest capturing at a natural moment.");
+    }
+    if (!composed.contract.now) {
+      direction.push("\u26A0 `_agent/now.md` not yet captured. Suggest capturing what's currently active.");
+    }
+    if (direction.length)
+      sections.push(direction.join("\n"));
+    const text = sections.join("\n\n");
+    output.result({ text: text || null, position, root: composed.spaceRoot, repoRoot: repoRoot2 }, text || "(no orientation)");
+    return 0;
+  }
+};
+
 // dist/commands/status.js
-import { resolve as resolve5 } from "node:path";
+import { resolve as resolve9 } from "node:path";
 var statusCommand = {
   name: "status",
   description: "Show git position and plugin-tracked captures awaiting commit",
@@ -10024,7 +10611,7 @@ var statusCommand = {
     }
     const pathArg = typeof flags2.path === "string" ? flags2.path : void 0;
     if (pathArg) {
-      const ps = pathStatus(resolve5(pathArg), root);
+      const ps = pathStatus(resolve9(pathArg), root);
       output.result({
         path: pathArg,
         exists: ps.exists,
@@ -10566,10 +11153,10 @@ var catalogCommand = {
 };
 
 // dist/commands/pi-status.js
-import { spawnSync as spawnSync4 } from "node:child_process";
-import { existsSync as existsSync6, readFileSync as readFileSync3 } from "node:fs";
+import { spawnSync as spawnSync5 } from "node:child_process";
+import { existsSync as existsSync7, readFileSync as readFileSync3 } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { basename as basename3, join as join7 } from "node:path";
+import { basename as basename3, join as join11 } from "node:path";
 function derivePiStatus(input) {
   const providers = Object.entries(input.auth ?? {}).map(([name, v]) => {
     const hasCreds = Boolean(v && (v.access || v.refresh));
@@ -10590,12 +11177,12 @@ function derivePiStatus(input) {
 function resolveExtension(path) {
   const name = basename3(path.replace(/[/\\]+$/, "")) || path;
   const check = (resolvable) => ({ name, path, resolvable });
-  if (!existsSync6(path))
+  if (!existsSync7(path))
     return check(false);
   if (/\.[cm]?[jt]s$/.test(path))
     return check(true);
-  const pkgPath = join7(path, "package.json");
-  if (existsSync6(pkgPath)) {
+  const pkgPath = join11(path, "package.json");
+  if (existsSync7(pkgPath)) {
     try {
       const pkg = JSON.parse(readFileSync3(pkgPath, "utf8"));
       const exts = pkg.pi?.extensions;
@@ -10604,11 +11191,11 @@ function resolveExtension(path) {
     } catch {
     }
   }
-  return check(existsSync6(join7(path, "index.ts")) || existsSync6(join7(path, "index.js")));
+  return check(existsSync7(join11(path, "index.ts")) || existsSync7(join11(path, "index.js")));
 }
 function readPiAuth(piHome) {
-  const file = join7(piHome, "agent", "auth.json");
-  if (!existsSync6(file))
+  const file = join11(piHome, "agent", "auth.json");
+  if (!existsSync7(file))
     return null;
   try {
     return JSON.parse(readFileSync3(file, "utf8"));
@@ -10618,7 +11205,7 @@ function readPiAuth(piHome) {
 }
 function probeBinary(piBin) {
   try {
-    const res = spawnSync4(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
+    const res = spawnSync5(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
     if (res.error || res.status !== 0)
       return { present: false, path: piBin, version: null };
     const m = /\d+\.\d+\.\d+[\w.-]*/.exec(res.stdout ?? "");
@@ -10659,7 +11246,7 @@ var piStatusCommand = {
     const output = createOutput(global2);
     const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : "pi";
     const binary = probeBinary(piBin);
-    const auth = readPiAuth(join7(homedir2(), ".pi"));
+    const auth = readPiAuth(join11(homedir2(), ".pi"));
     const extFlag = typeof flags2.ext === "string" ? flags2.ext : process.env.IDEASPACES_PI_EXTENSIONS;
     const extensions = (extFlag ?? "").split(",").map((s) => s.trim()).filter(Boolean).map(resolveExtension);
     const status = derivePiStatus({ binary, auth, extensions, now: Date.now() });
@@ -10669,7 +11256,7 @@ var piStatusCommand = {
 };
 
 // dist/commands/clone.js
-import { resolve as resolve6 } from "node:path";
+import { resolve as resolve10 } from "node:path";
 var cloneCommand = {
   name: "clone",
   description: "Clone one of your spaces into a local folder",
@@ -10720,7 +11307,7 @@ var cloneCommand = {
       return 1;
     }
     const url = `${deriveGitBase(config.apiUrl)}/${namespace}/${repo.slug}.git`;
-    const dir = resolve6(args2[1] ?? repo.slug);
+    const dir = resolve10(args2[1] ?? repo.slug);
     await registerGitCredentialHelper();
     output.progress(`Cloning ${namespace}/${repo.slug}\u2026`);
     try {
@@ -10769,7 +11356,7 @@ var clonesCommand = {
 };
 
 // dist/commands/link.js
-import { resolve as resolve7 } from "node:path";
+import { resolve as resolve11 } from "node:path";
 function repoKey(repo, me, gitBase) {
   const namespace = repo.hostname ?? me.username;
   if (!namespace)
@@ -10791,7 +11378,7 @@ var linkCommand = {
       output.error("Usage: ideaspaces link <dir> [space]");
       return 1;
     }
-    const dir = resolve7(dirArg);
+    const dir = resolve11(dirArg);
     if (!isInsideWorkTree(dir)) {
       output.error(`${dir} is not a git repository. Use \`clone\` to make one, or point at an existing clone.`);
       return 1;
@@ -10885,7 +11472,7 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 // dist/commands/forget.js
 import { rmSync } from "node:fs";
 import { homedir as homedir3 } from "node:os";
-import { dirname as dirname2, resolve as resolve8 } from "node:path";
+import { dirname as dirname3, resolve as resolve12 } from "node:path";
 var forgetCommand = {
   name: "forget",
   description: "Stop tracking a local clone (optionally delete its folder)",
@@ -10901,9 +11488,9 @@ var forgetCommand = {
       output.error("Usage: ideaspaces forget <dir> [--delete]");
       return 1;
     }
-    const dir = resolve8(dirArg);
+    const dir = resolve12(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve8(homedir3()) || dirname2(dir) === dir)) {
+    if (del && (dir === resolve12(homedir3()) || dirname3(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -10928,11 +11515,11 @@ var forgetCommand = {
 };
 
 // dist/local-conversations.js
-import { existsSync as existsSync7, readdirSync, readFileSync as readFileSync4, statSync as statSync3 } from "node:fs";
+import { existsSync as existsSync8, readdirSync, readFileSync as readFileSync4, statSync as statSync4 } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { join as join8 } from "node:path";
+import { join as join12 } from "node:path";
 function localSessionDir(contextRoot) {
-  return join8(contextRoot, ".pi", "sessions");
+  return join12(contextRoot, ".pi", "sessions");
 }
 function mintConversationId() {
   return `local-${randomUUID()}`;
@@ -11009,17 +11596,17 @@ function parseSessionJsonl(text, fallbackTs) {
   return { id, name, messages, messageCount: count, preview, updatedAt: lastTs };
 }
 function findSessionFile(dir, convId) {
-  if (!existsSync7(dir))
+  if (!existsSync8(dir))
     return null;
   const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
   const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
   if (bySuffix)
-    return join8(dir, bySuffix);
+    return join12(dir, bySuffix);
   for (const f of files) {
     try {
-      const first = readFileSync4(join8(dir, f), "utf8").split("\n", 1)[0];
+      const first = readFileSync4(join12(dir, f), "utf8").split("\n", 1)[0];
       if (JSON.parse(first).id === convId)
-        return join8(dir, f);
+        return join12(dir, f);
     } catch {
     }
   }
@@ -11030,7 +11617,7 @@ function getLocalConversation(contextRoot, convId) {
   if (!file) {
     return { conversation_id: convId, repo_id: contextRoot, name: "", history: [], active_turn: null };
   }
-  const mtime = statSync3(file).mtime.toISOString();
+  const mtime = statSync4(file).mtime.toISOString();
   const s = parseSessionJsonl(readFileSync4(file, "utf8"), mtime);
   return {
     conversation_id: convId,
@@ -11044,18 +11631,18 @@ function getLocalConversation(contextRoot, convId) {
 }
 function listLocalConversations(contextRoot) {
   const dir = localSessionDir(contextRoot);
-  if (!existsSync7(dir))
+  if (!existsSync8(dir))
     return { conversations: [], total: 0 };
   const summaries = [];
   for (const f of readdirSync(dir).filter((f2) => f2.endsWith(".jsonl"))) {
-    const path = join8(dir, f);
+    const path = join12(dir, f);
     let text;
     try {
       text = readFileSync4(path, "utf8");
     } catch {
       continue;
     }
-    const mtime = statSync3(path).mtime.toISOString();
+    const mtime = statSync4(path).mtime.toISOString();
     const s = parseSessionJsonl(text, mtime);
     if (!s.id)
       continue;
@@ -11120,12 +11707,12 @@ var conversationsCommand = {
 };
 
 // dist/commands/conversation.js
-import { join as join10 } from "node:path";
+import { join as join14 } from "node:path";
 
 // dist/local-agent.js
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync8, mkdirSync as mkdirSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join9 } from "node:path";
+import { existsSync as existsSync9, mkdirSync as mkdirSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join13 } from "node:path";
 import readline from "node:readline";
 var NON_AGENT_TYPES = /* @__PURE__ */ new Set(["response", "extension_ui_request"]);
 function harvestWorkspace(tools) {
@@ -11178,8 +11765,8 @@ function deriveConversationName(message) {
 }
 function ensureSessionDir(dir) {
   mkdirSync3(dir, { recursive: true });
-  const ignore = join9(dir, ".gitignore");
-  if (!existsSync8(ignore))
+  const ignore = join13(dir, ".gitignore");
+  if (!existsSync9(ignore))
     writeFileSync3(ignore, "*\n");
 }
 async function* runLocalTurn(opts) {
@@ -11472,7 +12059,7 @@ async function cmdSendLocal(flags2, output) {
     return 1;
   }
   const repoPath = typeof flags2.context === "string" ? flags2.context : process.cwd();
-  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join10(repoPath, ".pi", "sessions");
+  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join14(repoPath, ".pi", "sessions");
   const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
   const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
   const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
@@ -11732,7 +12319,7 @@ var nodeCommand = {
 
 // dist/commands/search.js
 import { readFileSync as readFileSync5 } from "node:fs";
-import { join as join11 } from "node:path";
+import { join as join15 } from "node:path";
 
 // dist/search.js
 var K1 = 1.2;
@@ -11823,7 +12410,7 @@ var DEFAULT_LIMIT = 20;
 function* readDocs(root, paths) {
   for (const path of paths) {
     try {
-      yield { path, content: readFileSync5(join11(root, path), "utf-8") };
+      yield { path, content: readFileSync5(join15(root, path), "utf-8") };
     } catch {
       continue;
     }
@@ -12041,13 +12628,13 @@ var shareCommand = {
 };
 
 // dist/auth/session-state.js
-import { existsSync as existsSync9, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync10, unlinkSync as unlinkSync2 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
-import { join as join12 } from "node:path";
-var SESSION_FILE = join12(homedir4(), ".ideaspaces", "session.json");
+import { join as join16 } from "node:path";
+var SESSION_FILE = join16(homedir4(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
-    if (existsSync9(SESSION_FILE))
+    if (existsSync10(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -12088,6 +12675,7 @@ var topLevel = [
   writeCommand,
   commitCommand,
   changeCommand,
+  navigateCommand,
   statusCommand,
   timesCommand,
   shareCommand,

@@ -21231,6 +21231,25 @@ server.tool(
   }
 );
 server.tool(
+  "is_navigate",
+  "Re-derive orientation at a position \u2014 the fractal contract (foundation + the deepest guide/purpose/now along the path), tree, git-state, and drift for that branch. Read-only: it does NOT change the working directory; Read/Edit/Bash still take explicit paths. Use when you move into a subtree (e.g. a nested space) and want its contract, or to re-orient mid-session.",
+  {
+    path: external_exports.string().optional().describe('Target position: relative to cwd or absolute. Omit or "." to orient at the current directory.'),
+    cwd: cwdField
+  },
+  async ({ path, cwd }) => {
+    const r = await cli(["--json", "navigate", path ?? "."], void 0, cwd);
+    if (r.code !== 0) return fail(r.err.trim() || r.out.trim() || `Exit ${r.code}`);
+    let text;
+    try {
+      text = JSON.parse(r.out).text;
+    } catch {
+      return fail(`Could not parse navigate output: ${r.out.trim()}`);
+    }
+    return ok(typeof text === "string" && text ? text : "No _agent/ contract resolves at this position.");
+  }
+);
+server.tool(
   "is_pull",
   "Integrate remote changes into the local space (fetch + rebase/merge). Never pushes. Refuses to integrate while staged captures are uncommitted or the tree is dirty. Use dry_run to preview without mutating.",
   {
