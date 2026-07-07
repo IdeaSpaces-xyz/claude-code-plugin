@@ -7222,7 +7222,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument3(source, options = {}) {
+    function parseDocument4(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -7248,7 +7248,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver && typeof reviver === "object") {
         options = reviver;
       }
-      const doc = parseDocument3(src, options);
+      const doc = parseDocument4(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning) => log.warn(doc.options.logLevel, warning));
@@ -7284,7 +7284,7 @@ var require_public_api = __commonJS({
     }
     exports.parse = parse;
     exports.parseAllDocuments = parseAllDocuments;
-    exports.parseDocument = parseDocument3;
+    exports.parseDocument = parseDocument4;
     exports.stringify = stringify;
   }
 });
@@ -8463,6 +8463,9 @@ function saveSpace(absolutePath, record) {
 function findSpaceFor(absolutePath) {
   return loadSpaces()[resolve2(absolutePath)] ?? null;
 }
+function listClones() {
+  return Object.entries(loadSpaces()).map(([path, record]) => ({ path, record }));
+}
 function removeSpace(absolutePath) {
   const key = resolve2(absolutePath);
   const map = loadSpaces();
@@ -8481,7 +8484,7 @@ function removeSpace(absolutePath) {
 import { readFile } from "node:fs/promises";
 import { relative as relative2 } from "node:path";
 
-// node_modules/@ideaspaces/sdk/dist/frontmatter.js
+// node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
 var DELIM = "---";
 function stripFrontmatter(content) {
@@ -8573,8 +8576,6 @@ function composeFrontmatter(fm) {
   const lines = [DELIM];
   if (fm.name !== void 0)
     lines.push(`name: ${escapeScalar(fm.name)}`);
-  if (fm.node_id !== void 0)
-    lines.push(`node_id: ${escapeScalar(fm.node_id)}`);
   if (fm.summary !== void 0)
     lines.push(`summary: ${escapeScalar(fm.summary)}`);
   if (fm.tags?.length)
@@ -8631,7 +8632,7 @@ function frontmatterBlock(content) {
   return null;
 }
 
-// node_modules/@ideaspaces/sdk/dist/git.js
+// node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 function runGit2(repoRoot2, args2) {
   return new Promise((resolve9) => {
@@ -8647,6 +8648,8 @@ function runGit2(repoRoot2, args2) {
 async function gitState(repoRoot2) {
   const top = await runGit2(repoRoot2, ["rev-parse", "--show-toplevel"]);
   const root = top.ok ? top.out.trim() : repoRoot2;
+  const headRes = await runGit2(root, ["rev-parse", "--verify", "HEAD"]);
+  const headSha2 = headRes.ok ? headRes.out.trim() || null : null;
   const branchRes = await runGit2(root, ["rev-parse", "--abbrev-ref", "HEAD"]);
   const branchRaw = branchRes.ok ? branchRes.out.trim() : "";
   const branch = !branchRaw || branchRaw === "HEAD" ? null : branchRaw;
@@ -8689,13 +8692,13 @@ async function gitState(repoRoot2) {
       }
     }
   }
-  return { repoRoot: root, branch, ahead, behind, dirty, untrackedInTrackedDirs };
+  return { repoRoot: root, headSha: headSha2, branch, ahead, behind, dirty, untrackedInTrackedDirs };
 }
 
-// node_modules/@ideaspaces/sdk/dist/stale-docs.js
+// node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
 
-// node_modules/@ideaspaces/sdk/dist/skill-catalog.generated.js
+// node_modules/@ideaspaces/protocol/dist/skill-catalog.generated.js
 var SKILL_CATALOG = {
   "awareness": `---
 name: awareness
@@ -8961,7 +8964,7 @@ Persist to \`_agent/repo-context.md\`.
   "writing": '---\nname: writing\ndescription: >\n  Writing standard for Notes. Structure for retrieval, summaries for discovery,\n  entities for connection. Use when creating or substantially revising Notes,\n  or when asked "write this well", "capture this", "create a Note about".\n  Derived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n---\n<!-- Ported from sw_space/resources/skills/writing.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->\n\n# Writing Standard\n\nNotes that compound follow these principles. They\'re functional requirements for knowledge that works \u2014 clear writing produces clean vectors, dense summaries drive discovery, structured sections enable precise retrieval.\n\nDerived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n\n## Summary Is Everything\n\nThe `summary` field is the most important thing you write. It\'s what search results show. It\'s what shows when browsing the tree. It\'s what loads in awareness context. Write it like the first thing someone reads \u2014 because it is.\n\nTwo sentences max. Dense. Immediate orientation. "What is this and why does it matter." Early tokens carry disproportionate influence on the embedding vector.\n\n## Conciseness (Strunk & White)\n\n"Omit needless words." Every word in a Note earns its place.\n\n| Padded | Clean |\n|--------|-------|\n| "The question as to whether" | "Whether" |\n| "This is a company that" | "This company" |\n| "It is important to note that" | (delete \u2014 just state it) |\n| "In terms of revenue growth" | "Revenue grew" |\n\nActive voice over passive. "The startup was analyzed" \u2192 "We analyzed the startup." Passive only when the actor is unknown or irrelevant.\n\n## Clarity (Zinsser)\n\n"Clear thinking becomes clear writing." If you can\'t write it clearly, you don\'t understand it yet.\n\n- Strip every sentence to its cleanest components\n- Clutter words add nothing: "basically," "actually," "in order to," "at this point in time"\n- The first paragraph orients the reader immediately \u2014 if someone reads only the summary, they know what this is about\n\n## Concreteness\n\nSpecifics cluster with related specifics in vector space. Abstractions diffuse.\n\n| Abstract | Concrete |\n|----------|----------|\n| "Significant growth" | "Revenue grew 40% in Q3" |\n| "Strong team" | "3 ex-Google engineers, 2 successful exits" |\n| "Large market" | "$4.2B TAM, growing 25% annually" |\n\nPrefer the specific to the general, the definite to the vague. Concrete facts can be abstracted later. You can\'t recover specifics from abstractions.\n\n## Objectivity (Kovach & Rosenstiel)\n\nDistinguish fact from interpretation. Never blend them.\n\n| Type | Example |\n|------|---------|\n| Fact | "Raised $10M Series A in March 2025" |\n| Interpretation | "The funding suggests investor confidence" |\n| Claim (attributed) | "The CEO states they are \'market leaders\'" |\n\nEvery claim traces to a source. "According to the landing page..." or "The pitch deck states..." \u2014 the reader knows provenance.\n\n**What the agent does NOT do:** verify claims, add information not in the source, editorialize ("impressive team"), fill gaps with plausible content. If the source doesn\'t mention revenue, note the absence \u2014 don\'t guess.\n\n## Sections Are the Semantic Fingerprint\n\nEach `## heading` creates a vector centroid. Well-scoped sections = precise retrieval.\n\n- A Note with five distinct sections has a 5-dimensional semantic fingerprint\n- A wall of text collapses to one dimension \u2014 hard to find, hard to compare\n- Each section makes a complete point independently\n- Headings are contracts \u2014 "Team Analysis" contains team analysis, not market commentary\n- Target: 3-10 paragraphs per section. Too short = insufficient signal. Too long = diluted topic.\n\nProgressive disclosure: Title \u2192 Summary \u2192 Sections. Each level complete at its depth.\n\n## Primary Attachment\n\nUse `attached_to` for the one thing this Note is primarily about \u2014 like putting a sticky note on an object. It is singular: choose zero or one primary anchor.\n\n- Company/org entity: `hostname:acme.com`\n- Person entity: `person:alice`\n- Agent entity: `agent:assistant`\n- External URL/document: `web_page:https://example.com/report.pdf`\n- Another Note: `note:n_abc123def456`\n- Another non-Note Node in this Space: `node:n_def456abc789`\n\nIf the Note mentions several things, don\'t put all of them in `attached_to`. Choose the primary anchor, split the Note, use tags, or link in prose. Use `references` only for hard source/provenance nodes.\n\n## Cross-Note Links\n\nUse standard markdown links with relative paths for reader navigation. They are portable across editors, Obsidian, print/exports, and plain LLM context.\n\n```markdown\nSee [Acme profile](../companies/acme.md) for background.\nSee [Market map](../markets/README.md) for the branch overview.\n```\n\nPath links are user-facing handles. They may break when the target is renamed unless the editor/tool rewrites links; use editor rename refactors when available. For durable platform references outside portable prose, use `/n/{node_id}` URLs.\n\nExisting inline `node:n_...` links remain resolvable, but don\'t write them as the default prose link form. Inline links are reader navigation, not provenance. They do not populate `references` or `referenced_by`.\n\nWhen renaming a Note and heavily rewriting it, commit the rename separately from the rewrite. Git rename detection is similarity-based; a rename plus large content change in one commit can lose node identity.\n\n## Sources and References\n\nUse `references` only for hard sources: the small set of node IDs this Note was produced from or grounded in. Perspective outputs and synthesis Notes use `references` for their input Notes. If a Note merely mentions or points to another Note, use an inline markdown link instead.\n\n## Sentence-Level Mechanics\n\n- **Put emphatic words at the end.** "In Q3, revenue grew 40%" not "Revenue is what grew 40% in Q3"\n- **Keep related words together.** Don\'t separate subject and verb with long interruptions\n- **Parallel construction.** "Fast, reliable, and affordable" not "speed, being reliable, and costs less"\n- **One idea per sentence.** Most of the time, two sentences are clearer than one compound one\n\n## Common Failure Modes\n\n- **Throat-clearing.** "Before we dive into the analysis..." \u2014 delete, start with the analysis\n- **Hedge stacking.** "It seems like it might possibly be somewhat relevant" \u2014 state or acknowledge uncertainty once\n- **Elegant variation.** If it\'s a "startup" in paragraph one, don\'t call it a "venture" in paragraph two for variety. Consistency aids retrieval.\n- **Nominalization.** "Make a determination" \u2192 "determine." "Performed an analysis" \u2192 "analyzed."\n- **Weasel words.** "Some experts say," "studies show" \u2014 without attribution, these are noise\n\n## The Standard\n\nKnowledge capture succeeds when:\n\n1. A human can scan the output and orient in seconds\n2. A machine can embed the output and retrieve it precisely\n3. Every sentence traces to a source or is explicitly marked as interpretation\n4. Nothing is added that wasn\'t in the input\n5. Nothing important from the input is lost without acknowledgment\n6. The reader trusts the capture because the method is transparent\n'
 };
 
-// node_modules/@ideaspaces/sdk/dist/skills.js
+// node_modules/@ideaspaces/protocol/dist/skills.js
 async function listSkills() {
   return Object.keys(SKILL_CATALOG).sort().map((name) => ({ name, description: extractDescription(SKILL_CATALOG[name]) }));
 }
@@ -8974,6 +8977,292 @@ async function readSkill(name) {
     throw new Error(`Unknown skill: ${name}`);
   return { name, description: extractDescription(content), content };
 }
+
+// node_modules/@ideaspaces/protocol/dist/conformance.js
+var import_yaml3 = __toESM(require_dist(), 1);
+
+// node_modules/@ideaspaces/protocol/dist/trailers.js
+var CHANGE_ID_PATTERN = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
+var CANONICAL_KEYS = {
+  op: "Op",
+  conversation: "Conversation",
+  turn: "Turn",
+  coAuthoredBy: "Co-authored-by",
+  changeId: "Change-Id"
+};
+var FIELD_BY_KEY = {
+  op: "op",
+  conversation: "conversation",
+  turn: "turn",
+  "co-authored-by": "coAuthoredBy",
+  "change-id": "changeId"
+};
+var TRAILER_LINE = /^([A-Za-z][A-Za-z0-9-]*):[ \t]*(.*)$/;
+var SUFFIX_LENGTH = 4;
+var BASE36 = "0123456789abcdefghijklmnopqrstuvwxyz";
+function isValidChangeId(id) {
+  return CHANGE_ID_PATTERN.test(id);
+}
+function slugify(text) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function formatChangeId(slug, suffix) {
+  const normSuffix = suffix.toLowerCase();
+  if (!/^[a-z0-9]+$/.test(normSuffix)) {
+    throw new Error(`invalid Change-Id suffix: ${JSON.stringify(suffix)}`);
+  }
+  const normSlug = slugify(slug);
+  const id = normSlug ? `chg_${normSlug}-${normSuffix}` : `chg_${normSuffix}`;
+  if (!isValidChangeId(id)) {
+    throw new Error(`could not format a valid Change-Id from ${JSON.stringify({ slug, suffix })}`);
+  }
+  return id;
+}
+function mintChangeId(text, rng = randomSuffix) {
+  return formatChangeId(text, rng());
+}
+function randomSuffix() {
+  const bytes = new Uint8Array(SUFFIX_LENGTH);
+  globalThis.crypto.getRandomValues(bytes);
+  let out = "";
+  for (const b of bytes)
+    out += BASE36[b % 36];
+  return out;
+}
+function parseTrailers(message) {
+  const block = findTrailerBlock(message.split("\n"));
+  const result = {};
+  if (!block)
+    return result;
+  for (const line of block.lines) {
+    const m = TRAILER_LINE.exec(line);
+    if (!m)
+      continue;
+    const field = FIELD_BY_KEY[m[1].toLowerCase()];
+    if (!field)
+      continue;
+    const value = m[2].trim();
+    if (field === "coAuthoredBy") {
+      (result.coAuthoredBy ??= []).push(value);
+    } else if (field === "turn") {
+      const n = Number.parseInt(value, 10);
+      if (Number.isInteger(n))
+        result.turn = n;
+    } else if (field === "op") {
+      result.op = value;
+    } else if (field === "conversation") {
+      result.conversation = value;
+    } else if (field === "changeId") {
+      result.changeId = value;
+    }
+  }
+  return result;
+}
+function appendTrailers(message, add) {
+  if (add.changeId !== void 0)
+    assertChangeId(add.changeId);
+  const lines = message.split("\n");
+  const block = findTrailerBlock(lines);
+  const existing = block ? parseTrailers(message) : {};
+  const additions = diffTrailers(existing, add);
+  if (additions.length === 0)
+    return message;
+  if (block) {
+    const before = lines.slice(0, block.end + 1);
+    const after = lines.slice(block.end + 1);
+    return [...before, ...additions, ...after].join("\n");
+  }
+  let end = lines.length - 1;
+  while (end >= 0 && lines[end].trim() === "")
+    end--;
+  const body = lines.slice(0, end + 1);
+  const sep = body.length > 0 ? [""] : [];
+  return [...body, ...sep, ...additions].join("\n");
+}
+function findTrailerBlock(rawLines) {
+  let end = rawLines.length - 1;
+  while (end >= 0 && rawLines[end].trim() === "")
+    end--;
+  if (end < 0)
+    return null;
+  let above = end;
+  while (above >= 0 && TRAILER_LINE.test(rawLines[above]))
+    above--;
+  const start = above + 1;
+  if (start > end)
+    return null;
+  if (above >= 0 && rawLines[above].trim() !== "")
+    return null;
+  return { start, end, lines: rawLines.slice(start, end + 1) };
+}
+function diffTrailers(existing, add) {
+  const out = [];
+  if (add.op !== void 0)
+    pushSingle(out, CANONICAL_KEYS.op, existing.op, add.op);
+  if (add.conversation !== void 0) {
+    pushSingle(out, CANONICAL_KEYS.conversation, existing.conversation, add.conversation);
+  }
+  if (add.turn !== void 0) {
+    pushSingle(out, CANONICAL_KEYS.turn, existing.turn === void 0 ? void 0 : String(existing.turn), String(add.turn));
+  }
+  for (const ca of add.coAuthoredBy ?? []) {
+    if (!(existing.coAuthoredBy ?? []).includes(ca)) {
+      out.push(`${CANONICAL_KEYS.coAuthoredBy}: ${ca}`);
+    }
+  }
+  if (add.changeId !== void 0) {
+    pushSingle(out, CANONICAL_KEYS.changeId, existing.changeId, add.changeId);
+  }
+  return out;
+}
+function pushSingle(out, key, existingVal, addVal) {
+  if (existingVal !== void 0) {
+    if (existingVal !== addVal) {
+      throw new Error(`trailer conflict on ${key}: existing ${JSON.stringify(existingVal)} != ${JSON.stringify(addVal)}`);
+    }
+    return;
+  }
+  out.push(`${key}: ${addVal}`);
+}
+function assertChangeId(id) {
+  if (!isValidChangeId(id)) {
+    throw new Error(`invalid Change-Id: ${JSON.stringify(id)} (must match ${CHANGE_ID_PATTERN})`);
+  }
+}
+
+// node_modules/@ideaspaces/sdk/dist/keeper-events.js
+function emptyWorkspaceSurface() {
+  return { created: [], modified: [], deleted: [], read: [], mentioned: [] };
+}
+function zeroUsage(modelTier) {
+  return {
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_read_tokens: 0,
+    cache_creation_tokens: 0,
+    model_tier: modelTier,
+    total_tokens: 0,
+    cost_usd: 0
+  };
+}
+
+// node_modules/@ideaspaces/sdk/dist/agent-to-keeper.js
+var PREVIEW_LIMIT = 500;
+function defaultToolResultPreview(result) {
+  let text;
+  const content = result?.content;
+  if (Array.isArray(content)) {
+    text = content.map((c) => c && typeof c === "object" && "text" in c ? String(c.text) : "").filter(Boolean).join("\n");
+    if (!text)
+      text = JSON.stringify(result);
+  } else if (typeof result === "string") {
+    text = result;
+  } else {
+    text = JSON.stringify(result) ?? "";
+  }
+  return text.length > PREVIEW_LIMIT ? `${text.slice(0, PREVIEW_LIMIT)}\u2026` : text;
+}
+var KeeperTranslator = class {
+  cfg;
+  responseText = "";
+  iterations = 0;
+  started = false;
+  ended = false;
+  toolCalls = [];
+  invocations = [];
+  toolStart = /* @__PURE__ */ new Map();
+  constructor(config) {
+    this.cfg = {
+      position: "",
+      now: () => Date.now(),
+      harvestWorkspace: () => emptyWorkspaceSurface(),
+      finalUsage: () => zeroUsage(config.modelTier),
+      toolResultPreview: defaultToolResultPreview,
+      ...config
+    };
+  }
+  /** Translate one pi event into zero-or-more Keeper events. */
+  translate(ev) {
+    switch (ev.type) {
+      case "agent_start": {
+        if (this.started)
+          return [];
+        this.started = true;
+        return [
+          { type: "message_start", conversation_id: this.cfg.conversationId, model_tier: this.cfg.modelTier }
+        ];
+      }
+      case "turn_start":
+        this.iterations += 1;
+        return [];
+      case "message_update": {
+        const a = ev.assistantMessageEvent;
+        if (a.type === "thinking_delta" && a.delta)
+          return [{ type: "thinking_delta", delta: a.delta }];
+        if (a.type === "text_delta" && a.delta) {
+          this.responseText += a.delta;
+          return [{ type: "text_delta", delta: a.delta }];
+        }
+        return [];
+      }
+      case "tool_execution_start":
+        this.toolStart.set(ev.toolCallId, { args: ev.args, at: this.cfg.now() });
+        return [{ type: "tool_start", tool_name: ev.toolName, tool_call_id: ev.toolCallId, tool_args: ev.args }];
+      case "tool_execution_end": {
+        const s = this.toolStart.get(ev.toolCallId);
+        const args2 = s?.args ?? {};
+        const duration_ms = s ? Math.max(0, this.cfg.now() - s.at) : 0;
+        this.toolStart.delete(ev.toolCallId);
+        this.toolCalls.push({ name: ev.toolName, args: args2, duration_ms, is_error: ev.isError });
+        this.invocations.push({ name: ev.toolName, args: args2, result: ev.result, isError: ev.isError });
+        return [
+          {
+            type: "tool_result",
+            tool_call_id: ev.toolCallId,
+            tool_name: ev.toolName,
+            result_preview: this.cfg.toolResultPreview(ev.result),
+            is_error: ev.isError,
+            duration_ms
+          }
+        ];
+      }
+      case "agent_end": {
+        if (this.ended)
+          return [];
+        this.ended = true;
+        const usage = this.cfg.finalUsage();
+        const result = {
+          response: this.responseText,
+          usage,
+          tool_calls: this.toolCalls,
+          iterations: this.iterations,
+          position: this.cfg.position,
+          workspace: this.cfg.harvestWorkspace(this.invocations)
+        };
+        return [
+          { type: "message_delta", usage },
+          { type: "turn_complete", result }
+        ];
+      }
+      default:
+        return [];
+    }
+  }
+  /** Terminal: the run was aborted. The caller detects this from the RPC layer. */
+  cancelled(reason) {
+    this.ended = true;
+    return { type: "cancelled", reason };
+  }
+  /** Terminal: the run errored. The caller detects this from the RPC layer. */
+  error(errorType, message) {
+    this.ended = true;
+    return { type: "error", error_type: errorType, message };
+  }
+  /** Whether a terminal event (turn_complete/cancelled/error) has been emitted. */
+  get isEnded() {
+    return this.ended;
+  }
+};
 
 // dist/frontmatter-report.js
 async function scanMarkdownFrontmatterSyntaxFiles(files) {
@@ -9066,7 +9355,7 @@ function renderSizeProblems(offenders) {
   ].join("\n");
 }
 var SESSION_EXPIRED_MSG = "Your IdeaSpaces session has expired. Run `ideaspaces login` to refresh, then retry publish.";
-function slugify(input) {
+function slugify2(input) {
   let s = input.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   if (s.length === 0)
     return "space";
@@ -9194,7 +9483,7 @@ var publishCommand = {
       const folderName = basename2(cwd);
       const name = flags2.name?.toString() || folderName;
       const slugInput = flags2.slug?.toString() || folderName;
-      const slug = slugify(slugInput);
+      const slug = slugify2(slugInput);
       if (slug !== slugInput) {
         output.log(`Using slug: ${slug} (normalized from "${slugInput}")`);
       }
@@ -9564,13 +9853,55 @@ function healthIssues(content) {
 
 // dist/commands/commit.js
 import { resolve as resolve4 } from "node:path";
+var OP_SET = {
+  create: true,
+  update: true,
+  move: true,
+  delete: true,
+  restructure: true,
+  capture: true
+};
+var OPS = Object.keys(OP_SET);
+var PRINCIPAL_PREFIX = /^(person|agent|node):/;
+function applyTrailerFlags(message, flags2) {
+  const trailers = {};
+  const op = typeof flags2.op === "string" ? flags2.op.trim() : "";
+  if (op) {
+    if (!(op in OP_SET)) {
+      throw new Error(`Invalid --op "${op}". Expected one of: ${OPS.join(", ")}.`);
+    }
+    trailers.op = op;
+  }
+  const changeId = typeof flags2["change-id"] === "string" ? flags2["change-id"].trim() : "";
+  if (changeId) {
+    if (!isValidChangeId(changeId)) {
+      throw new Error(`Invalid --change-id "${changeId}". Expected a chg_\u2026 id (mint with: ideaspaces change new).`);
+    }
+    trailers.changeId = changeId;
+  }
+  const conversation = typeof flags2.conversation === "string" ? flags2.conversation.trim() : "";
+  if (conversation)
+    trailers.conversation = conversation;
+  const coAuthor = typeof flags2["co-author"] === "string" ? flags2["co-author"] : "";
+  const coAuthors = coAuthor.split(",").map((s) => s.trim()).filter(Boolean);
+  for (const a of coAuthors) {
+    if (!PRINCIPAL_PREFIX.test(a)) {
+      throw new Error(`Invalid --co-author "${a}". Expected a person:/agent:/node: principal (e.g. agent:me-claude).`);
+    }
+  }
+  if (coAuthors.length)
+    trailers.coAuthoredBy = coAuthors;
+  const anySet = trailers.op || trailers.changeId || trailers.conversation || trailers.coAuthoredBy;
+  return anySet ? appendTrailers(message, trailers) : message;
+}
 var commitCommand = {
   name: "commit",
   description: "Save staged captures \u2014 commits only the paths you name",
-  usage: 'ideaspaces commit -m "<message>" <path>... | --all',
+  usage: 'ideaspaces commit -m "<message>" <path>... | --all [--op <op>] [--change-id <chg_\u2026>] [--conversation <id>] [--co-author <a[,b]>]',
   examples: [
     'ideaspaces commit -m "Capture auth decision" notes/auth.md',
-    'ideaspaces commit -m "Save notes" --all   # all staged markdown / _agent/ paths'
+    'ideaspaces commit -m "Save notes" --all   # all staged markdown / _agent/ paths',
+    'ideaspaces commit -m "Capture" notes/auth.md --op capture --change-id chg_auth-1a2b --conversation sess_9 --co-author "agent:me-claude"'
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
@@ -9613,10 +9944,17 @@ var commitCommand = {
       output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --all.');
       return 1;
     }
+    let finalMessage;
+    try {
+      finalMessage = applyTrailerFlags(message, flags2);
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
     await ensureLocalIdentity(root);
     let sha;
     try {
-      sha = commitPaths(message, paths, root);
+      sha = commitPaths(finalMessage, paths, root);
     } catch (err) {
       if (err instanceof GitError) {
         output.error(`Commit failed: ${err.message}`);
@@ -9626,6 +9964,39 @@ var commitCommand = {
     }
     output.result({ commit_sha: sha, committed_paths: paths }, `Committed ${paths.length} path(s): ${sha}`);
     return 0;
+  }
+};
+
+// dist/commands/change.js
+var USAGE = "ideaspaces change new [<handle>] [--handle <text>]";
+function resolveHandle(flags2, args2) {
+  const fromFlag = typeof flags2.handle === "string" ? flags2.handle : "";
+  return (fromFlag || args2[0] || "").trim();
+}
+function cmdNew(args2, flags2, output) {
+  const changeId = mintChangeId(resolveHandle(flags2, args2));
+  if (!isValidChangeId(changeId)) {
+    output.error(`Minted an invalid Change-Id: ${changeId}`);
+    return 1;
+  }
+  output.result({ change_id: changeId }, changeId);
+  return 0;
+}
+var changeCommand = {
+  name: "change",
+  description: "Mint a Change-Id for a decision spanning multiple commits/repos",
+  usage: USAGE,
+  examples: [
+    'ideaspaces change new "auth session model"',
+    "ideaspaces change new --handle surface-collapse --json"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const sub = args2[0];
+    if (sub === "new")
+      return cmdNew(args2.slice(1), flags2, output);
+    output.error(`Usage: ${USAGE}`);
+    return 1;
   }
 };
 
@@ -10022,6 +10393,281 @@ var reposCommand = {
   }
 };
 
+// dist/commands/catalog.js
+function deriveCatalog(me, clones, statusByPath) {
+  const syncOf = (path) => {
+    const st = statusByPath.get(path);
+    if (!st)
+      return {};
+    if ("failed" in st)
+      return { statusFailed: true };
+    return { sync: { branch: st.branch, ahead: st.ahead, behind: st.behind, dirty: st.dirty } };
+  };
+  if (!me) {
+    return clones.map((c) => ({
+      repo_id: c.record.repo_id,
+      slug: c.record.slug,
+      hostname: null,
+      namespace: c.record.namespace,
+      location: "available",
+      clone: { path: c.path },
+      ...syncOf(c.path)
+    }));
+  }
+  const clonesByRepo = /* @__PURE__ */ new Map();
+  for (const c of clones) {
+    const list = clonesByRepo.get(c.record.repo_id) ?? [];
+    list.push(c);
+    clonesByRepo.set(c.record.repo_id, list);
+  }
+  const entries = [];
+  const used = /* @__PURE__ */ new Set();
+  for (const repo of me.repos) {
+    const namespace = repo.hostname ?? me.username ?? "";
+    const matching = clonesByRepo.get(repo.repo_id) ?? [];
+    if (matching.length === 0) {
+      entries.push({
+        repo_id: repo.repo_id,
+        slug: repo.slug,
+        hostname: repo.hostname,
+        namespace,
+        role: repo.role,
+        member_count: repo.member_count,
+        location: "online-only"
+      });
+      continue;
+    }
+    for (const c of matching) {
+      used.add(c.path);
+      entries.push({
+        repo_id: repo.repo_id,
+        slug: repo.slug,
+        hostname: repo.hostname,
+        namespace,
+        role: repo.role,
+        member_count: repo.member_count,
+        location: "available",
+        clone: { path: c.path },
+        ...syncOf(c.path)
+      });
+    }
+  }
+  for (const c of clones) {
+    if (used.has(c.path))
+      continue;
+    entries.push({
+      repo_id: c.record.repo_id,
+      slug: c.record.slug,
+      hostname: null,
+      namespace: c.record.namespace,
+      location: "local-only",
+      clone: { path: c.path },
+      ...syncOf(c.path)
+    });
+  }
+  return entries;
+}
+function stateLabel(entry) {
+  if (entry.statusFailed)
+    return "status unknown";
+  if (!entry.sync)
+    return "";
+  const { ahead, behind, dirty } = entry.sync;
+  let base;
+  if (ahead == null || behind == null)
+    base = "local-only";
+  else if (ahead > 0 && behind > 0)
+    base = `diverged +${ahead}/-${behind}`;
+  else if (ahead > 0)
+    base = `ahead ${ahead}`;
+  else if (behind > 0)
+    base = `behind ${behind}`;
+  else
+    base = "synced";
+  return dirty ? `${base}, dirty` : base;
+}
+function formatHuman(entries, notes) {
+  const out = [...notes];
+  if (entries.length === 0) {
+    out.push("No repos \u2014 clone one (`ideaspaces clone`) or create a space.");
+    return out.join("\n");
+  }
+  const groups = [
+    ["available", "available:"],
+    ["online-only", "online-only (pullable):"],
+    ["local-only", "local-only:"]
+  ];
+  for (const [loc, header] of groups) {
+    const items = entries.filter((e) => e.location === loc);
+    if (!items.length)
+      continue;
+    if (out.length)
+      out.push("");
+    out.push(header);
+    for (const e of items) {
+      if (loc === "online-only")
+        out.push(`  ${e.slug} (${e.namespace})`);
+      else
+        out.push(`  ${e.slug} \u2014 ${stateLabel(e)}${e.clone ? `  ${e.clone.path}` : ""}`);
+    }
+  }
+  return out.join("\n");
+}
+var catalogCommand = {
+  name: "catalog",
+  description: "One view of your repos \u2014 local clones and remote spaces, with sync state",
+  usage: "ideaspaces catalog [--fetch] [--json]",
+  examples: [
+    "ideaspaces catalog",
+    "ideaspaces catalog --json",
+    "ideaspaces catalog --fetch  # refresh remotes first, so ahead/behind reflect the server"
+  ],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const config = loadConfig();
+    let me = null;
+    const notes = [];
+    if (config) {
+      try {
+        me = await fetchAuthMe(config);
+      } catch (err) {
+        notes.push(err instanceof UnauthorizedError ? "Session expired \u2014 showing local clones only. Run `ideaspaces login`." : `Could not reach the server (${err instanceof Error ? err.message : String(err)}) \u2014 showing local clones only.`);
+      }
+    } else {
+      notes.push("Not logged in \u2014 showing local clones only. `ideaspaces login` adds the remote tier.");
+    }
+    const clones = listClones();
+    if (flags2.fetch) {
+      let fetchFailed = 0;
+      for (const c of clones) {
+        try {
+          fetch2(c.path);
+        } catch {
+          fetchFailed++;
+        }
+      }
+      if (fetchFailed > 0) {
+        notes.push(`${fetchFailed} of ${clones.length} clone(s) could not be fetched \u2014 their ahead/behind may be stale.`);
+      }
+    }
+    const statusByPath = /* @__PURE__ */ new Map();
+    await Promise.all(clones.map(async (c) => {
+      try {
+        const gs = await gitState(c.path);
+        statusByPath.set(c.path, { branch: gs.branch, ahead: gs.ahead, behind: gs.behind, dirty: gs.dirty });
+      } catch {
+        statusByPath.set(c.path, { failed: true });
+      }
+    }));
+    const entries = deriveCatalog(me, clones, statusByPath);
+    output.result({ logged_in: me !== null, username: me?.username ?? null, notes, entries }, formatHuman(entries, notes));
+    return 0;
+  }
+};
+
+// dist/commands/pi-status.js
+import { spawnSync as spawnSync4 } from "node:child_process";
+import { existsSync as existsSync6, readFileSync as readFileSync3 } from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { basename as basename3, join as join7 } from "node:path";
+function derivePiStatus(input) {
+  const providers = Object.entries(input.auth ?? {}).map(([name, v]) => {
+    const hasCreds = Boolean(v && (v.access || v.refresh));
+    const expiresAt = typeof v?.expires === "number" ? v.expires : null;
+    return { name, hasCreds, expiresAt, expired: expiresAt != null && expiresAt <= input.now };
+  });
+  const configured = providers.some((p) => p.hasCreds);
+  const extensionsResolvable = input.extensions.length > 0 && input.extensions.every((e) => e.resolvable);
+  return {
+    binary: input.binary,
+    providers,
+    configured,
+    extensions: input.extensions,
+    extensionsResolvable,
+    ready: input.binary.present && configured
+  };
+}
+function resolveExtension(path) {
+  const name = basename3(path.replace(/[/\\]+$/, "")) || path;
+  const check = (resolvable) => ({ name, path, resolvable });
+  if (!existsSync6(path))
+    return check(false);
+  if (/\.[cm]?[jt]s$/.test(path))
+    return check(true);
+  const pkgPath = join7(path, "package.json");
+  if (existsSync6(pkgPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync3(pkgPath, "utf8"));
+      const exts = pkg.pi?.extensions;
+      if (Array.isArray(exts) && exts.length > 0)
+        return check(true);
+    } catch {
+    }
+  }
+  return check(existsSync6(join7(path, "index.ts")) || existsSync6(join7(path, "index.js")));
+}
+function readPiAuth(piHome) {
+  const file = join7(piHome, "agent", "auth.json");
+  if (!existsSync6(file))
+    return null;
+  try {
+    return JSON.parse(readFileSync3(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+function probeBinary(piBin) {
+  try {
+    const res = spawnSync4(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
+    if (res.error || res.status !== 0)
+      return { present: false, path: piBin, version: null };
+    const m = /\d+\.\d+\.\d+[\w.-]*/.exec(res.stdout ?? "");
+    return { present: true, path: piBin, version: m ? m[0] : null };
+  } catch {
+    return { present: false, path: piBin, version: null };
+  }
+}
+function formatHuman2(s) {
+  const out = [];
+  out.push(s.binary.present ? `Pi: present${s.binary.version ? ` (${s.binary.version})` : ""} \u2014 ${s.binary.path}` : `Pi: not found (${s.binary.path}). Install pi to enable the local agent.`);
+  if (s.providers.length) {
+    const list = s.providers.map((p) => `${p.name}${!p.hasCreds ? " (no creds)" : p.expired ? " (expired)" : ""}`).join(", ");
+    out.push(`Configured: ${s.configured ? "yes" : "no"} \u2014 providers: ${list}`);
+  } else {
+    out.push("Configured: no \u2014 no providers in ~/.pi/agent/auth.json");
+  }
+  if (s.extensions.length) {
+    const list = s.extensions.map((e) => `${e.name} (${e.resolvable ? "ok" : "missing"})`).join(", ");
+    out.push(`Extensions: ${list}`);
+  } else {
+    out.push("Extensions: none checked \u2014 pass --ext or set IDEASPACES_PI_EXTENSIONS");
+  }
+  out.push(`Ready: ${s.ready ? "yes" : "no"}`);
+  return out.join("\n");
+}
+var piStatusCommand = {
+  name: "pi-status",
+  description: "Is the local pi runtime usable for a local agent? (binary, providers, extensions)",
+  usage: "ideaspaces pi-status [--pi-bin <path>] [--ext <p1,p2>] [--json]",
+  examples: [
+    "ideaspaces pi-status",
+    "ideaspaces pi-status --json",
+    "ideaspaces pi-status --ext /path/pi-is-space,/path/pi-local-context",
+    "IDEASPACES_PI_EXTENSIONS=/path/pi-is-space,/path/pi-local-context ideaspaces pi-status  # env fallback"
+  ],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : "pi";
+    const binary = probeBinary(piBin);
+    const auth = readPiAuth(join7(homedir2(), ".pi"));
+    const extFlag = typeof flags2.ext === "string" ? flags2.ext : process.env.IDEASPACES_PI_EXTENSIONS;
+    const extensions = (extFlag ?? "").split(",").map((s) => s.trim()).filter(Boolean).map(resolveExtension);
+    const status = derivePiStatus({ binary, auth, extensions, now: Date.now() });
+    output.result(status, formatHuman2(status));
+    return 0;
+  }
+};
+
 // dist/commands/clone.js
 import { resolve as resolve6 } from "node:path";
 var cloneCommand = {
@@ -10238,7 +10884,7 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 
 // dist/commands/forget.js
 import { rmSync } from "node:fs";
-import { homedir as homedir2 } from "node:os";
+import { homedir as homedir3 } from "node:os";
 import { dirname as dirname2, resolve as resolve8 } from "node:path";
 var forgetCommand = {
   name: "forget",
@@ -10257,7 +10903,7 @@ var forgetCommand = {
     }
     const dir = resolve8(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve8(homedir2()) || dirname2(dir) === dir)) {
+    if (del && (dir === resolve8(homedir3()) || dirname2(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -10281,17 +10927,169 @@ var forgetCommand = {
   }
 };
 
+// dist/local-conversations.js
+import { existsSync as existsSync7, readdirSync, readFileSync as readFileSync4, statSync as statSync3 } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { join as join8 } from "node:path";
+function localSessionDir(contextRoot) {
+  return join8(contextRoot, ".pi", "sessions");
+}
+function mintConversationId() {
+  return `local-${randomUUID()}`;
+}
+function textOf(content) {
+  if (typeof content === "string")
+    return content;
+  if (!Array.isArray(content))
+    return "";
+  return content.filter((c) => c && typeof c === "object" && c.type === "text").map((c) => String(c.text ?? "")).join("");
+}
+function parseSessionJsonl(text, fallbackTs) {
+  let id = "";
+  let name = null;
+  const messages = [];
+  let preview = "";
+  let count = 0;
+  let lastTs = fallbackTs;
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed)
+      continue;
+    let e;
+    try {
+      e = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+    if (e.type === "session") {
+      if (typeof e.id === "string")
+        id = e.id;
+    } else if (e.type === "session_info") {
+      if (typeof e.name === "string" && e.name.trim())
+        name = e.name;
+    } else if (e.type === "message" && e.message && typeof e.message === "object") {
+      const m = e.message;
+      const created = typeof e.timestamp === "string" ? e.timestamp : void 0;
+      if (created)
+        lastTs = created;
+      const role = m.role;
+      if (role === "user") {
+        const content = textOf(m.content);
+        messages.push({ role: "user", content, created_at: created });
+        if (!preview)
+          preview = content.replace(/\s+/g, " ").trim().slice(0, 120);
+        count += 1;
+      } else if (role === "assistant") {
+        const parts = Array.isArray(m.content) ? m.content : [];
+        const toolCalls = parts.filter((c) => c.type === "toolCall").map((c) => ({
+          id: String(c.id ?? ""),
+          name: String(c.name ?? ""),
+          args: c.arguments ?? {}
+        }));
+        messages.push({
+          role: "assistant",
+          content: textOf(m.content),
+          created_at: created,
+          ...toolCalls.length ? { tool_calls: toolCalls } : {},
+          ...m.usage ? { usage: m.usage } : {}
+        });
+        count += 1;
+      } else if (role === "toolResult") {
+        messages.push({
+          role: "tool",
+          content: textOf(m.content),
+          tool_call_id: typeof m.toolCallId === "string" ? m.toolCallId : void 0,
+          tool_name: typeof m.toolName === "string" ? m.toolName : void 0,
+          is_error: Boolean(m.isError),
+          created_at: created
+        });
+      }
+    }
+  }
+  return { id, name, messages, messageCount: count, preview, updatedAt: lastTs };
+}
+function findSessionFile(dir, convId) {
+  if (!existsSync7(dir))
+    return null;
+  const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
+  const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
+  if (bySuffix)
+    return join8(dir, bySuffix);
+  for (const f of files) {
+    try {
+      const first = readFileSync4(join8(dir, f), "utf8").split("\n", 1)[0];
+      if (JSON.parse(first).id === convId)
+        return join8(dir, f);
+    } catch {
+    }
+  }
+  return null;
+}
+function getLocalConversation(contextRoot, convId) {
+  const file = findSessionFile(localSessionDir(contextRoot), convId);
+  if (!file) {
+    return { conversation_id: convId, repo_id: contextRoot, name: "", history: [], active_turn: null };
+  }
+  const mtime = statSync3(file).mtime.toISOString();
+  const s = parseSessionJsonl(readFileSync4(file, "utf8"), mtime);
+  return {
+    conversation_id: convId,
+    repo_id: contextRoot,
+    name: s.name ?? s.preview ?? "Untitled",
+    history: s.messages,
+    active_turn: null,
+    turn_count: s.messageCount,
+    updated_at: s.updatedAt
+  };
+}
+function listLocalConversations(contextRoot) {
+  const dir = localSessionDir(contextRoot);
+  if (!existsSync7(dir))
+    return { conversations: [], total: 0 };
+  const summaries = [];
+  for (const f of readdirSync(dir).filter((f2) => f2.endsWith(".jsonl"))) {
+    const path = join8(dir, f);
+    let text;
+    try {
+      text = readFileSync4(path, "utf8");
+    } catch {
+      continue;
+    }
+    const mtime = statSync3(path).mtime.toISOString();
+    const s = parseSessionJsonl(text, mtime);
+    if (!s.id)
+      continue;
+    summaries.push({
+      conversation_id: s.id,
+      name: s.name ?? s.preview ?? "Untitled",
+      summary: s.preview,
+      message_count: s.messageCount,
+      status: "idle",
+      updated_at: s.updatedAt
+    });
+  }
+  summaries.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  return { conversations: summaries, total: summaries.length };
+}
+
 // dist/commands/conversations.js
 var conversationsCommand = {
   name: "conversations",
-  description: "List a repo's conversations",
-  usage: "ideaspaces conversations <repo_id> [--json]",
+  description: "List a repo's conversations (--local for the current context)",
+  usage: "ideaspaces conversations <repo_id> [--json] | conversations --local [--context <path>]",
   examples: [
     "ideaspaces conversations repo_abc123",
-    "ideaspaces conversations repo_abc123 --json"
+    "ideaspaces conversations repo_abc123 --json",
+    "ideaspaces conversations --local"
   ],
-  async run(args2, _flags, global2) {
+  async run(args2, flags2, global2) {
     const output = createOutput(global2);
+    if (flags2.local) {
+      const contextRoot = typeof flags2.context === "string" ? flags2.context : process.cwd();
+      const { conversations: conversations2, total: total2 } = listLocalConversations(contextRoot);
+      output.result({ context: contextRoot, conversations: conversations2, total: total2, has_more: false }, conversations2.length ? conversations2.map((c) => `${c.name || "(untitled)"} \u2014 ${c.message_count} message${c.message_count === 1 ? "" : "s"}`).join("\n") : "No local conversations.");
+      return 0;
+    }
     const repoId = args2[0];
     if (!repoId) {
       output.error("Usage: ideaspaces conversations <repo_id>");
@@ -10322,6 +11120,176 @@ var conversationsCommand = {
 };
 
 // dist/commands/conversation.js
+import { join as join10 } from "node:path";
+
+// dist/local-agent.js
+import { spawn as spawn2 } from "node:child_process";
+import { existsSync as existsSync8, mkdirSync as mkdirSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join9 } from "node:path";
+import readline from "node:readline";
+var NON_AGENT_TYPES = /* @__PURE__ */ new Set(["response", "extension_ui_request"]);
+function harvestWorkspace(tools) {
+  const ws = emptyWorkspaceSurface();
+  const add = (arr, p) => {
+    if (typeof p === "string" && p && !arr.includes(p))
+      arr.push(p);
+  };
+  for (const t of tools) {
+    if (t.isError)
+      continue;
+    const path = t.args.path;
+    switch (t.name) {
+      case "is_write":
+        add(ws.modified, path);
+        break;
+      case "is_commit":
+        if (Array.isArray(t.args.paths))
+          for (const p of t.args.paths)
+            add(ws.modified, p);
+        else
+          add(ws.modified, path);
+        break;
+      case "is_navigate":
+      case "read":
+        add(ws.read, path);
+        break;
+      default:
+        break;
+    }
+  }
+  return ws;
+}
+function lastPosition(tools) {
+  for (let i = tools.length - 1; i >= 0; i--) {
+    if (tools[i].name === "is_navigate" && !tools[i].isError) {
+      const p = tools[i].args.path;
+      if (typeof p === "string")
+        return p;
+    }
+  }
+  return "";
+}
+function deriveConversationName(message) {
+  const line = message.split("\n").find((l) => l.trim()) ?? message;
+  const clean = line.replace(/\s+/g, " ").trim();
+  if (!clean)
+    return "Untitled";
+  return clean.length > 60 ? `${clean.slice(0, 57)}\u2026` : clean;
+}
+function ensureSessionDir(dir) {
+  mkdirSync3(dir, { recursive: true });
+  const ignore = join9(dir, ".gitignore");
+  if (!existsSync8(ignore))
+    writeFileSync3(ignore, "*\n");
+}
+async function* runLocalTurn(opts) {
+  const modelTier = opts.modelTier ?? "local";
+  let turnTools = [];
+  const translator = new KeeperTranslator({
+    conversationId: opts.conversationId,
+    modelTier,
+    harvestWorkspace: (tools) => {
+      turnTools = tools;
+      return harvestWorkspace(tools);
+    }
+  });
+  ensureSessionDir(opts.sessionDir);
+  const args2 = [
+    "--mode",
+    "rpc",
+    "--session-id",
+    opts.conversationId,
+    "--session-dir",
+    opts.sessionDir,
+    "-a"
+  ];
+  for (const ext of opts.extensionPaths)
+    args2.push("--extension", ext);
+  if (opts.piModel)
+    args2.push("--model", opts.piModel);
+  const pi = spawn2(opts.piBin ?? "pi", args2, { cwd: opts.repoPath, stdio: ["pipe", "pipe", "pipe"] });
+  let stderr = "";
+  pi.stderr.on("data", (d) => {
+    stderr += String(d);
+  });
+  let aborted = false;
+  const onAbort = () => {
+    aborted = true;
+    try {
+      pi.kill("SIGTERM");
+    } catch {
+    }
+  };
+  if (opts.signal) {
+    if (opts.signal.aborted)
+      onAbort();
+    else
+      opts.signal.addEventListener("abort", onAbort, { once: true });
+  }
+  let sessionName;
+  const send = (obj) => {
+    try {
+      pi.stdin.write(`${JSON.stringify(obj)}
+`);
+    } catch {
+    }
+  };
+  send({ type: "get_state", id: "__state" });
+  send({ type: "prompt", message: opts.message, id: "p1" });
+  const rl = readline.createInterface({ input: pi.stdout, terminal: false });
+  try {
+    for await (const line of rl) {
+      const text = line.trim();
+      if (!text)
+        continue;
+      let msg;
+      try {
+        msg = JSON.parse(text);
+      } catch {
+        continue;
+      }
+      const type = typeof msg.type === "string" ? msg.type : "";
+      if (NON_AGENT_TYPES.has(type)) {
+        if (type === "response" && msg.command === "get_state" && msg.success !== false) {
+          const data = msg.data;
+          sessionName = data?.sessionName;
+        }
+        if (type === "response" && msg.success === false && msg.command === "prompt") {
+          yield translator.error("pi_error", String(msg.error ?? "prompt failed"));
+          return;
+        }
+        continue;
+      }
+      for (const ke of translator.translate(msg)) {
+        if (ke.type === "turn_complete")
+          ke.result.position = lastPosition(turnTools);
+        yield ke;
+      }
+      if (type === "agent_end") {
+        if (!sessionName || !sessionName.trim()) {
+          send({ type: "set_session_name", name: deriveConversationName(opts.message), id: "__name" });
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        return;
+      }
+    }
+    if (aborted && !translator.isEnded) {
+      yield translator.cancelled("aborted");
+    } else if (!translator.isEnded) {
+      yield translator.error("pi_exit", stderr.trim() || "pi ended without completing the turn");
+    }
+  } finally {
+    opts.signal?.removeEventListener("abort", onAbort);
+    rl.close();
+    try {
+      pi.stdin.end();
+    } catch {
+    }
+    pi.kill("SIGTERM");
+  }
+}
+
+// dist/commands/conversation.js
 function toPrincipal(actor) {
   return /^(person|agent|node):/.test(actor) ? actor : `person:${actor}`;
 }
@@ -10348,7 +11316,7 @@ function reportError(err, output) {
   output.error(err instanceof Error ? err.message : String(err));
   return 1;
 }
-async function cmdNew(args2, flags2, output) {
+async function cmdNew2(args2, flags2, output) {
   const repoId = args2[0];
   if (!repoId) {
     output.error("Usage: ideaspaces conversation new <repo_id> [--name <name>] [--agent <node_id>]");
@@ -10491,6 +11459,74 @@ async function cmdSend(args2, flags2, output) {
     process.off("SIGTERM", onSignal);
   }
 }
+async function cmdSendLocal(flags2, output) {
+  const message = typeof flags2.message === "string" ? flags2.message : void 0;
+  if (!message) {
+    output.error("A message is required: --message <text>");
+    return 1;
+  }
+  const extFlag = typeof flags2.ext === "string" ? flags2.ext : process.env.IDEASPACES_PI_EXTENSIONS;
+  const extensionPaths = (extFlag ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (!extensionPaths.length) {
+    output.error("Extensions are required: --ext <pi-is-space,pi-local-context> (or set IDEASPACES_PI_EXTENSIONS)");
+    return 1;
+  }
+  const repoPath = typeof flags2.context === "string" ? flags2.context : process.cwd();
+  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join10(repoPath, ".pi", "sessions");
+  const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
+  const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
+  const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
+  const controller = new AbortController();
+  let signalled = false;
+  const onSignal = () => {
+    if (signalled)
+      return;
+    signalled = true;
+    controller.abort();
+  };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  try {
+    for await (const event of runLocalTurn({
+      repoPath,
+      message,
+      extensionPaths,
+      conversationId,
+      sessionDir,
+      modelTier,
+      piModel,
+      signal: controller.signal
+    })) {
+      process.stdout.write(`${JSON.stringify(event)}
+`);
+    }
+    return 0;
+  } catch (err) {
+    return reportError(err, output);
+  } finally {
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
+  }
+}
+function cmdNewLocal(output) {
+  const id = mintConversationId();
+  output.result({ conversation_id: id }, `Created local conversation ${id}`);
+  return 0;
+}
+function cmdGetLocal(flags2, output) {
+  const convId = typeof flags2.conversation === "string" ? flags2.conversation : void 0;
+  if (!convId) {
+    output.error("A conversation id is required: --conversation <id>");
+    return 1;
+  }
+  const contextRoot = typeof flags2.context === "string" ? flags2.context : process.cwd();
+  const detail = getLocalConversation(contextRoot, convId);
+  output.result(detail, detail.history.length ? detail.history.map((m) => {
+    const preview = m.content.replace(/\s+/g, " ");
+    return `${m.role}: ${preview.length > 80 ? `${preview.slice(0, 79)}\u2026` : preview}`;
+  }).join("\n") : "No messages yet.");
+  return 0;
+}
 async function cmdGet(args2, output) {
   const [repoId, convId] = args2;
   if (!repoId || !convId) {
@@ -10528,11 +11564,11 @@ async function cmdCancel(args2, output) {
     return reportError(err, output);
   }
 }
-var USAGE = "ideaspaces conversation <new|participants|add|remove|members|send|get|cancel> \u2026";
+var USAGE2 = "ideaspaces conversation <new|participants|add|remove|members|send|get|cancel> \u2026 (send --local for a local pi turn)";
 var conversationCommand = {
   name: "conversation",
   description: "Create a conversation and manage its participants",
-  usage: USAGE,
+  usage: USAGE2,
   examples: [
     "ideaspaces conversation new repo_abc --name 'Kickoff'",
     "ideaspaces conversation new repo_abc --agent agent_node_xyz  # pick the agent",
@@ -10549,7 +11585,7 @@ var conversationCommand = {
     const [sub, ...rest] = args2;
     switch (sub) {
       case "new":
-        return cmdNew(rest, flags2, output);
+        return flags2.local ? cmdNewLocal(output) : cmdNew2(rest, flags2, output);
       case "participants":
         return cmdParticipants(rest, output);
       case "add":
@@ -10559,13 +11595,13 @@ var conversationCommand = {
       case "members":
         return cmdMembers(rest, output);
       case "send":
-        return cmdSend(rest, flags2, output);
+        return flags2.local ? cmdSendLocal(flags2, output) : cmdSend(rest, flags2, output);
       case "get":
-        return cmdGet(rest, output);
+        return flags2.local ? cmdGetLocal(flags2, output) : cmdGet(rest, output);
       case "cancel":
         return cmdCancel(rest, output);
       default:
-        output.error(`Usage: ${USAGE}`);
+        output.error(`Usage: ${USAGE2}`);
         return 1;
     }
   }
@@ -10606,7 +11642,7 @@ var agentsCommand = {
 };
 
 // dist/commands/node.js
-var USAGE2 = "ideaspaces node <get <repo_id> <node_id> | put <repo_id> <path> --content ...>";
+var USAGE3 = "ideaspaces node <get <repo_id> <node_id> | put <repo_id> <path> --content ...>";
 var USAGE_GET = "ideaspaces node get <repo_id> <node_id>";
 var USAGE_PUT = "ideaspaces node put <repo_id> <path> [--content TEXT]  (else reads stdin)";
 async function readStdin3() {
@@ -10673,7 +11709,7 @@ async function cmdPut(args2, flags2, output) {
 var nodeCommand = {
   name: "node",
   description: "Resolve (get) or write (put) a note \u2014 by id or path (use --json for the full node)",
-  usage: USAGE2,
+  usage: USAGE3,
   examples: [
     "ideaspaces node get repo_abc node_xyz --json",
     "ideaspaces node put repo_abc notes/a.md --content '# Hi'",
@@ -10688,15 +11724,15 @@ var nodeCommand = {
       case "put":
         return cmdPut(rest, flags2, output);
       default:
-        output.error(`Usage: ${USAGE2}`);
+        output.error(`Usage: ${USAGE3}`);
         return 1;
     }
   }
 };
 
 // dist/commands/search.js
-import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join7 } from "node:path";
+import { readFileSync as readFileSync5 } from "node:fs";
+import { join as join11 } from "node:path";
 
 // dist/search.js
 var K1 = 1.2;
@@ -10782,12 +11818,12 @@ function searchDocs(docs, query, limit = 20) {
 }
 
 // dist/commands/search.js
-var USAGE3 = "ideaspaces search <query> [--limit N] [--json]";
+var USAGE4 = "ideaspaces search <query> [--limit N] [--json]";
 var DEFAULT_LIMIT = 20;
 function* readDocs(root, paths) {
   for (const path of paths) {
     try {
-      yield { path, content: readFileSync3(join7(root, path), "utf-8") };
+      yield { path, content: readFileSync5(join11(root, path), "utf-8") };
     } catch {
       continue;
     }
@@ -10796,7 +11832,7 @@ function* readDocs(root, paths) {
 var searchCommand = {
   name: "search",
   description: "Search the current repo's Markdown locally (filename + BM25 full-text)",
-  usage: USAGE3,
+  usage: USAGE4,
   examples: [
     "ideaspaces search awareness loop",
     'ideaspaces search "state and location" --limit 5',
@@ -10806,7 +11842,7 @@ var searchCommand = {
     const output = createOutput(global2);
     const query = args2.join(" ").trim();
     if (!query) {
-      output.error(`Usage: ${USAGE3}`);
+      output.error(`Usage: ${USAGE4}`);
       return 1;
     }
     let root;
@@ -10859,7 +11895,7 @@ var timesCommand = {
 };
 
 // dist/commands/share.js
-var USAGE4 = "ideaspaces share <access|set-access|members|remove|invites|invite|revoke> <repo_id> \u2026";
+var USAGE5 = "ideaspaces share <access|set-access|members|remove|invites|invite|revoke> <repo_id> \u2026";
 var INVITE_ROLES = ["MEMBER", "CLONER", "READER"];
 var COPY_LEVELS = ["owner", "member", "reader", "public"];
 function flagStr(flags2, key) {
@@ -10974,7 +12010,7 @@ copy: ${a.copy_access}`);
         return 0;
       }
       default:
-        output.error(`Usage: ${USAGE4}`);
+        output.error(`Usage: ${USAGE5}`);
         return 1;
     }
   } catch (err) {
@@ -10989,7 +12025,7 @@ copy: ${a.copy_access}`);
 var shareCommand = {
   name: "share",
   description: "Manage repo access \u2014 members, invites, and the public-link policy",
-  usage: USAGE4,
+  usage: USAGE5,
   examples: [
     "ideaspaces share access repo_abc --json",
     "ideaspaces share set-access repo_abc --public true --copy reader",
@@ -11005,13 +12041,13 @@ var shareCommand = {
 };
 
 // dist/auth/session-state.js
-import { existsSync as existsSync6, unlinkSync as unlinkSync2 } from "node:fs";
-import { homedir as homedir3 } from "node:os";
-import { join as join8 } from "node:path";
-var SESSION_FILE = join8(homedir3(), ".ideaspaces", "session.json");
+import { existsSync as existsSync9, unlinkSync as unlinkSync2 } from "node:fs";
+import { homedir as homedir4 } from "node:os";
+import { join as join12 } from "node:path";
+var SESSION_FILE = join12(homedir4(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
-    if (existsSync6(SESSION_FILE))
+    if (existsSync9(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -11037,6 +12073,8 @@ var topLevel = [
   loginCommand,
   whoamiCommand,
   reposCommand,
+  catalogCommand,
+  piStatusCommand,
   cloneCommand,
   clonesCommand,
   linkCommand,
@@ -11049,6 +12087,7 @@ var topLevel = [
   publishCommand,
   writeCommand,
   commitCommand,
+  changeCommand,
   statusCommand,
   timesCommand,
   shareCommand,

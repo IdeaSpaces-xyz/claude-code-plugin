@@ -72,6 +72,8 @@ Skills read their full protocols from `reference/` (the SDK's canonical skill ca
 
 **SessionStart awareness** (`dist/awareness-hook.js`) — walks root → cwd and, in a git ideaspace, emits orientation (Now, tree, agent context, skills, since-last-session), a git-state line, and a **stale-doc drift** block: docs that declare `code_paths` whose referenced code was committed *after* the doc, flagged before the agent quotes their status. Missing `purpose.md`/`now.md` surface as direction not yet captured. Persists HEAD for the next session's diff. Same-repo only; cross-repo staleness is the Delta Protocol skill's job.
 
+It also **bridges the session id**: the MCP server can't read the Claude Code session id from the protocol, so this hook writes it (from its stdin `session_id`) to `${CLAUDE_PROJECT_DIR}/.ideaspaces/session-id`, where `is_commit` reads it to stamp the `Conversation` trailer. Best-effort and gitignored; absent → the trailer is simply omitted.
+
 **PostToolUse capture-nudge** (`dist/capture-nudge-hook.js`) — when a knowledge file (`*.md` or under `_agent/`) is written with native Write/Edit inside an ideaspace, nudges toward the `is_write` → `is_commit` capture flow. Silent for source, configs, build artifacts, and markdown outside an ideaspace.
 
 ## Repo-local agent context

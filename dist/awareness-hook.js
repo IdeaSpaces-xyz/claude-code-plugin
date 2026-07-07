@@ -7362,6 +7362,8 @@ var require_dist = __commonJS({
 
 // src/awareness-hook.ts
 import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join as join4 } from "node:path";
 
 // node_modules/@ideaspaces/sdk/dist/space.js
 import { promises as fs } from "node:fs";
@@ -7877,6 +7879,29 @@ async function exists(path) {
 
 // src/awareness-hook.ts
 var MAX_DRIFT = 10;
+async function readStdin() {
+  if (process.stdin.isTTY) return "";
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  return Buffer.concat(chunks).toString("utf-8");
+}
+function captureSessionId(raw) {
+  if (!raw.trim()) return;
+  let input;
+  try {
+    input = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  const sessionId = input.session_id;
+  if (typeof sessionId !== "string" || !sessionId) return;
+  const dir = process.env.CLAUDE_PROJECT_DIR?.trim() || (typeof input.cwd === "string" ? input.cwd : process.cwd());
+  try {
+    mkdirSync(join4(dir, ".ideaspaces"), { recursive: true });
+    writeFileSync(join4(dir, ".ideaspaces", "session-id"), sessionId + "\n");
+  } catch {
+  }
+}
 function isGitRepo(cwd) {
   const r = spawnSync("git", ["-C", cwd, "rev-parse", "--is-inside-work-tree"], {
     encoding: "utf-8"
@@ -7898,6 +7923,7 @@ function setSeenMarker(cwd, sha) {
   spawnSync("git", ["-C", cwd, "update-ref", SEEN_REF, sha], { encoding: "utf-8" });
 }
 async function main() {
+  captureSessionId(await readStdin());
   const cwd = process.cwd();
   const space = await findSpaceRoot(cwd);
   if (space.source === "none" || !space.root) return;

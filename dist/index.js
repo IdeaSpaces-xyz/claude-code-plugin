@@ -21014,7 +21014,29 @@ var StdioServerTransport = class {
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { userInfo } from "node:os";
+
+// src/trailers.ts
+var PRINCIPAL_PREFIX = /^(person|agent|node):/;
+function resolveAgentPrincipal(agentIdEnv, username) {
+  const override = agentIdEnv?.trim();
+  if (override) return PRINCIPAL_PREFIX.test(override) ? override : `agent:${override}`;
+  const user = username.trim() || "user";
+  return `agent:${user}-claude`;
+}
+function buildCommitArgs(input, ctx) {
+  const a = ["commit", "-m", input.message];
+  if (input.all) a.push("--all");
+  else if (input.paths?.length) a.push(...input.paths);
+  if (input.op) a.push("--op", input.op);
+  if (ctx.changeId) a.push("--change-id", ctx.changeId);
+  a.push("--co-author", ctx.principal);
+  if (ctx.sessionId) a.push("--conversation", ctx.sessionId);
+  return a;
+}
+
+// src/index.ts
 function resolveCli() {
   if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
   const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -21057,6 +21079,28 @@ async function run(args, stdin, cwd) {
   if (code !== 0) return fail(err.trim() || out.trim() || `Exit ${code}`);
   return ok(out.trim() || err.trim() || "Done");
 }
+var currentChangeId;
+var AGENT_PRINCIPAL = resolveAgentPrincipal(
+  process.env.IDEASPACES_AGENT_ID,
+  (() => {
+    try {
+      return userInfo().username;
+    } catch {
+      return "user";
+    }
+  })()
+);
+function readSessionId() {
+  const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
+  if (!dir) return void 0;
+  try {
+    const id = readFileSync(join(dir, ".ideaspaces", "session-id"), "utf-8").trim();
+    return id || void 0;
+  } catch {
+    return void 0;
+  }
+}
+var CHANGE_ID_SHAPE = /^chg_[a-z0-9-]+$/;
 var server = new McpServer({ name: "core", version: "0.3.0" });
 var cwdField = external_exports.string().optional().describe(
   "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
@@ -21105,18 +21149,64 @@ server.tool(
 );
 server.tool(
   "is_commit",
-  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name (or all staged knowledge via all), never the user's unrelated staged work. Confirm with the user before calling.",
+  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name (or all staged knowledge via all), never the user's unrelated staged work. Auto-stamps attribution trailers: the assisting agent, the session (Conversation), and the open Change-Id when one is open (is_change_open). Confirm with the user before calling.",
   {
     message: external_exports.string().describe("Commit message (user-provided or user-confirmed)"),
     paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using all."),
     all: external_exports.boolean().optional().describe("Commit all staged knowledge paths (markdown + _agent/) from git; staged code is left for the user."),
+    op: external_exports.enum(["create", "update", "move", "delete", "restructure", "capture"]).optional().describe("Optional Op trailer \u2014 the kind of change. The meaning lives in the message body."),
     cwd: cwdField
   },
-  async ({ message, paths, all, cwd }) => {
-    const a = ["commit", "-m", message];
-    if (all) a.push("--all");
-    else if (paths?.length) a.push(...paths);
+  async ({ message, paths, all, op, cwd }) => {
+    const a = buildCommitArgs(
+      { message, paths, all, op },
+      { changeId: currentChangeId, principal: AGENT_PRINCIPAL, sessionId: readSessionId() }
+    );
     return run(a, void 0, cwd);
+  }
+);
+server.tool(
+  "is_change_open",
+  "Open a Change \u2014 an idea-snapshot coordinate stamped as a Change-Id trailer on every is_commit until closed, in any repo. Use when a decision spans multiple commits, files, or repos; skip it for a single ordinary commit. Pass handle to mint a fresh id, or id to resume an existing Change (e.g. recovered from its Note) across sessions.",
+  {
+    handle: external_exports.string().optional().describe("Short decision handle (2\u20134 words) to mint a fresh Change-Id from, e.g. 'auth session model'."),
+    id: external_exports.string().optional().describe("An existing chg_\u2026 id to resume a Change across sessions. Reuse the id recorded in the Change's Note. Takes precedence over handle if both are given (resume over mint).")
+  },
+  async ({ handle, id }) => {
+    if (id) {
+      const trimmed = id.trim();
+      if (!CHANGE_ID_SHAPE.test(trimmed)) {
+        return fail(`Not a Change-Id: ${id}. Expected chg_\u2026 (mint a new one by passing handle instead).`);
+      }
+      currentChangeId = trimmed;
+      return ok(`Change resumed: ${currentChangeId}. It stamps every is_commit until is_change_close.`);
+    }
+    const r = await cli(["--json", "change", "new", ...handle ? ["--handle", handle] : []]);
+    if (r.code !== 0) return fail(r.err.trim() || r.out.trim() || "Failed to mint a Change-Id");
+    let minted;
+    try {
+      minted = JSON.parse(r.out).change_id;
+    } catch {
+      return fail(`Could not parse minted Change-Id from: ${r.out.trim()}`);
+    }
+    if (typeof minted !== "string" || !minted) {
+      return fail(`CLI returned no Change-Id: ${r.out.trim()}`);
+    }
+    currentChangeId = minted;
+    return ok(
+      `Change open: ${currentChangeId}. It stamps every is_commit until is_change_close. Find its arc later with: git log --grep="Change-Id: ${currentChangeId}"`
+    );
+  }
+);
+server.tool(
+  "is_change_close",
+  "Close the active Change so later commits no longer carry its Change-Id. The decision's arc stays queryable in git history.",
+  {},
+  async () => {
+    if (!currentChangeId) return ok("No Change is open.");
+    const closed = currentChangeId;
+    currentChangeId = void 0;
+    return ok(`Change closed: ${closed}. Later commits won't carry it.`);
   }
 );
 server.tool(

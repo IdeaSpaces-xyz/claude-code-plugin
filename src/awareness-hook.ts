@@ -24,6 +24,8 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   findSpaceRoot,
   assembleAwareness,
@@ -34,6 +36,46 @@ import {
 
 /** Drift signals shown before the list is truncated. */
 const MAX_DRIFT = 10;
+
+/** Read the hook's stdin payload (Claude Code sends JSON). Guard the TTY case
+ * so a manual run without piped input doesn't hang on an open stream. */
+async function readStdin(): Promise<string> {
+  if (process.stdin.isTTY) return "";
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks).toString("utf-8");
+}
+
+/**
+ * Bridge the Claude Code session id to the MCP server. The server can't read it
+ * from the MCP protocol (only CLAUDE_PROJECT_DIR is set on it), but this hook
+ * *does* receive `session_id` on stdin — so we persist it to a file both sides
+ * agree on (`${CLAUDE_PROJECT_DIR}/.ideaspaces/session-id`), where `is_commit`
+ * reads it to stamp the Conversation trailer. Best-effort: a failed write must
+ * never block session start, and the server omits the trailer when it's absent.
+ */
+function captureSessionId(raw: string): void {
+  if (!raw.trim()) return;
+  let input: { session_id?: unknown; cwd?: unknown };
+  try {
+    input = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  const sessionId = input.session_id;
+  if (typeof sessionId !== "string" || !sessionId) return;
+  // Write where the MCP server reads (CLAUDE_PROJECT_DIR); fall back to the
+  // payload cwd so a manual run still lands somewhere sensible.
+  const dir =
+    process.env.CLAUDE_PROJECT_DIR?.trim() ||
+    (typeof input.cwd === "string" ? input.cwd : process.cwd());
+  try {
+    mkdirSync(join(dir, ".ideaspaces"), { recursive: true });
+    writeFileSync(join(dir, ".ideaspaces", "session-id"), sessionId + "\n");
+  } catch {
+    // Never block session start on a failed write.
+  }
+}
 
 function isGitRepo(cwd: string): boolean {
   const r = spawnSync("git", ["-C", cwd, "rev-parse", "--is-inside-work-tree"], {
@@ -66,6 +108,11 @@ function setSeenMarker(cwd: string, sha: string): void {
 }
 
 async function main(): Promise<void> {
+  // Capture the session id first, unconditionally — it's session-scoped, not
+  // ideaspace-scoped, so it must be written even outside an `_agent/` space
+  // (a commit may target any repo in the session).
+  captureSessionId(await readStdin());
+
   const cwd = process.cwd();
   const space = await findSpaceRoot(cwd);
   if (space.source === "none" || !space.root) return;
