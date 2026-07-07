@@ -51,7 +51,10 @@ function resolveCli() {
 async function main() {
   captureSessionId(await readStdin());
   const cwd = process.cwd();
-  const r = spawnSync("node", [resolveCli(), "--json", "navigate", ".", "--mark-seen"], {
+  const cli = resolveCli();
+  const isFile = cli.includes("/") || cli.includes("\\") || cli.endsWith(".js");
+  const navArgs = ["--json", "navigate", ".", "--mark-seen"];
+  const r = spawnSync(isFile ? "node" : cli, isFile ? [cli, ...navArgs] : navArgs, {
     cwd,
     encoding: "utf-8"
   });

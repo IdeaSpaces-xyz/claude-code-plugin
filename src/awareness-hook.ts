@@ -74,7 +74,12 @@ async function main(): Promise<void> {
   captureSessionId(await readStdin());
 
   const cwd = process.cwd();
-  const r = spawnSync("node", [resolveCli(), "--json", "navigate", ".", "--mark-seen"], {
+  // A bundled `.js` runs under `node`; a bare `ideaspaces` on PATH runs directly
+  // (passing it to `node` would try to load a file literally named "ideaspaces").
+  const cli = resolveCli();
+  const isFile = cli.includes("/") || cli.includes("\\") || cli.endsWith(".js");
+  const navArgs = ["--json", "navigate", ".", "--mark-seen"];
+  const r = spawnSync(isFile ? "node" : cli, isFile ? [cli, ...navArgs] : navArgs, {
     cwd,
     encoding: "utf-8",
   });
