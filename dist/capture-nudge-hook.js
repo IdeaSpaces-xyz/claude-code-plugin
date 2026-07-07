@@ -7416,12 +7416,15 @@ var import_yaml = __toESM(require_dist(), 1);
 // node_modules/@ideaspaces/sdk/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
 
-// src/capture-nudge-hook.ts
+// src/stdin.ts
 async function readStdin() {
+  if (process.stdin.isTTY) return "";
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
   return Buffer.concat(chunks).toString("utf-8");
 }
+
+// src/capture-nudge-hook.ts
 function isKnowledgePath(path) {
   return path.endsWith(".md") || path.split(sep).includes("_agent");
 }

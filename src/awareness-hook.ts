@@ -24,6 +24,9 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { homedir } from "node:os";
 import {
   findSpaceRoot,
   assembleAwareness,
@@ -31,9 +34,44 @@ import {
   collectDocDependencies,
   staleDocSignals,
 } from "@ideaspaces/sdk";
+import { sessionIdCachePath } from "./session-path.js";
+import { readStdin } from "./stdin.js";
 
 /** Drift signals shown before the list is truncated. */
 const MAX_DRIFT = 10;
+
+/**
+ * Bridge the Claude Code session id to the MCP server. The server can't read it
+ * from the MCP protocol (only CLAUDE_PROJECT_DIR is set on it), but this hook
+ * *does* receive `session_id` on stdin — so we persist it to a user-level cache
+ * (`~/.ideaspaces/sessions/<hash(project-dir)>`, outside the project tree so no
+ * visited repo is touched), where `is_commit` reads it to stamp the Conversation
+ * trailer. Both sides key off CLAUDE_PROJECT_DIR. Best-effort: a failed write
+ * never blocks session start, and the server omits the trailer when it's absent.
+ */
+function captureSessionId(raw: string): void {
+  if (!raw.trim()) return;
+  let input: { session_id?: unknown; cwd?: unknown };
+  try {
+    input = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  const sessionId = input.session_id;
+  if (typeof sessionId !== "string" || !sessionId) return;
+  // Key off CLAUDE_PROJECT_DIR to match the server's read; fall back to the
+  // payload cwd only for manual runs (the real flow always has the env set).
+  const projectDir =
+    process.env.CLAUDE_PROJECT_DIR?.trim() ||
+    (typeof input.cwd === "string" ? input.cwd : process.cwd());
+  try {
+    const file = sessionIdCachePath(homedir(), projectDir);
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, sessionId + "\n");
+  } catch {
+    // Never block session start on a failed write.
+  }
+}
 
 function isGitRepo(cwd: string): boolean {
   const r = spawnSync("git", ["-C", cwd, "rev-parse", "--is-inside-work-tree"], {
@@ -66,6 +104,11 @@ function setSeenMarker(cwd: string, sha: string): void {
 }
 
 async function main(): Promise<void> {
+  // Capture the session id first, unconditionally — it's session-scoped, not
+  // ideaspace-scoped, so it must be written even outside an `_agent/` space
+  // (a commit may target any repo in the session).
+  captureSessionId(await readStdin());
+
   const cwd = process.cwd();
   const space = await findSpaceRoot(cwd);
   if (space.source === "none" || !space.root) return;

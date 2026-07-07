@@ -7362,6 +7362,9 @@ var require_dist = __commonJS({
 
 // src/awareness-hook.ts
 import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname as dirname2 } from "node:path";
+import { homedir } from "node:os";
 
 // node_modules/@ideaspaces/sdk/dist/space.js
 import { promises as fs } from "node:fs";
@@ -7496,14 +7499,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot, args) {
-  return new Promise((resolve3) => {
+  return new Promise((resolve4) => {
     const proc = spawn("git", ["-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve3({ ok: code === 0, out }));
-    proc.on("error", () => resolve3({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve4({ ok: code === 0, out }));
+    proc.on("error", () => resolve4({ ok: false, out: "" }));
   });
 }
 async function lastCommitTime(repoRoot, path) {
@@ -7875,8 +7878,42 @@ async function exists(path) {
   }
 }
 
+// src/session-path.ts
+import { createHash } from "node:crypto";
+import { join as join4, resolve as resolve3 } from "node:path";
+function sessionIdCachePath(homeDir, projectDir) {
+  const key = createHash("sha256").update(resolve3(projectDir)).digest("hex").slice(0, 16);
+  return join4(homeDir, ".ideaspaces", "sessions", key);
+}
+
+// src/stdin.ts
+async function readStdin() {
+  if (process.stdin.isTTY) return "";
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  return Buffer.concat(chunks).toString("utf-8");
+}
+
 // src/awareness-hook.ts
 var MAX_DRIFT = 10;
+function captureSessionId(raw) {
+  if (!raw.trim()) return;
+  let input;
+  try {
+    input = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  const sessionId = input.session_id;
+  if (typeof sessionId !== "string" || !sessionId) return;
+  const projectDir = process.env.CLAUDE_PROJECT_DIR?.trim() || (typeof input.cwd === "string" ? input.cwd : process.cwd());
+  try {
+    const file = sessionIdCachePath(homedir(), projectDir);
+    mkdirSync(dirname2(file), { recursive: true });
+    writeFileSync(file, sessionId + "\n");
+  } catch {
+  }
+}
 function isGitRepo(cwd) {
   const r = spawnSync("git", ["-C", cwd, "rev-parse", "--is-inside-work-tree"], {
     encoding: "utf-8"
@@ -7898,6 +7935,7 @@ function setSeenMarker(cwd, sha) {
   spawnSync("git", ["-C", cwd, "update-ref", SEEN_REF, sha], { encoding: "utf-8" });
 }
 async function main() {
+  captureSessionId(await readStdin());
   const cwd = process.cwd();
   const space = await findSpaceRoot(cwd);
   if (space.source === "none" || !space.root) return;

@@ -2980,7 +2980,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3007,7 +3007,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3582,7 +3582,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options) {
+    function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -3809,7 +3809,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -18889,7 +18889,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -18906,7 +18906,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -18984,7 +18984,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve(parseResult.data);
+            resolve2(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -19245,12 +19245,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve, interval);
+      const timeoutId = setTimeout(resolve2, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -20350,7 +20350,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -20999,12 +20999,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve();
+        resolve2();
       } else {
-        this._stdout.once("drain", resolve);
+        this._stdout.once("drain", resolve2);
       }
     });
   }
@@ -21013,18 +21013,46 @@ var StdioServerTransport = class {
 // src/index.ts
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import { existsSync } from "node:fs";
+import { dirname, join as join2 } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { userInfo, homedir } from "node:os";
+
+// src/trailers.ts
+import { createHash } from "node:crypto";
+import { join, resolve } from "node:path";
+var PRINCIPAL_PREFIX = /^(person|agent|node):/;
+function sessionIdCachePath(homeDir, projectDir) {
+  const key = createHash("sha256").update(resolve(projectDir)).digest("hex").slice(0, 16);
+  return join(homeDir, ".ideaspaces", "sessions", key);
+}
+function resolveAgentPrincipal(agentIdEnv, username) {
+  const override = agentIdEnv?.trim();
+  if (override) return PRINCIPAL_PREFIX.test(override) ? override : `agent:${override}`;
+  const user = username.trim() || "user";
+  return `agent:${user}-claude`;
+}
+function buildCommitArgs(input, ctx) {
+  const a = ["commit", "-m", input.message];
+  if (input.all) a.push("--all");
+  else if (input.paths?.length) a.push(...input.paths);
+  if (input.op) a.push("--op", input.op);
+  if (ctx.changeId) a.push("--change-id", ctx.changeId);
+  a.push("--co-author", ctx.principal);
+  if (ctx.sessionId) a.push("--conversation", ctx.sessionId);
+  return a;
+}
+
+// src/index.ts
 function resolveCli() {
   if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const relative = join(__dirname, "../cli/bundle/ideaspaces.js");
+  const relative = join2(__dirname, "../cli/bundle/ideaspaces.js");
   if (existsSync(relative)) return relative;
   return "ideaspaces";
 }
 var CLI = resolveCli();
 function cli(args, stdin, cwd) {
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     const isFile = CLI.includes("/") || CLI.includes("\\") || CLI.endsWith(".js");
     const proc = spawn(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
       stdio: ["pipe", "pipe", "pipe"],
@@ -21040,8 +21068,8 @@ function cli(args, stdin, cwd) {
     let err = "";
     proc.stdout.on("data", (d) => out += d);
     proc.stderr.on("data", (d) => err += d);
-    proc.on("close", (code) => resolve({ out, err, code: code ?? 1 }));
-    proc.on("error", (e) => resolve({ out: "", err: e.message, code: 1 }));
+    proc.on("close", (code) => resolve2({ out, err, code: code ?? 1 }));
+    proc.on("error", (e) => resolve2({ out: "", err: e.message, code: 1 }));
     if (stdin != null) proc.stdin.write(stdin);
     proc.stdin.end();
   });
@@ -21057,6 +21085,28 @@ async function run(args, stdin, cwd) {
   if (code !== 0) return fail(err.trim() || out.trim() || `Exit ${code}`);
   return ok(out.trim() || err.trim() || "Done");
 }
+var currentChangeId;
+var AGENT_PRINCIPAL = resolveAgentPrincipal(
+  process.env.IDEASPACES_AGENT_ID,
+  (() => {
+    try {
+      return userInfo().username;
+    } catch {
+      return "user";
+    }
+  })()
+);
+function readSessionId() {
+  const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
+  if (!dir) return void 0;
+  try {
+    const id = readFileSync(sessionIdCachePath(homedir(), dir), "utf-8").trim();
+    return id || void 0;
+  } catch {
+    return void 0;
+  }
+}
+var CHANGE_ID_SHAPE = /^chg_[a-z0-9-]+$/;
 var server = new McpServer({ name: "core", version: "0.3.0" });
 var cwdField = external_exports.string().optional().describe(
   "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
@@ -21105,18 +21155,64 @@ server.tool(
 );
 server.tool(
   "is_commit",
-  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name (or all staged knowledge via all), never the user's unrelated staged work. Confirm with the user before calling.",
+  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name (or all staged knowledge via all), never the user's unrelated staged work. Auto-stamps attribution trailers: the assisting agent, the session (Conversation), and the open Change-Id when one is open (is_change_open). Confirm with the user before calling.",
   {
     message: external_exports.string().describe("Commit message (user-provided or user-confirmed)"),
     paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using all."),
     all: external_exports.boolean().optional().describe("Commit all staged knowledge paths (markdown + _agent/) from git; staged code is left for the user."),
+    op: external_exports.enum(["create", "update", "move", "delete", "restructure", "capture"]).optional().describe("Optional Op trailer \u2014 the kind of change. The meaning lives in the message body."),
     cwd: cwdField
   },
-  async ({ message, paths, all, cwd }) => {
-    const a = ["commit", "-m", message];
-    if (all) a.push("--all");
-    else if (paths?.length) a.push(...paths);
+  async ({ message, paths, all, op, cwd }) => {
+    const a = buildCommitArgs(
+      { message, paths, all, op },
+      { changeId: currentChangeId, principal: AGENT_PRINCIPAL, sessionId: readSessionId() }
+    );
     return run(a, void 0, cwd);
+  }
+);
+server.tool(
+  "is_change_open",
+  "Open a Change \u2014 an idea-snapshot coordinate stamped as a Change-Id trailer on every is_commit until closed, in any repo. Use when a decision spans multiple commits, files, or repos; skip it for a single ordinary commit. Pass handle to mint a fresh id, or id to resume an existing Change (e.g. recovered from its Note) across sessions.",
+  {
+    handle: external_exports.string().optional().describe("Short decision handle (2\u20134 words) to mint a fresh Change-Id from, e.g. 'auth session model'."),
+    id: external_exports.string().optional().describe("An existing chg_\u2026 id to resume a Change across sessions. Reuse the id recorded in the Change's Note. Takes precedence over handle if both are given (resume over mint).")
+  },
+  async ({ handle, id }) => {
+    if (id) {
+      const trimmed = id.trim();
+      if (!CHANGE_ID_SHAPE.test(trimmed)) {
+        return fail(`Not a Change-Id: ${id}. Expected chg_\u2026 (mint a new one by passing handle instead).`);
+      }
+      currentChangeId = trimmed;
+      return ok(`Change resumed: ${currentChangeId}. It stamps every is_commit until is_change_close.`);
+    }
+    const r = await cli(["--json", "change", "new", ...handle ? ["--handle", handle] : []]);
+    if (r.code !== 0) return fail(r.err.trim() || r.out.trim() || "Failed to mint a Change-Id");
+    let minted;
+    try {
+      minted = JSON.parse(r.out).change_id;
+    } catch {
+      return fail(`Could not parse minted Change-Id from: ${r.out.trim()}`);
+    }
+    if (typeof minted !== "string" || !minted) {
+      return fail(`CLI returned no Change-Id: ${r.out.trim()}`);
+    }
+    currentChangeId = minted;
+    return ok(
+      `Change open: ${currentChangeId}. It stamps every is_commit until is_change_close. Find its arc later with: git log --grep="Change-Id: ${currentChangeId}"`
+    );
+  }
+);
+server.tool(
+  "is_change_close",
+  "Close the active Change so later commits no longer carry its Change-Id. The decision's arc stays queryable in git history.",
+  {},
+  async () => {
+    if (!currentChangeId) return ok("No Change is open.");
+    const closed = currentChangeId;
+    currentChangeId = void 0;
+    return ok(`Change closed: ${closed}. Later commits won't carry it.`);
   }
 );
 server.tool(

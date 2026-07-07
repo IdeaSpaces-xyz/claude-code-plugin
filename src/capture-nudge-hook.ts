@@ -19,12 +19,7 @@
 
 import { resolve, dirname, sep } from "node:path";
 import { findSpaceRoot } from "@ideaspaces/sdk";
-
-async function readStdin(): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
-  return Buffer.concat(chunks).toString("utf-8");
-}
+import { readStdin } from "./stdin.js";
 
 /** A knowledge path: a markdown file, or anything under an `_agent/` dir. */
 function isKnowledgePath(path: string): boolean {

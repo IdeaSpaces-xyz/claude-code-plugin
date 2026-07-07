@@ -64,6 +64,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test
+        run: npm test
+
       - name: Lint skill entrypoints
         run: npm run lint:skills
 
