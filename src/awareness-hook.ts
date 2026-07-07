@@ -83,12 +83,18 @@ async function main(): Promise<void> {
     cwd,
     encoding: "utf-8",
   });
-  if (r.status !== 0) return; // orientation is best-effort; never block.
+  // Best-effort: never block session start, but surface *why* to stderr so a
+  // broken vendor / path-resolution bug is debuggable instead of silent.
+  if (r.status !== 0) {
+    if (r.stderr?.trim()) process.stderr.write(`awareness-hook: navigate failed: ${r.stderr.trim()}\n`);
+    return;
+  }
 
   let text: unknown;
   try {
     text = JSON.parse(r.stdout).text;
   } catch {
+    process.stderr.write("awareness-hook: could not parse navigate output\n");
     return;
   }
   if (typeof text === "string" && text.trim()) process.stdout.write(text + "\n");

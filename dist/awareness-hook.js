@@ -58,11 +58,16 @@ async function main() {
     cwd,
     encoding: "utf-8"
   });
-  if (r.status !== 0) return;
+  if (r.status !== 0) {
+    if (r.stderr?.trim()) process.stderr.write(`awareness-hook: navigate failed: ${r.stderr.trim()}
+`);
+    return;
+  }
   let text;
   try {
     text = JSON.parse(r.stdout).text;
   } catch {
+    process.stderr.write("awareness-hook: could not parse navigate output\n");
     return;
   }
   if (typeof text === "string" && text.trim()) process.stdout.write(text + "\n");
