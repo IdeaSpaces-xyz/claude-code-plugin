@@ -30,9 +30,11 @@ In Claude Code, use `/is-setup` for conversational setup and `/is-publish` for c
 |---|---|
 | `ideaspaces create [name]` | Scaffold the seed `_agent/` contract, `CLAUDE.md`, git defaults, and initial commit. |
 | `ideaspaces write <path>` | Create/update a Note with Layer 1 frontmatter; stages it and returns a content sha (`--if-match` for safe updates). |
-| `ideaspaces commit -m <msg> <path>…` | The explicit save — commits only the paths you name (`--tracked` / `--all`), never unrelated staged work. |
+| `ideaspaces commit -m <msg> <path>…` | The explicit save — commits only the paths you name (`--all`), never unrelated staged work. Optional `--op` / `--change-id` / `--co-author` / `--conversation` trailers. |
+| `ideaspaces change new [<handle>]` | Mint a `Change-Id` for a decision spanning multiple commits/repos. |
+| `ideaspaces navigate [<path>] [--mark-seen]` | Re-derive orientation at a position (fractal contract + tree + drift); `--json` for the structured block. |
 | `ideaspaces status [--path FILE]` | Git position + plugin-tracked captures awaiting commit; single-file sha for `--if-match`. |
-| `ideaspaces sync` | Integrate remote changes and push committed captures (`--dry-run`). |
+| `ideaspaces pull` / `push` | Integrate remote changes / send committed captures (`--dry-run`). |
 | `ideaspaces skills [<name>]` | List the skill catalog, or print one skill's markdown. |
 | `ideaspaces login` | Save optional remote credentials. |
 | `ideaspaces publish` | Create/reuse a remote IdeaSpaces repo and push the current branch. |
@@ -41,13 +43,15 @@ In Claude Code, use `/is-setup` for conversational setup and `/is-publish` for c
 
 ## MCP tools
 
-Five tools plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover local navigation and editing.
+The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover file editing; `is_navigate` adds the composed `_agent` contract that a plain tree can't reconstruct.
 
 | Tool | What |
 |---|---|
 | `is_write` | Create/update a Note (Layer 1 frontmatter); stages it and returns a content sha. `if_match` for safe updates. |
-| `is_commit` | The explicit save — commits only the paths you name, never the user's other staged work. |
+| `is_commit` | The explicit save — commits only the paths you name, never the user's other staged work. Auto-stamps attribution trailers (agent, session, open Change). |
+| `is_change_open` / `is_change_close` | Open/close a Change — a `Change-Id` stamped on every `is_commit` for one decision, across files and repos. |
 | `is_status` | Capture state: git position + tracked captures, or a single file's sha for `if_match`. |
+| `is_navigate` | Re-derive orientation at a position — the fractal `_agent` contract (foundation + deepest guide/purpose/now), tree, git-state, and drift. Read-only. |
 | `is_pull` | Integrate remote changes into the local space; never pushes; refuses on a dirty/uncommitted tree. |
 | `is_push` | Send committed captures to the remote; never pulls; refuses when behind — pull first. |
 | `is_auth` | Log in / out for optional remote hosting. |
@@ -70,7 +74,7 @@ Skills read their full protocols from `reference/` (the SDK's canonical skill ca
 
 ## Hooks
 
-**SessionStart awareness** (`dist/awareness-hook.js`) — walks root → cwd and, in a git ideaspace, emits orientation (Now, tree, agent context, skills, since-last-session), a git-state line, and a **stale-doc drift** block: docs that declare `code_paths` whose referenced code was committed *after* the doc, flagged before the agent quotes their status. Missing `purpose.md`/`now.md` surface as direction not yet captured. Persists HEAD for the next session's diff. Same-repo only; cross-repo staleness is the Delta Protocol skill's job.
+**SessionStart awareness** (`dist/awareness-hook.js`) — shells the bundled `ideaspaces navigate --json . --mark-seen` and emits its rendered orientation (Now, tree, agent context, skills, since-last-session), a git-state line, and a **stale-doc drift** block: docs that declare `code_paths` whose referenced code was committed *after* the doc, flagged before the agent quotes their status. Missing `purpose.md`/`now.md` surface as direction not yet captured. `--mark-seen` persists HEAD for the next session's diff. The CLI is the single awareness producer (the same block the MCP `is_navigate` tool returns), so the hook carries no SDK import — `build:hook` ships no SDK in the bundle.
 
 It also **bridges the session id**: the MCP server can't read the Claude Code session id from the protocol, so this hook writes it (from its stdin `session_id`) to a user-level cache (`~/.ideaspaces/sessions/<hash of project dir>`, outside the project tree so no visited repo is touched), where `is_commit` reads it to stamp the `Conversation` trailer. Best-effort; absent → the trailer is simply omitted. The cache is keyed by project dir (the reader only knows `CLAUDE_PROJECT_DIR`, never the session), so distinct dirs and worktrees are isolated but two concurrent sessions in the *same* dir share one entry — last-writer-wins, an accepted v1 tradeoff.
 

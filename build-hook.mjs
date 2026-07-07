@@ -1,5 +1,9 @@
-// Bundles the plugin's hooks → dist/*.js with the SDK inlined.
+// Bundles the plugin's hooks → dist/*.js.
 // The plugin ships pre-built; users / Claude Code never run npm install here.
+//
+// The hooks are SDK-free (the awareness hook shells the bundled CLI; the
+// capture-nudge hook does a local `_agent/` walk), so this bundle inlines only
+// node built-ins — no createRequire shim for the SDK's CJS deps is needed.
 
 import * as esbuild from "esbuild";
 
@@ -10,17 +14,7 @@ await esbuild.build({
   target: "node18",
   format: "esm",
   outdir: "dist",
-  // The SDK pulls in CJS deps (yaml) that `require("process")`/`require("buffer")`.
-  // esbuild's ESM `__require` shim uses a global `require` when one exists, so
-  // define it via createRequire — otherwise those dynamic requires throw at
-  // runtime ("Dynamic require of process is not supported").
-  banner: {
-    js: [
-      "#!/usr/bin/env node",
-      "import { createRequire as __createRequire } from 'node:module';",
-      "const require = __createRequire(import.meta.url);",
-    ].join("\n"),
-  },
+  banner: { js: "#!/usr/bin/env node" },
   legalComments: "none",
   logLevel: "info",
 });
