@@ -8042,7 +8042,7 @@ var createCommand = {
       return 5;
     }
     if (shape === "old-shape") {
-      output.error(`${describeTarget(targetDir, name)} has an \`_agent/\` in the legacy shape (always.md / rules.md / soul.md). Migration is not yet automated; see \`ideaspace/architecture/plans/plugin-local-first/ideaspace-create.md\` for the manual walk.`);
+      output.error(`${describeTarget(targetDir, name)} has an \`_agent/\` in the legacy shape (always.md / rules.md / soul.md). Migration is not yet automated; move their content into the current \`_agent/\` contract (foundation.md / guide.md / purpose.md / now.md / next.md) by hand.`);
       return 5;
     }
     const privateAgent = shape === "code-repo" && !sharedFlag;
@@ -8652,8 +8652,9 @@ function composeFrontmatter(fm) {
     lines.push(`summary: ${escapeScalar(fm.summary)}`);
   if (fm.tags?.length)
     lines.push(...renderArray("tags", fm.tags));
-  if (fm.attached_to?.length)
-    lines.push(...renderArray("attached_to", fm.attached_to));
+  if (fm.attached_to !== void 0) {
+    lines.push(`attached_to: ${escapeScalar(fm.attached_to)}`);
+  }
   lines.push(DELIM, "");
   return lines.join("\n");
 }
@@ -9185,7 +9186,6 @@ description: >
   or when asked "is this still accurate?", "has this drifted?", "does the README match?".
   The protocol: read declarations, read reality, compare, propose updates or stay silent.
 ---
-<!-- Ported from sw_space/resources/skills/awareness.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
 
 # Awareness \u2014 Delta Protocol
 
@@ -9258,7 +9258,6 @@ description: >
   compound. Use when the user wants to persist knowledge, save what's been
   discussed, or capture expertise from conversation.
 ---
-<!-- Ported from sw_space/resources/skills/capture.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
 
 # Capture
 
@@ -9277,7 +9276,7 @@ Too early loses nuance, too late loses coherence. Ready: clarity reached, same p
 Notes are retrieval artifacts \u2014 what you write now serves a future search.
 
 - **Signal density** \u2014 one clear thing per sentence. "Revenue grew 40% in Q3" not "significant growth."
-- **Summary first** \u2014 orient immediately, dense with meaning, stands alone. Anchors the embedding.
+- **Summary first** \u2014 orient immediately, dense with meaning, stands alone. It is what a reader and a search see first.
 - **Self-contained sections** \u2014 each independently meaningful. No "as mentioned above." Headings are contracts.
 - **Fact vs interpretation** \u2014 distinguish, attribute, never blend. Gaps are information.
 - **Progressive disclosure** \u2014 title \u2192 summary \u2192 sections. Each level adds detail without contradicting.
@@ -9318,7 +9317,6 @@ description: >
   the user wants to make their evaluation criteria, analysis framework, or
   judgment process repeatable and consistent.
 ---
-<!-- Ported from sw_space/resources/skills/form-perspective.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
 
 # Form Perspective
 
@@ -9351,8 +9349,8 @@ Push every criterion until it's testable. If two people applying this Perspectiv
 
 Look for existing Notes that exemplify good and bad cases, and read them. Real examples ground the Perspective in the user's actual thinking, not abstract criteria.
 `,
-  "form-primitive": '---\nname: form-primitive\ndescription: >\n  Help users create reusable agent instructions \u2014 procedures, checklists,\n  review patterns, memory routines, or any repeatable pattern. Use when the\n  user wants to define how the agent should work in specific situations.\n  Produces a file in _agent/ with name + description frontmatter.\n---\n<!-- Ported from sw_space/resources/skills/form-primitive.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->\n\n# Form Primitive\n\nHelp the user create a reusable instruction that shapes how you work together. Not a Perspective (those have a specific three-component structure and are applied as a structured transformation). A primitive is any part of `_agent/` \u2014 a procedure, a checklist, a review pattern, a memory routine, whatever helps at that position.\n\n## The L1 Contract\n\nEvery primitive needs frontmatter with `name` and `description`. The description tells the agent when to use it \u2014 like a trigger condition.\n\n```yaml\n---\nname: Weekly Review\ndescription: >\n  Review the week\'s captures, surface patterns, update Now.\n  Use at the end of each week or when the user asks to reflect.\n---\n```\n\nThe name says what it is. The description says when to use it. Both are required. Both show up when browsing the tree. The description is how the agent decides "this is relevant right now."\n\n## Elicitation\n\nThe user knows what they want to make repeatable. They may not know how to structure it.\n\n1. **Start with the trigger.** "When does this happen? What situation makes you think \'I should do X\'?" This becomes the description.\n\n2. **Walk through a real instance.** "Last time you did this, what did you do step by step?" Real examples beat abstract procedures.\n\n3. **Find the invariant.** What stays the same every time vs what changes with context? The invariant is the instruction. The variable parts are what the agent adapts.\n\n4. **Draft and validate.** Show the primitive before saving. "If I followed this next time, would it produce the right behavior?"\n\n## Structure\n\nNo prescribed format. The content should be whatever makes the instruction clear and followable. Common patterns:\n\n**Procedural** \u2014 step by step:\n```markdown\n## When to use\n[trigger condition]\n\n## Steps\n1. ...\n2. ...\n3. ...\n\n## Output\n[what gets produced]\n```\n\n**Checklist** \u2014 verify against criteria:\n```markdown\n## Check\n- [ ] Does it have X?\n- [ ] Is Y consistent with Z?\n- [ ] Flag if A but not B.\n\n## If issues found\n[what to do]\n```\n\n**Routine** \u2014 recurring pattern:\n```markdown\n## Trigger\n[when this runs \u2014 weekly, on entering a position, on capture, etc.]\n\n## What to do\n[the routine]\n\n## What to capture\n[what Note or update to produce]\n```\n\n**Review** \u2014 evaluate something:\n```markdown\n## What to review\n[scope \u2014 a Note, a branch, a set of captures]\n\n## Criteria\n[what good looks like]\n\n## Output\n[Note with findings, or update to the reviewed content]\n```\n\nThe user can invent any structure. These are starting points, not requirements.\n\n## Where It Lives\n\nPrimitives go in `_agent/` at the level where they apply. Everything in `_agent/` composes along the path, root \u2192 current position:\n\n- `_agent/reviewer.md` at repo root \u2192 applies everywhere\n- `startups/_agent/due-diligence-checklist.md` \u2192 applies in startups/ and below\n- `clients/acme/_agent/communication-style.md` \u2192 applies when working on Acme\n\n## Creating Agents\n\nA special case of primitive: a full agent definition. When the user wants a specialized agent (not just an instruction), create `_agent/{agent-name}/agent.md`:\n\n```yaml\n---\nname: "Regulatory Analyst"\ntools: ["read", "write", "search", "git"]\n---\n\nAn agent specialized in regulatory risk analysis. Evaluates compliance\nrequirements, flags regulatory gaps, tracks regulatory changes.\n```\n\nThe optional `tools` field restricts which tools the agent can use. Omit it for full access. The body describes what the agent does.\n\nAlso create `_agent/{agent-name}/soul.md` to define how the agent shows up \u2014 its character and approach. And optionally `purpose.md` and `now.md` for the agent\'s own direction. The agent becomes available for conversations once these files exist.\n\n## What It Is NOT\n\n- **Not a Perspective.** Perspectives have Object Definition, Thinking Structure, Expected Outcome. They\'re applied as a structured transformation. If the user wants to evaluate/analyze things consistently, use the **form-perspective** skill instead.\n- **Not a Note.** Notes are knowledge \u2014 content that accumulates in the Space. Primitives are instructions \u2014 they shape how the agent works, not what the agent knows.\n- **Not guide.md.** The guide is general behavioral guidance for a branch. A primitive is a specific, named, reusable pattern with a trigger condition. Both live in `_agent/` \u2014 both are part of the shared understanding about how we work here.\n\n## Validation\n\nBefore saving, check:\n- Does it have `name` and `description` in frontmatter?\n- Does the description clearly say when to use it?\n- Is the instruction clear enough that you could follow it without asking questions?\n- Would it produce consistent results across different situations?\n\nIf any of these fail, iterate with the user before persisting.\n',
-  "guide": "---\nname: guide\ndescription: >\n  How to establish and maintain shared understanding at any position.\n  Always in awareness. Use when: a new folder has no _agent/, the user\n  asks what this place is for, purpose or now feel stale, or the\n  shared understanding needs renegotiating.\n---\n<!-- Ported from sw_space/resources/skills/guide.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->\n\n# Guide\n\n`_agent/` is how we work here, as far as we've figured it out.\nFoundation, guide, purpose, now, next \u2014 when any of them contradict\ncurrent practice, or go silent on something we keep doing \u2014 surface\nit. Propose an update. The understanding maintains itself through use.\n\n## What to pay attention to\n\nEvery position has dimensions that shape how we work here:\n\n| Dimension | File | The question |\n|---|---|---|\n| What is this place | README.md | Does the contract match what's actually here? |\n| Why does it exist | `_agent/purpose.md` | Clear direction, or still emerging? |\n| What's active | `_agent/now.md` | Concrete and current, or stale? |\n| What's queued | `_agent/next.md` | Identified, even if vague? |\n| How we work here | `_agent/guide.md` | Scope-specific, beyond foundation? |\n\nNot every position needs all of them. A deep branch might only need\na README. Root usually carries more. Each dimension can be empty,\nemerging, established, or drifted.\n\nMost turns you're just working. The guide posture is background\nawareness \u2014 you notice the state of these dimensions while doing\nother things. When a gap matters, you feel it: the user is making\ndecisions without a purpose to anchor them, or now describes work\nthat's already done. That's when to surface it.\n\n## When a position is fresh\n\nStart with the user, not the system. \"What kind of work happens\nhere?\" \u2014 not \"Let me set up your _agent/ folder.\"\n\nCapture something real first. The best onboarding is a Note that\nmatters, sitting in a directory that makes sense. Structure follows\ncontent. One branch, one real thing. Depth follows use, not planning.\n\nWhen you have enough signal about what this place is \u2014 propose.\nPreview before writing. The user confirms, edits, or starts smaller.\nNothing writes without agreement.\n\n## The readiness check\n\nBefore every capture \u2014 writing a Note, updating purpose, creating\na README \u2014 pause. \"I'm about to commit X. Is this what you mean?\"\n\nThe readiness check is the anti-hallucination primitive. Hallucination\nis what happens when either side commits before both are ready.\n\n## What this guide does not cover\n\nTools self-describe. Domain skills (founder, vc, research) add their\nown structure. Platform setup (auth, hooks, sync) is handled by\nsetup skills. This guide is about shared understanding \u2014 how you\nand the user figure out what this place is and keep that agreement\nhonest.\n",
+  "form-primitive": '---\nname: form-primitive\ndescription: >\n  Help users create reusable agent instructions \u2014 procedures, checklists,\n  review patterns, memory routines, or any repeatable pattern. Use when the\n  user wants to define how the agent should work in specific situations.\n  Produces a file in _agent/ with name + description frontmatter.\n---\n\n# Form Primitive\n\nHelp the user create a reusable instruction that shapes how you work together. Not a Perspective (those have a specific three-component structure and are applied as a structured transformation). A primitive is any part of `_agent/` \u2014 a procedure, a checklist, a review pattern, a memory routine, whatever helps at that position.\n\n## The L1 Contract\n\nEvery primitive needs frontmatter with `name` and `description`. The description tells the agent when to use it \u2014 like a trigger condition.\n\n```yaml\n---\nname: Weekly Review\ndescription: >\n  Review the week\'s captures, surface patterns, update Now.\n  Use at the end of each week or when the user asks to reflect.\n---\n```\n\nThe name says what it is. The description says when to use it. Both are required. Both show up when browsing the tree. The description is how the agent decides "this is relevant right now."\n\n## Elicitation\n\nThe user knows what they want to make repeatable. They may not know how to structure it.\n\n1. **Start with the trigger.** "When does this happen? What situation makes you think \'I should do X\'?" This becomes the description.\n\n2. **Walk through a real instance.** "Last time you did this, what did you do step by step?" Real examples beat abstract procedures.\n\n3. **Find the invariant.** What stays the same every time vs what changes with context? The invariant is the instruction. The variable parts are what the agent adapts.\n\n4. **Draft and validate.** Show the primitive before saving. "If I followed this next time, would it produce the right behavior?"\n\n## Structure\n\nNo prescribed format. The content should be whatever makes the instruction clear and followable. Common patterns:\n\n**Procedural** \u2014 step by step:\n```markdown\n## When to use\n[trigger condition]\n\n## Steps\n1. ...\n2. ...\n3. ...\n\n## Output\n[what gets produced]\n```\n\n**Checklist** \u2014 verify against criteria:\n```markdown\n## Check\n- [ ] Does it have X?\n- [ ] Is Y consistent with Z?\n- [ ] Flag if A but not B.\n\n## If issues found\n[what to do]\n```\n\n**Routine** \u2014 recurring pattern:\n```markdown\n## Trigger\n[when this runs \u2014 weekly, on entering a position, on capture, etc.]\n\n## What to do\n[the routine]\n\n## What to capture\n[what Note or update to produce]\n```\n\n**Review** \u2014 evaluate something:\n```markdown\n## What to review\n[scope \u2014 a Note, a branch, a set of captures]\n\n## Criteria\n[what good looks like]\n\n## Output\n[Note with findings, or update to the reviewed content]\n```\n\nThe user can invent any structure. These are starting points, not requirements.\n\n## Where It Lives\n\nPrimitives go in `_agent/` at the level where they apply. Everything in `_agent/` composes along the path, root \u2192 current position:\n\n- `_agent/reviewer.md` at repo root \u2192 applies everywhere\n- `startups/_agent/due-diligence-checklist.md` \u2192 applies in startups/ and below\n- `clients/acme/_agent/communication-style.md` \u2192 applies when working on Acme\n\n## Creating Agents\n\nA special case of primitive: a full agent definition. When the user wants a specialized agent (not just an instruction), create `_agent/{agent-name}/agent.md`:\n\n```yaml\n---\nname: "Regulatory Analyst"\ntools: ["read", "write", "search", "git"]\n---\n\nAn agent specialized in regulatory risk analysis. Evaluates compliance\nrequirements, flags regulatory gaps, tracks regulatory changes.\n```\n\nThe optional `tools` field restricts which tools the agent can use. Omit it for full access. The body describes what the agent does.\n\nAlso create `_agent/{agent-name}/soul.md` to define how the agent shows up \u2014 its character and approach. And optionally `purpose.md` and `now.md` for the agent\'s own direction. The agent becomes available for conversations once these files exist.\n\n## What It Is NOT\n\n- **Not a Perspective.** Perspectives have Object Definition, Thinking Structure, Expected Outcome. They\'re applied as a structured transformation. If the user wants to evaluate/analyze things consistently, use the **form-perspective** skill instead.\n- **Not a Note.** Notes are knowledge \u2014 content that accumulates in the Space. Primitives are instructions \u2014 they shape how the agent works, not what the agent knows.\n- **Not guide.md.** The guide is general behavioral guidance for a branch. A primitive is a specific, named, reusable pattern with a trigger condition. Both live in `_agent/` \u2014 both are part of the shared understanding about how we work here.\n\n## Validation\n\nBefore saving, check:\n- Does it have `name` and `description` in frontmatter?\n- Does the description clearly say when to use it?\n- Is the instruction clear enough that you could follow it without asking questions?\n- Would it produce consistent results across different situations?\n\nIf any of these fail, iterate with the user before persisting.\n',
+  "guide": "---\nname: guide\ndescription: >\n  How to establish and maintain shared understanding at any position.\n  Always in awareness. Use when: a new folder has no _agent/, the user\n  asks what this place is for, purpose or now feel stale, or the\n  shared understanding needs renegotiating.\n---\n\n# Guide\n\n`_agent/` is how we work here, as far as we've figured it out.\nFoundation, guide, purpose, now, next \u2014 when any of them contradict\ncurrent practice, or go silent on something we keep doing \u2014 surface\nit. Propose an update. The understanding maintains itself through use.\n\n## What to pay attention to\n\nEvery position has dimensions that shape how we work here:\n\n| Dimension | File | The question |\n|---|---|---|\n| What is this place | README.md | Does the contract match what's actually here? |\n| Why does it exist | `_agent/purpose.md` | Clear direction, or still emerging? |\n| What's active | `_agent/now.md` | Concrete and current, or stale? |\n| What's queued | `_agent/next.md` | Identified, even if vague? |\n| How we work here | `_agent/guide.md` | Scope-specific, beyond foundation? |\n\nNot every position needs all of them. A deep branch might only need\na README. Root usually carries more. Each dimension can be empty,\nemerging, established, or drifted.\n\nMost turns you're just working. The guide posture is background\nawareness \u2014 you notice the state of these dimensions while doing\nother things. When a gap matters, you feel it: the user is making\ndecisions without a purpose to anchor them, or now describes work\nthat's already done. That's when to surface it.\n\n## When a position is fresh\n\nStart with the user, not the system. \"What kind of work happens\nhere?\" \u2014 not \"Let me set up your _agent/ folder.\"\n\nCapture something real first. The best onboarding is a Note that\nmatters, sitting in a directory that makes sense. Structure follows\ncontent. One branch, one real thing. Depth follows use, not planning.\n\nWhen you have enough signal about what this place is \u2014 propose.\nPreview before writing. The user confirms, edits, or starts smaller.\nNothing writes without agreement.\n\n## The readiness check\n\nBefore every capture \u2014 writing a Note, updating purpose, creating\na README \u2014 pause. \"I'm about to commit X. Is this what you mean?\"\n\nThe readiness check is the anti-hallucination primitive. Hallucination\nis what happens when either side commits before both are ready.\n\n## What this guide does not cover\n\nTools self-describe. Domain skills (founder, vc, research) add their\nown structure. Platform setup (auth, hooks, sync) is handled by\nsetup skills. This guide is about shared understanding \u2014 how you\nand the user figure out what this place is and keep that agreement\nhonest.\n",
   "purpose-elicitation": `---
 name: purpose-elicitation
 description: >
@@ -9360,7 +9358,6 @@ description: >
   it's heading. Use when working on _agent/purpose.md, when purpose is
   missing, or when the user asks about direction, goals, or what matters.
 ---
-<!-- Ported from sw_space/resources/skills/purpose-elicitation.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
 
 # Purpose Elicitation
 
@@ -9406,7 +9403,6 @@ description: >
   _agent/repo-context.md, when onboarding to a new repo, or when the agent
   needs to understand the repo's identity.
 ---
-<!-- Ported from sw_space/resources/skills/repo-context.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->
 
 # Repo Context
 
@@ -9438,7 +9434,7 @@ Concise. A few paragraphs. Written for the agent \u2014 this loads at session st
 
 Persist to \`_agent/repo-context.md\`.
 `,
-  "writing": '---\nname: writing\ndescription: >\n  Writing standard for Notes. Structure for retrieval, summaries for discovery,\n  entities for connection. Use when creating or substantially revising Notes,\n  or when asked "write this well", "capture this", "create a Note about".\n  Derived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n---\n<!-- Ported from sw_space/resources/skills/writing.md @ 3b62262; neutralized for surface-neutral SDK distribution. Substance tracks the source \u2014 re-sync against that baseline. -->\n\n# Writing Standard\n\nNotes that compound follow these principles. They\'re functional requirements for knowledge that works \u2014 clear writing produces clean vectors, dense summaries drive discovery, structured sections enable precise retrieval.\n\nDerived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n\n## Summary Is Everything\n\nThe `summary` field is the most important thing you write. It\'s what search results show. It\'s what shows when browsing the tree. It\'s what loads in awareness context. Write it like the first thing someone reads \u2014 because it is.\n\nTwo sentences max. Dense. Immediate orientation. "What is this and why does it matter." Early tokens carry disproportionate influence on the embedding vector.\n\n## Conciseness (Strunk & White)\n\n"Omit needless words." Every word in a Note earns its place.\n\n| Padded | Clean |\n|--------|-------|\n| "The question as to whether" | "Whether" |\n| "This is a company that" | "This company" |\n| "It is important to note that" | (delete \u2014 just state it) |\n| "In terms of revenue growth" | "Revenue grew" |\n\nActive voice over passive. "The startup was analyzed" \u2192 "We analyzed the startup." Passive only when the actor is unknown or irrelevant.\n\n## Clarity (Zinsser)\n\n"Clear thinking becomes clear writing." If you can\'t write it clearly, you don\'t understand it yet.\n\n- Strip every sentence to its cleanest components\n- Clutter words add nothing: "basically," "actually," "in order to," "at this point in time"\n- The first paragraph orients the reader immediately \u2014 if someone reads only the summary, they know what this is about\n\n## Concreteness\n\nSpecifics cluster with related specifics in vector space. Abstractions diffuse.\n\n| Abstract | Concrete |\n|----------|----------|\n| "Significant growth" | "Revenue grew 40% in Q3" |\n| "Strong team" | "3 ex-Google engineers, 2 successful exits" |\n| "Large market" | "$4.2B TAM, growing 25% annually" |\n\nPrefer the specific to the general, the definite to the vague. Concrete facts can be abstracted later. You can\'t recover specifics from abstractions.\n\n## Objectivity (Kovach & Rosenstiel)\n\nDistinguish fact from interpretation. Never blend them.\n\n| Type | Example |\n|------|---------|\n| Fact | "Raised $10M Series A in March 2025" |\n| Interpretation | "The funding suggests investor confidence" |\n| Claim (attributed) | "The CEO states they are \'market leaders\'" |\n\nEvery claim traces to a source. "According to the landing page..." or "The pitch deck states..." \u2014 the reader knows provenance.\n\n**What the agent does NOT do:** verify claims, add information not in the source, editorialize ("impressive team"), fill gaps with plausible content. If the source doesn\'t mention revenue, note the absence \u2014 don\'t guess.\n\n## Sections Are the Semantic Fingerprint\n\nEach `## heading` creates a vector centroid. Well-scoped sections = precise retrieval.\n\n- A Note with five distinct sections has a 5-dimensional semantic fingerprint\n- A wall of text collapses to one dimension \u2014 hard to find, hard to compare\n- Each section makes a complete point independently\n- Headings are contracts \u2014 "Team Analysis" contains team analysis, not market commentary\n- Target: 3-10 paragraphs per section. Too short = insufficient signal. Too long = diluted topic.\n\nProgressive disclosure: Title \u2192 Summary \u2192 Sections. Each level complete at its depth.\n\n## Primary Attachment\n\nUse `attached_to` for the one thing this Note is primarily about \u2014 like putting a sticky note on an object. It is singular: choose zero or one primary anchor.\n\n- Company/org entity: `hostname:acme.com`\n- Person entity: `person:alice`\n- Agent entity: `agent:assistant`\n- External URL/document: `web_page:https://example.com/report.pdf`\n- Another Note: `note:n_abc123def456`\n- Another non-Note Node in this Space: `node:n_def456abc789`\n\nIf the Note mentions several things, don\'t put all of them in `attached_to`. Choose the primary anchor, split the Note, use tags, or link in prose. Use `references` only for hard source/provenance nodes.\n\n## Cross-Note Links\n\nUse standard markdown links with relative paths for reader navigation. They are portable across editors, Obsidian, print/exports, and plain LLM context.\n\n```markdown\nSee [Acme profile](../companies/acme.md) for background.\nSee [Market map](../markets/README.md) for the branch overview.\n```\n\nPath links are user-facing handles. They may break when the target is renamed unless the editor/tool rewrites links; use editor rename refactors when available. For durable platform references outside portable prose, use `/n/{node_id}` URLs.\n\nExisting inline `node:n_...` links remain resolvable, but don\'t write them as the default prose link form. Inline links are reader navigation, not provenance. They do not populate `references` or `referenced_by`.\n\nWhen renaming a Note and heavily rewriting it, commit the rename separately from the rewrite. Git rename detection is similarity-based; a rename plus large content change in one commit can lose node identity.\n\n## Sources and References\n\nUse `references` only for hard sources: the small set of node IDs this Note was produced from or grounded in. Perspective outputs and synthesis Notes use `references` for their input Notes. If a Note merely mentions or points to another Note, use an inline markdown link instead.\n\n## Sentence-Level Mechanics\n\n- **Put emphatic words at the end.** "In Q3, revenue grew 40%" not "Revenue is what grew 40% in Q3"\n- **Keep related words together.** Don\'t separate subject and verb with long interruptions\n- **Parallel construction.** "Fast, reliable, and affordable" not "speed, being reliable, and costs less"\n- **One idea per sentence.** Most of the time, two sentences are clearer than one compound one\n\n## Common Failure Modes\n\n- **Throat-clearing.** "Before we dive into the analysis..." \u2014 delete, start with the analysis\n- **Hedge stacking.** "It seems like it might possibly be somewhat relevant" \u2014 state or acknowledge uncertainty once\n- **Elegant variation.** If it\'s a "startup" in paragraph one, don\'t call it a "venture" in paragraph two for variety. Consistency aids retrieval.\n- **Nominalization.** "Make a determination" \u2192 "determine." "Performed an analysis" \u2192 "analyzed."\n- **Weasel words.** "Some experts say," "studies show" \u2014 without attribution, these are noise\n\n## The Standard\n\nKnowledge capture succeeds when:\n\n1. A human can scan the output and orient in seconds\n2. A machine can embed the output and retrieve it precisely\n3. Every sentence traces to a source or is explicitly marked as interpretation\n4. Nothing is added that wasn\'t in the input\n5. Nothing important from the input is lost without acknowledgment\n6. The reader trusts the capture because the method is transparent\n'
+  "writing": '---\nname: writing\ndescription: >\n  Writing standard for Notes. Structure for retrieval, summaries for discovery,\n  entities for connection. Use when creating or substantially revising Notes,\n  or when asked "write this well", "capture this", "create a Note about".\n  Derived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n---\n\n# Writing Standard\n\nNotes that compound follow these principles. They\'re functional requirements for knowledge that works \u2014 clear writing is easy to find and reuse, dense summaries drive discovery, well-scoped sections make a Note precise to navigate and search.\n\nDerived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n\n## Summary Is Everything\n\nThe `summary` field is the most important thing you write. It\'s what search results show. It\'s what shows when browsing the tree. It\'s what loads in awareness context. Write it like the first thing someone reads \u2014 because it is.\n\nTwo sentences max. Dense. Immediate orientation. "What is this and why does it matter." Early words carry disproportionate weight \u2014 they anchor how the Note reads and how it is found.\n\n## Conciseness (Strunk & White)\n\n"Omit needless words." Every word in a Note earns its place.\n\n| Padded | Clean |\n|--------|-------|\n| "The question as to whether" | "Whether" |\n| "This is a company that" | "This company" |\n| "It is important to note that" | (delete \u2014 just state it) |\n| "In terms of revenue growth" | "Revenue grew" |\n\nActive voice over passive. "The startup was analyzed" \u2192 "We analyzed the startup." Passive only when the actor is unknown or irrelevant.\n\n## Clarity (Zinsser)\n\n"Clear thinking becomes clear writing." If you can\'t write it clearly, you don\'t understand it yet.\n\n- Strip every sentence to its cleanest components\n- Clutter words add nothing: "basically," "actually," "in order to," "at this point in time"\n- The first paragraph orients the reader immediately \u2014 if someone reads only the summary, they know what this is about\n\n## Concreteness\n\nSpecifics connect a Note to related specifics; abstractions blur those connections.\n\n| Abstract | Concrete |\n|----------|----------|\n| "Significant growth" | "Revenue grew 40% in Q3" |\n| "Strong team" | "3 ex-Google engineers, 2 successful exits" |\n| "Large market" | "$4.2B TAM, growing 25% annually" |\n\nPrefer the specific to the general, the definite to the vague. Concrete facts can be abstracted later. You can\'t recover specifics from abstractions.\n\n## Objectivity (Kovach & Rosenstiel)\n\nDistinguish fact from interpretation. Never blend them.\n\n| Type | Example |\n|------|---------|\n| Fact | "Raised $10M Series A in March 2025" |\n| Interpretation | "The funding suggests investor confidence" |\n| Claim (attributed) | "The CEO states they are \'market leaders\'" |\n\nEvery claim traces to a source. "According to the landing page..." or "The pitch deck states..." \u2014 the reader knows provenance.\n\n**What the agent does NOT do:** verify claims, add information not in the source, editorialize ("impressive team"), fill gaps with plausible content. If the source doesn\'t mention revenue, note the absence \u2014 don\'t guess.\n\n## Well-Scoped Sections\n\nEach `## heading` scopes one distinct point. Well-scoped sections = precise navigation and search.\n\n- A Note with five distinct sections makes five findable, comparable points\n- A wall of text blurs into one undifferentiated block \u2014 hard to find, hard to compare\n- Each section makes a complete point independently\n- Headings are contracts \u2014 "Team Analysis" contains team analysis, not market commentary\n- Target: 3-10 paragraphs per section. Too short = insufficient signal. Too long = diluted topic.\n\nProgressive disclosure: Title \u2192 Summary \u2192 Sections. Each level complete at its depth.\n\n## Primary Attachment\n\nUse `attached_to` for the one thing this Note is primarily about \u2014 like putting a sticky note on an object. It is singular: choose zero or one primary anchor, written `<type>:<id>`.\n\nThe type vocabulary is your platform\'s \u2014 the protocol fixes only the `<type>:<id>` shape. Common types a platform resolves might include a person (`person:alice`), an agent (`agent:assistant`), or a web page (`web_page:https://example.com/report.pdf`).\n\nIf the Note mentions several things, don\'t put all of them in `attached_to`. Choose the primary anchor, split the Note, use tags, or link in prose. Use `references` only for hard sources.\n\n## Cross-Note Links\n\nUse standard markdown links with relative paths for reader navigation. They are portable across editors, Obsidian, print/exports, and plain LLM context.\n\n```markdown\nSee [Acme profile](../companies/acme.md) for background.\nSee [Market map](../markets/README.md) for the branch overview.\n```\n\nPath links are user-facing handles. They may break when the target is renamed unless the editor/tool rewrites them; use editor rename refactors when available. Inline prose links are reader navigation, not provenance \u2014 they don\'t populate `references`.\n\nWhen renaming a Note and heavily rewriting it, commit the rename separately from the rewrite. Git rename detection is similarity-based; a rename plus large content change in one commit can defeat it, losing the file\'s history link.\n\n## Sources and References\n\nUse `references` only for hard sources: the small set of Notes this Note was produced from or grounded in. Perspective outputs and synthesis Notes use `references` for their input Notes. If a Note merely mentions or points to another Note, use an inline markdown link instead.\n\n## Sentence-Level Mechanics\n\n- **Put emphatic words at the end.** "In Q3, revenue grew 40%" not "Revenue is what grew 40% in Q3"\n- **Keep related words together.** Don\'t separate subject and verb with long interruptions\n- **Parallel construction.** "Fast, reliable, and affordable" not "speed, being reliable, and costs less"\n- **One idea per sentence.** Most of the time, two sentences are clearer than one compound one\n\n## Common Failure Modes\n\n- **Throat-clearing.** "Before we dive into the analysis..." \u2014 delete, start with the analysis\n- **Hedge stacking.** "It seems like it might possibly be somewhat relevant" \u2014 state or acknowledge uncertainty once\n- **Elegant variation.** If it\'s a "startup" in paragraph one, don\'t call it a "venture" in paragraph two for variety. Consistency aids findability.\n- **Nominalization.** "Make a determination" \u2192 "determine." "Performed an analysis" \u2192 "analyzed."\n- **Weasel words.** "Some experts say," "studies show" \u2014 without attribution, these are noise\n\n## The Standard\n\nKnowledge capture succeeds when:\n\n1. A human can scan the output and orient in seconds\n2. A machine can index the output and retrieve it precisely\n3. Every sentence traces to a source or is explicitly marked as interpretation\n4. Nothing is added that wasn\'t in the input\n5. Nothing important from the input is lost without acknowledgment\n6. The reader trusts the capture because the method is transparent\n'
 };
 
 // node_modules/@ideaspaces/protocol/dist/skills.js
@@ -10162,7 +10158,7 @@ async function readStdin() {
 var writeCommand = {
   name: "write",
   description: "Create or update a Note (local file with Layer 1 frontmatter)",
-  usage: "ideaspaces write <path> [--name NAME] [--summary TEXT] [--tags a,b] [--attached-to ent1,ent2] [--content TEXT] [--if-match SHA] [--force] [--stage=false]",
+  usage: "ideaspaces write <path> [--name NAME] [--summary TEXT] [--tags a,b] [--attached-to entity] [--content TEXT] [--if-match SHA] [--force] [--stage=false]",
   examples: [
     'echo "# My Note\\nContent here" | ideaspaces write notes/my-note.md --name "My Note"',
     'ideaspaces write notes/test.md --name "Test" --content "# Test\\nHello"',
@@ -10196,7 +10192,7 @@ var writeCommand = {
       name: flags2.name,
       summary: flags2.summary,
       tags: parseList(flags2.tags),
-      attached_to: parseList(flags2["attached-to"])
+      attached_to: parseOptionalString(flags2["attached-to"])
     };
     const force = Boolean(flags2.force);
     const stage = parseBool(flags2.stage, true);
@@ -10239,6 +10235,11 @@ function parseList(value) {
   if (typeof value !== "string" || !value)
     return void 0;
   return value.split(",").map((t) => t.trim()).filter(Boolean);
+}
+function parseOptionalString(value) {
+  if (typeof value !== "string")
+    return void 0;
+  return value.trim() || void 0;
 }
 function isBatchTarget(targets) {
   if (targets.length > 1)
@@ -10479,8 +10480,138 @@ var changeCommand = {
 
 // dist/commands/navigate.js
 import { relative as relative6, resolve as resolve8 } from "node:path";
-import { statSync as statSync3, existsSync as existsSync6 } from "node:fs";
+import { statSync as statSync3, existsSync as existsSync7 } from "node:fs";
 import { spawnSync as spawnSync4 } from "node:child_process";
+
+// dist/catalog.js
+import { existsSync as existsSync6 } from "node:fs";
+import { readdir, readFile as readFile2 } from "node:fs/promises";
+import { basename as basename3, join as join11, resolve as resolvePath } from "node:path";
+var AUTOCOMPLETE_EXCLUDES = [".git", "node_modules", "backups", ".pi", ".claude"];
+var MAX_CATALOG_REPOS = 20;
+function firstContentLine(content) {
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("---"))
+      return trimmed;
+  }
+  return null;
+}
+async function readRootSummary(root) {
+  const candidates = [join11(root, "_agent", "now.md"), join11(root, "README.md")];
+  for (const candidate of candidates) {
+    try {
+      const content = await readFile2(candidate, "utf-8");
+      const summary = extractSummary(content) ?? firstContentLine(content);
+      if (summary)
+        return summary.replace(/\s+/g, " ").trim();
+    } catch {
+    }
+  }
+  return null;
+}
+async function countTopLevelDirs(root) {
+  try {
+    const entries = await readdir(root, { withFileTypes: true });
+    return entries.filter((entry) => entry.isDirectory() && !AUTOCOMPLETE_EXCLUDES.includes(entry.name)).length;
+  } catch {
+    return null;
+  }
+}
+async function readRootHandle(root) {
+  const [summary, dirCount] = await Promise.all([readRootSummary(root), countTopLevelDirs(root)]);
+  return { summary, dirCount };
+}
+function formatRootHandleLine(label, display, handle) {
+  const parts = [`  ${label}: ${display}`];
+  if (handle.summary)
+    parts.push(` \u2014 ${handle.summary}`);
+  if (handle.dirCount != null)
+    parts.push(` (${handle.dirCount} dirs)`);
+  return parts.join("");
+}
+async function formatWorkingSetSection(homeRoot, mounts) {
+  const lines = ["Working set:"];
+  const homeHandle = await readRootHandle(homeRoot);
+  lines.push(formatRootHandleLine("home", basename3(homeRoot) || homeRoot, homeHandle));
+  const mountHandles = await Promise.all(mounts.map((mount) => readRootHandle(mount)));
+  mounts.forEach((mount, index) => {
+    lines.push(formatRootHandleLine("mount", mount, mountHandles[index]));
+  });
+  return lines.join("\n");
+}
+async function readRepoState(repoRoot2) {
+  let state;
+  try {
+    state = await gitState(repoRoot2);
+  } catch {
+    return "unknown";
+  }
+  let base;
+  if (state.ahead == null || state.behind == null) {
+    base = "local-only";
+  } else if (state.ahead > 0 && state.behind > 0) {
+    base = `diverged +${state.ahead}/-${state.behind}`;
+  } else if (state.ahead > 0) {
+    base = `ahead ${state.ahead}`;
+  } else if (state.behind > 0) {
+    base = `behind ${state.behind}`;
+  } else {
+    base = "synced";
+  }
+  return state.dirty ? `${base} \xB7 dirty` : base;
+}
+async function formatCatalogSection(workspaceFolder, opts) {
+  let repos;
+  try {
+    const entries = await readdir(workspaceFolder, { withFileTypes: true });
+    repos = entries.filter((entry) => entry.isDirectory() && !AUTOCOMPLETE_EXCLUDES.includes(entry.name)).map((entry) => join11(workspaceFolder, entry.name)).filter((dir) => existsSync6(join11(dir, ".git")));
+  } catch {
+    repos = [];
+  }
+  repos.sort((a, b) => basename3(a).localeCompare(basename3(b)));
+  const pov = opts.povRepoRoot ? resolvePath(opts.povRepoRoot) : null;
+  const mountSet = new Set(opts.mounts.map((mount) => resolvePath(mount)));
+  const isPriority = (repo) => {
+    const abs = resolvePath(repo);
+    return abs === pov || mountSet.has(abs);
+  };
+  const priority = repos.filter(isPriority);
+  const ordered = [...priority, ...repos.filter((repo) => !isPriority(repo))];
+  const shown = ordered.slice(0, Math.max(MAX_CATALOG_REPOS, priority.length));
+  const overflow = repos.length - shown.length;
+  const rows = await Promise.all(shown.map(async (repo) => {
+    const [summary, state] = await Promise.all([readRootSummary(repo), readRepoState(repo)]);
+    const tags = [state];
+    if (pov && resolvePath(repo) === pov)
+      tags.push("POV");
+    if (mountSet.has(resolvePath(repo)))
+      tags.push("mounted");
+    const parts = [`  ${basename3(repo)}`];
+    if (summary)
+      parts.push(` \u2014 ${summary}`);
+    parts.push(` (${tags.join(" \xB7 ")})`);
+    return parts.join("");
+  }));
+  const blocks = [];
+  if (rows.length) {
+    const lines = ["Repos in scope (local):", ...rows];
+    if (overflow > 0)
+      lines.push(`  \u2026and ${overflow} more`);
+    blocks.push(lines.join("\n"));
+  }
+  const pullable = opts.pullable ?? [];
+  if (pullable.length) {
+    blocks.push([
+      "Pullable (remote \u2014 not yet local):",
+      ...pullable.map((p) => `  ${p.slug} (${p.namespace})`),
+      "  \u2192 to work on one, clone it into this folder with `ideaspaces clone` (via bash)."
+    ].join("\n"));
+  }
+  return blocks.length ? blocks.join("\n\n") : null;
+}
+
+// dist/commands/navigate.js
 var MAX_DRIFT = 10;
 var SEEN_REF = "refs/ideaspaces/seen";
 function gitRef(cwd, args2) {
@@ -10500,19 +10631,42 @@ function formatPositionSection(pos, base, repoRoot2, pathContext) {
     lines.push(`  active _agent: ${branch.path || "."}`);
   return lines.join("\n");
 }
+function parsePullable(raw) {
+  if (typeof raw !== "string")
+    return [];
+  return raw.split(",").map((s) => s.trim()).filter(Boolean).map((p) => {
+    const i = p.indexOf(":");
+    return i > 0 ? { slug: p.slice(0, i), namespace: p.slice(i + 1) } : null;
+  }).filter((x) => x !== null);
+}
+var BARE_FOLDER_HINT = "You're at a workspace folder (no `_agent/` contract here). Navigate into a repo below (`ideaspaces navigate <repo>`), or pull one that's behind.";
+var EMPTY_FOLDER_HINT = "You're at a workspace folder with no repos yet. Clone one to get started (`ideaspaces clone`).";
+function planCatalog(flags2, povRepoRoot) {
+  const workspace = typeof flags2.workspace === "string" ? resolve8(flags2.workspace) : null;
+  if (!workspace)
+    return { kind: "none" };
+  if (!existsSync7(workspace) || !statSync3(workspace).isDirectory()) {
+    return { kind: "warn", text: `\u26A0 --workspace is not a readable directory: ${workspace} (catalog skipped)` };
+  }
+  const mounts = typeof flags2.mount === "string" ? flags2.mount.split(",").map((m) => m.trim()).filter(Boolean) : [];
+  const catalog = formatCatalogSection(workspace, { povRepoRoot, mounts, pullable: parsePullable(flags2.pullable) });
+  return { kind: "ok", mounts, catalog };
+}
 var navigateCommand = {
   name: "navigate",
   description: "Re-derive orientation (fractal contract, tree, drift) at a position",
-  usage: "ideaspaces navigate [<path>] [--mark-seen]",
+  usage: "ideaspaces navigate [<path>] [--mark-seen] [--workspace <dir>] [--mount <a,b,c>] [--pullable <s:ns,\u2026>] [--no-git]",
   examples: [
     "ideaspaces navigate --json            # orient at the current directory",
-    "ideaspaces navigate roadmap --json    # orient at a branch"
+    "ideaspaces navigate docs --json       # orient at a branch",
+    "ideaspaces navigate --workspace . --mount ../other-repo --json  # + local repo catalog + working set",
+    "ideaspaces navigate --workspace . --pullable team:acme.com,notes:alice --no-git --json  # + remote tier; caller renders its own state"
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const raw = (args2[0] ?? ".").trim();
     const target = resolve8(raw === "" ? "." : raw);
-    if (!existsSync6(target)) {
+    if (!existsSync7(target)) {
       output.error(`No such path: ${target}`);
       return 1;
     }
@@ -10528,21 +10682,42 @@ var navigateCommand = {
     }
     const composed = await composeContractAlongPath(target);
     const position = relative6(repoRoot2 ?? composed.spaceRoot ?? target, target) || ".";
+    const cat = planCatalog(flags2, repoRoot2);
     if (!composed.spaceRoot) {
-      output.result({ text: null, position, root: null, repoRoot: repoRoot2 }, "No _agent/ contract resolves at this position.");
+      const bare = [];
+      if (cat.kind === "warn")
+        bare.push(cat.text);
+      else if (cat.kind === "ok") {
+        const catalog2 = await cat.catalog;
+        if (catalog2)
+          bare.push(catalog2);
+        if (!repoRoot2)
+          bare.push(catalog2 ? BARE_FOLDER_HINT : EMPTY_FOLDER_HINT);
+      }
+      output.result({ text: bare.length ? bare.join("\n\n") : null, position, root: null, repoRoot: repoRoot2 }, bare.length ? bare.join("\n\n") : "No _agent/ contract resolves at this position.");
       return 0;
     }
     const base = repoRoot2 ?? composed.spaceRoot;
     const lastSha = repoRoot2 ? gitRef(repoRoot2, ["rev-parse", "--verify", "--quiet", SEEN_REF]) ?? void 0 : void 0;
-    const [block, pathContext] = await Promise.all([
+    const [block, pathContext, catalog, workingSet] = await Promise.all([
       assembleAwareness({ root: target, contract: composed.contract, lastSha }),
-      base ? walkPathContext(base, target) : Promise.resolve(null)
+      base ? walkPathContext(base, target) : Promise.resolve(null),
+      cat.kind === "ok" ? cat.catalog : Promise.resolve(null),
+      cat.kind === "ok" ? formatWorkingSetSection(composed.spaceRoot, cat.mounts) : Promise.resolve(null)
     ]);
     const sections = [];
     if (pathContext && base)
       sections.push(formatPositionSection(target, base, repoRoot2, pathContext));
     if (block.trim())
       sections.push(block);
+    if (cat.kind === "warn")
+      sections.push(cat.text);
+    else if (cat.kind === "ok") {
+      if (workingSet)
+        sections.push(workingSet);
+      if (catalog)
+        sections.push(catalog);
+    }
     if (repoRoot2 && gs) {
       const bits = [];
       if (gs.branch)
@@ -10553,7 +10728,7 @@ var navigateCommand = {
         bits.push("dirty");
       if (gs.untrackedInTrackedDirs.length)
         bits.push(`${gs.untrackedInTrackedDirs.length} untracked`);
-      if (bits.length)
+      if (bits.length && !flags2["no-git"])
         sections.push(`Git: ${bits.join(", ")}`);
       const signals = await staleDocSignals(repoRoot2, await collectDocDependencies(repoRoot2, repoRoot2));
       if (signals.length) {
@@ -11154,12 +11329,60 @@ var catalogCommand = {
 
 // dist/commands/pi-status.js
 import { spawnSync as spawnSync5 } from "node:child_process";
-import { existsSync as existsSync7, readFileSync as readFileSync3 } from "node:fs";
+import { existsSync as existsSync9, readFileSync as readFileSync4 } from "node:fs";
+import { basename as basename4, join as join13 } from "node:path";
+
+// dist/pi-auth.js
+import { chmodSync, existsSync as existsSync8, mkdirSync as mkdirSync3, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { basename as basename3, join as join11 } from "node:path";
+import { dirname as dirname3, join as join12 } from "node:path";
+function resolvePiAgentDir(env = process.env) {
+  const override = env.PI_CODING_AGENT_DIR?.trim();
+  if (override)
+    return override.startsWith("~") ? join12(homedir2(), override.slice(1)) : override;
+  return join12(homedir2(), ".pi", "agent");
+}
+function resolvePiAuthPath(env = process.env) {
+  return join12(resolvePiAgentDir(env), "auth.json");
+}
+function parseAuth(raw) {
+  if (!raw || !raw.trim())
+    return {};
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
+}
+function upsertApiKey(current, provider, key) {
+  return { ...current, [provider]: { type: "api_key", key } };
+}
+function removeProvider(current, provider) {
+  if (!(provider in current))
+    return { next: current, removed: false };
+  const next = { ...current };
+  delete next[provider];
+  return { next, removed: true };
+}
+function readAuthFile(path) {
+  if (!existsSync8(path))
+    return {};
+  return parseAuth(readFileSync3(path, "utf8"));
+}
+function writeAuthFile(path, auth) {
+  const dir = dirname3(path);
+  if (!existsSync8(dir))
+    mkdirSync3(dir, { recursive: true, mode: 448 });
+  writeFileSync3(path, `${JSON.stringify(auth, null, 2)}
+`, { encoding: "utf8", mode: 384 });
+  chmodSync(path, 384);
+}
+
+// dist/commands/pi-status.js
 function derivePiStatus(input) {
   const providers = Object.entries(input.auth ?? {}).map(([name, v]) => {
-    const hasCreds = Boolean(v && (v.access || v.refresh));
+    const hasCreds = Boolean(v && (v.key || v.access || v.refresh));
     const expiresAt = typeof v?.expires === "number" ? v.expires : null;
     return { name, hasCreds, expiresAt, expired: expiresAt != null && expiresAt <= input.now };
   });
@@ -11175,33 +11398,23 @@ function derivePiStatus(input) {
   };
 }
 function resolveExtension(path) {
-  const name = basename3(path.replace(/[/\\]+$/, "")) || path;
+  const name = basename4(path.replace(/[/\\]+$/, "")) || path;
   const check = (resolvable) => ({ name, path, resolvable });
-  if (!existsSync7(path))
+  if (!existsSync9(path))
     return check(false);
   if (/\.[cm]?[jt]s$/.test(path))
     return check(true);
-  const pkgPath = join11(path, "package.json");
-  if (existsSync7(pkgPath)) {
+  const pkgPath = join13(path, "package.json");
+  if (existsSync9(pkgPath)) {
     try {
-      const pkg = JSON.parse(readFileSync3(pkgPath, "utf8"));
+      const pkg = JSON.parse(readFileSync4(pkgPath, "utf8"));
       const exts = pkg.pi?.extensions;
       if (Array.isArray(exts) && exts.length > 0)
         return check(true);
     } catch {
     }
   }
-  return check(existsSync7(join11(path, "index.ts")) || existsSync7(join11(path, "index.js")));
-}
-function readPiAuth(piHome) {
-  const file = join11(piHome, "agent", "auth.json");
-  if (!existsSync7(file))
-    return null;
-  try {
-    return JSON.parse(readFileSync3(file, "utf8"));
-  } catch {
-    return null;
-  }
+  return check(existsSync9(join13(path, "index.ts")) || existsSync9(join13(path, "index.js")));
 }
 function probeBinary(piBin) {
   try {
@@ -11246,11 +11459,178 @@ var piStatusCommand = {
     const output = createOutput(global2);
     const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : "pi";
     const binary = probeBinary(piBin);
-    const auth = readPiAuth(join11(homedir2(), ".pi"));
+    const auth = readAuthFile(resolvePiAuthPath());
     const extFlag = typeof flags2.ext === "string" ? flags2.ext : process.env.IDEASPACES_PI_EXTENSIONS;
     const extensions = (extFlag ?? "").split(",").map((s) => s.trim()).filter(Boolean).map(resolveExtension);
     const status = derivePiStatus({ binary, auth, extensions, now: Date.now() });
     output.result(status, formatHuman2(status));
+    return 0;
+  }
+};
+
+// dist/commands/pi-models.js
+import { spawn as spawn2 } from "node:child_process";
+import { createInterface } from "node:readline";
+function trimModel(m) {
+  return {
+    ref: `${m.provider}/${m.id}`,
+    id: m.id,
+    name: m.name ?? m.id,
+    provider: m.provider,
+    contextWindow: m.contextWindow ?? 0,
+    maxTokens: m.maxTokens ?? 0,
+    reasoning: !!m.reasoning,
+    image: (m.input ?? []).includes("image"),
+    cost: m.cost ? { input: m.cost.input ?? 0, output: m.cost.output ?? 0 } : void 0
+  };
+}
+var QUERY_ID = "__models";
+var TIMEOUT_MS = 2e4;
+function queryPiModels(piBin) {
+  return new Promise((resolve13, reject) => {
+    const pi = spawn2(piBin, ["--mode", "rpc", "--no-extensions"], {
+      cwd: process.cwd(),
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    let stderr = "";
+    let settled = false;
+    const finish = (fn) => {
+      if (settled)
+        return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        pi.kill("SIGTERM");
+      } catch {
+      }
+      fn();
+    };
+    const timer = setTimeout(() => finish(() => reject(new Error("pi did not return models within the timeout"))), TIMEOUT_MS);
+    pi.stderr.on("data", (d) => {
+      stderr += String(d);
+    });
+    pi.on("error", (err) => finish(() => reject(err.code === "ENOENT" ? new Error("pi not found \u2014 check the runtime with `ideaspaces pi-status`") : err)));
+    pi.on("exit", (code) => {
+      if (settled)
+        return;
+      finish(() => reject(new Error(stderr.trim() || `pi exited (${code ?? "unknown"}) before returning models`)));
+    });
+    const rl = createInterface({ input: pi.stdout, terminal: false });
+    rl.on("line", (line) => {
+      const trimmed = line.trim();
+      if (!trimmed)
+        return;
+      let msg;
+      try {
+        msg = JSON.parse(trimmed);
+      } catch {
+        return;
+      }
+      if (msg.type === "response" && msg.command === "get_available_models") {
+        if (msg.success === false) {
+          finish(() => reject(new Error(String(msg.error ?? "get_available_models failed"))));
+          return;
+        }
+        const data = msg.data;
+        const models = (data?.models ?? []).map(trimModel);
+        finish(() => resolve13({ models }));
+      }
+    });
+    try {
+      pi.stdin.write(`${JSON.stringify({ type: "get_available_models", id: QUERY_ID })}
+`);
+    } catch {
+      finish(() => reject(new Error("could not send the query to pi")));
+    }
+  });
+}
+function formatHuman3(result) {
+  if (!result.models.length)
+    return "No models available \u2014 configure a provider (see `pi-status`).";
+  return result.models.map((m) => {
+    const tags = [m.reasoning ? "thinking" : null, m.image ? "images" : null].filter(Boolean).join(", ");
+    return `${m.ref}${m.name !== m.id ? `  (${m.name})` : ""}${tags ? `  \xB7 ${tags}` : ""}`;
+  }).join("\n");
+}
+var piModelsCommand = {
+  name: "pi-models",
+  description: "List the models a local Pi turn can use (auth-gated), for a model picker.",
+  usage: "ideaspaces pi-models [--pi-bin <path>] [--json]",
+  examples: ["ideaspaces pi-models --json", "ideaspaces pi-models  # human-readable"],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : "pi";
+    try {
+      const result = await queryPiModels(piBin);
+      output.result(result, formatHuman3(result));
+      return 0;
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+  }
+};
+
+// dist/commands/pi-login.js
+var piLoginCommand = {
+  name: "pi-login",
+  description: "Configure a local-agent model provider (writes pi's auth.json)",
+  usage: "ideaspaces pi-login --provider <id> --api-key <key> [--json]",
+  examples: [
+    "ideaspaces pi-login --provider anthropic --api-key sk-ant-\u2026",
+    "ideaspaces pi-login --provider openai --api-key sk-\u2026"
+  ],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const provider = typeof flags2.provider === "string" ? flags2.provider.trim() : "";
+    const apiKey = typeof flags2["api-key"] === "string" ? flags2["api-key"].trim() : "";
+    if (!provider) {
+      output.error("Usage: ideaspaces pi-login --provider <id> --api-key <key>");
+      return 1;
+    }
+    if (!apiKey) {
+      output.error(`An API key is required: ideaspaces pi-login --provider ${provider} --api-key <key>`);
+      return 1;
+    }
+    const path = resolvePiAuthPath();
+    const next = upsertApiKey(readAuthFile(path), provider, apiKey);
+    try {
+      writeAuthFile(path, next);
+    } catch (err) {
+      output.error(`Couldn't write ${path}: ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    output.result({ provider, method: "api_key", configured: true, authPath: path }, `Configured ${provider} with an API key. Run \`ideaspaces pi-status\` to confirm.`);
+    return 0;
+  }
+};
+
+// dist/commands/pi-logout.js
+var piLogoutCommand = {
+  name: "pi-logout",
+  description: "Remove a local-agent model provider from pi's auth.json",
+  usage: "ideaspaces pi-logout --provider <id> [--json]",
+  examples: ["ideaspaces pi-logout --provider anthropic"],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const provider = typeof flags2.provider === "string" ? flags2.provider.trim() : "";
+    if (!provider) {
+      output.error("Usage: ideaspaces pi-logout --provider <id>");
+      return 1;
+    }
+    const path = resolvePiAuthPath();
+    const { next, removed } = removeProvider(readAuthFile(path), provider);
+    if (!removed) {
+      output.result({ provider, removed: false, authPath: path }, `${provider} was not configured \u2014 nothing to remove.`);
+      return 0;
+    }
+    try {
+      writeAuthFile(path, next);
+    } catch (err) {
+      output.error(`Couldn't write ${path}: ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    output.result({ provider, removed: true, authPath: path }, `Removed ${provider} from pi's providers.`);
     return 0;
   }
 };
@@ -11263,7 +11643,7 @@ var cloneCommand = {
   usage: "ideaspaces clone <space> [dir]",
   examples: [
     "ideaspaces clone notes                 # clone into ./notes",
-    "ideaspaces clone ernests_s/notes ./n   # explicit namespace/slug + dir"
+    "ideaspaces clone alice/notes ./n       # explicit namespace/slug + dir"
   ],
   async run(args2, _flags, global2) {
     const output = createOutput(global2);
@@ -11369,7 +11749,7 @@ var linkCommand = {
   usage: "ideaspaces link <dir> [space]",
   examples: [
     "ideaspaces link ./theone                  # auto-detect from the git remote",
-    "ideaspaces link ./theone ernests_s/theone # bind to a specific space"
+    "ideaspaces link ./theone alice/theone     # bind to a specific space"
   ],
   async run(args2, _flags, global2) {
     const output = createOutput(global2);
@@ -11472,7 +11852,7 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 // dist/commands/forget.js
 import { rmSync } from "node:fs";
 import { homedir as homedir3 } from "node:os";
-import { dirname as dirname3, resolve as resolve12 } from "node:path";
+import { dirname as dirname4, resolve as resolve12 } from "node:path";
 var forgetCommand = {
   name: "forget",
   description: "Stop tracking a local clone (optionally delete its folder)",
@@ -11490,7 +11870,7 @@ var forgetCommand = {
     }
     const dir = resolve12(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve12(homedir3()) || dirname3(dir) === dir)) {
+    if (del && (dir === resolve12(homedir3()) || dirname4(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -11515,11 +11895,11 @@ var forgetCommand = {
 };
 
 // dist/local-conversations.js
-import { existsSync as existsSync8, readdirSync, readFileSync as readFileSync4, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync10, readdirSync, readFileSync as readFileSync5, statSync as statSync4 } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { join as join12 } from "node:path";
+import { join as join14 } from "node:path";
 function localSessionDir(contextRoot) {
-  return join12(contextRoot, ".pi", "sessions");
+  return join14(contextRoot, ".pi", "sessions");
 }
 function mintConversationId() {
   return `local-${randomUUID()}`;
@@ -11596,17 +11976,17 @@ function parseSessionJsonl(text, fallbackTs) {
   return { id, name, messages, messageCount: count, preview, updatedAt: lastTs };
 }
 function findSessionFile(dir, convId) {
-  if (!existsSync8(dir))
+  if (!existsSync10(dir))
     return null;
   const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
   const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
   if (bySuffix)
-    return join12(dir, bySuffix);
+    return join14(dir, bySuffix);
   for (const f of files) {
     try {
-      const first = readFileSync4(join12(dir, f), "utf8").split("\n", 1)[0];
+      const first = readFileSync5(join14(dir, f), "utf8").split("\n", 1)[0];
       if (JSON.parse(first).id === convId)
-        return join12(dir, f);
+        return join14(dir, f);
     } catch {
     }
   }
@@ -11618,7 +11998,7 @@ function getLocalConversation(contextRoot, convId) {
     return { conversation_id: convId, repo_id: contextRoot, name: "", history: [], active_turn: null };
   }
   const mtime = statSync4(file).mtime.toISOString();
-  const s = parseSessionJsonl(readFileSync4(file, "utf8"), mtime);
+  const s = parseSessionJsonl(readFileSync5(file, "utf8"), mtime);
   return {
     conversation_id: convId,
     repo_id: contextRoot,
@@ -11631,14 +12011,14 @@ function getLocalConversation(contextRoot, convId) {
 }
 function listLocalConversations(contextRoot) {
   const dir = localSessionDir(contextRoot);
-  if (!existsSync8(dir))
+  if (!existsSync10(dir))
     return { conversations: [], total: 0 };
   const summaries = [];
   for (const f of readdirSync(dir).filter((f2) => f2.endsWith(".jsonl"))) {
-    const path = join12(dir, f);
+    const path = join14(dir, f);
     let text;
     try {
-      text = readFileSync4(path, "utf8");
+      text = readFileSync5(path, "utf8");
     } catch {
       continue;
     }
@@ -11707,12 +12087,12 @@ var conversationsCommand = {
 };
 
 // dist/commands/conversation.js
-import { join as join14 } from "node:path";
+import { join as join16 } from "node:path";
 
 // dist/local-agent.js
-import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync9, mkdirSync as mkdirSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join13 } from "node:path";
+import { spawn as spawn3 } from "node:child_process";
+import { existsSync as existsSync11, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { join as join15 } from "node:path";
 import readline from "node:readline";
 var NON_AGENT_TYPES = /* @__PURE__ */ new Set(["response", "extension_ui_request"]);
 function harvestWorkspace(tools) {
@@ -11764,10 +12144,30 @@ function deriveConversationName(message) {
   return clean.length > 60 ? `${clean.slice(0, 57)}\u2026` : clean;
 }
 function ensureSessionDir(dir) {
-  mkdirSync3(dir, { recursive: true });
-  const ignore = join13(dir, ".gitignore");
-  if (!existsSync9(ignore))
-    writeFileSync3(ignore, "*\n");
+  mkdirSync4(dir, { recursive: true });
+  const ignore = join15(dir, ".gitignore");
+  if (!existsSync11(ignore))
+    writeFileSync4(ignore, "*\n");
+}
+function buildPiArgs(opts) {
+  const args2 = [
+    "--mode",
+    "rpc",
+    "--session-id",
+    opts.conversationId,
+    "--session-dir",
+    opts.sessionDir,
+    "-a"
+  ];
+  if (opts.extensionPaths.length)
+    args2.push("--no-extensions");
+  for (const ext of opts.extensionPaths)
+    args2.push("--extension", ext);
+  for (const skill of opts.skillPaths ?? [])
+    args2.push("--skill", skill);
+  if (opts.piModel)
+    args2.push("--model", opts.piModel);
+  return args2;
 }
 async function* runLocalTurn(opts) {
   const modelTier = opts.modelTier ?? "local";
@@ -11781,20 +12181,8 @@ async function* runLocalTurn(opts) {
     }
   });
   ensureSessionDir(opts.sessionDir);
-  const args2 = [
-    "--mode",
-    "rpc",
-    "--session-id",
-    opts.conversationId,
-    "--session-dir",
-    opts.sessionDir,
-    "-a"
-  ];
-  for (const ext of opts.extensionPaths)
-    args2.push("--extension", ext);
-  if (opts.piModel)
-    args2.push("--model", opts.piModel);
-  const pi = spawn2(opts.piBin ?? "pi", args2, { cwd: opts.repoPath, stdio: ["pipe", "pipe", "pipe"] });
+  const args2 = buildPiArgs(opts);
+  const pi = spawn3(opts.piBin ?? "pi", args2, { cwd: opts.repoPath, stdio: ["pipe", "pipe", "pipe"] });
   let stderr = "";
   pi.stderr.on("data", (d) => {
     stderr += String(d);
@@ -11902,6 +12290,10 @@ function reportError(err, output) {
   }
   output.error(err instanceof Error ? err.message : String(err));
   return 1;
+}
+function parseCommaList(flag, envFallback) {
+  const raw = typeof flag === "string" ? flag : envFallback;
+  return (raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 }
 async function cmdNew2(args2, flags2, output) {
   const repoId = args2[0];
@@ -12052,17 +12444,18 @@ async function cmdSendLocal(flags2, output) {
     output.error("A message is required: --message <text>");
     return 1;
   }
-  const extFlag = typeof flags2.ext === "string" ? flags2.ext : process.env.IDEASPACES_PI_EXTENSIONS;
-  const extensionPaths = (extFlag ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const extensionPaths = parseCommaList(flags2.ext, process.env.IDEASPACES_PI_EXTENSIONS);
   if (!extensionPaths.length) {
     output.error("Extensions are required: --ext <pi-is-space,pi-local-context> (or set IDEASPACES_PI_EXTENSIONS)");
     return 1;
   }
+  const skillPaths = parseCommaList(flags2.skill, process.env.IDEASPACES_PI_SKILLS);
   const repoPath = typeof flags2.context === "string" ? flags2.context : process.cwd();
-  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join14(repoPath, ".pi", "sessions");
+  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join16(repoPath, ".pi", "sessions");
   const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
   const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
   const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
+  const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : void 0;
   const controller = new AbortController();
   let signalled = false;
   const onSignal = () => {
@@ -12078,10 +12471,12 @@ async function cmdSendLocal(flags2, output) {
       repoPath,
       message,
       extensionPaths,
+      skillPaths,
       conversationId,
       sessionDir,
       modelTier,
       piModel,
+      piBin,
       signal: controller.signal
     })) {
       process.stdout.write(`${JSON.stringify(event)}
@@ -12164,6 +12559,7 @@ var conversationCommand = {
     "ideaspaces conversation participants repo_abc c_123",
     "ideaspaces conversation remove repo_abc c_123 alice",
     "ideaspaces conversation send repo_abc c_123 --message 'Hi'  # streams JSON lines",
+    "ideaspaces conversation send --local --context /ws --conversation c1 --message 'Hi' --ext a,b --skill a/skills,b/skills --pi-bin /path/pi --pi-model sonnet  # local pi turn",
     "ideaspaces conversation get repo_abc c_123        # detail + history",
     "ideaspaces conversation cancel repo_abc c_123     # stop the active turn"
   ],
@@ -12318,8 +12714,8 @@ var nodeCommand = {
 };
 
 // dist/commands/search.js
-import { readFileSync as readFileSync5 } from "node:fs";
-import { join as join15 } from "node:path";
+import { readFileSync as readFileSync6 } from "node:fs";
+import { join as join17 } from "node:path";
 
 // dist/search.js
 var K1 = 1.2;
@@ -12410,7 +12806,7 @@ var DEFAULT_LIMIT = 20;
 function* readDocs(root, paths) {
   for (const path of paths) {
     try {
-      yield { path, content: readFileSync5(join15(root, path), "utf-8") };
+      yield { path, content: readFileSync6(join17(root, path), "utf-8") };
     } catch {
       continue;
     }
@@ -12628,13 +13024,13 @@ var shareCommand = {
 };
 
 // dist/auth/session-state.js
-import { existsSync as existsSync10, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync12, unlinkSync as unlinkSync2 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
-import { join as join16 } from "node:path";
-var SESSION_FILE = join16(homedir4(), ".ideaspaces", "session.json");
+import { join as join18 } from "node:path";
+var SESSION_FILE = join18(homedir4(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
-    if (existsSync10(SESSION_FILE))
+    if (existsSync12(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -12662,6 +13058,9 @@ var topLevel = [
   reposCommand,
   catalogCommand,
   piStatusCommand,
+  piModelsCommand,
+  piLoginCommand,
+  piLogoutCommand,
   cloneCommand,
   clonesCommand,
   linkCommand,

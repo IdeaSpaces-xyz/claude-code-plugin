@@ -21135,7 +21135,7 @@ server.tool(
     name: external_exports.string().optional().describe("Note name (Layer 1 frontmatter)"),
     summary: external_exports.string().optional().describe("Dense summary for search (Layer 1 frontmatter)"),
     tags: external_exports.array(external_exports.string()).optional(),
-    attached_to: external_exports.array(external_exports.string()).optional().describe("Entity bindings (e.g. 'hostname:acme.com')"),
+    attached_to: external_exports.string().optional().describe("Primary entity binding (e.g. 'hostname:acme.com')"),
     if_match: external_exports.string().optional().describe(
       "Content sha from a prior is_write response or is_status \u2014 for a safe update. Refuses on mismatch unless force."
     ),
@@ -21147,7 +21147,7 @@ server.tool(
     if (name) a.push("--name", name);
     if (summary) a.push("--summary", summary);
     if (tags?.length) a.push("--tags", tags.join(","));
-    if (attached_to?.length) a.push("--attached-to", attached_to.join(","));
+    if (attached_to) a.push("--attached-to", attached_to);
     if (if_match) a.push("--if-match", if_match);
     if (force) a.push("--force");
     return run(a, content, cwd);
