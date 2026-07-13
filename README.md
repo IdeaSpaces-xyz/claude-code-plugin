@@ -1,30 +1,101 @@
-# IdeaSpaces Plugin for Claude Code
+# IdeaSpaces
 
-> Local-first knowledge space for Claude Code. A markdown folder, agent skills, git as sync. Optional remote hosting when you're ready.
+> A shared place for you and your agent to think together. It's a folder of markdown, synced with git — knowledge that compounds across sessions instead of vanishing when the chat ends.
 
-The plugin makes a local markdown folder a good place for an agent and a human to think together. Start locally, capture shared understanding into markdown, and publish to IdeaSpaces only when you want the space hosted remotely.
+You talk with an agent, understanding builds up, and then it's gone. IdeaSpaces gives that understanding a home: a plain folder where decisions, notes, and context are written down as you work, kept in git, and there again the next time — for you and for anyone on your team.
+
+Everything is local by default. Nothing leaves your machine unless you choose to publish a space to a remote.
+
+---
 
 ## Install
 
-```bash
-claude plugin add ideaspaces-xyz/claude-code-plugin
+IdeaSpaces installs the same way in **Claude Code** and **Cowork** — both read plugins from a GitHub repository. You'll add ours once, then install with one click or one command.
+
+Marketplace repository: **`IdeaSpaces-xyz/claude-code-plugin`**
+
+### Claude Code
+
+Inside a Claude Code session, type:
+
+```
+/plugin marketplace add IdeaSpaces-xyz/claude-code-plugin
+/plugin install ideaspaces@ideaspaces-xyz
 ```
 
-## Local-first flow
+Or from your terminal:
 
 ```bash
-# Scaffold a local ideaspace
-node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create my-space --yes
-cd my-space
-
-# Later, after login, host it remotely
-node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js login
-node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js publish
+claude plugin marketplace add IdeaSpaces-xyz/claude-code-plugin
+claude plugin install ideaspaces@ideaspaces-xyz
 ```
 
-In Claude Code, use `/is-setup` for conversational setup and `/is-publish` for conversational publishing. The skills invoke the bundled CLI; no global npm install is required.
+### Cowork
 
-## Bundled CLI
+1. Open **Customize** in the sidebar, then **Plugins**.
+2. Click **Add marketplace** and paste `IdeaSpaces-xyz/claude-code-plugin` (the `owner/repo` shorthand or the full `https://github.com/IdeaSpaces-xyz/claude-code-plugin` URL both work).
+3. Find **ideaspaces** in the list and click **Install**.
+4. Approve the plugin when prompted — it includes a small local helper (see Requirements).
+
+**What works in Cowork's sandbox.** Cowork runs in an isolated sandbox with restricted network access, so IdeaSpaces behaves a little differently there:
+
+- ✅ **Working locally works fully.** Create a space and capture notes as usual — Cowork writes to a folder you've **connected on the desktop**, so your markdown is saved to real files that persist. Create your space *inside* a connected folder.
+- ⚠️ **Remote sync may be blocked — switch to Claude Code view.** Publishing and `is_push` / `is_pull` reach a git host outside the sandbox, which the Cowork view restricts. The fix is simple: **switch to Claude Code view and ask the agent to push or pull there.** Sync works from Claude Code view, and it's the same space, so nothing is lost — capture in Cowork, sync in Code.
+
+### For a whole team (auto-install)
+
+Commit this to your project's `.claude/settings.json` and everyone who trusts the repo gets IdeaSpaces automatically:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "ideaspaces-xyz": {
+      "source": { "source": "github", "repo": "IdeaSpaces-xyz/claude-code-plugin" }
+    }
+  },
+  "enabledPlugins": { "ideaspaces@ideaspaces-xyz": true }
+}
+```
+
+### Requirements
+
+IdeaSpaces runs a small local helper on your machine (a Node.js program that manages the markdown and git). You need:
+
+- **Node.js 18+** — already present if you use Claude Code; on Cowork desktop it must be installed.
+- **git** — used to sync the space.
+
+Nothing else to install: the helper ships pre-built inside the plugin, so there's no `npm install` step and no setup.
+
+---
+
+## First steps
+
+Once installed, just start working — the plugin orients your agent at the start of each session and nudges toward capturing what matters.
+
+- **Start a space** — say *"set up an ideaspace here"* (runs the `/is-setup` skill), or scaffold one directly:
+  ```bash
+  node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create my-space --yes
+  ```
+- **Capture as you go** — when a decision or insight lands, the agent proposes writing it down. You confirm.
+- **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device or share it with your team. Optional; everything works fully offline without it.
+
+The skills you get: `is-setup`, `is-orient`, `is-capture`, `is-reflect`, `is-writing`, `is-shape`, `is-space`, `is-publish`, `is-push`, `is-pull`. Type `/` in Claude Code or Cowork to see them.
+
+---
+
+## Under the hood
+
+Everything below is for contributors and the curious — you don't need any of it to use IdeaSpaces.
+
+### How distribution works
+
+The plugin **is** its GitHub repo. `IdeaSpaces-xyz/claude-code-plugin` is public and contains a `.claude-plugin/marketplace.json`, so both Claude Code and Cowork treat it as an installable marketplace directly — there's nothing else to publish. The MCP server and CLI are vendored as self-contained bundles, so an end-user install needs no dependency step.
+
+To also list IdeaSpaces in Anthropic's built-in catalog for discoverability, submit it via [claude.com/docs/plugins/submit](https://claude.com/docs/plugins/submit). That's optional and separate from the install flow above.
+
+### Bundled CLI
+
+The skills invoke this CLI; no global npm install is required.
 
 | Command | What |
 |---|---|
@@ -41,7 +112,7 @@ In Claude Code, use `/is-setup` for conversational setup and `/is-publish` for c
 
 `publish` preflights tracked markdown frontmatter before pushing.
 
-## MCP tools
+### MCP tools
 
 The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover file editing; `is_navigate` adds the composed `_agent` contract that a plain tree can't reconstruct.
 
@@ -60,19 +131,22 @@ Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`re
 
 MCP stays thin: every tool and resource shells the bundled CLI with `--json`. One implementation, many surfaces — and the logic stays in the CLI + SDK, out of the agent's context.
 
-## Skills
+### Skills
 
 - **is-setup** — conversational layer over `ideaspaces create`
-- **is-publish** — conversational layer over `ideaspaces publish`
+- **is-orient** — orient inside a space: where are we, what's active, what changed
 - **is-capture** — propose writing a Note when conversation crystallizes
 - **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
 - **is-writing** — writing standard for Notes that compound
 - **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
+- **is-publish** — conversational layer over `ideaspaces publish`
+- **is-push** — send committed captures to the remote
+- **is-pull** — integrate remote changes into the local space
 
 Skills read their full protocols from `reference/` (the SDK's canonical skill catalog, built via `readSkill()`).
 
-## Hooks
+### Hooks
 
 **SessionStart awareness** (`dist/awareness-hook.js`) — shells the bundled `ideaspaces navigate --json . --mark-seen` and emits its rendered orientation (Now, tree, agent context, skills, since-last-session), a git-state line, and a **stale-doc drift** block: docs that declare `code_paths` whose referenced code was committed *after* the doc, flagged before the agent quotes their status. Missing `purpose.md`/`now.md` surface as direction not yet captured. `--mark-seen` persists HEAD for the next session's diff. The CLI is the single awareness producer (the same block the MCP `is_navigate` tool returns), so the hook carries no SDK import — `build:hook` ships no SDK in the bundle.
 
@@ -80,13 +154,13 @@ It also **bridges the session id**: the MCP server can't read the Claude Code se
 
 **PostToolUse capture-nudge** (`dist/capture-nudge-hook.js`) — when a knowledge file (`*.md` or under `_agent/`) is written with native Write/Edit inside an ideaspace, nudges toward the `is_write` → `is_commit` capture flow. Silent for source, configs, build artifacts, and markdown outside an ideaspace.
 
-## Repo-local agent context
+### Repo-local agent context
 
 This plugin repo's own `_agent/` is local working context and is gitignored. Public repo orientation lives in `README.md`, `CLAUDE.md`, skill files, and source.
 
 Contributors who want local agent orientation can manually create a private `_agent/`, or run `ideaspaces create` from the repo root to preview the scaffold and copy the parts they want. Do not commit it.
 
-## Rebuilding
+### Rebuilding
 
 The plugin ships pre-built: the CLI and MCP bundles are vendored from the sibling repos, the skill `reference/` is built from the SDK, and the hooks are built here. To update after code changes:
 
