@@ -79,9 +79,8 @@ Once installed, just start working — the plugin orients your agent at the star
 - **Capture as you go** — when a decision or insight lands, the agent proposes writing it down. You confirm.
 - **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device or share it with your team. Optional; everything works fully offline without it.
 
-The skills you get: `is-setup`, `is-publish`, `is-capture`, `is-reflect`, `is-writing`, `is-shape`, `is-space`. Type `/` in Claude Code or Cowork to see them.
+The skills you get: `is-setup`, `is-orient`, `is-capture`, `is-reflect`, `is-writing`, `is-shape`, `is-space`, `is-publish`, `is-push`, `is-pull`. Type `/` in Claude Code or Cowork to see them.
 
----
 ---
 
 ## Under the hood
@@ -135,12 +134,15 @@ MCP stays thin: every tool and resource shells the bundled CLI with `--json`. On
 ### Skills
 
 - **is-setup** — conversational layer over `ideaspaces create`
-- **is-publish** — conversational layer over `ideaspaces publish`
+- **is-orient** — orient inside a space: where are we, what's active, what changed
 - **is-capture** — propose writing a Note when conversation crystallizes
 - **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
 - **is-writing** — writing standard for Notes that compound
 - **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
+- **is-publish** — conversational layer over `ideaspaces publish`
+- **is-push** — send committed captures to the remote
+- **is-pull** — integrate remote changes into the local space
 
 Skills read their full protocols from `reference/` (the SDK's canonical skill catalog, built via `readSkill()`).
 
