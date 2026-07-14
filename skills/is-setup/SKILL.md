@@ -7,12 +7,12 @@ description: >
   the seed of the contract. Captures purpose / now / next as real files in
   conversation when content emerges. Use when: user says "set up a space",
   "add ideaspaces here", or asks about the contract.
-allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_auth Edit Read Write Glob Bash"
+allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_auth Edit Read Write Glob Bash"
 ---
 
 # Setup an Ideaspace
 
-Full protocol: read `${CLAUDE_PLUGIN_ROOT}/reference/purpose-elicitation.md` and `${CLAUDE_PLUGIN_ROOT}/reference/repo-context.md`.
+Canonical protocols: read `${CLAUDE_PLUGIN_ROOT}/reference/purpose-elicitation.md` and `${CLAUDE_PLUGIN_ROOT}/reference/repo-context.md` when eliciting direction or judging how an existing repo should be scaffolded.
 
 **Goal:** detect → confirm → run `ideaspaces create` → capture purpose / now / next in conversation when content emerges.
 
@@ -77,7 +77,7 @@ For each of these, draw the content out and write the file when there's real con
 2. **Now** — *"What are you working on right now?"* Single paragraph becomes `_agent/now.md`.
 3. **Next** — *"What's queued after now?"* Optional. Vague is OK.
 
-Use `is_write` for these (Layer 1 frontmatter — `name`, `summary`). Capture is conscious; don't write Purpose for the user, elicit and reflect back. After each capture, commit it as its own commit (`Bash: git add _agent/{file}.md && git commit -m "Capture {name}"`).
+Use `is_write` for these (Layer 1 frontmatter — `name`, `summary`). Capture is conscious; don't write Purpose for the user, elicit and reflect back. After each capture, commit it as its own capture commit with `is_commit` using the explicit path (or `all: true` only for reviewed staged knowledge). Never use a broad git commit that could sweep unrelated staged work.
 
 ## 5. Offer publish
 

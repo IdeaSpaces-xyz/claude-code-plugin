@@ -21106,7 +21106,7 @@ function readSessionId() {
     return void 0;
   }
 }
-var CHANGE_ID_SHAPE = /^chg_[a-z0-9-]+$/;
+var CHANGE_ID_SHAPE = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
 var server = new McpServer({ name: "core", version: "0.3.0" });
 var cwdField = external_exports.string().optional().describe(
   "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
@@ -21179,15 +21179,19 @@ server.tool(
     id: external_exports.string().optional().describe("An existing chg_\u2026 id to resume a Change across sessions. Reuse the id recorded in the Change's Note. Takes precedence over handle if both are given (resume over mint).")
   },
   async ({ handle, id }) => {
-    if (id) {
-      const trimmed = id.trim();
-      if (!CHANGE_ID_SHAPE.test(trimmed)) {
+    const resumedId = id?.trim();
+    if (resumedId) {
+      if (!CHANGE_ID_SHAPE.test(resumedId)) {
         return fail(`Not a Change-Id: ${id}. Expected chg_\u2026 (mint a new one by passing handle instead).`);
       }
-      currentChangeId = trimmed;
+      currentChangeId = resumedId;
       return ok(`Change resumed: ${currentChangeId}. It stamps every is_commit until is_change_close.`);
     }
-    const r = await cli(["--json", "change", "new", ...handle ? ["--handle", handle] : []]);
+    const decisionHandle = handle?.trim();
+    if (!decisionHandle) {
+      return fail("Provide `handle` to mint a new Change, or `id` to continue one.");
+    }
+    const r = await cli(["--json", "change", "new", "--handle", decisionHandle]);
     if (r.code !== 0) return fail(r.err.trim() || r.out.trim() || "Failed to mint a Change-Id");
     let minted;
     try {
@@ -21195,8 +21199,8 @@ server.tool(
     } catch {
       return fail(`Could not parse minted Change-Id from: ${r.out.trim()}`);
     }
-    if (typeof minted !== "string" || !minted) {
-      return fail(`CLI returned no Change-Id: ${r.out.trim()}`);
+    if (typeof minted !== "string" || !CHANGE_ID_SHAPE.test(minted)) {
+      return fail(`CLI returned an invalid Change-Id: ${r.out.trim()}`);
     }
     currentChangeId = minted;
     return ok(
