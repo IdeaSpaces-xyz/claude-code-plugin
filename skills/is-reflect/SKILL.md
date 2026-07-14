@@ -6,17 +6,15 @@ description: >
   structure outgrown. Offered as a readiness check (both sides decide whether
   to reflect now). Triggers at natural breaks or after state updates, not
   mid-task.
-allowed-tools: "mcp__plugin_ideaspaces_core__is_write Read Glob"
+allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_commit ToolSearch Read Glob Grep Edit Write Bash"
 user-invocable: false
 ---
 
 # Reflect
 
-Full protocol: read `${CLAUDE_PLUGIN_ROOT}/reference/awareness.md` and `${CLAUDE_PLUGIN_ROOT}/reference/guide.md`.
+Canonical protocols: read `${CLAUDE_PLUGIN_ROOT}/reference/awareness.md` and `${CLAUDE_PLUGIN_ROOT}/reference/guide.md` for the full awareness and guide posture.
 
 Reflection is the trigger; recalibration is what it runs. Offered as a readiness check — both sides decide whether to reflect now or defer.
-
-If `is_write` isn't in your palette when an update is agreed, load it with `ToolSearch` (`select:mcp__plugin_ideaspaces_core__is_write`).
 
 ## When
 
@@ -34,11 +32,19 @@ If `is_write` isn't in your palette when an update is agreed, load it with `Tool
 
 ## How
 
-Read current state first — `Read` `_agent/purpose.md` and `_agent/now.md`. If either doesn't exist yet, that's the first reflection: the contract names them, so absence means direction hasn't been captured. Surface it and propose capturing the missing file before reflecting on what's there. `Glob` recent activity if needed.
+Read current state first — `Read` `_agent/purpose.md` and `_agent/now.md`. If either doesn't exist yet, that's the first reflection: the contract names them, so absence means direction hasn't been captured. Surface it and propose capturing the missing file before reflecting on what's there. Inspect recent activity with `Glob`, `Grep`, or `Bash` (`git diff`, `git log`) when needed.
+
+Before asserting that something "shipped", "is implemented", or "is pending" based on a doc, check it against the code. The code may live in a sibling repo. Use `Grep`, `Bash`, and `Read` to compare the doc with implementation reality; treat status lines as hints, not authority.
 
 Be specific: "The Now says 'build skill packages.' We've defined three. Update the bullets?" Not "should we update Now?"
 
-Propose the update. Let the user confirm. Write with `is_write`.
+Propose the update. Let the user confirm. Then use the right capture mechanism:
+
+- Purpose / Now / Note-style markdown → `is_write` with a safe-update `sha` when refining.
+- README / existing docs / `_agent/` contract files → native `Edit` / `Write`, then `is_commit` with explicit paths.
+- Directory moves or deletes → `Bash` (`git mv`, `rm`), then `is_commit` with explicit paths.
+
+Do not leave reflection edits uncommitted unless the user explicitly wants local draft state. If a required MCP tool isn't loaded, reach it through `ToolSearch`.
 
 ## What to Update
 
