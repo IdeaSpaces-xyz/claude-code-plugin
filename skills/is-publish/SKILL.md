@@ -125,7 +125,7 @@ If the CLI exits 1 with `Cannot publish yet: N tracked file(s) exceed the 200,00
 
 > *"I see `<matched paths>` tracked — that's <vault config / build output / editor metadata>, not your knowledge. I can append <patterns> to `.gitignore`, untrack with `git rm --cached -r <path>`, commit, and retry publish. OK?"*
 
-Before changing anything, require a clean index with `git diff --cached --quiet`. If it is not clean, stop and ask the user to commit or unstage their existing work first — never mix publish cleanup with an in-progress commit. Also require `git status --short -- .gitignore` to be empty before appending; surface a pre-existing modified or untracked file instead of absorbing it into the cleanup commit.
+Before changing anything, require a clean index with `git diff --cached --quiet`. If it is not clean, stop and ask the user to commit or unstage their existing work first — never mix publish cleanup with an in-progress commit. Also require `git status --short -- .gitignore` to be empty before appending. If it is not empty, stop and surface the pre-existing modified or untracked file instead of absorbing it into the cleanup commit.
 
 On confirm, run in this order:
 
