@@ -125,7 +125,17 @@ If the CLI exits 1 with `Cannot publish yet: N tracked file(s) exceed the 200,00
 
 > *"I see `<matched paths>` tracked — that's <vault config / build output / editor metadata>, not your knowledge. I can append <patterns> to `.gitignore`, untrack with `git rm --cached -r <path>`, commit, and retry publish. OK?"*
 
-On confirm, run in this order: append the matching patterns to `.gitignore` (don't duplicate existing lines), `git rm --cached -r <path>` for each, `git commit -m "Untrack non-publishable clutter"`, then re-run `ideaspaces publish`.
+Before changing anything, require a clean index with `git diff --cached --quiet`. If it is not clean, stop and ask the user to commit or unstage their existing work first — never mix publish cleanup with an in-progress commit. Also require `git status --short -- .gitignore` to be empty before appending. If it is not empty, stop and surface the pre-existing modified or untracked file instead of absorbing it into the cleanup commit.
+
+On confirm, run in this order:
+
+1. Append the matching patterns to `.gitignore` without duplicating existing lines, then stage only that file with `git add -- .gitignore` if it changed.
+2. Run `git rm --cached -r -- <path>` for each confirmed clutter path. This removes it from git while preserving the local files.
+3. Review `git diff --cached --name-status`. Every staged entry must be `.gitignore` or a removal under the confirmed clutter paths. If anything else is staged, stop — do not commit or publish.
+4. Only with that exact staged set, run `git commit -m "Untrack non-publishable clutter"`. The clean-index gate and staged-set check are mandatory because this commit intentionally records the prepared index; skipping either could sweep unrelated work.
+5. Re-run the bundled `ideaspaces publish` command.
+
+If any step fails, leave the state visible with `git status --short` and stop for the user to review.
 
 **Mixed or unknown offenders** — if any offender is outside the clutter list (e.g. a 5 MB image the user might want), don't auto-fix. Surface the CLI output verbatim and stop with: *"These files are over the 200KB cap. Shrink them, store externally, or link via frontmatter (`attached_to:`). Re-run `/is-publish` when resolved."* — the user might have intent for that file.
 
