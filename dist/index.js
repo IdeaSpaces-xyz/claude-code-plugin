@@ -21042,6 +21042,68 @@ function buildCommitArgs(input, ctx) {
   return a;
 }
 
+// src/tool-parameters.ts
+var cwdField = external_exports.string().optional().describe(
+  "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+);
+var MCP_TOOL_PARAMETERS = {
+  is_auth: {
+    action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
+  },
+  is_write: {
+    path: external_exports.string().describe("File path within the ideaspace"),
+    content: external_exports.string().describe("Markdown content (frontmatter prepended automatically)"),
+    name: external_exports.string().optional().describe("Note name (Layer 1 frontmatter)"),
+    summary: external_exports.string().optional().describe("Dense summary for search (Layer 1 frontmatter)"),
+    tags: external_exports.array(external_exports.string()).optional(),
+    attached_to: external_exports.string().optional().describe("Primary entity binding (e.g. 'hostname:acme.com')"),
+    if_match: external_exports.string().optional().describe(
+      "Content sha from a prior is_write response or is_status \u2014 for a safe update. Refuses on mismatch unless force."
+    ),
+    force: external_exports.boolean().optional().describe("Overwrite without if_match"),
+    cwd: cwdField
+  },
+  is_status: {
+    path: external_exports.string().optional().describe(
+      "Single file \u2014 returns { exists, sha, in_index, modified, in_tracked }. The sha is what you pass as is_write's if_match."
+    ),
+    cwd: cwdField
+  },
+  is_commit: {
+    message: external_exports.string().describe("Commit message (user-provided or user-confirmed)"),
+    paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using all."),
+    all: external_exports.boolean().optional().describe("Commit all staged knowledge paths (markdown + _agent/) from git; staged code is left for the user."),
+    op: external_exports.enum(["create", "update", "move", "delete", "restructure", "capture"]).optional().describe("Optional Op trailer \u2014 the kind of change. The meaning lives in the message body."),
+    cwd: cwdField
+  },
+  is_change_open: {
+    handle: external_exports.string().optional().describe("Short decision handle (2\u20134 words) to mint a fresh Change-Id from, e.g. 'auth session model'."),
+    id: external_exports.string().optional().describe(
+      "An existing chg_\u2026 id to resume a Change across sessions. Reuse the id recorded in the Change's Note. Takes precedence over handle if both are given (resume over mint)."
+    )
+  },
+  is_change_close: {},
+  is_navigate: {
+    path: external_exports.string().optional().describe('Target position: relative to cwd or absolute. Omit or "." to orient at the current directory.'),
+    cwd: cwdField
+  },
+  is_pull: {
+    dry_run: external_exports.boolean().optional().describe("Preview behind/what would integrate; mutates nothing."),
+    rebase: external_exports.boolean().optional().describe("Integrate via rebase (default true). Set false to merge instead."),
+    cwd: cwdField
+  },
+  is_push: {
+    dry_run: external_exports.boolean().optional().describe("Preview ahead/what would push; mutates nothing."),
+    cwd: cwdField
+  }
+};
+var MCP_TOOL_REQUIRE_ANY = {
+  is_change_open: ["handle", "id"]
+};
+function hasAnyNonEmptyString(keys, values) {
+  return keys.some((key) => typeof values[key] === "string" && values[key].trim() !== "");
+}
+
 // src/index.ts
 function resolveCli() {
   if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
@@ -21108,15 +21170,10 @@ function readSessionId() {
 }
 var CHANGE_ID_SHAPE = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
 var server = new McpServer({ name: "core", version: "0.3.0" });
-var cwdField = external_exports.string().optional().describe(
-  "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
-);
 server.tool(
   "is_auth",
   "Manage IdeaSpaces sync credentials. Sync is opt-in; the plugin works locally without auth.",
-  {
-    action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
-  },
+  MCP_TOOL_PARAMETERS.is_auth,
   async ({ action }) => {
     switch (action) {
       case "login":
@@ -21129,19 +21186,7 @@ server.tool(
 server.tool(
   "is_write",
   "Create or update a Note with Layer 1 frontmatter (name, summary); stages the file and returns its content sha. Use for capture; native Write covers source code and config.",
-  {
-    path: external_exports.string().describe("File path within the ideaspace"),
-    content: external_exports.string().describe("Markdown content (frontmatter prepended automatically)"),
-    name: external_exports.string().optional().describe("Note name (Layer 1 frontmatter)"),
-    summary: external_exports.string().optional().describe("Dense summary for search (Layer 1 frontmatter)"),
-    tags: external_exports.array(external_exports.string()).optional(),
-    attached_to: external_exports.string().optional().describe("Primary entity binding (e.g. 'hostname:acme.com')"),
-    if_match: external_exports.string().optional().describe(
-      "Content sha from a prior is_write response or is_status \u2014 for a safe update. Refuses on mismatch unless force."
-    ),
-    force: external_exports.boolean().optional().describe("Overwrite without if_match"),
-    cwd: cwdField
-  },
+  MCP_TOOL_PARAMETERS.is_write,
   async ({ path, content, name, summary, tags, attached_to, if_match, force, cwd }) => {
     const a = ["write", path];
     if (name) a.push("--name", name);
@@ -21156,13 +21201,7 @@ server.tool(
 server.tool(
   "is_commit",
   "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name (or all staged knowledge via all), never the user's unrelated staged work. Auto-stamps attribution trailers: the assisting agent, the session (Conversation), and the open Change-Id when one is open (is_change_open). Confirm with the user before calling.",
-  {
-    message: external_exports.string().describe("Commit message (user-provided or user-confirmed)"),
-    paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using all."),
-    all: external_exports.boolean().optional().describe("Commit all staged knowledge paths (markdown + _agent/) from git; staged code is left for the user."),
-    op: external_exports.enum(["create", "update", "move", "delete", "restructure", "capture"]).optional().describe("Optional Op trailer \u2014 the kind of change. The meaning lives in the message body."),
-    cwd: cwdField
-  },
+  MCP_TOOL_PARAMETERS.is_commit,
   async ({ message, paths, all, op, cwd }) => {
     const a = buildCommitArgs(
       { message, paths, all, op },
@@ -21174,11 +21213,11 @@ server.tool(
 server.tool(
   "is_change_open",
   "Open a Change \u2014 an idea-snapshot coordinate stamped as a Change-Id trailer on every is_commit until closed, in any repo. Use when a decision spans multiple commits, files, or repos; skip it for a single ordinary commit. Pass handle to mint a fresh id, or id to resume an existing Change (e.g. recovered from its Note) across sessions.",
-  {
-    handle: external_exports.string().optional().describe("Short decision handle (2\u20134 words) to mint a fresh Change-Id from, e.g. 'auth session model'."),
-    id: external_exports.string().optional().describe("An existing chg_\u2026 id to resume a Change across sessions. Reuse the id recorded in the Change's Note. Takes precedence over handle if both are given (resume over mint).")
-  },
+  MCP_TOOL_PARAMETERS.is_change_open,
   async ({ handle, id }) => {
+    if (!hasAnyNonEmptyString(MCP_TOOL_REQUIRE_ANY.is_change_open, { handle, id })) {
+      return fail("Provide `handle` to mint a new Change, or `id` to continue one.");
+    }
     const resumedId = id?.trim();
     if (resumedId) {
       if (!CHANGE_ID_SHAPE.test(resumedId)) {
@@ -21187,10 +21226,7 @@ server.tool(
       currentChangeId = resumedId;
       return ok(`Change resumed: ${currentChangeId}. It stamps every is_commit until is_change_close.`);
     }
-    const decisionHandle = handle?.trim();
-    if (!decisionHandle) {
-      return fail("Provide `handle` to mint a new Change, or `id` to continue one.");
-    }
+    const decisionHandle = handle.trim();
     const r = await cli(["--json", "change", "new", "--handle", decisionHandle]);
     if (r.code !== 0) return fail(r.err.trim() || r.out.trim() || "Failed to mint a Change-Id");
     let minted;
@@ -21211,7 +21247,7 @@ server.tool(
 server.tool(
   "is_change_close",
   "Close the active Change so later commits no longer carry its Change-Id. The decision's arc stays queryable in git history.",
-  {},
+  MCP_TOOL_PARAMETERS.is_change_close,
   async () => {
     if (!currentChangeId) return ok("No Change is open.");
     const closed = currentChangeId;
@@ -21222,12 +21258,7 @@ server.tool(
 server.tool(
   "is_status",
   "Capture state: overall git position + staged knowledge awaiting commit, or single-file state. With a path, the returned sha is the if_match token for a first update.",
-  {
-    path: external_exports.string().optional().describe(
-      "Single file \u2014 returns { exists, sha, in_index, modified, in_tracked }. The sha is what you pass as is_write's if_match."
-    ),
-    cwd: cwdField
-  },
+  MCP_TOOL_PARAMETERS.is_status,
   async ({ path, cwd }) => {
     const a = ["status"];
     if (path) a.push("--path", path);
@@ -21237,10 +21268,7 @@ server.tool(
 server.tool(
   "is_navigate",
   "Re-derive orientation at a position \u2014 the fractal contract (foundation + the deepest guide/purpose/now along the path), tree, git-state, and drift for that branch. Read-only: it does NOT change the working directory; Read/Edit/Bash still take explicit paths. Use when you move into a subtree (e.g. a nested space) and want its contract, or to re-orient mid-session.",
-  {
-    path: external_exports.string().optional().describe('Target position: relative to cwd or absolute. Omit or "." to orient at the current directory.'),
-    cwd: cwdField
-  },
+  MCP_TOOL_PARAMETERS.is_navigate,
   async ({ path, cwd }) => {
     const r = await cli(["--json", "navigate", path ?? "."], void 0, cwd);
     if (r.code !== 0) return fail(r.err.trim() || r.out.trim() || `Exit ${r.code}`);
@@ -21256,11 +21284,7 @@ server.tool(
 server.tool(
   "is_pull",
   "Integrate remote changes into the local space (fetch + rebase/merge). Never pushes. Refuses to integrate while staged captures are uncommitted or the tree is dirty. Use dry_run to preview without mutating.",
-  {
-    dry_run: external_exports.boolean().optional().describe("Preview behind/what would integrate; mutates nothing."),
-    rebase: external_exports.boolean().optional().describe("Integrate via rebase (default true). Set false to merge instead."),
-    cwd: cwdField
-  },
+  MCP_TOOL_PARAMETERS.is_pull,
   async ({ dry_run, rebase, cwd }) => {
     const a = ["pull"];
     if (dry_run) a.push("--dry-run");
@@ -21271,10 +21295,7 @@ server.tool(
 server.tool(
   "is_push",
   "Send committed captures to the remote. Never pulls. Refuses while staged knowledge is uncommitted, and refuses when behind the remote \u2014 pull first. Use dry_run to preview without mutating.",
-  {
-    dry_run: external_exports.boolean().optional().describe("Preview ahead/what would push; mutates nothing."),
-    cwd: cwdField
-  },
+  MCP_TOOL_PARAMETERS.is_push,
   async ({ dry_run, cwd }) => {
     const a = ["push"];
     if (dry_run) a.push("--dry-run");

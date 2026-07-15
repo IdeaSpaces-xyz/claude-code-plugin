@@ -8,12 +8,16 @@ on:
       - 'hooks/**'
       - 'dist/**'
       - 'cli/bundle/**'
+      - 'reference/**'
       - 'skills/**'
       - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.json'
       - 'build-hook.mjs'
+      - 'reference.mjs'
+      - 'vendor.mjs'
+      - 'vendor-lock.json'
       - '.mcp.json'
       - '.claude-plugin/**'
       - '.github/workflows/ci.yml'
@@ -24,12 +28,16 @@ on:
       - 'hooks/**'
       - 'dist/**'
       - 'cli/bundle/**'
+      - 'reference/**'
       - 'skills/**'
       - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.json'
       - 'build-hook.mjs'
+      - 'reference.mjs'
+      - 'vendor.mjs'
+      - 'vendor-lock.json'
       - '.mcp.json'
       - '.claude-plugin/**'
       - '.github/workflows/ci.yml'
@@ -70,8 +78,11 @@ jobs:
       - name: Lint skill entrypoints
         run: npm run lint:skills
 
-      - name: Build SessionStart hook
-        run: npm run build:hook
+      - name: Verify generated references and hooks are current
+        run: npm run check:generated
+
+      - name: Verify vendored CLI and MCP bundles
+        run: npm run check:vendor
 
       - name: Verify bundled hook is non-empty
         run: |

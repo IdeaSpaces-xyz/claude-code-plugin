@@ -8,6 +8,8 @@
     "build:hook": "node build-hook.mjs",
     "build:reference": "node reference.mjs",
     "vendor": "node vendor.mjs",
+    "check:generated": "npm run build:reference && npm run build:hook && git diff --exit-code -- reference/ dist/awareness-hook.js dist/capture-nudge-hook.js",
+    "check:vendor": "node scripts/check-vendor.mjs",
     "lint:skills": "node scripts/lint-skills.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
