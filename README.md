@@ -179,9 +179,9 @@ npm run typecheck
 
 # 3. Drift + smoke checks
 npm run check:generated    # committed references/hooks match their generators
-npm run check:vendor       # pinned upstream sources rebuild byte-for-byte
+npm run check:vendor       # rebuild public vendors; verify every locked hash
 node cli/bundle/ideaspaces.js --help
 node cli/bundle/ideaspaces.js skills
 ```
 
-`vendor-lock.json` records each upstream repository commit and expected bundle hash. CI rebuilds those exact commits instead of trusting the committed copies, so a source/bundle mismatch fails before release.
+`vendor-lock.json` records each upstream repository commit and expected bundle hash. Vendor CI rebuilds public upstreams byte-for-byte and verifies every committed copy against its lock. The private MCP source repo enforces source → bundle freshness in its own CI; plugin CI verifies that exact bundle's locked hash without requiring cross-repo credentials.

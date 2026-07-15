@@ -1,6 +1,6 @@
-// Rebuild the pinned CLI and MCP bundles from source and compare them byte-for-byte
-// with the artifacts committed in this plugin. This is intentionally slower than
-// a hash-only check: it proves vendor-lock.json still describes reproducible output.
+// Verify every vendored bundle against vendor-lock.json. Public upstreams are
+// rebuilt byte-for-byte; private upstreams rely on their own source/bundle CI and
+// are hash-checked here because this repository's token cannot clone across repos.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -36,6 +36,19 @@ function sha256(path) {
 
 try {
   for (const [name, entry] of Object.entries(lock)) {
+    const vendored = join(root, entry.vendoredArtifact);
+    const vendoredHash = sha256(vendored);
+    if (vendoredHash !== entry.sha256) {
+      throw new Error(
+        `${name}: ${entry.vendoredArtifact} hash ${vendoredHash} does not match vendor-lock.json ${entry.sha256}`,
+      );
+    }
+
+    if (!entry.rebuildInCi) {
+      console.log(`✓ ${name}: locked hash → ${entry.vendoredArtifact} (upstream rebuild guarded in source repo)`);
+      continue;
+    }
+
     const checkout = join(temp, name);
     run("git", ["init", "--quiet", checkout], temp);
     run("git", ["-C", checkout, "remote", "add", "origin", entry.repository], temp);
@@ -47,22 +60,13 @@ try {
     run("npm", ["ci", "--no-audit", "--no-fund"], checkout);
     for (const command of entry.commands) shell(command, checkout);
 
-    const built = join(checkout, entry.sourceArtifact);
-    const vendored = join(root, entry.vendoredArtifact);
-    const builtHash = sha256(built);
-    const vendoredHash = sha256(vendored);
-
-    if (vendoredHash !== entry.sha256) {
-      throw new Error(
-        `${name}: ${entry.vendoredArtifact} hash ${vendoredHash} does not match vendor-lock.json ${entry.sha256}`,
-      );
-    }
+    const builtHash = sha256(join(checkout, entry.sourceArtifact));
     if (builtHash !== entry.sha256) {
       throw new Error(
         `${name}: ${entry.commit} rebuilt ${entry.sourceArtifact} as ${builtHash}; expected ${entry.sha256}`,
       );
     }
-    console.log(`✓ ${name}: ${entry.commit.slice(0, 7)} → ${entry.vendoredArtifact}`);
+    console.log(`✓ ${name}: ${entry.commit.slice(0, 7)} rebuild → ${entry.vendoredArtifact}`);
   }
 } finally {
   rmSync(temp, { recursive: true, force: true });

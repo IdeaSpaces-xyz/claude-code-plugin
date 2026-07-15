@@ -1,0 +1,40 @@
+name: Vendor Drift
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'cli/bundle/**'
+      - 'dist/index.js'
+      - 'scripts/check-vendor.mjs'
+      - 'vendor.mjs'
+      - 'vendor-lock.json'
+      - '.github/workflows/vendor.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'cli/bundle/**'
+      - 'dist/index.js'
+      - 'scripts/check-vendor.mjs'
+      - 'vendor.mjs'
+      - 'vendor-lock.json'
+      - '.github/workflows/vendor.yml'
+
+concurrency:
+  group: vendor-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify pinned bundles
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Rebuild public vendors and verify all hashes
+        run: node scripts/check-vendor.mjs

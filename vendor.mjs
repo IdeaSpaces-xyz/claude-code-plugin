@@ -19,6 +19,7 @@ const VENDOR = [
     repo: "../cli",
     sourceArtifact: "bundle/ideaspaces.js",
     vendoredArtifact: "cli/bundle/ideaspaces.js",
+    rebuildInCi: true,
     commands: ["npm run build", "npm run bundle"],
   },
   {
@@ -27,6 +28,9 @@ const VENDOR = [
     repo: "../mcp-server",
     sourceArtifact: "bundle/index.js",
     vendoredArtifact: "dist/index.js",
+    // mcp-server is private. Its own CI proves source ↔ committed bundle;
+    // plugin CI verifies the copied bundle hash without cloning across repos.
+    rebuildInCi: false,
     commands: ["npm run bundle"],
   },
 ];
@@ -56,6 +60,7 @@ for (const entry of VENDOR) {
     sourceArtifact: entry.sourceArtifact,
     vendoredArtifact: entry.vendoredArtifact,
     sha256,
+    rebuildInCi: entry.rebuildInCi,
     commands: entry.commands,
   };
   console.log(`✓ vendored ${entry.vendoredArtifact} ← ${entry.name}@${commit.slice(0, 7)}`);

@@ -5,6 +5,7 @@
     "sourceArtifact": "bundle/ideaspaces.js",
     "vendoredArtifact": "cli/bundle/ideaspaces.js",
     "sha256": "09ff3d90a8a6e70ff0b3da20f376ff5f64e849b1f919f901bc8ffa62016585d7",
+    "rebuildInCi": true,
     "commands": ["npm run build", "npm run bundle"]
   },
   "mcp-server": {
@@ -13,6 +14,7 @@
     "sourceArtifact": "bundle/index.js",
     "vendoredArtifact": "dist/index.js",
     "sha256": "5366fb8d1cf8ae3e6b67030797f94783ce6157ca9f1a69ae9cc3c92786f135ea",
+    "rebuildInCi": false,
     "commands": ["npm run bundle"]
   }
 }
