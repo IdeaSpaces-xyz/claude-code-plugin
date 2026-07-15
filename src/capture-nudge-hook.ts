@@ -7,9 +7,9 @@
  * capturing (that's the `is-capture` skill's job); it only marks the observable
  * moment: a knowledge write happened via native tools rather than `is_write`.
  *
- * Silent for everything else — source code, configs, build artifacts, and any
- * markdown outside an ideaspace. A root ideaspace can contain code repos; this
- * never fires on arbitrary source changes.
+ * Silent for everything else — source code, configs, build artifacts, markdown
+ * outside an ideaspace, and markdown inside a nested code repo that does not
+ * carry its own `_agent/` contract.
  *
  * Output reaches the agent via `hookSpecificOutput.additionalContext` (exit 0).
  * Errors must never block the tool — they go to stderr with exit 0.
@@ -17,29 +17,9 @@
  * Bundled with `npm run build:hook`; the committed bundle ships pre-built.
  */
 
-import { resolve, dirname, join, sep } from "node:path";
-import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { shouldNudgeKnowledgePath } from "./capture-nudge.js";
 import { readStdin } from "./stdin.js";
-
-/** A knowledge path: a markdown file, or anything under an `_agent/` dir. */
-function isKnowledgePath(path: string): boolean {
-  return path.endsWith(".md") || path.split(sep).includes("_agent");
-}
-
-/**
- * Whether `startDir` is inside an ideaspace — an ancestor holding `_agent/`.
- * The same `_agent/`-marker convention as the SDK's `findSpaceRoot`, inlined as
- * a small fs walk so this hook carries no SDK import (build:hook ships no SDK).
- */
-function inIdeaspace(startDir: string): boolean {
-  let dir = resolve(startDir);
-  for (;;) {
-    if (existsSync(join(dir, "_agent"))) return true;
-    const parent = dirname(dir);
-    if (parent === dir) return false;
-    dir = parent;
-  }
-}
 
 async function main(): Promise<void> {
   const raw = await readStdin();
@@ -57,12 +37,9 @@ async function main(): Promise<void> {
   const cwd = typeof input.cwd === "string" ? input.cwd : process.cwd();
   const abs = resolve(cwd, filePath);
 
-  // Code, configs, build artifacts → not knowledge → silent.
-  if (!isKnowledgePath(abs)) return;
-
-  // Only inside an ideaspace (an `_agent/` ancestor). Stray markdown in a
-  // non-ideaspace repo doesn't nudge.
-  if (!inIdeaspace(dirname(abs))) return;
+  // Silent outside an ideaspace and across a nested repo boundary unless that
+  // nested repo carries its own `_agent/` contract.
+  if (!shouldNudgeKnowledgePath(abs)) return;
 
   const nudge =
     `Knowledge file written with native Write/Edit: \`${filePath}\`. ` +

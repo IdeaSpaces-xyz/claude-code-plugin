@@ -152,7 +152,7 @@ Skills read their full protocols from `reference/` (the SDK's canonical skill ca
 
 It also **bridges the session id**: the MCP server can't read the Claude Code session id from the protocol, so this hook writes it (from its stdin `session_id`) to a user-level cache (`~/.ideaspaces/sessions/<hash of project dir>`, outside the project tree so no visited repo is touched), where `is_commit` reads it to stamp the `Conversation` trailer. Best-effort; absent → the trailer is simply omitted. The cache is keyed by project dir (the reader only knows `CLAUDE_PROJECT_DIR`, never the session), so distinct dirs and worktrees are isolated but two concurrent sessions in the *same* dir share one entry — last-writer-wins, an accepted v1 tradeoff.
 
-**PostToolUse capture-nudge** (`dist/capture-nudge-hook.js`) — when a knowledge file (`*.md` or under `_agent/`) is written with native Write/Edit inside an ideaspace, nudges toward the `is_write` → `is_commit` capture flow. Silent for source, configs, build artifacts, and markdown outside an ideaspace.
+**PostToolUse capture-nudge** (`dist/capture-nudge-hook.js`) — when a knowledge file (`*.md` or under `_agent/`) is written with native Write/Edit inside an ideaspace, nudges toward the `is_write` → `is_commit` capture flow. Silent for source, configs, build artifacts, markdown outside an ideaspace, and markdown inside nested code repos unless that repo carries its own `_agent/` contract.
 
 ### Repo-local agent context
 
