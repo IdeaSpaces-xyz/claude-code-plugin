@@ -6332,15 +6332,15 @@ var require_parser = __commonJS({
     var node_process = __require("process");
     var cst = require_cst();
     var lexer = require_lexer();
-    function includesToken(list, type) {
-      for (let i = 0; i < list.length; ++i)
-        if (list[i].type === type)
+    function includesToken(list2, type) {
+      for (let i = 0; i < list2.length; ++i)
+        if (list2[i].type === type)
           return true;
       return false;
     }
-    function findNonEmptyIndex(list) {
-      for (let i = 0; i < list.length; ++i) {
-        switch (list[i].type) {
+    function findNonEmptyIndex(list2) {
+      for (let i = 0; i < list2.length; ++i) {
+        switch (list2[i].type) {
           case "space":
           case "comment":
           case "newline":
@@ -7346,9 +7346,9 @@ import { writeSync } from "node:fs";
 
 // dist/commands/create.js
 import { promises as fs } from "node:fs";
-import { existsSync as existsSync2, realpathSync } from "node:fs";
+import { existsSync as existsSync3, realpathSync } from "node:fs";
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { join as join3, resolve, relative, basename } from "node:path";
+import { join as join3, resolve as resolve2, relative, basename } from "node:path";
 
 // dist/output.js
 function createOutput(flags2) {
@@ -7656,6 +7656,8 @@ async function* streamConversationMessage(config, repoId, conversationId, body, 
 
 // dist/git.js
 import { spawnSync } from "node:child_process";
+import { existsSync as existsSync2 } from "node:fs";
+import { resolve } from "node:path";
 var GitError = class extends Error {
 };
 function git(args2, cwd) {
@@ -7728,7 +7730,10 @@ function stagePaths(paths, cwd) {
 function commitPaths(message, paths, cwd) {
   if (!paths.length)
     throw new GitError("refusing to commit with no paths");
-  gitOrThrow(["add", "--", ...paths], cwd);
+  const base = cwd ?? process.cwd();
+  const present = paths.filter((p) => existsSync2(resolve(base, p)));
+  if (present.length)
+    gitOrThrow(["add", "--", ...present], cwd);
   gitOrThrow(["commit", "-q", "-m", message, "--", ...paths], cwd);
   return headSha(cwd);
 }
@@ -8032,7 +8037,7 @@ var createCommand = {
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const name = args2[0];
-    const targetDir = name ? resolve(process.cwd(), name) : process.cwd();
+    const targetDir = name ? resolve2(process.cwd(), name) : process.cwd();
     const apply = global2.yes === true;
     const sharedFlag = Boolean(flags2.shared);
     const inspection = await inspect(targetDir);
@@ -8075,7 +8080,7 @@ Use \`git status\` / \`git restore\` to recover.`);
 };
 async function inspect(targetDir) {
   const nestedInRepo = enclosingRepoRoot(targetDir);
-  if (!existsSync2(targetDir)) {
+  if (!existsSync3(targetDir)) {
     return {
       exists: false,
       isGitRepo: false,
@@ -8088,15 +8093,15 @@ async function inspect(targetDir) {
       markdownCount: 0
     };
   }
-  const isGitRepo = existsSync2(join3(targetDir, ".git"));
-  const hasClaude = existsSync2(join3(targetDir, "CLAUDE.md"));
-  const hasGitignore = existsSync2(join3(targetDir, ".gitignore"));
+  const isGitRepo = existsSync3(join3(targetDir, ".git"));
+  const hasClaude = existsSync3(join3(targetDir, "CLAUDE.md"));
+  const hasGitignore = existsSync3(join3(targetDir, ".gitignore"));
   const agentDir = join3(targetDir, "_agent");
-  const hasNewAgent = existsSync2(join3(agentDir, "foundation.md"));
-  const hasOldAgent = existsSync2(agentDir) && OLD_AGENT_FILES.some((f) => existsSync2(join3(agentDir, f))) && !hasNewAgent;
+  const hasNewAgent = existsSync3(join3(agentDir, "foundation.md"));
+  const hasOldAgent = existsSync3(agentDir) && OLD_AGENT_FILES.some((f) => existsSync3(join3(agentDir, f))) && !hasNewAgent;
   let hasCodeSignal = false;
   for (const sig of CODE_SIGNALS) {
-    if (existsSync2(join3(targetDir, sig))) {
+    if (existsSync3(join3(targetDir, sig))) {
       hasCodeSignal = true;
       break;
     }
@@ -8151,7 +8156,7 @@ function buildPlan(opts) {
   if (!inspection.hasClaude) {
     steps.push({ op: "write", path: join3(targetDir, claudeFile) });
   }
-  if (!existsSync2(join3(targetDir, ".gitattributes"))) {
+  if (!existsSync3(join3(targetDir, ".gitattributes"))) {
     steps.push({
       op: "write",
       path: join3(targetDir, ".gitattributes"),
@@ -8201,7 +8206,7 @@ async function applyPlan(opts) {
     await fs.writeFile(join3(targetDir, claudeFile), CLAUDE_MD, "utf-8");
   }
   const gitattributesPath = join3(targetDir, ".gitattributes");
-  if (!existsSync2(gitattributesPath)) {
+  if (!existsSync3(gitattributesPath)) {
     await fs.writeFile(gitattributesPath, GITATTRIBUTES, "utf-8");
   }
   const gitignorePath = join3(targetDir, ".gitignore");
@@ -8239,8 +8244,8 @@ function runGit(cwd, args2) {
 function effectiveRealPath(target) {
   let probe = target;
   const suffix = [];
-  while (!existsSync2(probe)) {
-    const parent = resolve(probe, "..");
+  while (!existsSync3(probe)) {
+    const parent = resolve2(probe, "..");
     if (parent === probe)
       return target;
     suffix.unshift(basename(probe));
@@ -8251,8 +8256,8 @@ function effectiveRealPath(target) {
 }
 function enclosingRepoRoot(targetDir) {
   let probe = targetDir;
-  while (!existsSync2(probe)) {
-    const parent = resolve(probe, "..");
+  while (!existsSync3(probe)) {
+    const parent = resolve2(probe, "..");
     if (parent === probe)
       return null;
     probe = parent;
@@ -8299,7 +8304,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve13, reject) => {
+  return new Promise((resolve14, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -8326,7 +8331,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve13({
+      resolve14({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -8427,19 +8432,19 @@ ${authUrl}`);
 
 // dist/commands/publish.js
 import { spawnSync as spawnSync3 } from "node:child_process";
-import { existsSync as existsSync4, statSync } from "node:fs";
+import { existsSync as existsSync5, statSync } from "node:fs";
 import { basename as basename2, join as join9 } from "node:path";
 
 // dist/auth/spaces.js
-import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join4, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join4, resolve as resolve3 } from "node:path";
 function spacesFile() {
   return join4(configDir(), "spaces.json");
 }
 function loadSpaces() {
   const file = spacesFile();
   try {
-    if (!existsSync3(file))
+    if (!existsSync4(file))
       return {};
     const raw = readFileSync2(file, "utf-8");
     const data = JSON.parse(raw);
@@ -8451,29 +8456,29 @@ function loadSpaces() {
   }
 }
 function saveSpace(absolutePath, record) {
-  const key = resolve2(absolutePath);
+  const key = resolve3(absolutePath);
   const map = loadSpaces();
   map[key] = record;
   const dir = configDir();
-  if (!existsSync3(dir)) {
+  if (!existsSync4(dir)) {
     mkdirSync2(dir, { recursive: true, mode: 448 });
   }
   writeFileSync2(spacesFile(), JSON.stringify(map, null, 2) + "\n", { mode: 384 });
 }
 function findSpaceFor(absolutePath) {
-  return loadSpaces()[resolve2(absolutePath)] ?? null;
+  return loadSpaces()[resolve3(absolutePath)] ?? null;
 }
 function listClones() {
   return Object.entries(loadSpaces()).map(([path, record]) => ({ path, record }));
 }
 function removeSpace(absolutePath) {
-  const key = resolve2(absolutePath);
+  const key = resolve3(absolutePath);
   const map = loadSpaces();
   if (!(key in map))
     return false;
   delete map[key];
   const dir = configDir();
-  if (!existsSync3(dir)) {
+  if (!existsSync4(dir)) {
     mkdirSync2(dir, { recursive: true, mode: 448 });
   }
   writeFileSync2(spacesFile(), JSON.stringify(map, null, 2) + "\n", { mode: 384 });
@@ -8486,7 +8491,7 @@ import { relative as relative4 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/space.js
 import { promises as fs2 } from "node:fs";
-import { dirname, join as join5, resolve as resolve3 } from "node:path";
+import { dirname, join as join5, resolve as resolve4 } from "node:path";
 var CONTRACT_FILES = [
   "foundation",
   "guide",
@@ -8515,7 +8520,7 @@ async function readContract(agentDir) {
   return entries;
 }
 async function composeContractAlongPath(position) {
-  const start = resolve3(position);
+  const start = resolve4(position);
   const found = [];
   let spaceRoot = null;
   let dir = start;
@@ -8711,14 +8716,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit2(repoRoot2, args2) {
-  return new Promise((resolve13) => {
+  return new Promise((resolve14) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve13({ ok: code === 0, out }));
-    proc.on("error", () => resolve13({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve14({ ok: code === 0, out }));
+    proc.on("error", () => resolve14({ ok: false, out: "" }));
   });
 }
 async function lastCommitTime(repoRoot2, path) {
@@ -8973,7 +8978,7 @@ async function countMarkdown(dir) {
 
 // node_modules/@ideaspaces/protocol/dist/path-context.js
 import { promises as fs4 } from "node:fs";
-import { isAbsolute, join as join7, relative as relative2, resolve as resolve4, sep } from "node:path";
+import { isAbsolute, join as join7, relative as relative2, resolve as resolve5, sep } from "node:path";
 function spaceRootLevel(ctx) {
   return ctx.levels.find((l) => l.foundation) ?? null;
 }
@@ -8986,8 +8991,8 @@ function currentBranchLevel(ctx) {
 }
 async function walkPathContext(repoRoot2, currentPath, opts = {}) {
   const { includeContent = false } = opts;
-  const root = resolve4(repoRoot2);
-  const rel = relative2(root, resolve4(root, currentPath));
+  const root = resolve5(repoRoot2);
+  const rel = relative2(root, resolve5(root, currentPath));
   const segments = rel === "" || rel.startsWith("..") || isAbsolute(rel) ? [] : rel.split(sep).filter(Boolean);
   const relPaths = [""];
   let acc = "";
@@ -9058,11 +9063,11 @@ async function readFileOrNull(path) {
 // node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
 import { promises as fs5 } from "node:fs";
-import { join as join8, relative as relative3, resolve as resolve5 } from "node:path";
+import { join as join8, relative as relative3, resolve as resolve6 } from "node:path";
 var SKIP_DIRS2 = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
 async function collectDocDependencies(repoRoot2, docDir) {
-  const root = resolve5(repoRoot2);
-  const start = resolve5(root, docDir);
+  const root = resolve6(repoRoot2);
+  const start = resolve6(root, docDir);
   const out = [];
   async function walk(dir) {
     let entries;
@@ -9096,7 +9101,7 @@ async function collectDocDependencies(repoRoot2, docDir) {
   return out;
 }
 async function staleDocSignals(repoRoot2, docs) {
-  const root = resolve5(repoRoot2);
+  const root = resolve6(repoRoot2);
   const signals = [];
   for (const { path, codePaths } of docs) {
     const missing = [];
@@ -9874,7 +9879,7 @@ var publishCommand = {
     const output = createOutput(global2);
     const flags2 = rawFlags;
     const cwd = process.cwd();
-    if (!existsSync4(join9(cwd, ".git"))) {
+    if (!existsSync5(join9(cwd, ".git"))) {
       output.error("Not a git repo. Run `ideaspaces create` first, or `git init` here.");
       return 1;
     }
@@ -10052,8 +10057,8 @@ ${push2.stderr}${hint}`);
 
 // dist/commands/write.js
 import { promises as fs6 } from "node:fs";
-import { existsSync as existsSync5, statSync as statSync2 } from "node:fs";
-import { dirname as dirname2, join as join10, relative as relative5, resolve as resolve6 } from "node:path";
+import { existsSync as existsSync6, statSync as statSync2 } from "node:fs";
+import { dirname as dirname2, join as join10, relative as relative5, resolve as resolve7 } from "node:path";
 
 // dist/argv.js
 function parseBool(value, dflt = true) {
@@ -10197,7 +10202,7 @@ var writeCommand = {
     const force = Boolean(flags2.force);
     const stage = parseBool(flags2.stage, true);
     const ifMatch = flags2["if-match"];
-    const absPath = resolve6(path);
+    const absPath = resolve7(path);
     if (ifMatch !== void 0) {
       const currentSha = blobSha(absPath);
       if (currentSha !== ifMatch && !force) {
@@ -10207,7 +10212,7 @@ var writeCommand = {
 Re-read the file for the current sha and retry, or pass --force to override.`);
         return 6;
       }
-    } else if (existsSync5(absPath) && !force) {
+    } else if (existsSync6(absPath) && !force) {
       output.error(`File exists: ${path}
 Re-run with --force to overwrite, or pass --if-match <sha> for a safe update.`);
       return 5;
@@ -10244,8 +10249,8 @@ function parseOptionalString(value) {
 function isBatchTarget(targets) {
   if (targets.length > 1)
     return true;
-  const abs = resolve6(targets[0]);
-  return existsSync5(abs) && statSync2(abs).isDirectory();
+  const abs = resolve7(targets[0]);
+  return existsSync6(abs) && statSync2(abs).isDirectory();
 }
 async function runBatchStage(targets, flags2, output) {
   const stage = parseBool(flags2.stage, true);
@@ -10288,8 +10293,8 @@ async function collectMarkdown(targets) {
   const missing = [];
   const skipped = [];
   for (const t of targets) {
-    const abs = resolve6(t);
-    if (!existsSync5(abs)) {
+    const abs = resolve7(t);
+    if (!existsSync6(abs)) {
       missing.push(t);
     } else if (statSync2(abs).isDirectory()) {
       await walkMarkdown(abs, files);
@@ -10330,7 +10335,7 @@ function healthIssues(content) {
 }
 
 // dist/commands/commit.js
-import { resolve as resolve7 } from "node:path";
+import { resolve as resolve8 } from "node:path";
 var OP_SET = {
   create: true,
   update: true,
@@ -10416,7 +10421,7 @@ var commitCommand = {
         output.log(`Leaving ${other.length} non-ideaspace staged path(s) for you to commit: ${other.join(", ")}`);
       }
     } else {
-      paths = args2.map((p) => resolve7(p));
+      paths = args2.map((p) => resolve8(p));
     }
     if (!paths.length) {
       output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --all.');
@@ -10479,12 +10484,12 @@ var changeCommand = {
 };
 
 // dist/commands/navigate.js
-import { relative as relative6, resolve as resolve8 } from "node:path";
-import { statSync as statSync3, existsSync as existsSync7 } from "node:fs";
+import { relative as relative6, resolve as resolve9 } from "node:path";
+import { statSync as statSync3, existsSync as existsSync8 } from "node:fs";
 import { spawnSync as spawnSync4 } from "node:child_process";
 
 // dist/catalog.js
-import { existsSync as existsSync6 } from "node:fs";
+import { existsSync as existsSync7 } from "node:fs";
 import { readdir, readFile as readFile2 } from "node:fs/promises";
 import { basename as basename3, join as join11, resolve as resolvePath } from "node:path";
 var AUTOCOMPLETE_EXCLUDES = [".git", "node_modules", "backups", ".pi", ".claude"];
@@ -10565,7 +10570,7 @@ async function formatCatalogSection(workspaceFolder, opts) {
   let repos;
   try {
     const entries = await readdir(workspaceFolder, { withFileTypes: true });
-    repos = entries.filter((entry) => entry.isDirectory() && !AUTOCOMPLETE_EXCLUDES.includes(entry.name)).map((entry) => join11(workspaceFolder, entry.name)).filter((dir) => existsSync6(join11(dir, ".git")));
+    repos = entries.filter((entry) => entry.isDirectory() && !AUTOCOMPLETE_EXCLUDES.includes(entry.name)).map((entry) => join11(workspaceFolder, entry.name)).filter((dir) => existsSync7(join11(dir, ".git")));
   } catch {
     repos = [];
   }
@@ -10642,10 +10647,10 @@ function parsePullable(raw) {
 var BARE_FOLDER_HINT = "You're at a workspace folder (no `_agent/` contract here). Navigate into a repo below (`ideaspaces navigate <repo>`), or pull one that's behind.";
 var EMPTY_FOLDER_HINT = "You're at a workspace folder with no repos yet. Clone one to get started (`ideaspaces clone`).";
 function planCatalog(flags2, povRepoRoot) {
-  const workspace = typeof flags2.workspace === "string" ? resolve8(flags2.workspace) : null;
+  const workspace = typeof flags2.workspace === "string" ? resolve9(flags2.workspace) : null;
   if (!workspace)
     return { kind: "none" };
-  if (!existsSync7(workspace) || !statSync3(workspace).isDirectory()) {
+  if (!existsSync8(workspace) || !statSync3(workspace).isDirectory()) {
     return { kind: "warn", text: `\u26A0 --workspace is not a readable directory: ${workspace} (catalog skipped)` };
   }
   const mounts = typeof flags2.mount === "string" ? flags2.mount.split(",").map((m) => m.trim()).filter(Boolean) : [];
@@ -10665,8 +10670,8 @@ var navigateCommand = {
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const raw = (args2[0] ?? ".").trim();
-    const target = resolve8(raw === "" ? "." : raw);
-    if (!existsSync7(target)) {
+    const target = resolve9(raw === "" ? "." : raw);
+    if (!existsSync8(target)) {
       output.error(`No such path: ${target}`);
       return 1;
     }
@@ -10763,7 +10768,7 @@ var navigateCommand = {
 };
 
 // dist/commands/status.js
-import { resolve as resolve9 } from "node:path";
+import { resolve as resolve10 } from "node:path";
 var statusCommand = {
   name: "status",
   description: "Show git position and plugin-tracked captures awaiting commit",
@@ -10786,7 +10791,7 @@ var statusCommand = {
     }
     const pathArg = typeof flags2.path === "string" ? flags2.path : void 0;
     if (pathArg) {
-      const ps = pathStatus(resolve9(pathArg), root);
+      const ps = pathStatus(resolve10(pathArg), root);
       output.result({
         path: pathArg,
         exists: ps.exists,
@@ -11178,9 +11183,9 @@ function deriveCatalog(me, clones, statusByPath) {
   }
   const clonesByRepo = /* @__PURE__ */ new Map();
   for (const c of clones) {
-    const list = clonesByRepo.get(c.record.repo_id) ?? [];
-    list.push(c);
-    clonesByRepo.set(c.record.repo_id, list);
+    const list2 = clonesByRepo.get(c.record.repo_id) ?? [];
+    list2.push(c);
+    clonesByRepo.set(c.record.repo_id, list2);
   }
   const entries = [];
   const used = /* @__PURE__ */ new Set();
@@ -11327,316 +11332,8 @@ var catalogCommand = {
   }
 };
 
-// dist/commands/pi-status.js
-import { spawnSync as spawnSync5 } from "node:child_process";
-import { existsSync as existsSync9, readFileSync as readFileSync4 } from "node:fs";
-import { basename as basename4, join as join13 } from "node:path";
-
-// dist/pi-auth.js
-import { chmodSync, existsSync as existsSync8, mkdirSync as mkdirSync3, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { dirname as dirname3, join as join12 } from "node:path";
-function resolvePiAgentDir(env = process.env) {
-  const override = env.PI_CODING_AGENT_DIR?.trim();
-  if (override)
-    return override.startsWith("~") ? join12(homedir2(), override.slice(1)) : override;
-  return join12(homedir2(), ".pi", "agent");
-}
-function resolvePiAuthPath(env = process.env) {
-  return join12(resolvePiAgentDir(env), "auth.json");
-}
-function parseAuth(raw) {
-  if (!raw || !raw.trim())
-    return {};
-  try {
-    const v = JSON.parse(raw);
-    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
-  } catch {
-    return {};
-  }
-}
-function upsertApiKey(current, provider, key) {
-  return { ...current, [provider]: { type: "api_key", key } };
-}
-function removeProvider(current, provider) {
-  if (!(provider in current))
-    return { next: current, removed: false };
-  const next = { ...current };
-  delete next[provider];
-  return { next, removed: true };
-}
-function readAuthFile(path) {
-  if (!existsSync8(path))
-    return {};
-  return parseAuth(readFileSync3(path, "utf8"));
-}
-function writeAuthFile(path, auth) {
-  const dir = dirname3(path);
-  if (!existsSync8(dir))
-    mkdirSync3(dir, { recursive: true, mode: 448 });
-  writeFileSync3(path, `${JSON.stringify(auth, null, 2)}
-`, { encoding: "utf8", mode: 384 });
-  chmodSync(path, 384);
-}
-
-// dist/commands/pi-status.js
-function derivePiStatus(input) {
-  const providers = Object.entries(input.auth ?? {}).map(([name, v]) => {
-    const hasCreds = Boolean(v && (v.key || v.access || v.refresh));
-    const expiresAt = typeof v?.expires === "number" ? v.expires : null;
-    return { name, hasCreds, expiresAt, expired: expiresAt != null && expiresAt <= input.now };
-  });
-  const configured = providers.some((p) => p.hasCreds);
-  const extensionsResolvable = input.extensions.length > 0 && input.extensions.every((e) => e.resolvable);
-  return {
-    binary: input.binary,
-    providers,
-    configured,
-    extensions: input.extensions,
-    extensionsResolvable,
-    ready: input.binary.present && configured
-  };
-}
-function resolveExtension(path) {
-  const name = basename4(path.replace(/[/\\]+$/, "")) || path;
-  const check = (resolvable) => ({ name, path, resolvable });
-  if (!existsSync9(path))
-    return check(false);
-  if (/\.[cm]?[jt]s$/.test(path))
-    return check(true);
-  const pkgPath = join13(path, "package.json");
-  if (existsSync9(pkgPath)) {
-    try {
-      const pkg = JSON.parse(readFileSync4(pkgPath, "utf8"));
-      const exts = pkg.pi?.extensions;
-      if (Array.isArray(exts) && exts.length > 0)
-        return check(true);
-    } catch {
-    }
-  }
-  return check(existsSync9(join13(path, "index.ts")) || existsSync9(join13(path, "index.js")));
-}
-function probeBinary(piBin) {
-  try {
-    const res = spawnSync5(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
-    if (res.error || res.status !== 0)
-      return { present: false, path: piBin, version: null };
-    const m = /\d+\.\d+\.\d+[\w.-]*/.exec(res.stdout ?? "");
-    return { present: true, path: piBin, version: m ? m[0] : null };
-  } catch {
-    return { present: false, path: piBin, version: null };
-  }
-}
-function formatHuman2(s) {
-  const out = [];
-  out.push(s.binary.present ? `Pi: present${s.binary.version ? ` (${s.binary.version})` : ""} \u2014 ${s.binary.path}` : `Pi: not found (${s.binary.path}). Install pi to enable the local agent.`);
-  if (s.providers.length) {
-    const list = s.providers.map((p) => `${p.name}${!p.hasCreds ? " (no creds)" : p.expired ? " (expired)" : ""}`).join(", ");
-    out.push(`Configured: ${s.configured ? "yes" : "no"} \u2014 providers: ${list}`);
-  } else {
-    out.push("Configured: no \u2014 no providers in ~/.pi/agent/auth.json");
-  }
-  if (s.extensions.length) {
-    const list = s.extensions.map((e) => `${e.name} (${e.resolvable ? "ok" : "missing"})`).join(", ");
-    out.push(`Extensions: ${list}`);
-  } else {
-    out.push("Extensions: none checked \u2014 pass --ext or set IDEASPACES_PI_EXTENSIONS");
-  }
-  out.push(`Ready: ${s.ready ? "yes" : "no"}`);
-  return out.join("\n");
-}
-var piStatusCommand = {
-  name: "pi-status",
-  description: "Is the local pi runtime usable for a local agent? (binary, providers, extensions)",
-  usage: "ideaspaces pi-status [--pi-bin <path>] [--ext <p1,p2>] [--json]",
-  examples: [
-    "ideaspaces pi-status",
-    "ideaspaces pi-status --json",
-    "ideaspaces pi-status --ext /path/pi-is-space,/path/pi-local-context",
-    "IDEASPACES_PI_EXTENSIONS=/path/pi-is-space,/path/pi-local-context ideaspaces pi-status  # env fallback"
-  ],
-  async run(_args, flags2, global2) {
-    const output = createOutput(global2);
-    const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : "pi";
-    const binary = probeBinary(piBin);
-    const auth = readAuthFile(resolvePiAuthPath());
-    const extFlag = typeof flags2.ext === "string" ? flags2.ext : process.env.IDEASPACES_PI_EXTENSIONS;
-    const extensions = (extFlag ?? "").split(",").map((s) => s.trim()).filter(Boolean).map(resolveExtension);
-    const status = derivePiStatus({ binary, auth, extensions, now: Date.now() });
-    output.result(status, formatHuman2(status));
-    return 0;
-  }
-};
-
-// dist/commands/pi-models.js
-import { spawn as spawn2 } from "node:child_process";
-import { createInterface } from "node:readline";
-function trimModel(m) {
-  return {
-    ref: `${m.provider}/${m.id}`,
-    id: m.id,
-    name: m.name ?? m.id,
-    provider: m.provider,
-    contextWindow: m.contextWindow ?? 0,
-    maxTokens: m.maxTokens ?? 0,
-    reasoning: !!m.reasoning,
-    image: (m.input ?? []).includes("image"),
-    cost: m.cost ? { input: m.cost.input ?? 0, output: m.cost.output ?? 0 } : void 0
-  };
-}
-var QUERY_ID = "__models";
-var TIMEOUT_MS = 2e4;
-function queryPiModels(piBin) {
-  return new Promise((resolve13, reject) => {
-    const pi = spawn2(piBin, ["--mode", "rpc", "--no-extensions"], {
-      cwd: process.cwd(),
-      stdio: ["pipe", "pipe", "pipe"]
-    });
-    let stderr = "";
-    let settled = false;
-    const finish = (fn) => {
-      if (settled)
-        return;
-      settled = true;
-      clearTimeout(timer);
-      try {
-        pi.kill("SIGTERM");
-      } catch {
-      }
-      fn();
-    };
-    const timer = setTimeout(() => finish(() => reject(new Error("pi did not return models within the timeout"))), TIMEOUT_MS);
-    pi.stderr.on("data", (d) => {
-      stderr += String(d);
-    });
-    pi.on("error", (err) => finish(() => reject(err.code === "ENOENT" ? new Error("pi not found \u2014 check the runtime with `ideaspaces pi-status`") : err)));
-    pi.on("exit", (code) => {
-      if (settled)
-        return;
-      finish(() => reject(new Error(stderr.trim() || `pi exited (${code ?? "unknown"}) before returning models`)));
-    });
-    const rl = createInterface({ input: pi.stdout, terminal: false });
-    rl.on("line", (line) => {
-      const trimmed = line.trim();
-      if (!trimmed)
-        return;
-      let msg;
-      try {
-        msg = JSON.parse(trimmed);
-      } catch {
-        return;
-      }
-      if (msg.type === "response" && msg.command === "get_available_models") {
-        if (msg.success === false) {
-          finish(() => reject(new Error(String(msg.error ?? "get_available_models failed"))));
-          return;
-        }
-        const data = msg.data;
-        const models = (data?.models ?? []).map(trimModel);
-        finish(() => resolve13({ models }));
-      }
-    });
-    try {
-      pi.stdin.write(`${JSON.stringify({ type: "get_available_models", id: QUERY_ID })}
-`);
-    } catch {
-      finish(() => reject(new Error("could not send the query to pi")));
-    }
-  });
-}
-function formatHuman3(result) {
-  if (!result.models.length)
-    return "No models available \u2014 configure a provider (see `pi-status`).";
-  return result.models.map((m) => {
-    const tags = [m.reasoning ? "thinking" : null, m.image ? "images" : null].filter(Boolean).join(", ");
-    return `${m.ref}${m.name !== m.id ? `  (${m.name})` : ""}${tags ? `  \xB7 ${tags}` : ""}`;
-  }).join("\n");
-}
-var piModelsCommand = {
-  name: "pi-models",
-  description: "List the models a local Pi turn can use (auth-gated), for a model picker.",
-  usage: "ideaspaces pi-models [--pi-bin <path>] [--json]",
-  examples: ["ideaspaces pi-models --json", "ideaspaces pi-models  # human-readable"],
-  async run(_args, flags2, global2) {
-    const output = createOutput(global2);
-    const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : "pi";
-    try {
-      const result = await queryPiModels(piBin);
-      output.result(result, formatHuman3(result));
-      return 0;
-    } catch (err) {
-      output.error(err instanceof Error ? err.message : String(err));
-      return 1;
-    }
-  }
-};
-
-// dist/commands/pi-login.js
-var piLoginCommand = {
-  name: "pi-login",
-  description: "Configure a local-agent model provider (writes pi's auth.json)",
-  usage: "ideaspaces pi-login --provider <id> --api-key <key> [--json]",
-  examples: [
-    "ideaspaces pi-login --provider anthropic --api-key sk-ant-\u2026",
-    "ideaspaces pi-login --provider openai --api-key sk-\u2026"
-  ],
-  async run(_args, flags2, global2) {
-    const output = createOutput(global2);
-    const provider = typeof flags2.provider === "string" ? flags2.provider.trim() : "";
-    const apiKey = typeof flags2["api-key"] === "string" ? flags2["api-key"].trim() : "";
-    if (!provider) {
-      output.error("Usage: ideaspaces pi-login --provider <id> --api-key <key>");
-      return 1;
-    }
-    if (!apiKey) {
-      output.error(`An API key is required: ideaspaces pi-login --provider ${provider} --api-key <key>`);
-      return 1;
-    }
-    const path = resolvePiAuthPath();
-    const next = upsertApiKey(readAuthFile(path), provider, apiKey);
-    try {
-      writeAuthFile(path, next);
-    } catch (err) {
-      output.error(`Couldn't write ${path}: ${err instanceof Error ? err.message : String(err)}`);
-      return 1;
-    }
-    output.result({ provider, method: "api_key", configured: true, authPath: path }, `Configured ${provider} with an API key. Run \`ideaspaces pi-status\` to confirm.`);
-    return 0;
-  }
-};
-
-// dist/commands/pi-logout.js
-var piLogoutCommand = {
-  name: "pi-logout",
-  description: "Remove a local-agent model provider from pi's auth.json",
-  usage: "ideaspaces pi-logout --provider <id> [--json]",
-  examples: ["ideaspaces pi-logout --provider anthropic"],
-  async run(_args, flags2, global2) {
-    const output = createOutput(global2);
-    const provider = typeof flags2.provider === "string" ? flags2.provider.trim() : "";
-    if (!provider) {
-      output.error("Usage: ideaspaces pi-logout --provider <id>");
-      return 1;
-    }
-    const path = resolvePiAuthPath();
-    const { next, removed } = removeProvider(readAuthFile(path), provider);
-    if (!removed) {
-      output.result({ provider, removed: false, authPath: path }, `${provider} was not configured \u2014 nothing to remove.`);
-      return 0;
-    }
-    try {
-      writeAuthFile(path, next);
-    } catch (err) {
-      output.error(`Couldn't write ${path}: ${err instanceof Error ? err.message : String(err)}`);
-      return 1;
-    }
-    output.result({ provider, removed: true, authPath: path }, `Removed ${provider} from pi's providers.`);
-    return 0;
-  }
-};
-
 // dist/commands/clone.js
-import { resolve as resolve10 } from "node:path";
+import { resolve as resolve11 } from "node:path";
 var cloneCommand = {
   name: "clone",
   description: "Clone one of your spaces into a local folder",
@@ -11687,7 +11384,7 @@ var cloneCommand = {
       return 1;
     }
     const url = `${deriveGitBase(config.apiUrl)}/${namespace}/${repo.slug}.git`;
-    const dir = resolve10(args2[1] ?? repo.slug);
+    const dir = resolve11(args2[1] ?? repo.slug);
     await registerGitCredentialHelper();
     output.progress(`Cloning ${namespace}/${repo.slug}\u2026`);
     try {
@@ -11736,7 +11433,7 @@ var clonesCommand = {
 };
 
 // dist/commands/link.js
-import { resolve as resolve11 } from "node:path";
+import { resolve as resolve12 } from "node:path";
 function repoKey(repo, me, gitBase) {
   const namespace = repo.hostname ?? me.username;
   if (!namespace)
@@ -11758,7 +11455,7 @@ var linkCommand = {
       output.error("Usage: ideaspaces link <dir> [space]");
       return 1;
     }
-    const dir = resolve11(dirArg);
+    const dir = resolve12(dirArg);
     if (!isInsideWorkTree(dir)) {
       output.error(`${dir} is not a git repository. Use \`clone\` to make one, or point at an existing clone.`);
       return 1;
@@ -11851,8 +11548,8 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 
 // dist/commands/forget.js
 import { rmSync } from "node:fs";
-import { homedir as homedir3 } from "node:os";
-import { dirname as dirname4, resolve as resolve12 } from "node:path";
+import { homedir as homedir2 } from "node:os";
+import { dirname as dirname3, resolve as resolve13 } from "node:path";
 var forgetCommand = {
   name: "forget",
   description: "Stop tracking a local clone (optionally delete its folder)",
@@ -11868,9 +11565,9 @@ var forgetCommand = {
       output.error("Usage: ideaspaces forget <dir> [--delete]");
       return 1;
     }
-    const dir = resolve12(dirArg);
+    const dir = resolve13(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve12(homedir3()) || dirname4(dir) === dir)) {
+    if (del && (dir === resolve13(homedir2()) || dirname3(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -11894,374 +11591,49 @@ var forgetCommand = {
   }
 };
 
-// dist/local-conversations.js
-import { existsSync as existsSync10, readdirSync, readFileSync as readFileSync5, statSync as statSync4 } from "node:fs";
-import { randomUUID } from "node:crypto";
-import { join as join14 } from "node:path";
-function localSessionDir(contextRoot) {
-  return join14(contextRoot, ".pi", "sessions");
-}
-function mintConversationId() {
-  return `local-${randomUUID()}`;
-}
-function textOf(content) {
-  if (typeof content === "string")
-    return content;
-  if (!Array.isArray(content))
-    return "";
-  return content.filter((c) => c && typeof c === "object" && c.type === "text").map((c) => String(c.text ?? "")).join("");
-}
-function parseSessionJsonl(text, fallbackTs) {
-  let id = "";
-  let name = null;
-  const messages = [];
-  let preview = "";
-  let count = 0;
-  let lastTs = fallbackTs;
-  for (const line of text.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed)
-      continue;
-    let e;
-    try {
-      e = JSON.parse(trimmed);
-    } catch {
-      continue;
-    }
-    if (e.type === "session") {
-      if (typeof e.id === "string")
-        id = e.id;
-    } else if (e.type === "session_info") {
-      if (typeof e.name === "string" && e.name.trim())
-        name = e.name;
-    } else if (e.type === "message" && e.message && typeof e.message === "object") {
-      const m = e.message;
-      const created = typeof e.timestamp === "string" ? e.timestamp : void 0;
-      if (created)
-        lastTs = created;
-      const role = m.role;
-      if (role === "user") {
-        const content = textOf(m.content);
-        messages.push({ role: "user", content, created_at: created });
-        if (!preview)
-          preview = content.replace(/\s+/g, " ").trim().slice(0, 120);
-        count += 1;
-      } else if (role === "assistant") {
-        const parts = Array.isArray(m.content) ? m.content : [];
-        const toolCalls = parts.filter((c) => c.type === "toolCall").map((c) => ({
-          id: String(c.id ?? ""),
-          name: String(c.name ?? ""),
-          args: c.arguments ?? {}
-        }));
-        messages.push({
-          role: "assistant",
-          content: textOf(m.content),
-          created_at: created,
-          ...toolCalls.length ? { tool_calls: toolCalls } : {},
-          ...m.usage ? { usage: m.usage } : {}
-        });
-        count += 1;
-      } else if (role === "toolResult") {
-        messages.push({
-          role: "tool",
-          content: textOf(m.content),
-          tool_call_id: typeof m.toolCallId === "string" ? m.toolCallId : void 0,
-          tool_name: typeof m.toolName === "string" ? m.toolName : void 0,
-          is_error: Boolean(m.isError),
-          created_at: created
-        });
-      }
-    }
-  }
-  return { id, name, messages, messageCount: count, preview, updatedAt: lastTs };
-}
-function findSessionFile(dir, convId) {
-  if (!existsSync10(dir))
-    return null;
-  const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
-  const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
-  if (bySuffix)
-    return join14(dir, bySuffix);
-  for (const f of files) {
-    try {
-      const first = readFileSync5(join14(dir, f), "utf8").split("\n", 1)[0];
-      if (JSON.parse(first).id === convId)
-        return join14(dir, f);
-    } catch {
-    }
-  }
-  return null;
-}
-function getLocalConversation(contextRoot, convId) {
-  const file = findSessionFile(localSessionDir(contextRoot), convId);
-  if (!file) {
-    return { conversation_id: convId, repo_id: contextRoot, name: "", history: [], active_turn: null };
-  }
-  const mtime = statSync4(file).mtime.toISOString();
-  const s = parseSessionJsonl(readFileSync5(file, "utf8"), mtime);
-  return {
-    conversation_id: convId,
-    repo_id: contextRoot,
-    name: s.name ?? s.preview ?? "Untitled",
-    history: s.messages,
-    active_turn: null,
-    turn_count: s.messageCount,
-    updated_at: s.updatedAt
-  };
-}
-function listLocalConversations(contextRoot) {
-  const dir = localSessionDir(contextRoot);
-  if (!existsSync10(dir))
-    return { conversations: [], total: 0 };
-  const summaries = [];
-  for (const f of readdirSync(dir).filter((f2) => f2.endsWith(".jsonl"))) {
-    const path = join14(dir, f);
-    let text;
-    try {
-      text = readFileSync5(path, "utf8");
-    } catch {
-      continue;
-    }
-    const mtime = statSync4(path).mtime.toISOString();
-    const s = parseSessionJsonl(text, mtime);
-    if (!s.id)
-      continue;
-    summaries.push({
-      conversation_id: s.id,
-      name: s.name ?? s.preview ?? "Untitled",
-      summary: s.preview,
-      message_count: s.messageCount,
-      status: "idle",
-      updated_at: s.updatedAt
-    });
-  }
-  summaries.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-  return { conversations: summaries, total: summaries.length };
-}
-
 // dist/commands/conversations.js
-var conversationsCommand = {
-  name: "conversations",
-  description: "List a repo's conversations (--local for the current context)",
-  usage: "ideaspaces conversations <repo_id> [--json] | conversations --local [--context <path>]",
-  examples: [
-    "ideaspaces conversations repo_abc123",
-    "ideaspaces conversations repo_abc123 --json",
-    "ideaspaces conversations --local"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    if (flags2.local) {
-      const contextRoot = typeof flags2.context === "string" ? flags2.context : process.cwd();
-      const { conversations: conversations2, total: total2 } = listLocalConversations(contextRoot);
-      output.result({ context: contextRoot, conversations: conversations2, total: total2, has_more: false }, conversations2.length ? conversations2.map((c) => `${c.name || "(untitled)"} \u2014 ${c.message_count} message${c.message_count === 1 ? "" : "s"}`).join("\n") : "No local conversations.");
-      return 0;
-    }
-    const repoId = args2[0];
-    if (!repoId) {
-      output.error("Usage: ideaspaces conversations <repo_id>");
-      return 1;
-    }
-    const config = loadConfig();
-    if (!config) {
-      output.error("Not logged in. Run `ideaspaces login`.");
-      return 1;
-    }
-    let res;
-    try {
-      res = await fetchConversations(config, repoId);
-    } catch (err) {
-      if (err instanceof UnauthorizedError) {
-        output.error("Session expired. Run `ideaspaces login`.");
+function makeConversationsCommand(local) {
+  return {
+    name: "conversations",
+    description: "List a repo's conversations (--local for the current context)",
+    usage: "ideaspaces conversations <repo_id> [--json] | conversations --local [--context <path>]",
+    examples: [
+      "ideaspaces conversations repo_abc123",
+      "ideaspaces conversations repo_abc123 --json",
+      "ideaspaces conversations --local"
+    ],
+    async run(args2, flags2, global2) {
+      const output = createOutput(global2);
+      if (flags2.local)
+        return local.list(flags2, output);
+      const repoId = args2[0];
+      if (!repoId) {
+        output.error("Usage: ideaspaces conversations <repo_id>");
         return 1;
       }
-      output.error(err instanceof Error ? err.message : String(err));
-      return 1;
-    }
-    const { conversations, total } = res;
-    const has_more = total > conversations.length;
-    output.result({ repo_id: repoId, conversations, total, has_more }, conversations.length ? conversations.map((c) => `${c.name || "(untitled)"} \u2014 ${c.message_count} message${c.message_count === 1 ? "" : "s"}`).join("\n") + (has_more ? `
-\u2026 and ${total - conversations.length} more` : "") : "No conversations.");
-    return 0;
-  }
-};
-
-// dist/commands/conversation.js
-import { join as join16 } from "node:path";
-
-// dist/local-agent.js
-import { spawn as spawn3 } from "node:child_process";
-import { existsSync as existsSync11, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join15 } from "node:path";
-import readline from "node:readline";
-var NON_AGENT_TYPES = /* @__PURE__ */ new Set(["response", "extension_ui_request"]);
-function harvestWorkspace(tools) {
-  const ws = emptyWorkspaceSurface();
-  const add = (arr, p) => {
-    if (typeof p === "string" && p && !arr.includes(p))
-      arr.push(p);
-  };
-  for (const t of tools) {
-    if (t.isError)
-      continue;
-    const path = t.args.path;
-    switch (t.name) {
-      case "is_write":
-        add(ws.modified, path);
-        break;
-      case "is_commit":
-        if (Array.isArray(t.args.paths))
-          for (const p of t.args.paths)
-            add(ws.modified, p);
-        else
-          add(ws.modified, path);
-        break;
-      case "is_navigate":
-      case "read":
-        add(ws.read, path);
-        break;
-      default:
-        break;
-    }
-  }
-  return ws;
-}
-function lastPosition(tools) {
-  for (let i = tools.length - 1; i >= 0; i--) {
-    if (tools[i].name === "is_navigate" && !tools[i].isError) {
-      const p = tools[i].args.path;
-      if (typeof p === "string")
-        return p;
-    }
-  }
-  return "";
-}
-function deriveConversationName(message) {
-  const line = message.split("\n").find((l) => l.trim()) ?? message;
-  const clean = line.replace(/\s+/g, " ").trim();
-  if (!clean)
-    return "Untitled";
-  return clean.length > 60 ? `${clean.slice(0, 57)}\u2026` : clean;
-}
-function ensureSessionDir(dir) {
-  mkdirSync4(dir, { recursive: true });
-  const ignore = join15(dir, ".gitignore");
-  if (!existsSync11(ignore))
-    writeFileSync4(ignore, "*\n");
-}
-function buildPiArgs(opts) {
-  const args2 = [
-    "--mode",
-    "rpc",
-    "--session-id",
-    opts.conversationId,
-    "--session-dir",
-    opts.sessionDir,
-    "-a"
-  ];
-  if (opts.extensionPaths.length)
-    args2.push("--no-extensions");
-  for (const ext of opts.extensionPaths)
-    args2.push("--extension", ext);
-  for (const skill of opts.skillPaths ?? [])
-    args2.push("--skill", skill);
-  if (opts.piModel)
-    args2.push("--model", opts.piModel);
-  return args2;
-}
-async function* runLocalTurn(opts) {
-  const modelTier = opts.modelTier ?? "local";
-  let turnTools = [];
-  const translator = new KeeperTranslator({
-    conversationId: opts.conversationId,
-    modelTier,
-    harvestWorkspace: (tools) => {
-      turnTools = tools;
-      return harvestWorkspace(tools);
-    }
-  });
-  ensureSessionDir(opts.sessionDir);
-  const args2 = buildPiArgs(opts);
-  const pi = spawn3(opts.piBin ?? "pi", args2, { cwd: opts.repoPath, stdio: ["pipe", "pipe", "pipe"] });
-  let stderr = "";
-  pi.stderr.on("data", (d) => {
-    stderr += String(d);
-  });
-  let aborted = false;
-  const onAbort = () => {
-    aborted = true;
-    try {
-      pi.kill("SIGTERM");
-    } catch {
-    }
-  };
-  if (opts.signal) {
-    if (opts.signal.aborted)
-      onAbort();
-    else
-      opts.signal.addEventListener("abort", onAbort, { once: true });
-  }
-  let sessionName;
-  const send = (obj) => {
-    try {
-      pi.stdin.write(`${JSON.stringify(obj)}
-`);
-    } catch {
-    }
-  };
-  send({ type: "get_state", id: "__state" });
-  send({ type: "prompt", message: opts.message, id: "p1" });
-  const rl = readline.createInterface({ input: pi.stdout, terminal: false });
-  try {
-    for await (const line of rl) {
-      const text = line.trim();
-      if (!text)
-        continue;
-      let msg;
+      const config = loadConfig();
+      if (!config) {
+        output.error("Not logged in. Run `ideaspaces login`.");
+        return 1;
+      }
+      let res;
       try {
-        msg = JSON.parse(text);
-      } catch {
-        continue;
-      }
-      const type = typeof msg.type === "string" ? msg.type : "";
-      if (NON_AGENT_TYPES.has(type)) {
-        if (type === "response" && msg.command === "get_state" && msg.success !== false) {
-          const data = msg.data;
-          sessionName = data?.sessionName;
+        res = await fetchConversations(config, repoId);
+      } catch (err) {
+        if (err instanceof UnauthorizedError) {
+          output.error("Session expired. Run `ideaspaces login`.");
+          return 1;
         }
-        if (type === "response" && msg.success === false && msg.command === "prompt") {
-          yield translator.error("pi_error", String(msg.error ?? "prompt failed"));
-          return;
-        }
-        continue;
+        output.error(err instanceof Error ? err.message : String(err));
+        return 1;
       }
-      for (const ke of translator.translate(msg)) {
-        if (ke.type === "turn_complete")
-          ke.result.position = lastPosition(turnTools);
-        yield ke;
-      }
-      if (type === "agent_end") {
-        if (!sessionName || !sessionName.trim()) {
-          send({ type: "set_session_name", name: deriveConversationName(opts.message), id: "__name" });
-          await new Promise((r) => setTimeout(r, 250));
-        }
-        return;
-      }
+      const { conversations, total } = res;
+      const has_more = total > conversations.length;
+      output.result({ repo_id: repoId, conversations, total, has_more }, conversations.length ? conversations.map((c) => `${c.name || "(untitled)"} \u2014 ${c.message_count} message${c.message_count === 1 ? "" : "s"}`).join("\n") + (has_more ? `
+\u2026 and ${total - conversations.length} more` : "") : "No conversations.");
+      return 0;
     }
-    if (aborted && !translator.isEnded) {
-      yield translator.cancelled("aborted");
-    } else if (!translator.isEnded) {
-      yield translator.error("pi_exit", stderr.trim() || "pi ended without completing the turn");
-    }
-  } finally {
-    opts.signal?.removeEventListener("abort", onAbort);
-    rl.close();
-    try {
-      pi.stdin.end();
-    } catch {
-    }
-    pi.kill("SIGTERM");
-  }
+  };
 }
 
 // dist/commands/conversation.js
@@ -12290,10 +11662,6 @@ function reportError(err, output) {
   }
   output.error(err instanceof Error ? err.message : String(err));
   return 1;
-}
-function parseCommaList(flag, envFallback) {
-  const raw = typeof flag === "string" ? flag : envFallback;
-  return (raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 }
 async function cmdNew2(args2, flags2, output) {
   const repoId = args2[0];
@@ -12438,77 +11806,6 @@ async function cmdSend(args2, flags2, output) {
     process.off("SIGTERM", onSignal);
   }
 }
-async function cmdSendLocal(flags2, output) {
-  const message = typeof flags2.message === "string" ? flags2.message : void 0;
-  if (!message) {
-    output.error("A message is required: --message <text>");
-    return 1;
-  }
-  const extensionPaths = parseCommaList(flags2.ext, process.env.IDEASPACES_PI_EXTENSIONS);
-  if (!extensionPaths.length) {
-    output.error("Extensions are required: --ext <pi-is-space,pi-local-context> (or set IDEASPACES_PI_EXTENSIONS)");
-    return 1;
-  }
-  const skillPaths = parseCommaList(flags2.skill, process.env.IDEASPACES_PI_SKILLS);
-  const repoPath = typeof flags2.context === "string" ? flags2.context : process.cwd();
-  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join16(repoPath, ".pi", "sessions");
-  const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
-  const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
-  const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
-  const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : void 0;
-  const controller = new AbortController();
-  let signalled = false;
-  const onSignal = () => {
-    if (signalled)
-      return;
-    signalled = true;
-    controller.abort();
-  };
-  process.on("SIGINT", onSignal);
-  process.on("SIGTERM", onSignal);
-  try {
-    for await (const event of runLocalTurn({
-      repoPath,
-      message,
-      extensionPaths,
-      skillPaths,
-      conversationId,
-      sessionDir,
-      modelTier,
-      piModel,
-      piBin,
-      signal: controller.signal
-    })) {
-      process.stdout.write(`${JSON.stringify(event)}
-`);
-    }
-    return 0;
-  } catch (err) {
-    return reportError(err, output);
-  } finally {
-    process.off("SIGINT", onSignal);
-    process.off("SIGTERM", onSignal);
-  }
-}
-function cmdNewLocal(output) {
-  const id = mintConversationId();
-  output.result({ conversation_id: id }, `Created local conversation ${id}`);
-  return 0;
-}
-function cmdGetLocal(flags2, output) {
-  const convId = typeof flags2.conversation === "string" ? flags2.conversation : void 0;
-  if (!convId) {
-    output.error("A conversation id is required: --conversation <id>");
-    return 1;
-  }
-  const contextRoot = typeof flags2.context === "string" ? flags2.context : process.cwd();
-  const detail = getLocalConversation(contextRoot, convId);
-  output.result(detail, detail.history.length ? detail.history.map((m) => {
-    const preview = m.content.replace(/\s+/g, " ");
-    return `${m.role}: ${preview.length > 80 ? `${preview.slice(0, 79)}\u2026` : preview}`;
-  }).join("\n") : "No messages yet.");
-  return 0;
-}
 async function cmdGet(args2, output) {
   const [repoId, convId] = args2;
   if (!repoId || !convId) {
@@ -12547,48 +11844,50 @@ async function cmdCancel(args2, output) {
   }
 }
 var USAGE2 = "ideaspaces conversation <new|participants|add|remove|members|send|get|cancel> \u2026 (send --local for a local pi turn)";
-var conversationCommand = {
-  name: "conversation",
-  description: "Create a conversation and manage its participants",
-  usage: USAGE2,
-  examples: [
-    "ideaspaces conversation new repo_abc --name 'Kickoff'",
-    "ideaspaces conversation new repo_abc --agent agent_node_xyz  # pick the agent",
-    "ideaspaces conversation members repo_abc          # who you can add",
-    "ideaspaces conversation add repo_abc c_123 alice  # add a person",
-    "ideaspaces conversation participants repo_abc c_123",
-    "ideaspaces conversation remove repo_abc c_123 alice",
-    "ideaspaces conversation send repo_abc c_123 --message 'Hi'  # streams JSON lines",
-    "ideaspaces conversation send --local --context /ws --conversation c1 --message 'Hi' --ext a,b --skill a/skills,b/skills --pi-bin /path/pi --pi-model sonnet  # local pi turn",
-    "ideaspaces conversation get repo_abc c_123        # detail + history",
-    "ideaspaces conversation cancel repo_abc c_123     # stop the active turn"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const [sub, ...rest] = args2;
-    switch (sub) {
-      case "new":
-        return flags2.local ? cmdNewLocal(output) : cmdNew2(rest, flags2, output);
-      case "participants":
-        return cmdParticipants(rest, output);
-      case "add":
-        return cmdAdd(rest, flags2, output);
-      case "remove":
-        return cmdRemove(rest, output);
-      case "members":
-        return cmdMembers(rest, output);
-      case "send":
-        return flags2.local ? cmdSendLocal(flags2, output) : cmdSend(rest, flags2, output);
-      case "get":
-        return flags2.local ? cmdGetLocal(flags2, output) : cmdGet(rest, output);
-      case "cancel":
-        return cmdCancel(rest, output);
-      default:
-        output.error(`Usage: ${USAGE2}`);
-        return 1;
+function makeConversationCommand(local) {
+  return {
+    name: "conversation",
+    description: "Create a conversation and manage its participants",
+    usage: USAGE2,
+    examples: [
+      "ideaspaces conversation new repo_abc --name 'Kickoff'",
+      "ideaspaces conversation new repo_abc --agent agent_node_xyz  # pick the agent",
+      "ideaspaces conversation members repo_abc          # who you can add",
+      "ideaspaces conversation add repo_abc c_123 alice  # add a person",
+      "ideaspaces conversation participants repo_abc c_123",
+      "ideaspaces conversation remove repo_abc c_123 alice",
+      "ideaspaces conversation send repo_abc c_123 --message 'Hi'  # streams JSON lines",
+      "ideaspaces conversation send --local --context /ws --conversation c1 --message 'Hi' --ext a,b --skill a/skills,b/skills --pi-bin /path/pi --pi-model sonnet  # local pi turn",
+      "ideaspaces conversation get repo_abc c_123        # detail + history",
+      "ideaspaces conversation cancel repo_abc c_123     # stop the active turn"
+    ],
+    async run(args2, flags2, global2) {
+      const output = createOutput(global2);
+      const [sub, ...rest] = args2;
+      switch (sub) {
+        case "new":
+          return flags2.local ? local.createNew(output) : cmdNew2(rest, flags2, output);
+        case "participants":
+          return cmdParticipants(rest, output);
+        case "add":
+          return cmdAdd(rest, flags2, output);
+        case "remove":
+          return cmdRemove(rest, output);
+        case "members":
+          return cmdMembers(rest, output);
+        case "send":
+          return flags2.local ? local.send(flags2, output) : cmdSend(rest, flags2, output);
+        case "get":
+          return flags2.local ? local.get(flags2, output) : cmdGet(rest, output);
+        case "cancel":
+          return cmdCancel(rest, output);
+        default:
+          output.error(`Usage: ${USAGE2}`);
+          return 1;
+      }
     }
-  }
-};
+  };
+}
 
 // dist/commands/agents.js
 var agentsCommand = {
@@ -12714,8 +12013,8 @@ var nodeCommand = {
 };
 
 // dist/commands/search.js
-import { readFileSync as readFileSync6 } from "node:fs";
-import { join as join17 } from "node:path";
+import { readFileSync as readFileSync3 } from "node:fs";
+import { join as join12 } from "node:path";
 
 // dist/search.js
 var K1 = 1.2;
@@ -12806,7 +12105,7 @@ var DEFAULT_LIMIT = 20;
 function* readDocs(root, paths) {
   for (const path of paths) {
     try {
-      yield { path, content: readFileSync6(join17(root, path), "utf-8") };
+      yield { path, content: readFileSync3(join12(root, path), "utf-8") };
     } catch {
       continue;
     }
@@ -13024,13 +12323,13 @@ var shareCommand = {
 };
 
 // dist/auth/session-state.js
-import { existsSync as existsSync12, unlinkSync as unlinkSync2 } from "node:fs";
-import { homedir as homedir4 } from "node:os";
-import { join as join18 } from "node:path";
-var SESSION_FILE = join18(homedir4(), ".ideaspaces", "session.json");
+import { existsSync as existsSync9, unlinkSync as unlinkSync2 } from "node:fs";
+import { homedir as homedir3 } from "node:os";
+import { join as join13 } from "node:path";
+var SESSION_FILE = join13(homedir3(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
-    if (existsSync12(SESSION_FILE))
+    if (existsSync9(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -13050,7 +12349,728 @@ var logoutCommand = {
   }
 };
 
+// dist/pi/pi-status.js
+import { spawnSync as spawnSync5 } from "node:child_process";
+import { existsSync as existsSync11, readFileSync as readFileSync5 } from "node:fs";
+import { basename as basename4, join as join15 } from "node:path";
+
+// dist/pi/pi-auth.js
+import { chmodSync, existsSync as existsSync10, mkdirSync as mkdirSync3, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { homedir as homedir4 } from "node:os";
+import { dirname as dirname4, join as join14 } from "node:path";
+function resolvePiAgentDir(env = process.env) {
+  const override = env.PI_CODING_AGENT_DIR?.trim();
+  if (override)
+    return override.startsWith("~") ? join14(homedir4(), override.slice(1)) : override;
+  return join14(homedir4(), ".pi", "agent");
+}
+function resolvePiAuthPath(env = process.env) {
+  return join14(resolvePiAgentDir(env), "auth.json");
+}
+function parseAuth(raw) {
+  if (!raw || !raw.trim())
+    return {};
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
+}
+function upsertApiKey(current, provider, key) {
+  return { ...current, [provider]: { type: "api_key", key } };
+}
+function removeProvider(current, provider) {
+  if (!(provider in current))
+    return { next: current, removed: false };
+  const next = { ...current };
+  delete next[provider];
+  return { next, removed: true };
+}
+function readAuthFile(path) {
+  if (!existsSync10(path))
+    return {};
+  return parseAuth(readFileSync4(path, "utf8"));
+}
+function writeAuthFile(path, auth) {
+  const dir = dirname4(path);
+  if (!existsSync10(dir))
+    mkdirSync3(dir, { recursive: true, mode: 448 });
+  writeFileSync3(path, `${JSON.stringify(auth, null, 2)}
+`, { encoding: "utf8", mode: 384 });
+  chmodSync(path, 384);
+}
+
+// dist/pi/pi-status.js
+function derivePiStatus(input) {
+  const providers = Object.entries(input.auth ?? {}).map(([name, v]) => {
+    const hasCreds = Boolean(v && (v.key || v.access || v.refresh));
+    const expiresAt = typeof v?.expires === "number" ? v.expires : null;
+    return { name, hasCreds, expiresAt, expired: expiresAt != null && expiresAt <= input.now };
+  });
+  const configured = providers.some((p) => p.hasCreds);
+  const extensionsResolvable = input.extensions.length > 0 && input.extensions.every((e) => e.resolvable);
+  return {
+    binary: input.binary,
+    providers,
+    configured,
+    extensions: input.extensions,
+    extensionsResolvable,
+    ready: input.binary.present && configured
+  };
+}
+function resolveExtension(path) {
+  const name = basename4(path.replace(/[/\\]+$/, "")) || path;
+  const check = (resolvable) => ({ name, path, resolvable });
+  if (!existsSync11(path))
+    return check(false);
+  if (/\.[cm]?[jt]s$/.test(path))
+    return check(true);
+  const pkgPath = join15(path, "package.json");
+  if (existsSync11(pkgPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync5(pkgPath, "utf8"));
+      const exts = pkg.pi?.extensions;
+      if (Array.isArray(exts) && exts.length > 0)
+        return check(true);
+    } catch {
+    }
+  }
+  return check(existsSync11(join15(path, "index.ts")) || existsSync11(join15(path, "index.js")));
+}
+function probeBinary(piBin) {
+  try {
+    const res = spawnSync5(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
+    if (res.error || res.status !== 0)
+      return { present: false, path: piBin, version: null };
+    const m = /\d+\.\d+\.\d+[\w.-]*/.exec(res.stdout ?? "");
+    return { present: true, path: piBin, version: m ? m[0] : null };
+  } catch {
+    return { present: false, path: piBin, version: null };
+  }
+}
+function formatHuman2(s) {
+  const out = [];
+  out.push(s.binary.present ? `Pi: present${s.binary.version ? ` (${s.binary.version})` : ""} \u2014 ${s.binary.path}` : `Pi: not found (${s.binary.path}). Install pi to enable the local agent.`);
+  if (s.providers.length) {
+    const list2 = s.providers.map((p) => `${p.name}${!p.hasCreds ? " (no creds)" : p.expired ? " (expired)" : ""}`).join(", ");
+    out.push(`Configured: ${s.configured ? "yes" : "no"} \u2014 providers: ${list2}`);
+  } else {
+    out.push("Configured: no \u2014 no providers in ~/.pi/agent/auth.json");
+  }
+  if (s.extensions.length) {
+    const list2 = s.extensions.map((e) => `${e.name} (${e.resolvable ? "ok" : "missing"})`).join(", ");
+    out.push(`Extensions: ${list2}`);
+  } else {
+    out.push("Extensions: none checked \u2014 pass --ext or set IDEASPACES_PI_EXTENSIONS");
+  }
+  out.push(`Ready: ${s.ready ? "yes" : "no"}`);
+  return out.join("\n");
+}
+var piStatusCommand = {
+  name: "pi-status",
+  description: "Is the local pi runtime usable for a local agent? (binary, providers, extensions)",
+  usage: "ideaspaces pi-status [--pi-bin <path>] [--ext <p1,p2>] [--json]",
+  examples: [
+    "ideaspaces pi-status",
+    "ideaspaces pi-status --json",
+    "ideaspaces pi-status --ext /path/pi-is-space,/path/pi-local-context",
+    "IDEASPACES_PI_EXTENSIONS=/path/pi-is-space,/path/pi-local-context ideaspaces pi-status  # env fallback"
+  ],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : "pi";
+    const binary = probeBinary(piBin);
+    const auth = readAuthFile(resolvePiAuthPath());
+    const extFlag = typeof flags2.ext === "string" ? flags2.ext : process.env.IDEASPACES_PI_EXTENSIONS;
+    const extensions = (extFlag ?? "").split(",").map((s) => s.trim()).filter(Boolean).map(resolveExtension);
+    const status = derivePiStatus({ binary, auth, extensions, now: Date.now() });
+    output.result(status, formatHuman2(status));
+    return 0;
+  }
+};
+
+// dist/pi/pi-login.js
+var piLoginCommand = {
+  name: "pi-login",
+  description: "Configure a local-agent model provider (writes pi's auth.json)",
+  usage: "ideaspaces pi-login --provider <id> --api-key <key> [--json]",
+  examples: [
+    "ideaspaces pi-login --provider anthropic --api-key sk-ant-\u2026",
+    "ideaspaces pi-login --provider openai --api-key sk-\u2026"
+  ],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const provider = typeof flags2.provider === "string" ? flags2.provider.trim() : "";
+    const apiKey = typeof flags2["api-key"] === "string" ? flags2["api-key"].trim() : "";
+    if (!provider) {
+      output.error("Usage: ideaspaces pi-login --provider <id> --api-key <key>");
+      return 1;
+    }
+    if (!apiKey) {
+      output.error(`An API key is required: ideaspaces pi-login --provider ${provider} --api-key <key>`);
+      return 1;
+    }
+    const path = resolvePiAuthPath();
+    const next = upsertApiKey(readAuthFile(path), provider, apiKey);
+    try {
+      writeAuthFile(path, next);
+    } catch (err) {
+      output.error(`Couldn't write ${path}: ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    output.result({ provider, method: "api_key", configured: true, authPath: path }, `Configured ${provider} with an API key. Run \`ideaspaces pi-status\` to confirm.`);
+    return 0;
+  }
+};
+
+// dist/pi/pi-logout.js
+var piLogoutCommand = {
+  name: "pi-logout",
+  description: "Remove a local-agent model provider from pi's auth.json",
+  usage: "ideaspaces pi-logout --provider <id> [--json]",
+  examples: ["ideaspaces pi-logout --provider anthropic"],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const provider = typeof flags2.provider === "string" ? flags2.provider.trim() : "";
+    if (!provider) {
+      output.error("Usage: ideaspaces pi-logout --provider <id>");
+      return 1;
+    }
+    const path = resolvePiAuthPath();
+    const { next, removed } = removeProvider(readAuthFile(path), provider);
+    if (!removed) {
+      output.result({ provider, removed: false, authPath: path }, `${provider} was not configured \u2014 nothing to remove.`);
+      return 0;
+    }
+    try {
+      writeAuthFile(path, next);
+    } catch (err) {
+      output.error(`Couldn't write ${path}: ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    output.result({ provider, removed: true, authPath: path }, `Removed ${provider} from pi's providers.`);
+    return 0;
+  }
+};
+
+// dist/pi/pi-models.js
+import { spawn as spawn2 } from "node:child_process";
+import { createInterface } from "node:readline";
+function trimModel(m) {
+  return {
+    ref: `${m.provider}/${m.id}`,
+    id: m.id,
+    name: m.name ?? m.id,
+    provider: m.provider,
+    contextWindow: m.contextWindow ?? 0,
+    maxTokens: m.maxTokens ?? 0,
+    reasoning: !!m.reasoning,
+    image: (m.input ?? []).includes("image"),
+    cost: m.cost ? { input: m.cost.input ?? 0, output: m.cost.output ?? 0 } : void 0
+  };
+}
+var QUERY_ID = "__models";
+var TIMEOUT_MS = 2e4;
+function queryPiModels(piBin) {
+  return new Promise((resolve14, reject) => {
+    const pi = spawn2(piBin, ["--mode", "rpc", "--no-extensions"], {
+      cwd: process.cwd(),
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    let stderr = "";
+    let settled = false;
+    const finish = (fn) => {
+      if (settled)
+        return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        pi.kill("SIGTERM");
+      } catch {
+      }
+      fn();
+    };
+    const timer = setTimeout(() => finish(() => reject(new Error("pi did not return models within the timeout"))), TIMEOUT_MS);
+    pi.stderr.on("data", (d) => {
+      stderr += String(d);
+    });
+    pi.on("error", (err) => finish(() => reject(err.code === "ENOENT" ? new Error("pi not found \u2014 check the runtime with `ideaspaces pi-status`") : err)));
+    pi.on("exit", (code) => {
+      if (settled)
+        return;
+      finish(() => reject(new Error(stderr.trim() || `pi exited (${code ?? "unknown"}) before returning models`)));
+    });
+    const rl = createInterface({ input: pi.stdout, terminal: false });
+    rl.on("line", (line) => {
+      const trimmed = line.trim();
+      if (!trimmed)
+        return;
+      let msg;
+      try {
+        msg = JSON.parse(trimmed);
+      } catch {
+        return;
+      }
+      if (msg.type === "response" && msg.command === "get_available_models") {
+        if (msg.success === false) {
+          finish(() => reject(new Error(String(msg.error ?? "get_available_models failed"))));
+          return;
+        }
+        const data = msg.data;
+        const models = (data?.models ?? []).map(trimModel);
+        finish(() => resolve14({ models }));
+      }
+    });
+    try {
+      pi.stdin.write(`${JSON.stringify({ type: "get_available_models", id: QUERY_ID })}
+`);
+    } catch {
+      finish(() => reject(new Error("could not send the query to pi")));
+    }
+  });
+}
+function formatHuman3(result) {
+  if (!result.models.length)
+    return "No models available \u2014 configure a provider (see `pi-status`).";
+  return result.models.map((m) => {
+    const tags = [m.reasoning ? "thinking" : null, m.image ? "images" : null].filter(Boolean).join(", ");
+    return `${m.ref}${m.name !== m.id ? `  (${m.name})` : ""}${tags ? `  \xB7 ${tags}` : ""}`;
+  }).join("\n");
+}
+var piModelsCommand = {
+  name: "pi-models",
+  description: "List the models a local Pi turn can use (auth-gated), for a model picker.",
+  usage: "ideaspaces pi-models [--pi-bin <path>] [--json]",
+  examples: ["ideaspaces pi-models --json", "ideaspaces pi-models  # human-readable"],
+  async run(_args, flags2, global2) {
+    const output = createOutput(global2);
+    const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : "pi";
+    try {
+      const result = await queryPiModels(piBin);
+      output.result(result, formatHuman3(result));
+      return 0;
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+  }
+};
+
+// dist/pi/local-conversation-ops.js
+import { join as join18 } from "node:path";
+
+// dist/pi/local-agent.js
+import { spawn as spawn3 } from "node:child_process";
+import { existsSync as existsSync12, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { join as join16 } from "node:path";
+import readline from "node:readline";
+var NON_AGENT_TYPES = /* @__PURE__ */ new Set(["response", "extension_ui_request"]);
+function harvestWorkspace(tools) {
+  const ws = emptyWorkspaceSurface();
+  const add = (arr, p) => {
+    if (typeof p === "string" && p && !arr.includes(p))
+      arr.push(p);
+  };
+  for (const t of tools) {
+    if (t.isError)
+      continue;
+    const path = t.args.path;
+    switch (t.name) {
+      case "is_write":
+        add(ws.modified, path);
+        break;
+      case "is_commit":
+        if (Array.isArray(t.args.paths))
+          for (const p of t.args.paths)
+            add(ws.modified, p);
+        else
+          add(ws.modified, path);
+        break;
+      case "is_navigate":
+      case "read":
+        add(ws.read, path);
+        break;
+      default:
+        break;
+    }
+  }
+  return ws;
+}
+function lastPosition(tools) {
+  for (let i = tools.length - 1; i >= 0; i--) {
+    if (tools[i].name === "is_navigate" && !tools[i].isError) {
+      const p = tools[i].args.path;
+      if (typeof p === "string")
+        return p;
+    }
+  }
+  return "";
+}
+function deriveConversationName(message) {
+  const line = message.split("\n").find((l) => l.trim()) ?? message;
+  const clean = line.replace(/\s+/g, " ").trim();
+  if (!clean)
+    return "Untitled";
+  return clean.length > 60 ? `${clean.slice(0, 57)}\u2026` : clean;
+}
+function ensureSessionDir(dir) {
+  mkdirSync4(dir, { recursive: true });
+  const ignore = join16(dir, ".gitignore");
+  if (!existsSync12(ignore))
+    writeFileSync4(ignore, "*\n");
+}
+function buildPiArgs(opts) {
+  const args2 = [
+    "--mode",
+    "rpc",
+    "--session-id",
+    opts.conversationId,
+    "--session-dir",
+    opts.sessionDir,
+    "-a"
+  ];
+  if (opts.extensionPaths.length)
+    args2.push("--no-extensions");
+  for (const ext of opts.extensionPaths)
+    args2.push("--extension", ext);
+  for (const skill of opts.skillPaths ?? [])
+    args2.push("--skill", skill);
+  if (opts.piModel)
+    args2.push("--model", opts.piModel);
+  return args2;
+}
+async function* runLocalTurn(opts) {
+  const modelTier = opts.modelTier ?? "local";
+  let turnTools = [];
+  const translator = new KeeperTranslator({
+    conversationId: opts.conversationId,
+    modelTier,
+    harvestWorkspace: (tools) => {
+      turnTools = tools;
+      return harvestWorkspace(tools);
+    }
+  });
+  ensureSessionDir(opts.sessionDir);
+  const args2 = buildPiArgs(opts);
+  const pi = spawn3(opts.piBin ?? "pi", args2, { cwd: opts.repoPath, stdio: ["pipe", "pipe", "pipe"] });
+  let stderr = "";
+  pi.stderr.on("data", (d) => {
+    stderr += String(d);
+  });
+  let aborted = false;
+  const onAbort = () => {
+    aborted = true;
+    try {
+      pi.kill("SIGTERM");
+    } catch {
+    }
+  };
+  if (opts.signal) {
+    if (opts.signal.aborted)
+      onAbort();
+    else
+      opts.signal.addEventListener("abort", onAbort, { once: true });
+  }
+  let sessionName;
+  const send2 = (obj) => {
+    try {
+      pi.stdin.write(`${JSON.stringify(obj)}
+`);
+    } catch {
+    }
+  };
+  send2({ type: "get_state", id: "__state" });
+  send2({ type: "prompt", message: opts.message, id: "p1" });
+  const rl = readline.createInterface({ input: pi.stdout, terminal: false });
+  try {
+    for await (const line of rl) {
+      const text = line.trim();
+      if (!text)
+        continue;
+      let msg;
+      try {
+        msg = JSON.parse(text);
+      } catch {
+        continue;
+      }
+      const type = typeof msg.type === "string" ? msg.type : "";
+      if (NON_AGENT_TYPES.has(type)) {
+        if (type === "response" && msg.command === "get_state" && msg.success !== false) {
+          const data = msg.data;
+          sessionName = data?.sessionName;
+        }
+        if (type === "response" && msg.success === false && msg.command === "prompt") {
+          yield translator.error("pi_error", String(msg.error ?? "prompt failed"));
+          return;
+        }
+        continue;
+      }
+      for (const ke of translator.translate(msg)) {
+        if (ke.type === "turn_complete")
+          ke.result.position = lastPosition(turnTools);
+        yield ke;
+      }
+      if (type === "agent_end") {
+        if (!sessionName || !sessionName.trim()) {
+          send2({ type: "set_session_name", name: deriveConversationName(opts.message), id: "__name" });
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        return;
+      }
+    }
+    if (aborted && !translator.isEnded) {
+      yield translator.cancelled("aborted");
+    } else if (!translator.isEnded) {
+      yield translator.error("pi_exit", stderr.trim() || "pi ended without completing the turn");
+    }
+  } finally {
+    opts.signal?.removeEventListener("abort", onAbort);
+    rl.close();
+    try {
+      pi.stdin.end();
+    } catch {
+    }
+    pi.kill("SIGTERM");
+  }
+}
+
+// dist/pi/local-conversations.js
+import { existsSync as existsSync13, readdirSync, readFileSync as readFileSync6, statSync as statSync4 } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { join as join17 } from "node:path";
+function localSessionDir(contextRoot) {
+  return join17(contextRoot, ".pi", "sessions");
+}
+function mintConversationId() {
+  return `local-${randomUUID()}`;
+}
+function textOf(content) {
+  if (typeof content === "string")
+    return content;
+  if (!Array.isArray(content))
+    return "";
+  return content.filter((c) => c && typeof c === "object" && c.type === "text").map((c) => String(c.text ?? "")).join("");
+}
+function parseSessionJsonl(text, fallbackTs) {
+  let id = "";
+  let name = null;
+  const messages = [];
+  let preview = "";
+  let count = 0;
+  let lastTs = fallbackTs;
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed)
+      continue;
+    let e;
+    try {
+      e = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+    if (e.type === "session") {
+      if (typeof e.id === "string")
+        id = e.id;
+    } else if (e.type === "session_info") {
+      if (typeof e.name === "string" && e.name.trim())
+        name = e.name;
+    } else if (e.type === "message" && e.message && typeof e.message === "object") {
+      const m = e.message;
+      const created = typeof e.timestamp === "string" ? e.timestamp : void 0;
+      if (created)
+        lastTs = created;
+      const role = m.role;
+      if (role === "user") {
+        const content = textOf(m.content);
+        messages.push({ role: "user", content, created_at: created });
+        if (!preview)
+          preview = content.replace(/\s+/g, " ").trim().slice(0, 120);
+        count += 1;
+      } else if (role === "assistant") {
+        const parts = Array.isArray(m.content) ? m.content : [];
+        const toolCalls = parts.filter((c) => c.type === "toolCall").map((c) => ({
+          id: String(c.id ?? ""),
+          name: String(c.name ?? ""),
+          args: c.arguments ?? {}
+        }));
+        messages.push({
+          role: "assistant",
+          content: textOf(m.content),
+          created_at: created,
+          ...toolCalls.length ? { tool_calls: toolCalls } : {},
+          ...m.usage ? { usage: m.usage } : {}
+        });
+        count += 1;
+      } else if (role === "toolResult") {
+        messages.push({
+          role: "tool",
+          content: textOf(m.content),
+          tool_call_id: typeof m.toolCallId === "string" ? m.toolCallId : void 0,
+          tool_name: typeof m.toolName === "string" ? m.toolName : void 0,
+          is_error: Boolean(m.isError),
+          created_at: created
+        });
+      }
+    }
+  }
+  return { id, name, messages, messageCount: count, preview, updatedAt: lastTs };
+}
+function findSessionFile(dir, convId) {
+  if (!existsSync13(dir))
+    return null;
+  const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
+  const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
+  if (bySuffix)
+    return join17(dir, bySuffix);
+  for (const f of files) {
+    try {
+      const first = readFileSync6(join17(dir, f), "utf8").split("\n", 1)[0];
+      if (JSON.parse(first).id === convId)
+        return join17(dir, f);
+    } catch {
+    }
+  }
+  return null;
+}
+function getLocalConversation(contextRoot, convId) {
+  const file = findSessionFile(localSessionDir(contextRoot), convId);
+  if (!file) {
+    return { conversation_id: convId, repo_id: contextRoot, name: "", history: [], active_turn: null };
+  }
+  const mtime = statSync4(file).mtime.toISOString();
+  const s = parseSessionJsonl(readFileSync6(file, "utf8"), mtime);
+  return {
+    conversation_id: convId,
+    repo_id: contextRoot,
+    name: s.name ?? s.preview ?? "Untitled",
+    history: s.messages,
+    active_turn: null,
+    turn_count: s.messageCount,
+    updated_at: s.updatedAt
+  };
+}
+function listLocalConversations(contextRoot) {
+  const dir = localSessionDir(contextRoot);
+  if (!existsSync13(dir))
+    return { conversations: [], total: 0 };
+  const summaries = [];
+  for (const f of readdirSync(dir).filter((f2) => f2.endsWith(".jsonl"))) {
+    const path = join17(dir, f);
+    let text;
+    try {
+      text = readFileSync6(path, "utf8");
+    } catch {
+      continue;
+    }
+    const mtime = statSync4(path).mtime.toISOString();
+    const s = parseSessionJsonl(text, mtime);
+    if (!s.id)
+      continue;
+    summaries.push({
+      conversation_id: s.id,
+      name: s.name ?? s.preview ?? "Untitled",
+      summary: s.preview,
+      message_count: s.messageCount,
+      status: "idle",
+      updated_at: s.updatedAt
+    });
+  }
+  summaries.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  return { conversations: summaries, total: summaries.length };
+}
+
+// dist/pi/local-conversation-ops.js
+function parseCommaList(flag, envFallback) {
+  const raw = typeof flag === "string" ? flag : envFallback;
+  return (raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+function reportLocalError(err, output) {
+  output.error(err instanceof Error ? err.message : String(err));
+  return 1;
+}
+async function send(flags2, output) {
+  const message = typeof flags2.message === "string" ? flags2.message : void 0;
+  if (!message) {
+    output.error("A message is required: --message <text>");
+    return 1;
+  }
+  const extensionPaths = parseCommaList(flags2.ext, process.env.IDEASPACES_PI_EXTENSIONS);
+  if (!extensionPaths.length) {
+    output.error("Extensions are required: --ext <pi-is-space,pi-local-context> (or set IDEASPACES_PI_EXTENSIONS)");
+    return 1;
+  }
+  const skillPaths = parseCommaList(flags2.skill, process.env.IDEASPACES_PI_SKILLS);
+  const repoPath = typeof flags2.context === "string" ? flags2.context : process.cwd();
+  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join18(repoPath, ".pi", "sessions");
+  const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
+  const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
+  const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
+  const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : void 0;
+  const controller = new AbortController();
+  let signalled = false;
+  const onSignal = () => {
+    if (signalled)
+      return;
+    signalled = true;
+    controller.abort();
+  };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  try {
+    for await (const event of runLocalTurn({
+      repoPath,
+      message,
+      extensionPaths,
+      skillPaths,
+      conversationId,
+      sessionDir,
+      modelTier,
+      piModel,
+      piBin,
+      signal: controller.signal
+    })) {
+      process.stdout.write(`${JSON.stringify(event)}
+`);
+    }
+    return 0;
+  } catch (err) {
+    return reportLocalError(err, output);
+  } finally {
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
+  }
+}
+function createNew(output) {
+  const id = mintConversationId();
+  output.result({ conversation_id: id }, `Created local conversation ${id}`);
+  return 0;
+}
+function get(flags2, output) {
+  const convId = typeof flags2.conversation === "string" ? flags2.conversation : void 0;
+  if (!convId) {
+    output.error("A conversation id is required: --conversation <id>");
+    return 1;
+  }
+  const contextRoot = typeof flags2.context === "string" ? flags2.context : process.cwd();
+  const detail = getLocalConversation(contextRoot, convId);
+  output.result(detail, detail.history.length ? detail.history.map((m) => {
+    const preview = m.content.replace(/\s+/g, " ");
+    return `${m.role}: ${preview.length > 80 ? `${preview.slice(0, 79)}\u2026` : preview}`;
+  }).join("\n") : "No messages yet.");
+  return 0;
+}
+function list(flags2, output) {
+  const contextRoot = typeof flags2.context === "string" ? flags2.context : process.cwd();
+  const { conversations, total } = listLocalConversations(contextRoot);
+  output.result({ context: contextRoot, conversations, total, has_more: false }, conversations.length ? conversations.map((c) => `${c.name || "(untitled)"} \u2014 ${c.message_count} message${c.message_count === 1 ? "" : "s"}`).join("\n") : "No local conversations.");
+  return 0;
+}
+var localConversationOps = { send, createNew, get, list };
+
 // dist/router.js
+var conversationCommand = makeConversationCommand(localConversationOps);
+var conversationsCommand = makeConversationsCommand(localConversationOps);
 var topLevel = [
   createCommand,
   loginCommand,
