@@ -274,10 +274,48 @@ describe("space conformance", () => {
 });
 
 describe("move / delete write paths", () => {
-  // Pending roadmap bugs/is-commit-staged-rename: commitPaths runs
-  // `git add -- <old-path>` which exits fatal on a rename's vanished source,
-  // poisoning the whole multi-path commit. Unskip when the CLI ships
-  // `git add -A -- <paths>` and the vendored bundle is bumped.
-  test.skip("a git-mv'd Note commits path-scoped with Op: move", () => {});
-  test.skip("a deleted Note commits path-scoped with Op: delete", () => {});
+  // Named paths commit in whatever state the tree holds — content, rename, or
+  // deletion (cli#85). These prove the Op: move / Op: delete flows the trailer
+  // schema anticipates.
+  test("a git-mv'd Note commits path-scoped with Op: move", { timeout: T }, async () => {
+    await call("is_write", {
+      path: "notes/mover.md",
+      content: "# Mover\n\nBody.\n",
+      name: "Mover",
+      summary: "Note that gets moved.",
+    });
+    await call("is_commit", { message: "Add mover", paths: ["notes/mover.md"] });
+
+    git(["mv", "notes/mover.md", "notes/moved.md"]);
+    await call("is_commit", {
+      message: "Move mover to moved",
+      paths: ["notes/mover.md", "notes/moved.md"],
+      op: "move",
+    });
+
+    expect(parseTrailers(lastCommit().message).op).toBe("move");
+    const status = git(["show", "--name-status", "--format=", "-M", "HEAD"]).trim();
+    expect(status).toBe("R100\tnotes/mover.md\tnotes/moved.md");
+  });
+
+  test("a deleted Note commits path-scoped with Op: delete", { timeout: T }, async () => {
+    await call("is_write", {
+      path: "notes/doomed.md",
+      content: "# Doomed\n\nBody.\n",
+      name: "Doomed",
+      summary: "Note that gets deleted.",
+    });
+    await call("is_commit", { message: "Add doomed", paths: ["notes/doomed.md"] });
+
+    git(["rm", "-q", "notes/doomed.md"]);
+    await call("is_commit", {
+      message: "Delete doomed",
+      paths: ["notes/doomed.md"],
+      op: "delete",
+    });
+
+    expect(parseTrailers(lastCommit().message).op).toBe("delete");
+    const status = git(["show", "--name-status", "--format=", "HEAD"]).trim();
+    expect(status).toBe("D\tnotes/doomed.md");
+  });
 });
