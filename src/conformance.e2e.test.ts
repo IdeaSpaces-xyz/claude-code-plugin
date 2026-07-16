@@ -94,12 +94,24 @@ beforeAll(async () => {
   home = mkdtempSync(join(tmpdir(), "is-conformance-home-"));
   space = mkdtempSync(join(tmpdir(), "is-conformance-space-"));
 
+  // Person identity in the sandbox's GLOBAL config, before create runs:
+  // create's scaffold commit needs an identity (it stamps one itself only
+  // when logged in, and the sandbox never is). Without this, create relies
+  // on ambient machine identity — works on a dev laptop via gecos fallback,
+  // "Scaffold failed midway: … empty ident name" on a bare CI runner.
+  const cfg = spawnSync(
+    "git",
+    ["config", "--global", "user.name", "Test Person"],
+    { env: baseEnv() },
+  );
+  if (cfg.status !== 0) throw new Error("could not write sandbox git config");
+  spawnSync("git", ["config", "--global", "user.email", "person:tester@ideaspaces"], {
+    env: baseEnv(),
+  });
+
   // Real scaffold path: `ideaspaces create` inits git and commits the seed
-  // contract itself. We only stamp the person identity for OUR commits —
-  // create stamps it solely when logged in, and the sandbox never is.
+  // contract itself.
   cli(["create", "--yes"], space);
-  git(["config", "user.name", "Test Person"]);
-  git(["config", "user.email", "person:tester@ideaspaces"]);
 
   client = new Client({ name: "conformance-e2e", version: "0.0.0" });
   await client.connect(
