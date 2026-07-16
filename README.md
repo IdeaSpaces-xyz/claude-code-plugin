@@ -172,12 +172,16 @@ cd ../mcp-server && npm run build && npm run bundle
 # 2. In the plugin: refresh the SDK, vendor the bundles, build reference + hooks
 cd ../ideaspaces-plugin
 npm install                # pin the current SDK
-npm run vendor             # cli + mcp bundles ← sibling repos
+npm run vendor             # bundles ← sibling repos; refreshes vendor-lock.json
 npm run build:reference    # reference/*.md ← SDK readSkill()
 npm run build:hook         # SessionStart + capture-nudge hooks
 npm run typecheck
 
-# 3. Smoke check
+# 3. Drift + smoke checks
+npm run check:generated    # committed references/hooks match their generators
+npm run check:vendor       # rebuild public vendors; verify every locked hash
 node cli/bundle/ideaspaces.js --help
 node cli/bundle/ideaspaces.js skills
 ```
+
+`vendor-lock.json` records each upstream repository commit and expected bundle hash. Vendor CI rebuilds public upstreams byte-for-byte and verifies every committed copy against its lock. The private MCP source repo enforces source → bundle freshness in its own CI; plugin CI verifies that exact bundle's locked hash without requiring cross-repo credentials.
