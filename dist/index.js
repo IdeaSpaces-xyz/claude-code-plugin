@@ -2980,7 +2980,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve2.call(this, root, ref);
+      let _sch = resolve3.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3007,7 +3007,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve2(root, ref) {
+    function resolve3(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3582,7 +3582,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve2(baseURI, relativeURI, options) {
+    function resolve3(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -3809,7 +3809,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve2,
+      resolve: resolve3,
       resolveComponent,
       equal,
       serialize,
@@ -18889,7 +18889,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
+        await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -18906,7 +18906,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -18984,7 +18984,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve2(parseResult.data);
+            resolve3(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -19245,12 +19245,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve2, interval);
+      const timeoutId = setTimeout(resolve3, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -20350,7 +20350,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
+      await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -20999,12 +20999,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve2) => {
+    return new Promise((resolve3) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve2();
+        resolve3();
       } else {
-        this._stdout.once("drain", resolve2);
+        this._stdout.once("drain", resolve3);
       }
     });
   }
@@ -21013,8 +21013,8 @@ var StdioServerTransport = class {
 // src/index.ts
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join as join2 } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
+import { dirname as dirname2, join as join3 } from "node:path";
+import { existsSync as existsSync2, readFileSync as readFileSync2 } from "node:fs";
 import { userInfo, homedir } from "node:os";
 
 // src/trailers.ts
@@ -21040,6 +21040,50 @@ function buildCommitArgs(input, ctx) {
   a.push("--co-author", ctx.principal);
   if (ctx.sessionId) a.push("--conversation", ctx.sessionId);
   return a;
+}
+
+// src/change-state.ts
+import { createHash as createHash2 } from "node:crypto";
+import { dirname, join as join2, resolve as resolve2 } from "node:path";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+var CHANGE_ID_SHAPE = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
+function changeCachePath(homeDir, projectDir) {
+  const key = createHash2("sha256").update(resolve2(projectDir)).digest("hex").slice(0, 16);
+  return join2(homeDir, ".ideaspaces", "changes", key);
+}
+function readPersistedChange(file) {
+  try {
+    const raw = JSON.parse(readFileSync(file, "utf-8"));
+    if (typeof raw !== "object" || raw === null) return void 0;
+    const rec = raw;
+    if (typeof rec.change_id !== "string" || !CHANGE_ID_SHAPE.test(rec.change_id)) return void 0;
+    return {
+      change_id: rec.change_id,
+      handle: typeof rec.handle === "string" ? rec.handle : void 0,
+      opened_at: typeof rec.opened_at === "number" ? rec.opened_at : 0,
+      session_id: typeof rec.session_id === "string" ? rec.session_id : void 0
+    };
+  } catch {
+    return void 0;
+  }
+}
+function writePersistedChange(file, rec) {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify(rec) + "\n");
+}
+function clearPersistedChange(file) {
+  try {
+    if (!existsSync(file)) return false;
+    unlinkSync(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function armingDecision(rec, currentSessionId) {
+  if (!rec) return "none";
+  if (rec.session_id && currentSessionId && rec.session_id === currentSessionId) return "arm";
+  return "surface";
 }
 
 // src/tool-parameters.ts
@@ -21107,14 +21151,14 @@ function hasAnyNonEmptyString(keys, values) {
 // src/index.ts
 function resolveCli() {
   if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  const relative = join2(__dirname, "../cli/bundle/ideaspaces.js");
-  if (existsSync(relative)) return relative;
+  const __dirname = dirname2(fileURLToPath(import.meta.url));
+  const relative = join3(__dirname, "../cli/bundle/ideaspaces.js");
+  if (existsSync2(relative)) return relative;
   return "ideaspaces";
 }
 var CLI = resolveCli();
 function cli(args, stdin, cwd) {
-  return new Promise((resolve2) => {
+  return new Promise((resolve3) => {
     const isFile = CLI.includes("/") || CLI.includes("\\") || CLI.endsWith(".js");
     const proc = spawn(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
       stdio: ["pipe", "pipe", "pipe"],
@@ -21130,8 +21174,8 @@ function cli(args, stdin, cwd) {
     let err = "";
     proc.stdout.on("data", (d) => out += d);
     proc.stderr.on("data", (d) => err += d);
-    proc.on("close", (code) => resolve2({ out, err, code: code ?? 1 }));
-    proc.on("error", (e) => resolve2({ out: "", err: e.message, code: 1 }));
+    proc.on("close", (code) => resolve3({ out, err, code: code ?? 1 }));
+    proc.on("error", (e) => resolve3({ out: "", err: e.message, code: 1 }));
     if (stdin != null) proc.stdin.write(stdin);
     proc.stdin.end();
   });
@@ -21162,13 +21206,44 @@ function readSessionId() {
   const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
   if (!dir) return void 0;
   try {
-    const id = readFileSync(sessionIdCachePath(homedir(), dir), "utf-8").trim();
+    const id = readFileSync2(sessionIdCachePath(homedir(), dir), "utf-8").trim();
     return id || void 0;
   } catch {
     return void 0;
   }
 }
-var CHANGE_ID_SHAPE = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
+function changeCacheFile() {
+  const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
+  if (!dir) return void 0;
+  return changeCachePath(homedir(), dir);
+}
+function openChangeState() {
+  const file = changeCacheFile();
+  const rec = file ? readPersistedChange(file) : void 0;
+  if (!currentChangeId && armingDecision(rec, readSessionId()) === "arm") {
+    currentChangeId = rec.change_id;
+  }
+  return { armed: currentChangeId, rec };
+}
+function resolveChangeId() {
+  return openChangeState().armed;
+}
+function persistOpenChange(changeId, handle) {
+  const file = changeCacheFile();
+  if (!file) return;
+  try {
+    writePersistedChange(file, {
+      change_id: changeId,
+      handle,
+      opened_at: Date.now(),
+      session_id: readSessionId()
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`ideaspaces-mcp: could not persist open Change: ${message}
+`);
+  }
+}
 var server = new McpServer({ name: "core", version: "0.3.0" });
 server.tool(
   "is_auth",
@@ -21205,7 +21280,7 @@ server.tool(
   async ({ message, paths, all, op, cwd }) => {
     const a = buildCommitArgs(
       { message, paths, all, op },
-      { changeId: currentChangeId, principal: AGENT_PRINCIPAL, sessionId: readSessionId() }
+      { changeId: resolveChangeId(), principal: AGENT_PRINCIPAL, sessionId: readSessionId() }
     );
     return run(a, void 0, cwd);
   }
@@ -21224,6 +21299,7 @@ server.tool(
         return fail(`Not a Change-Id: ${id}. Expected chg_\u2026 (mint a new one by passing handle instead).`);
       }
       currentChangeId = resumedId;
+      persistOpenChange(resumedId);
       return ok(`Change resumed: ${currentChangeId}. It stamps every is_commit until is_change_close.`);
     }
     const decisionHandle = handle.trim();
@@ -21239,6 +21315,7 @@ server.tool(
       return fail(`CLI returned an invalid Change-Id: ${r.out.trim()}`);
     }
     currentChangeId = minted;
+    persistOpenChange(minted, decisionHandle);
     return ok(
       `Change open: ${currentChangeId}. It stamps every is_commit until is_change_close. Find its arc later with: git log --grep="Change-Id: ${currentChangeId}"`
     );
@@ -21246,23 +21323,50 @@ server.tool(
 );
 server.tool(
   "is_change_close",
-  "Close the active Change so later commits no longer carry its Change-Id. The decision's arc stays queryable in git history.",
+  "Close the active Change so later commits no longer carry its Change-Id. The decision's arc stays queryable in git history. Also clears a Change record persisted by a previous session (the one is_status surfaces) when nothing is currently armed.",
   MCP_TOOL_PARAMETERS.is_change_close,
   async () => {
-    if (!currentChangeId) return ok("No Change is open.");
-    const closed = currentChangeId;
+    const file = changeCacheFile();
+    const { armed, rec } = openChangeState();
+    if (!armed) {
+      if (rec && file) {
+        clearPersistedChange(file);
+        return ok(`Cleared persisted Change ${rec.change_id} (opened in a previous session). Later commits won't carry it.`);
+      }
+      return ok("No Change is open.");
+    }
     currentChangeId = void 0;
-    return ok(`Change closed: ${closed}. Later commits won't carry it.`);
+    if (file) clearPersistedChange(file);
+    return ok(`Change closed: ${armed}. Later commits won't carry it.`);
   }
 );
 server.tool(
   "is_status",
-  "Capture state: overall git position + staged knowledge awaiting commit, or single-file state. With a path, the returned sha is the if_match token for a first update.",
+  "Capture state: overall git position + staged knowledge awaiting commit, or single-file state. With a path, the returned sha is the if_match token for a first update. Also reports the open Change as a `change` field: armed and stamping commits, or persisted by a previous session and awaiting an explicit resume/close.",
   MCP_TOOL_PARAMETERS.is_status,
   async ({ path, cwd }) => {
     const a = ["status"];
     if (path) a.push("--path", path);
-    return run(a, void 0, cwd);
+    const r = await cli(["--json", ...a], void 0, cwd);
+    if (r.code !== 0) return fail(r.err.trim() || r.out.trim() || `Exit ${r.code}`);
+    const text = r.out.trim() || r.err.trim() || "Done";
+    const { armed, rec } = openChangeState();
+    let change;
+    if (armed) {
+      change = { open: armed, ...rec?.change_id === armed ? { opened_at: rec.opened_at } : {} };
+    } else if (rec) {
+      change = {
+        persisted: rec.change_id,
+        opened_at: rec.opened_at,
+        hint: `From a previous session \u2014 resume with is_change_open({ id: "${rec.change_id}" }) or clear with is_change_close.`
+      };
+    }
+    if (!change) return ok(text);
+    try {
+      return ok(JSON.stringify({ ...JSON.parse(text), change }, null, 2));
+    } catch {
+      return ok(text);
+    }
   }
 );
 server.tool(

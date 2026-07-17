@@ -21,4 +21,10 @@ A local `_agent/` directory may exist in a checkout, but it is gitignored. Treat
 
 ## Rule
 
-Keep the plugin small. MCP stays thin — `is_auth`, `is_write`, `is_commit`, `is_status`, `is_push`, `is_pull`, plus skill resources, all shelling the bundled `ideaspaces` CLI with `--json`. No logic in the MCP server: it stays out of the agent's context, and the CLI + SDK own the implementation. Local workflow goes through the bundled CLI and skills.
+Keep the plugin small, and keep the seam where the protocol puts it: **the user's side is self-sufficient; the CLI is the platform client, minimal by intent.**
+
+- The MCP server and hooks own user/session-side state and its rendering — the session-id bridge, the persisted open Change (the server decides arming; the SessionStart hook only displays).
+- Platform interactions — auth, the credential helper, pull/push, publish — shell the bundled `ideaspaces` CLI with `--json`.
+- Write verbs (`is_write`, `is_commit`) also shell the CLI today; that is transitional (a protocol local-write module is planned), not a design commitment.
+
+Local workflow goes through the bundled CLI and skills.
