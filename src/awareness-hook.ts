@@ -21,11 +21,12 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
-import { sessionIdCachePath } from "./session-path.js";
+import { changeCachePath, sessionIdCachePath } from "./session-path.js";
+import { parseChangeRecord, renderChangeLine } from "./change-line.js";
 import { readStdin } from "./stdin.js";
 
 /**
@@ -37,25 +38,46 @@ import { readStdin } from "./stdin.js";
  * trailer. Both sides key off CLAUDE_PROJECT_DIR. Best-effort: a failed write
  * never blocks session start, and the server omits the trailer when it's absent.
  */
-function captureSessionId(raw: string): void {
-  if (!raw.trim()) return;
+function captureSessionId(raw: string): { sessionId?: string; projectDir: string } {
+  const fallbackDir = process.env.CLAUDE_PROJECT_DIR?.trim() || process.cwd();
+  if (!raw.trim()) return { projectDir: fallbackDir };
   let input: { session_id?: unknown; cwd?: unknown };
   try {
     input = JSON.parse(raw);
   } catch {
-    return;
+    return { projectDir: fallbackDir };
   }
-  const sessionId = input.session_id;
-  if (typeof sessionId !== "string" || !sessionId) return;
   const projectDir =
     process.env.CLAUDE_PROJECT_DIR?.trim() ||
-    (typeof input.cwd === "string" ? input.cwd : process.cwd());
+    (typeof input.cwd === "string" && input.cwd ? input.cwd : process.cwd());
+  const sessionId = input.session_id;
+  if (typeof sessionId !== "string" || !sessionId) return { projectDir };
   try {
     const file = sessionIdCachePath(homedir(), projectDir);
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, sessionId + "\n");
   } catch {
     // Never block session start on a failed write.
+  }
+  return { sessionId, projectDir };
+}
+
+/**
+ * The open-Change line. The MCP server persists the open Change per project
+ * dir (server-written / hook-read — the inverse of the session-id bridge);
+ * this renders it into session context so a restart or a new session never
+ * silently hides an open decision. Display-only: arming stays in the server.
+ * Session-scoped like the session id, not space-scoped — a Change spans repos,
+ * so it surfaces even when `navigate` has nothing to say here. Best-effort:
+ * absent/malformed record → no line.
+ */
+function changeLine(sessionId: string | undefined, projectDir: string): string | undefined {
+  try {
+    const raw = readFileSync(changeCachePath(homedir(), projectDir), "utf-8");
+    const rec = parseChangeRecord(raw);
+    return rec ? renderChangeLine(rec, sessionId, Date.now()) : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -71,7 +93,8 @@ async function main(): Promise<void> {
   // Capture the session id first, unconditionally — it's session-scoped, not
   // ideaspace-scoped, so it must be written even outside an `_agent/` space
   // (a commit may target any repo in the session).
-  captureSessionId(await readStdin());
+  const { sessionId, projectDir } = captureSessionId(await readStdin());
+  const openChange = changeLine(sessionId, projectDir);
 
   const cwd = process.cwd();
   // A bundled `.js` runs under `node`; a bare `ideaspaces` on PATH runs directly
@@ -84,9 +107,12 @@ async function main(): Promise<void> {
     encoding: "utf-8",
   });
   // Best-effort: never block session start, but surface *why* to stderr so a
-  // broken vendor / path-resolution bug is debuggable instead of silent.
+  // broken vendor / path-resolution bug is debuggable instead of silent. The
+  // Change line still prints on a navigate failure — it is session-scoped
+  // state, independent of whether orientation resolves here.
   if (r.status !== 0) {
     if (r.stderr?.trim()) process.stderr.write(`awareness-hook: navigate failed: ${r.stderr.trim()}\n`);
+    if (openChange) process.stdout.write(openChange + "\n");
     return;
   }
 
@@ -95,9 +121,11 @@ async function main(): Promise<void> {
     text = JSON.parse(r.stdout).text;
   } catch {
     process.stderr.write("awareness-hook: could not parse navigate output\n");
+    if (openChange) process.stdout.write(openChange + "\n");
     return;
   }
   if (typeof text === "string" && text.trim()) process.stdout.write(text + "\n");
+  if (openChange) process.stdout.write(openChange + "\n");
 }
 
 main().catch((err: unknown) => {

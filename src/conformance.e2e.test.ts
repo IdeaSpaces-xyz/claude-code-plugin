@@ -11,9 +11,10 @@
  * item, delivered from the consumer side. Everything runs under a sandboxed
  * $HOME — no real credentials, git config, or session state are touched.
  *
- * The rename/delete vectors are `.skip` pending the commitPaths fix
- * (roadmap bugs/is-commit-staged-rename): `git add -- <old-path>` exits fatal
- * on a staged rename's vanished source path.
+ * The Change-persistence vectors run in their own sandbox (own $HOME + space,
+ * one server process per connect) because they flip the session cache and
+ * model server restarts — isolation keeps them from contaminating the shared
+ * suite's Conversation expectations.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -26,11 +27,11 @@ import {
   validateSpace,
 } from "@ideaspaces/protocol";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { sessionIdCachePath } from "./session-path.js";
+import { changeCachePath, sessionIdCachePath } from "./session-path.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SERVER = join(ROOT, "dist/index.js");
@@ -317,5 +318,162 @@ describe("move / delete write paths", () => {
     expect(parseTrailers(lastCommit().message).op).toBe("delete");
     const status = git(["show", "--name-status", "--format=", "HEAD"]).trim();
     expect(status).toBe("D\tnotes/doomed.md");
+  });
+});
+
+describe("Change persistence across server restarts (shipped artifacts)", () => {
+  // Own sandbox: these vectors flip the session cache and restart servers,
+  // which must not contaminate the shared suite's Conversation expectations.
+  let phome: string;
+  let pspace: string;
+  let sessionFile: string;
+  let changeFile: string;
+  const clients: Client[] = [];
+
+  const HOOK = join(ROOT, "dist/awareness-hook.js");
+
+  function penv(): Record<string, string> {
+    return {
+      PATH: process.env.PATH ?? "",
+      HOME: phome,
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_TERMINAL_PROMPT: "0",
+    };
+  }
+
+  /** Fresh server + client — each connect models a server (re)start. */
+  async function connect(): Promise<Client> {
+    const c = new Client({ name: "persistence-e2e", version: "0.0.0" });
+    await c.connect(
+      new StdioClientTransport({
+        command: "node",
+        args: [SERVER],
+        cwd: pspace,
+        env: { ...penv(), IS_CLI_PATH: CLI, CLAUDE_PROJECT_DIR: pspace },
+      }),
+    );
+    clients.push(c);
+    return c;
+  }
+
+  async function pcall(c: Client, name: string, args: Record<string, unknown> = {}) {
+    const res = (await c.callTool({ name, arguments: { ...args, cwd: pspace } })) as {
+      content: Array<{ type: string; text?: string }>;
+      isError?: boolean;
+    };
+    const text = res.content?.map((x) => x.text ?? "").join("") ?? "";
+    if (res.isError) throw new Error(`${name} errored: ${text}`);
+    return text;
+  }
+
+  /** Run the SHIPPED SessionStart hook with a given session id; returns stdout. */
+  function runHook(sessionId: string): string {
+    const r = spawnSync("node", [HOOK], {
+      cwd: pspace,
+      encoding: "utf-8",
+      env: { ...penv(), IS_CLI_PATH: CLI, CLAUDE_PROJECT_DIR: pspace },
+      input: JSON.stringify({ session_id: sessionId, cwd: pspace }),
+    });
+    expect(r.status).toBe(0);
+    return r.stdout;
+  }
+
+  beforeAll(() => {
+    phome = mkdtempSync(join(tmpdir(), "is-persist-home-"));
+    pspace = mkdtempSync(join(tmpdir(), "is-persist-space-"));
+    for (const [k, v] of [
+      ["user.name", "Test Person"],
+      ["user.email", "person:tester@ideaspaces"],
+    ]) {
+      spawnSync("git", ["config", "--global", k, v], { env: penv() });
+    }
+    const r = spawnSync("node", [CLI, "create", "--yes"], {
+      cwd: pspace,
+      encoding: "utf-8",
+      env: { ...penv(), IS_CLI_PATH: CLI },
+    });
+    if (r.status !== 0) throw new Error(`create failed: ${r.stderr || r.stdout}`);
+
+    sessionFile = sessionIdCachePath(phome, pspace);
+    changeFile = changeCachePath(phome, pspace);
+    mkdirSync(dirname(sessionFile), { recursive: true });
+    writeFileSync(sessionFile, "sess-A\n");
+  }, T);
+
+  afterAll(async () => {
+    for (const c of clients) await c.close().catch(() => {});
+    rmSync(phome, { recursive: true, force: true });
+    rmSync(pspace, { recursive: true, force: true });
+  });
+
+  let changeId: string;
+
+  test("open persists a session-stamped record; same-session restart re-arms", { timeout: T }, async () => {
+    const c1 = await connect();
+    const open = await pcall(c1, "is_change_open", { handle: "persistence vector" });
+    changeId = open.match(/chg_[a-z0-9-]+/)?.[0] ?? "";
+    expect(isValidChangeId(changeId)).toBe(true);
+
+    const rec = JSON.parse(readFileSync(changeFile, "utf-8"));
+    expect(rec.change_id).toBe(changeId);
+    expect(rec.session_id).toBe("sess-A");
+    await c1.close(); // the mid-session server crash
+
+    const c2 = await connect();
+    const status = JSON.parse(await pcall(c2, "is_status"));
+    expect(status.change?.open).toBe(changeId); // silently re-armed
+    await c2.close();
+  });
+
+  test("a different session surfaces the record without arming; close clears it", { timeout: T }, async () => {
+    writeFileSync(sessionFile, "sess-B\n");
+    const c3 = await connect();
+    const status = JSON.parse(await pcall(c3, "is_status"));
+    expect(status.change?.persisted).toBe(changeId);
+    expect(status.change?.open).toBeUndefined();
+
+    const closed = await pcall(c3, "is_change_close");
+    expect(closed).toContain(`Cleared persisted Change ${changeId}`);
+    expect(existsSync(changeFile)).toBe(false);
+    await c3.close();
+  });
+
+  test("close as the FIRST call after a same-session restart reports a normal close", { timeout: T }, async () => {
+    const c4 = await connect();
+    const open = await pcall(c4, "is_change_open", { handle: "close first vector" });
+    const id2 = open.match(/chg_[a-z0-9-]+/)?.[0] ?? "";
+    await c4.close();
+
+    const c5 = await connect();
+    const closed = await pcall(c5, "is_change_close");
+    expect(closed).toContain(`Change closed: ${id2}`);
+    expect(closed).not.toContain("previous session");
+    expect(existsSync(changeFile)).toBe(false);
+    await c5.close();
+  });
+
+  test("shipped awareness hook renders the line, session-aware; silent with no record", { timeout: T }, async () => {
+    const c6 = await connect();
+    const open = await pcall(c6, "is_change_open", { handle: "hook line vector" });
+    const id3 = open.match(/chg_[a-z0-9-]+/)?.[0] ?? "";
+
+    const sameSession = runHook("sess-B");
+    expect(sameSession).toContain(`Change open: ${id3}`);
+    expect(sameSession).toContain("this session");
+    expect(sameSession).toContain("stamping every is_commit");
+
+    const otherSession = runHook("sess-C");
+    expect(otherSession).toContain(`⚠ Change open: ${id3}`);
+    expect(otherSession).toContain(`is_change_open({ id: "${id3}" })`);
+    expect(otherSession).not.toContain("stamping");
+
+    // runHook("sess-C") rewrote the session cache — restore before closing so
+    // the record comparison below stays about the file, not the session.
+    writeFileSync(sessionFile, "sess-B\n");
+    await pcall(c6, "is_change_close");
+    await c6.close();
+
+    const silent = runHook("sess-B");
+    expect(silent).not.toContain("Change open");
   });
 });

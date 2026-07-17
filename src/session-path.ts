@@ -27,3 +27,21 @@ export function sessionIdCachePath(homeDir: string, projectDir: string): string 
   const key = createHash("sha256").update(resolve(projectDir)).digest("hex").slice(0, 16);
   return join(homeDir, ".ideaspaces", "sessions", key);
 }
+
+/**
+ * Where the MCP server persists the open Change for a given project dir —
+ * same derivation as {@link sessionIdCachePath}, under `changes/` instead of
+ * `sessions/`. Direction is INVERTED relative to the session id: the session
+ * id is hook-written / server-read, the Change record is **server-written /
+ * hook-read** (the SessionStart awareness line renders it; it never arms
+ * anything — arming decisions live in the server's `armingDecision`).
+ *
+ * The server's `changeCachePath` (mcp-server repo, `change-state.ts`) is the
+ * write side. Locked together by the shared golden value
+ * (`…/changes/d7f9747246691548`) asserted in both repos, like the sessions
+ * path above.
+ */
+export function changeCachePath(homeDir: string, projectDir: string): string {
+  const key = createHash("sha256").update(resolve(projectDir)).digest("hex").slice(0, 16);
+  return join(homeDir, ".ideaspaces", "changes", key);
+}
