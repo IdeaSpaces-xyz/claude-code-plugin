@@ -8043,7 +8043,7 @@ var createCommand = {
     const inspection = await inspect(targetDir);
     const shape = detectShape(inspection);
     if (shape === "complete") {
-      output.error(`${describeTarget(targetDir, name)} is already an ideaspace. Edit \`_agent/\` directly or use \`/is-reflect\` to update direction.`);
+      output.error(`${describeTarget(targetDir, name)} is already an ideaspace. Edit \`_agent/\` directly, or ask your agent to reflect on direction.`);
       return 5;
     }
     if (shape === "old-shape") {
@@ -8304,7 +8304,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve14, reject) => {
+  return new Promise((resolve15, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -8331,7 +8331,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve14({
+      resolve15({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -8716,14 +8716,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit2(repoRoot2, args2) {
-  return new Promise((resolve14) => {
+  return new Promise((resolve15) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve14({ ok: code === 0, out }));
-    proc.on("error", () => resolve14({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve15({ ok: code === 0, out }));
+    proc.on("error", () => resolve15({ ok: false, out: "" }));
   });
 }
 async function lastCommitTime(repoRoot2, path) {
@@ -12154,6 +12154,130 @@ var searchCommand = {
   }
 };
 
+// dist/commands/ls.js
+import { statSync as statSync4 } from "node:fs";
+import { resolve as resolve14 } from "node:path";
+
+// dist/file-listing.js
+import { existsSync as existsSync9, readdirSync } from "node:fs";
+import { join as join13, relative as relative7 } from "node:path";
+var EXCLUDES = new Set(AUTOCOMPLETE_EXCLUDES);
+var DEFAULT_MAX_SCAN = 5e3;
+var DEFAULT_MAX_DEPTH = 10;
+function folderKind(abs) {
+  if (existsSync9(join13(abs, "_agent")))
+    return "ideaspace-repo";
+  if (existsSync9(join13(abs, ".git")))
+    return "code-repo";
+  return "folder";
+}
+function toPosix(rel) {
+  return rel.split(/[\\/]/).join("/");
+}
+function listEntries(root, opts = {}) {
+  const maxScan = opts.maxScan ?? DEFAULT_MAX_SCAN;
+  const maxDepth = opts.maxDepth ?? DEFAULT_MAX_DEPTH;
+  const entries = [];
+  const queue = [{ abs: root, depth: 0 }];
+  for (let head = 0; head < queue.length; head++) {
+    const { abs, depth } = queue[head];
+    let dirents;
+    try {
+      dirents = readdirSync(abs, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    dirents.sort((a, b) => a.name.localeCompare(b.name));
+    for (const dirent of dirents) {
+      if (dirent.name.startsWith(".") || EXCLUDES.has(dirent.name))
+        continue;
+      if (entries.length >= maxScan)
+        return { entries, truncated: true };
+      const childAbs = join13(abs, dirent.name);
+      const path = toPosix(relative7(root, childAbs));
+      if (dirent.isDirectory()) {
+        entries.push({ path, name: dirent.name, kind: folderKind(childAbs) });
+        if (depth + 1 <= maxDepth)
+          queue.push({ abs: childAbs, depth: depth + 1 });
+      } else if (dirent.isFile()) {
+        entries.push({ path, name: dirent.name, kind: "file" });
+      }
+    }
+  }
+  return { entries, truncated: false };
+}
+function scoreEntry(entry, query) {
+  const name = entry.name.toLowerCase();
+  const path = entry.path.toLowerCase();
+  if (name === query)
+    return 100;
+  if (name.startsWith(query))
+    return 80;
+  if (name.includes(query))
+    return 60;
+  if (path.includes(query))
+    return 40;
+  return 0;
+}
+function filterEntries(entries, query, limit) {
+  const q = query.trim().toLowerCase();
+  if (!q)
+    return entries.slice(0, limit);
+  const scored = [];
+  for (const entry of entries) {
+    const score = scoreEntry(entry, q);
+    if (score > 0)
+      scored.push({ entry, score });
+  }
+  scored.sort((a, b) => b.score - a.score || a.entry.path.localeCompare(b.entry.path));
+  return scored.slice(0, limit).map((s) => s.entry);
+}
+function entryLabel(entry) {
+  const tag = entry.kind === "ideaspace-repo" ? " (ideaspace)" : entry.kind === "code-repo" ? " (repo)" : entry.kind === "folder" ? "/" : "";
+  return `${entry.path}${tag}`;
+}
+
+// dist/commands/ls.js
+var USAGE5 = "ideaspaces ls [<path>] [--query <q>] [--limit N] [--json]";
+var DEFAULT_LIMIT2 = 25;
+var lsCommand = {
+  name: "ls",
+  description: "List files and folders under a path (typed; powers @-mention autocomplete)",
+  usage: USAGE5,
+  examples: [
+    "ideaspaces ls",
+    "ideaspaces ls ~/IdeaSpaces --json",
+    "ideaspaces ls . --query awareness --limit 8 --json"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const root = resolve14(args2[0] ?? ".");
+    try {
+      if (!statSync4(root).isDirectory()) {
+        output.error(`Not a directory: ${root}`);
+        return 1;
+      }
+    } catch (err) {
+      const code = err.code;
+      output.error(code === "ENOENT" ? `No such directory: ${root}` : `Cannot read ${root}: ${String(err)}`);
+      return 1;
+    }
+    const query = typeof flags2.query === "string" ? flags2.query : "";
+    const rawLimit = typeof flags2.limit === "string" ? Number.parseInt(flags2.limit, 10) : NaN;
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIMIT2;
+    const { entries: scanned, truncated } = listEntries(root);
+    const entries = filterEntries(scanned, query, limit);
+    const data = { root, query, scanned: scanned.length, truncated, total: entries.length, entries };
+    if (entries.length === 0) {
+      const detail = query ? ` matching "${query}"` : "";
+      output.result(data, `No files or folders${detail} under ${root}.`);
+      return 0;
+    }
+    output.result(data, entries.map(entryLabel).join("\n"));
+    return 0;
+  }
+};
+
 // dist/commands/times.js
 var timesCommand = {
   name: "times",
@@ -12177,7 +12301,7 @@ var timesCommand = {
 };
 
 // dist/commands/share.js
-var USAGE5 = "ideaspaces share <access|set-access|members|remove|invites|invite|revoke> <repo_id> \u2026";
+var USAGE6 = "ideaspaces share <access|set-access|members|remove|invites|invite|revoke> <repo_id> \u2026";
 var INVITE_ROLES = ["MEMBER", "CLONER", "READER"];
 var COPY_LEVELS = ["owner", "member", "reader", "public"];
 function flagStr(flags2, key) {
@@ -12292,7 +12416,7 @@ copy: ${a.copy_access}`);
         return 0;
       }
       default:
-        output.error(`Usage: ${USAGE5}`);
+        output.error(`Usage: ${USAGE6}`);
         return 1;
     }
   } catch (err) {
@@ -12307,7 +12431,7 @@ copy: ${a.copy_access}`);
 var shareCommand = {
   name: "share",
   description: "Manage repo access \u2014 members, invites, and the public-link policy",
-  usage: USAGE5,
+  usage: USAGE6,
   examples: [
     "ideaspaces share access repo_abc --json",
     "ideaspaces share set-access repo_abc --public true --copy reader",
@@ -12323,13 +12447,13 @@ var shareCommand = {
 };
 
 // dist/auth/session-state.js
-import { existsSync as existsSync9, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync10, unlinkSync as unlinkSync2 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
-import { join as join13 } from "node:path";
-var SESSION_FILE = join13(homedir3(), ".ideaspaces", "session.json");
+import { join as join14 } from "node:path";
+var SESSION_FILE = join14(homedir3(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
-    if (existsSync9(SESSION_FILE))
+    if (existsSync10(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -12351,21 +12475,21 @@ var logoutCommand = {
 
 // dist/pi/pi-status.js
 import { spawnSync as spawnSync5 } from "node:child_process";
-import { existsSync as existsSync11, readFileSync as readFileSync5 } from "node:fs";
-import { basename as basename4, join as join15 } from "node:path";
+import { existsSync as existsSync12, readFileSync as readFileSync5 } from "node:fs";
+import { basename as basename4, join as join16 } from "node:path";
 
 // dist/pi/pi-auth.js
-import { chmodSync, existsSync as existsSync10, mkdirSync as mkdirSync3, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { chmodSync, existsSync as existsSync11, mkdirSync as mkdirSync3, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
-import { dirname as dirname4, join as join14 } from "node:path";
+import { dirname as dirname4, join as join15 } from "node:path";
 function resolvePiAgentDir(env = process.env) {
   const override = env.PI_CODING_AGENT_DIR?.trim();
   if (override)
-    return override.startsWith("~") ? join14(homedir4(), override.slice(1)) : override;
-  return join14(homedir4(), ".pi", "agent");
+    return override.startsWith("~") ? join15(homedir4(), override.slice(1)) : override;
+  return join15(homedir4(), ".pi", "agent");
 }
 function resolvePiAuthPath(env = process.env) {
-  return join14(resolvePiAgentDir(env), "auth.json");
+  return join15(resolvePiAgentDir(env), "auth.json");
 }
 function parseAuth(raw) {
   if (!raw || !raw.trim())
@@ -12388,13 +12512,13 @@ function removeProvider(current, provider) {
   return { next, removed: true };
 }
 function readAuthFile(path) {
-  if (!existsSync10(path))
+  if (!existsSync11(path))
     return {};
   return parseAuth(readFileSync4(path, "utf8"));
 }
 function writeAuthFile(path, auth) {
   const dir = dirname4(path);
-  if (!existsSync10(dir))
+  if (!existsSync11(dir))
     mkdirSync3(dir, { recursive: true, mode: 448 });
   writeFileSync3(path, `${JSON.stringify(auth, null, 2)}
 `, { encoding: "utf8", mode: 384 });
@@ -12422,12 +12546,12 @@ function derivePiStatus(input) {
 function resolveExtension(path) {
   const name = basename4(path.replace(/[/\\]+$/, "")) || path;
   const check = (resolvable) => ({ name, path, resolvable });
-  if (!existsSync11(path))
+  if (!existsSync12(path))
     return check(false);
   if (/\.[cm]?[jt]s$/.test(path))
     return check(true);
-  const pkgPath = join15(path, "package.json");
-  if (existsSync11(pkgPath)) {
+  const pkgPath = join16(path, "package.json");
+  if (existsSync12(pkgPath)) {
     try {
       const pkg = JSON.parse(readFileSync5(pkgPath, "utf8"));
       const exts = pkg.pi?.extensions;
@@ -12436,7 +12560,7 @@ function resolveExtension(path) {
     } catch {
     }
   }
-  return check(existsSync11(join15(path, "index.ts")) || existsSync11(join15(path, "index.js")));
+  return check(existsSync12(join16(path, "index.ts")) || existsSync12(join16(path, "index.js")));
 }
 function probeBinary(piBin) {
   try {
@@ -12573,7 +12697,7 @@ function trimModel(m) {
 var QUERY_ID = "__models";
 var TIMEOUT_MS = 2e4;
 function queryPiModels(piBin) {
-  return new Promise((resolve14, reject) => {
+  return new Promise((resolve15, reject) => {
     const pi = spawn2(piBin, ["--mode", "rpc", "--no-extensions"], {
       cwd: process.cwd(),
       stdio: ["pipe", "pipe", "pipe"]
@@ -12619,7 +12743,7 @@ function queryPiModels(piBin) {
         }
         const data = msg.data;
         const models = (data?.models ?? []).map(trimModel);
-        finish(() => resolve14({ models }));
+        finish(() => resolve15({ models }));
       }
     });
     try {
@@ -12658,12 +12782,12 @@ var piModelsCommand = {
 };
 
 // dist/pi/local-conversation-ops.js
-import { join as join18 } from "node:path";
+import { join as join19 } from "node:path";
 
 // dist/pi/local-agent.js
 import { spawn as spawn3 } from "node:child_process";
-import { existsSync as existsSync12, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join16 } from "node:path";
+import { existsSync as existsSync13, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { join as join17 } from "node:path";
 import readline from "node:readline";
 var NON_AGENT_TYPES = /* @__PURE__ */ new Set(["response", "extension_ui_request"]);
 function harvestWorkspace(tools) {
@@ -12716,8 +12840,8 @@ function deriveConversationName(message) {
 }
 function ensureSessionDir(dir) {
   mkdirSync4(dir, { recursive: true });
-  const ignore = join16(dir, ".gitignore");
-  if (!existsSync12(ignore))
+  const ignore = join17(dir, ".gitignore");
+  if (!existsSync13(ignore))
     writeFileSync4(ignore, "*\n");
 }
 function buildPiArgs(opts) {
@@ -12836,11 +12960,11 @@ async function* runLocalTurn(opts) {
 }
 
 // dist/pi/local-conversations.js
-import { existsSync as existsSync13, readdirSync, readFileSync as readFileSync6, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync14, readdirSync as readdirSync2, readFileSync as readFileSync6, statSync as statSync5 } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { join as join17 } from "node:path";
+import { join as join18 } from "node:path";
 function localSessionDir(contextRoot) {
-  return join17(contextRoot, ".pi", "sessions");
+  return join18(contextRoot, ".pi", "sessions");
 }
 function mintConversationId() {
   return `local-${randomUUID()}`;
@@ -12917,17 +13041,17 @@ function parseSessionJsonl(text, fallbackTs) {
   return { id, name, messages, messageCount: count, preview, updatedAt: lastTs };
 }
 function findSessionFile(dir, convId) {
-  if (!existsSync13(dir))
+  if (!existsSync14(dir))
     return null;
-  const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
+  const files = readdirSync2(dir).filter((f) => f.endsWith(".jsonl"));
   const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
   if (bySuffix)
-    return join17(dir, bySuffix);
+    return join18(dir, bySuffix);
   for (const f of files) {
     try {
-      const first = readFileSync6(join17(dir, f), "utf8").split("\n", 1)[0];
+      const first = readFileSync6(join18(dir, f), "utf8").split("\n", 1)[0];
       if (JSON.parse(first).id === convId)
-        return join17(dir, f);
+        return join18(dir, f);
     } catch {
     }
   }
@@ -12938,7 +13062,7 @@ function getLocalConversation(contextRoot, convId) {
   if (!file) {
     return { conversation_id: convId, repo_id: contextRoot, name: "", history: [], active_turn: null };
   }
-  const mtime = statSync4(file).mtime.toISOString();
+  const mtime = statSync5(file).mtime.toISOString();
   const s = parseSessionJsonl(readFileSync6(file, "utf8"), mtime);
   return {
     conversation_id: convId,
@@ -12952,18 +13076,18 @@ function getLocalConversation(contextRoot, convId) {
 }
 function listLocalConversations(contextRoot) {
   const dir = localSessionDir(contextRoot);
-  if (!existsSync13(dir))
+  if (!existsSync14(dir))
     return { conversations: [], total: 0 };
   const summaries = [];
-  for (const f of readdirSync(dir).filter((f2) => f2.endsWith(".jsonl"))) {
-    const path = join17(dir, f);
+  for (const f of readdirSync2(dir).filter((f2) => f2.endsWith(".jsonl"))) {
+    const path = join18(dir, f);
     let text;
     try {
       text = readFileSync6(path, "utf8");
     } catch {
       continue;
     }
-    const mtime = statSync4(path).mtime.toISOString();
+    const mtime = statSync5(path).mtime.toISOString();
     const s = parseSessionJsonl(text, mtime);
     if (!s.id)
       continue;
@@ -13002,7 +13126,7 @@ async function send(flags2, output) {
   }
   const skillPaths = parseCommaList(flags2.skill, process.env.IDEASPACES_PI_SKILLS);
   const repoPath = typeof flags2.context === "string" ? flags2.context : process.cwd();
-  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join18(repoPath, ".pi", "sessions");
+  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join19(repoPath, ".pi", "sessions");
   const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
   const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
   const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
@@ -13090,6 +13214,7 @@ var topLevel = [
   agentsCommand,
   nodeCommand,
   searchCommand,
+  lsCommand,
   publishCommand,
   writeCommand,
   commitCommand,
