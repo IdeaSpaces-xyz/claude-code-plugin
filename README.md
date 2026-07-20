@@ -79,7 +79,9 @@ Once installed, just start working — the plugin orients your agent at the star
 - **Capture as you go** — when a decision or insight lands, the agent proposes writing it down. You confirm.
 - **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device or share it with your team. Optional; everything works fully offline without it.
 
-The skills you get: `is-setup`, `is-orient`, `is-capture`, `is-reflect`, `is-writing`, `is-shape`, `is-space`, `is-publish`, `is-push`, `is-pull`. Type `/` in Claude Code or Cowork to see them.
+Seven skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-shape`, `is-space`, `is-publish`, `is-push`, `is-pull`.
+
+Three more run on the agent's initiative rather than yours, so they won't appear in that menu: `is-capture` offers to write a Note when something crystallizes, `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how Notes get written. You reach them by saying what you want — *"capture this"*, *"has our direction changed?"* — not by typing a command.
 
 ---
 
@@ -133,16 +135,22 @@ MCP stays thin: every tool and resource shells the bundled CLI with `--json`. On
 
 ### Skills
 
+User-invocable (they appear when you type `/`):
+
 - **is-setup** — conversational layer over `ideaspaces create`
 - **is-orient** — orient inside a space: where are we, what's active, what changed
-- **is-capture** — propose writing a Note when conversation crystallizes
-- **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
-- **is-writing** — writing standard for Notes that compound
 - **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
 - **is-publish** — conversational layer over `ideaspaces publish`
 - **is-push** — send committed captures to the remote
 - **is-pull** — integrate remote changes into the local space
+
+Model-triggered only — `user-invocable: false` in their `SKILL.md`, so the agent
+reaches for them from their `description`, and typing `/name` will not work:
+
+- **is-capture** — propose writing a Note when conversation crystallizes
+- **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
+- **is-writing** — writing standard for Notes that compound
 
 Skills read their full protocols from `reference/` (the SDK's canonical skill catalog, built via `readSkill()`).
 
