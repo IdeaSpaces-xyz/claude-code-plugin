@@ -70,7 +70,7 @@ Install whatever's missing:
 |---|---|---|
 | **Windows** | `winget install OpenJS.NodeJS` | `winget install Git.Git` |
 | **macOS** | `brew install node` | `brew install git` (or Xcode Command Line Tools) |
-| **Linux** | distro package manager, e.g. `apt install nodejs` | e.g. `apt install git` |
+| **Linux** | `apt install nodejs` etc. — older LTS ships < 18, so use [NodeSource](https://github.com/nodesource/distributions) or `nvm` for 18+ | e.g. `apt install git` |
 
 After installing, **restart Claude Code** so the new tools are picked up on PATH. Or just ask your agent — *"set up my machine for IdeaSpaces"* — and it can detect what's missing and run the right install for your OS.
 
