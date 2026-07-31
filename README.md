@@ -59,12 +59,20 @@ Commit this to your project's `.claude/settings.json` and everyone who trusts th
 
 ### Requirements
 
-IdeaSpaces runs a small local helper on your machine (a Node.js program that manages the markdown and git). You need:
+IdeaSpaces runs a small local helper on your machine — a Node.js program that manages the markdown and git. It ships pre-built inside the plugin (no `npm install`, and **no global `ideaspaces` command to install** — the skills invoke the bundled CLI for you). But it needs two things available on your PATH:
 
-- **Node.js 18+** — already present if you use Claude Code; on Cowork desktop it must be installed.
-- **git** — used to sync the space.
+- **Node.js 18+** — the runtime for the helper, the MCP server, and the hooks. **Not guaranteed by Claude Code:** the native installer (`irm …` / `curl …`) bundles its own runtime and does *not* put `node` on your PATH, so a machine that only ever installed Claude Code that way has no Node. (Installed Claude Code via `npm i -g`? Then you already have it.)
+- **git** — for version history and remote sync. Working locally needs nothing else; git is only required once you commit, publish, or push.
 
-Nothing else to install: the helper ships pre-built inside the plugin, so there's no `npm install` step and no setup.
+Install whatever's missing:
+
+| OS | Node.js | git |
+|---|---|---|
+| **Windows** | `winget install OpenJS.NodeJS` | `winget install Git.Git` |
+| **macOS** | `brew install node` | `brew install git` (or Xcode Command Line Tools) |
+| **Linux** | `apt install nodejs` etc. — older LTS ships < 18, so use [NodeSource](https://github.com/nodesource/distributions) or `nvm` for 18+ | e.g. `apt install git` |
+
+After installing, **restart Claude Code** so the new tools are picked up on PATH. Or just ask your agent — *"set up my machine for IdeaSpaces"* — and it can detect what's missing and run the right install for your OS.
 
 ---
 
