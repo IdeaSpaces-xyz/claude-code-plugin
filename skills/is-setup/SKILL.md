@@ -1,13 +1,14 @@
 ---
 name: is-setup
 description: >
-  Conversational onboarding for an ideaspace. Inspects what's here (greenfield,
-  existing markdowns, old `_agent/`, code repo), reflects findings, gets
-  confirmation, then runs `ideaspaces create` via the bundled CLI to scaffold
-  the seed of the contract. Captures purpose / now / next as real files in
-  conversation when content emerges. Use when: user says "set up a space",
-  "add ideaspaces here", or asks about the contract.
-allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_auth Edit Read Write Glob Bash"
+  Conversational onboarding for an ideaspace — create a new one here, or open an
+  existing remote space you already have. Create: inspects what's here
+  (greenfield, existing markdowns, old `_agent/`, code repo), confirms, then runs
+  `ideaspaces create`. Open: lists your remote spaces (`is_spaces`), clones the
+  chosen one (`is_clone`), and orients there. Use when: user says "set up a
+  space", "add ideaspaces here", "get me into my space", "clone my notes", or is
+  a returning user with nothing local yet.
+allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_auth mcp__plugin_ideaspaces_core__is_spaces mcp__plugin_ideaspaces_core__is_clone mcp__plugin_ideaspaces_core__is_navigate Edit Read Write Glob Bash"
 ---
 
 # Setup an Ideaspace
@@ -21,6 +22,24 @@ This skill is the **conversational layer** around the bundled CLI. The conversat
 The CLI ships inside this plugin at `${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js`. Invoke via `Bash`. No separate install required.
 
 Don't offer unprompted. Wait for a signal — "set up a space", "add ideaspaces here", or detection of a directory the user wants structured.
+
+## Create new, or open existing?
+
+Two arrivals, one skill — read the signal before proceeding:
+
+- **Create new** — structure *this* folder as a fresh space. Signals: "set up a space", "add ideaspaces here", a directory the user wants structured. → **Inspect → Reflect → create**, below.
+- **Open existing** — the user already has spaces on the remote and wants one on this machine (new laptop, joining a team, "get me into my space", "clone my notes"). → **Open an existing space**, below. Requires login.
+
+Ambiguous (logged in, has spaces, empty cwd)? Ask which they want — don't assume.
+
+## Open an existing space
+
+1. **Ensure login.** If not logged in, run `is_auth` (login) first — `is_spaces` / `is_clone` need it.
+2. **List.** `is_spaces` — show the user's remote spaces (slug, role, members). Present plainly; let them pick.
+3. **Clone.** `is_clone` with the chosen space. It returns the local **path**.
+4. **Orient there.** MCP tools take `cwd` per call and don't persist a working dir, so after cloning, pass the returned path as `cwd` to what follows — orient with `is_navigate` (`cwd` = the clone path) or the **is-orient** skill, and confirm the user is now working *inside* the cloned space.
+
+**Cowork:** its sandbox may block the network that `is_spaces` / `is_clone` need. If they fail to reach the remote, tell the user to switch to **Claude Code view** for remote operations — local capture still works in Cowork.
 
 ## 1. Inspect (read-only)
 
