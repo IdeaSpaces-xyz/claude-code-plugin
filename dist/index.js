@@ -2988,7 +2988,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve2.call(this, root, ref);
+      let _sch = resolve7.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3015,7 +3015,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve2(root, ref) {
+    function resolve7(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3590,55 +3590,55 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve2(baseURI, relativeURI, options) {
+    function resolve7(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative, options, skipNormalization) {
+    function resolveComponent(base, relative3, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative = parse3(serialize(relative, options), options);
+        relative3 = parse3(serialize(relative3, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative.scheme) {
-        target.scheme = relative.scheme;
-        target.userinfo = relative.userinfo;
-        target.host = relative.host;
-        target.port = relative.port;
-        target.path = removeDotSegments(relative.path || "");
-        target.query = relative.query;
+      if (!options.tolerant && relative3.scheme) {
+        target.scheme = relative3.scheme;
+        target.userinfo = relative3.userinfo;
+        target.host = relative3.host;
+        target.port = relative3.port;
+        target.path = removeDotSegments(relative3.path || "");
+        target.query = relative3.query;
       } else {
-        if (relative.userinfo !== void 0 || relative.host !== void 0 || relative.port !== void 0) {
-          target.userinfo = relative.userinfo;
-          target.host = relative.host;
-          target.port = relative.port;
-          target.path = removeDotSegments(relative.path || "");
-          target.query = relative.query;
+        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
+          target.userinfo = relative3.userinfo;
+          target.host = relative3.host;
+          target.port = relative3.port;
+          target.path = removeDotSegments(relative3.path || "");
+          target.query = relative3.query;
         } else {
-          if (!relative.path) {
+          if (!relative3.path) {
             target.path = base.path;
-            if (relative.query !== void 0) {
-              target.query = relative.query;
+            if (relative3.query !== void 0) {
+              target.query = relative3.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative.path[0] === "/") {
-              target.path = removeDotSegments(relative.path);
+            if (relative3.path[0] === "/") {
+              target.path = removeDotSegments(relative3.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative.path;
+                target.path = "/" + relative3.path;
               } else if (!base.path) {
-                target.path = relative.path;
+                target.path = relative3.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative.query;
+            target.query = relative3.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3646,7 +3646,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative.fragment;
+      target.fragment = relative3.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -3817,7 +3817,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve2,
+      resolve: resolve7,
       resolveComponent,
       equal,
       serialize,
@@ -6793,12 +6793,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs, exportName) {
+    function addFormats(ajv, list, fs5, exportName) {
       var _a;
       var _b;
       (_a = (_b = ajv.opts.code).formats) !== null && _a !== void 0 ? _a : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs[f]);
+        ajv.addFormat(f, fs5[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10767,10 +10767,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep, value } = collItem;
+        const { start, key, sep: sep2, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep?.[0],
+          next: key ?? sep2?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -10784,7 +10784,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep) {
+          if (!keyProps.anchor && !keyProps.tag && !sep2) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -10808,7 +10808,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep ?? [], {
+        const valueProps = resolveProps.resolveProps(sep2 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -10824,7 +10824,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep2, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -10915,7 +10915,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep = "";
+        let sep2 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -10929,13 +10929,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep + cb;
-              sep = "";
+                comment += sep2 + cb;
+              sep2 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep += source;
+                sep2 += source;
               hasSpace = true;
               break;
             default:
@@ -10978,18 +10978,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep, value } = collItem;
+        const { start, key, sep: sep2, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep?.[0],
+          next: key ?? sep2?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep && !value) {
+          if (!props.anchor && !props.tag && !sep2 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -11043,8 +11043,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep, null, props, onError);
+        if (!isMap && !sep2 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep2, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -11056,7 +11056,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep ?? [], {
+          const valueProps = resolveProps.resolveProps(sep2 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -11067,8 +11067,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep)
-                for (const st of sep) {
+              if (sep2)
+                for (const st of sep2) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -11085,7 +11085,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep2, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -11265,7 +11265,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep = "";
+      let sep2 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -11282,24 +11282,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep + indent.slice(trimIndent) + content;
-          sep = "\n";
+          value += sep2 + indent.slice(trimIndent) + content;
+          sep2 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep === " ")
-            sep = "\n";
-          else if (!prevMoreIndented && sep === "\n")
-            sep = "\n\n";
-          value += sep + indent.slice(trimIndent) + content;
-          sep = "\n";
+          if (sep2 === " ")
+            sep2 = "\n";
+          else if (!prevMoreIndented && sep2 === "\n")
+            sep2 = "\n\n";
+          value += sep2 + indent.slice(trimIndent) + content;
+          sep2 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep === "\n")
+          if (sep2 === "\n")
             value += "\n";
           else
-            sep = "\n";
+            sep2 = "\n";
         } else {
-          value += sep + content;
-          sep = " ";
+          value += sep2 + content;
+          sep2 = " ";
           prevMoreIndented = false;
         }
       }
@@ -11481,25 +11481,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep = " ";
+      let sep2 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep === "\n")
-            res += sep;
+          if (sep2 === "\n")
+            res += sep2;
           else
-            sep = "\n";
+            sep2 = "\n";
         } else {
-          res += sep + match[1];
-          sep = " ";
+          res += sep2 + match[1];
+          sep2 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep + (match?.[1] ?? "");
+      return res + sep2 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -12309,14 +12309,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep, value }) {
+    function stringifyItem({ start, key, sep: sep2, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep)
-        for (const st of sep)
+      if (sep2)
+        for (const st of sep2)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -13483,18 +13483,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep;
+          let sep2;
           if (scalar.end) {
-            sep = scalar.end;
-            sep.push(this.sourceToken);
+            sep2 = scalar.end;
+            sep2.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep = [this.sourceToken];
+            sep2 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep }]
+            items: [{ start, key: scalar, sep: sep2 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -13647,15 +13647,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep = it.sep;
-                  sep.push(this.sourceToken);
+                  const sep2 = it.sep;
+                  sep2.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep }]
+                    items: [{ start: start2, key, sep: sep2 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -13684,14 +13684,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs = this.flowScalar(this.type);
+              const fs5 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs, sep: [] });
+                map.items.push({ start, key: fs5, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs);
+                this.stack.push(fs5);
               } else {
-                Object.assign(it, { key: fs, sep: [] });
+                Object.assign(it, { key: fs5, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -13819,13 +13819,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs = this.flowScalar(this.type);
+              const fs5 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs, sep: [] });
+                fc.items.push({ start: [], key: fs5, sep: [] });
               else if (it.sep)
-                this.stack.push(fs);
+                this.stack.push(fs5);
               else
-                Object.assign(it, { key: fs, sep: [] });
+                Object.assign(it, { key: fs5, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -13849,13 +13849,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep = fc.end.splice(1, fc.end.length);
-            sep.push(this.sourceToken);
+            const sep2 = fc.end.splice(1, fc.end.length);
+            sep2.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep }]
+              items: [{ start, key: fc, sep: sep2 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -26224,7 +26224,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
+        await new Promise((resolve7) => setTimeout(resolve7, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -26241,7 +26241,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve7, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -26319,7 +26319,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve2(parseResult.data);
+            resolve7(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -26580,12 +26580,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve7, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve2, interval);
+      const timeoutId = setTimeout(resolve7, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -27685,7 +27685,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
+      await new Promise((resolve7) => setTimeout(resolve7, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -28334,21 +28334,21 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve2) => {
+    return new Promise((resolve7) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve2();
+        resolve7();
       } else {
-        this._stdout.once("drain", resolve2);
+        this._stdout.once("drain", resolve7);
       }
     });
   }
 };
 
 // src/index.ts
-import { spawn } from "node:child_process";
+import { spawn as spawn2 } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname as dirname2, join as join2 } from "node:path";
+import { dirname as dirname3, join as join6 } from "node:path";
 import { existsSync as existsSync2, readFileSync } from "node:fs";
 import { userInfo, homedir } from "node:os";
 
@@ -28371,27 +28371,526 @@ function buildCommitArgs(input, ctx) {
   return a;
 }
 
+// node_modules/@ideaspaces/protocol/dist/space.js
+import { promises as fs } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+var CONTRACT_FILES = [
+  "foundation",
+  "guide",
+  "purpose",
+  "now",
+  "next"
+];
+async function isDirectory(path) {
+  try {
+    const stat2 = await fs.stat(path);
+    return stat2.isDirectory();
+  } catch {
+    return false;
+  }
+}
+async function readContract(agentDir) {
+  const entries = {};
+  await Promise.all(CONTRACT_FILES.map(async (name) => {
+    const path = join(agentDir, `${name}.md`);
+    try {
+      const content = await fs.readFile(path, "utf-8");
+      entries[name] = { path, content };
+    } catch {
+    }
+  }));
+  return entries;
+}
+async function composeContractAlongPath(position) {
+  const start = resolve(position);
+  const found = [];
+  let spaceRoot = null;
+  let dir = start;
+  while (true) {
+    const agentDir = join(dir, "_agent");
+    if (await isDirectory(agentDir)) {
+      const contract2 = await readContract(agentDir);
+      found.push({ dir, contract: contract2 });
+      if (contract2.foundation) {
+        spaceRoot = dir;
+        break;
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir)
+      break;
+    dir = parent;
+  }
+  const contract = {};
+  if (spaceRoot) {
+    const rootEntry = found.find((f) => f.dir === spaceRoot)?.contract.foundation;
+    if (rootEntry)
+      contract.foundation = { ...rootEntry, level: spaceRoot };
+  }
+  for (const name of ["guide", "purpose", "now", "next"]) {
+    for (const level of found) {
+      const entry = level.contract[name];
+      if (entry) {
+        contract[name] = { ...entry, level: level.dir };
+        break;
+      }
+    }
+  }
+  return { position: start, spaceRoot, contract, levels: found.map((f) => f.dir) };
+}
+
+// node_modules/@ideaspaces/protocol/dist/awareness.js
+import { promises as fs4 } from "node:fs";
+import { join as join5, resolve as resolve5 } from "node:path";
+
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist2(), 1);
+var DELIM = "---";
+function stripFrontmatter(content) {
+  const block = frontmatterBlock(content);
+  if (!block)
+    return content;
+  return block.lines.slice(block.endLineIndex + 1).join("\n");
+}
+function extractSummary(content) {
+  return extractScalarField(content, "summary");
+}
+function extractDescription(content) {
+  return extractScalarField(content, "description") ?? extractScalarField(content, "summary");
+}
+function extractScalarField(content, field) {
+  if (!content.startsWith(`${DELIM}
+`) && !content.startsWith(`${DELIM}\r
+`)) {
+    return null;
+  }
+  const lines = content.split(/\r?\n/);
+  let endIdx = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trimEnd() === DELIM) {
+      endIdx = i;
+      break;
+    }
+  }
+  if (endIdx === -1)
+    return null;
+  const prefix = `${field}:`;
+  let summaryStart = -1;
+  for (let i = 1; i < endIdx; i++) {
+    if (lines[i].startsWith(prefix)) {
+      summaryStart = i;
+      break;
+    }
+  }
+  if (summaryStart === -1)
+    return null;
+  const parts = [];
+  const firstLineRaw = lines[summaryStart].slice(prefix.length).trim();
+  if (firstLineRaw && !/^[>|][+-]?$/.test(firstLineRaw)) {
+    parts.push(firstLineRaw);
+  }
+  for (let i = summaryStart + 1; i < endIdx; i++) {
+    const line = lines[i];
+    if (/^\s+\S/.test(line)) {
+      parts.push(line.trim());
+    } else {
+      break;
+    }
+  }
+  if (!parts.length)
+    return null;
+  let result = parts.join(" ");
+  if (result.startsWith('"') && result.endsWith('"') || result.startsWith("'") && result.endsWith("'")) {
+    result = result.slice(1, -1);
+  }
+  return result || null;
+}
+function startsFrontmatter(content) {
+  return content.startsWith(`${DELIM}
+`) || content.startsWith(`${DELIM}\r
+`);
+}
+function frontmatterBlock(content) {
+  if (!startsFrontmatter(content))
+    return null;
+  const lines = content.split("\n");
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trimEnd() === DELIM) {
+      return { lines, endLineIndex: i };
+    }
+  }
+  return null;
+}
+
+// node_modules/@ideaspaces/protocol/dist/git.js
+import { spawn } from "node:child_process";
+var FS = "";
+var REC = "";
+var DEFAULT_COMMIT_LIMIT = 20;
+function runGit(repoRoot, args) {
+  return new Promise((resolve7) => {
+    const proc = spawn("git", ["-C", repoRoot, ...args], {
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let out = "";
+    proc.stdout.on("data", (d) => out += d);
+    proc.on("close", (code) => resolve7({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve7({ ok: false, out: "", code: null }));
+  });
+}
+async function resolveRepoRoot(cwd) {
+  const result = await runGit(cwd, ["rev-parse", "--show-toplevel"]);
+  return result.ok ? result.out.trim() || null : null;
+}
+async function pathStatus(path, repoRoot) {
+  const [hash, staged, modified, tracked] = await Promise.all([
+    runGit(repoRoot, ["hash-object", "--", path]),
+    runGit(repoRoot, ["diff", "--cached", "--quiet", "--", path]),
+    runGit(repoRoot, ["diff", "--quiet", "--", path]),
+    runGit(repoRoot, ["ls-files", "--error-unmatch", "--", path])
+  ]);
+  const sha = hash.ok ? hash.out.trim() || null : null;
+  return {
+    path,
+    exists: sha !== null,
+    sha,
+    inIndex: staged.code === 1,
+    modified: modified.code === 1,
+    inTracked: tracked.ok
+  };
+}
+function isIdeaspacePath(path) {
+  const normalized = path.replace(/\\/g, "/");
+  return normalized.endsWith(".md") || normalized.split("/").includes("_agent");
+}
+async function stagedIdeaspacePaths(repoRoot) {
+  const result = await runGit(repoRoot, ["diff", "--cached", "--name-only"]);
+  if (!result.ok)
+    return [];
+  return result.out.split("\n").map((path) => path.trim()).filter(Boolean).filter(isIdeaspacePath);
+}
+async function lastCommitTime(repoRoot, path) {
+  const res = await runGit(repoRoot, ["log", "-1", "--format=%ct", "--", path]);
+  if (!res.ok)
+    return null;
+  const t = parseInt(res.out.trim(), 10);
+  return Number.isFinite(t) ? t : null;
+}
+async function gitState(repoRoot) {
+  const top = await runGit(repoRoot, ["rev-parse", "--show-toplevel"]);
+  const root = top.ok ? top.out.trim() : repoRoot;
+  const headRes = await runGit(root, ["rev-parse", "--verify", "HEAD"]);
+  const headSha = headRes.ok ? headRes.out.trim() || null : null;
+  const branchRes = await runGit(root, ["rev-parse", "--abbrev-ref", "HEAD"]);
+  const branchRaw = branchRes.ok ? branchRes.out.trim() : "";
+  const branch = !branchRaw || branchRaw === "HEAD" ? null : branchRaw;
+  let ahead = null;
+  let behind = null;
+  const upstream = await runGit(root, [
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{upstream}"
+  ]);
+  if (upstream.ok && upstream.out.trim()) {
+    const counts = await runGit(root, [
+      "rev-list",
+      "--left-right",
+      "--count",
+      "@{upstream}...HEAD"
+    ]);
+    if (counts.ok) {
+      const [b, a] = counts.out.trim().split(/\s+/).map((n) => parseInt(n, 10));
+      if (Number.isFinite(b))
+        behind = b;
+      if (Number.isFinite(a))
+        ahead = a;
+    }
+  }
+  const status = await runGit(root, ["status", "--porcelain"]);
+  let dirty = false;
+  const untrackedInTrackedDirs = [];
+  if (status.ok) {
+    for (const line of status.out.split("\n")) {
+      if (!line)
+        continue;
+      if (line.startsWith("??")) {
+        const path = line.slice(3).trim();
+        if (path && !path.endsWith("/"))
+          untrackedInTrackedDirs.push(path);
+      } else {
+        dirty = true;
+      }
+    }
+  }
+  return { repoRoot: root, headSha, branch, ahead, behind, dirty, untrackedInTrackedDirs };
+}
+async function recentActivity(repoRoot, sinceSha, limit = DEFAULT_COMMIT_LIMIT) {
+  const selector = sinceSha ? [`${sinceSha}..HEAD`] : [`-n`, String(limit)];
+  const res = await runGit(repoRoot, [
+    "log",
+    ...selector,
+    "--name-status",
+    `--format=${REC}%H${FS}%s${FS}%cI${FS}%an`
+  ]);
+  if (!res.ok)
+    return { commits: [], changedFiles: [] };
+  const commits = [];
+  const seen = /* @__PURE__ */ new Set();
+  const changedFiles = [];
+  for (const raw of res.out.split("\n")) {
+    if (!raw)
+      continue;
+    if (raw.startsWith(REC)) {
+      const [sha, subject, date3, author] = raw.slice(1).split(FS);
+      commits.push({ sha, subject, date: date3, author });
+      continue;
+    }
+    const parts = raw.split("	");
+    if (parts.length < 2)
+      continue;
+    const status = parts[0][0];
+    const path = parts[parts.length - 1];
+    if (seen.has(path))
+      continue;
+    seen.add(path);
+    changedFiles.push({ status, path });
+  }
+  return { commits, changedFiles };
+}
+
+// node_modules/@ideaspaces/protocol/dist/path-context.js
+import { promises as fs2 } from "node:fs";
+import { isAbsolute, join as join2, relative, resolve as resolve2, sep } from "node:path";
+function spaceRootLevel(ctx) {
+  return ctx.levels.find((l) => l.foundation) ?? null;
+}
+function currentBranchLevel(ctx) {
+  for (let i = ctx.levels.length - 1; i >= 0; i--) {
+    if (ctx.levels[i].hasAgent)
+      return ctx.levels[i];
+  }
+  return null;
+}
+function renderPosition({ pos, base, repoRoot, ctx }) {
+  const spaceRoot = spaceRootLevel(ctx);
+  const branch = currentBranchLevel(ctx);
+  const lines = ["Position:"];
+  if (repoRoot)
+    lines.push(`  repo: ${repoRoot}`);
+  lines.push(`  cwd: ${relative(base, pos) || "."}`);
+  if (spaceRoot)
+    lines.push(`  space root: ${spaceRoot.path || "."}`);
+  if (branch)
+    lines.push(`  active _agent: ${branch.path || "."}`);
+  return lines.join("\n");
+}
+async function walkPathContext(repoRoot, currentPath, opts = {}) {
+  const { includeContent = false } = opts;
+  const root = resolve2(repoRoot);
+  const rel = relative(root, resolve2(root, currentPath));
+  const segments = rel === "" || rel.startsWith("..") || isAbsolute(rel) ? [] : rel.split(sep).filter(Boolean);
+  const relPaths = [""];
+  let acc = "";
+  for (const segment of segments) {
+    acc = acc ? `${acc}/${segment}` : segment;
+    relPaths.push(acc);
+  }
+  const levels = await Promise.all(relPaths.map((relPath) => readLevel(root, relPath, includeContent)));
+  const position = segments.join("/");
+  return { position, levels };
+}
+async function readLevel(root, relPath, includeContent) {
+  const absPath = relPath ? join2(root, relPath) : root;
+  const agentDir = join2(absPath, "_agent");
+  const [hasAgent, readme] = await Promise.all([
+    isDirectory2(agentDir),
+    readFileOrNull(join2(absPath, "README.md"))
+  ]);
+  let contract = {};
+  if (hasAgent)
+    contract = await readContract(agentDir);
+  const agentFiles = CONTRACT_FILES.filter((f) => contract[f]);
+  const contractSummaries = {};
+  for (const f of agentFiles) {
+    const summary = describe(contract[f].content);
+    if (summary)
+      contractSummaries[f] = summary;
+  }
+  return {
+    path: relPath,
+    absPath,
+    hasAgent,
+    foundation: Boolean(contract.foundation),
+    agentFiles,
+    contractSummaries,
+    readmeSummary: readme ? describe(readme) : null,
+    readmeContent: includeContent ? readme : null,
+    contract: includeContent && hasAgent ? contract : null
+  };
+}
+function describe(content) {
+  const summary = extractSummary(content);
+  if (summary)
+    return summary;
+  for (const raw of stripFrontmatter(content).split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    return line.replace(/^>+\s*/, "").trim() || null;
+  }
+  return null;
+}
+async function isDirectory2(path) {
+  try {
+    return (await fs2.stat(path)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+async function readFileOrNull(path) {
+  try {
+    return await fs2.readFile(path, "utf-8");
+  } catch {
+    return null;
+  }
+}
 
 // node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist2(), 1);
+import { promises as fs3 } from "node:fs";
+import { join as join3, relative as relative2, resolve as resolve3 } from "node:path";
+var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
+async function collectDocDependencies(repoRoot, docDir) {
+  const root = resolve3(repoRoot);
+  const start = resolve3(root, docDir);
+  const out = [];
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = (await fs3.readdir(dir, { withFileTypes: true })).map((e) => ({
+        name: e.name,
+        isDir: e.isDirectory()
+      }));
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith("."))
+        continue;
+      const abs = join3(dir, entry.name);
+      if (entry.isDir) {
+        if (!SKIP_DIRS.has(entry.name))
+          await walk(abs);
+      } else if (entry.name.endsWith(".md")) {
+        const content = await readFileOrNull2(abs);
+        if (!content)
+          continue;
+        const codePaths = readCodePaths(content);
+        if (codePaths.length) {
+          out.push({ path: relative2(root, abs), codePaths });
+        }
+      }
+    }
+  }
+  await walk(start);
+  return out;
+}
+async function staleDocSignals(repoRoot, docs) {
+  const root = resolve3(repoRoot);
+  const signals = [];
+  for (const { path, codePaths } of docs) {
+    const missing = [];
+    for (const code of codePaths) {
+      if (!await exists(join3(root, code)))
+        missing.push(code);
+    }
+    if (missing.length)
+      signals.push({ kind: "broken", doc: path, missing });
+    const docTime = await lastCommitTime(repoRoot, path);
+    if (docTime == null)
+      continue;
+    let newestCode = "";
+    let codeTime = -1;
+    for (const code of codePaths) {
+      if (missing.includes(code))
+        continue;
+      const t = await lastCommitTime(repoRoot, code);
+      if (t != null && t > codeTime) {
+        codeTime = t;
+        newestCode = code;
+      }
+    }
+    if (codeTime < 0)
+      continue;
+    if (codeTime > docTime) {
+      signals.push({
+        kind: "stale",
+        doc: path,
+        docTime,
+        newestCode,
+        codeTime,
+        staleBySeconds: codeTime - docTime
+      });
+    }
+  }
+  return signals;
+}
+function readCodePaths(content) {
+  if (!content.startsWith("---\n") && !content.startsWith("---\r\n"))
+    return [];
+  const lines = content.split(/\r?\n/);
+  let end = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trimEnd() === "---") {
+      end = i;
+      break;
+    }
+  }
+  if (end === -1)
+    return [];
+  try {
+    const data = (0, import_yaml2.parseDocument)(lines.slice(1, end).join("\n")).toJSON();
+    const raw = data?.code_paths;
+    if (Array.isArray(raw))
+      return raw.filter((x) => typeof x === "string");
+    if (typeof raw === "string")
+      return [raw];
+    return [];
+  } catch {
+    return [];
+  }
+}
+async function readFileOrNull2(path) {
+  try {
+    return await fs3.readFile(path, "utf-8");
+  } catch {
+    return null;
+  }
+}
+async function exists(path) {
+  try {
+    await fs3.stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-// node_modules/@ideaspaces/protocol/dist/conformance.js
-var import_yaml3 = __toESM(require_dist2(), 1);
+// node_modules/@ideaspaces/protocol/dist/surface-state.js
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join as join4, resolve as resolve4 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/trailers.js
 var CHANGE_ID_PATTERN = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
 
 // node_modules/@ideaspaces/protocol/dist/surface-state.js
-import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
 function projectCacheKey(projectDir) {
-  return createHash("sha256").update(resolve(projectDir)).digest("hex").slice(0, 16);
+  return createHash("sha256").update(resolve4(projectDir)).digest("hex").slice(0, 16);
 }
 function cachePath(homeDir, kind, projectDir) {
-  return join(homeDir, ".ideaspaces", kind, projectCacheKey(projectDir));
+  return join4(homeDir, ".ideaspaces", kind, projectCacheKey(projectDir));
 }
 function sessionIdCachePath(homeDir, projectDir) {
   return cachePath(homeDir, "sessions", projectDir);
@@ -28432,12 +28931,644 @@ function armingDecision(rec, currentSessionId) {
     return "arm";
   return "surface";
 }
+var SEEN_REF = "refs/ideaspaces/seen";
+async function readSeenRef(repoRoot) {
+  const res = await runGit(repoRoot, ["rev-parse", "--verify", "--quiet", SEEN_REF]);
+  return res.ok ? res.out.trim() || void 0 : void 0;
+}
+
+// node_modules/@ideaspaces/protocol/dist/awareness.js
+var CONTENT_AWARENESS_SECTIONS = [
+  "position",
+  "now",
+  "tree",
+  "contract",
+  "skills",
+  "activity",
+  "git",
+  "stale-docs",
+  "direction-drift"
+];
+var SKIP_DIRS2 = /* @__PURE__ */ new Set([
+  "_agent",
+  "node_modules",
+  ".git",
+  ".github",
+  ".vscode",
+  ".idea",
+  "dist",
+  "build"
+]);
+var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
+var DEFAULT_MAX_DRIFT = 10;
+async function assembleContentAwareness(opts) {
+  const requestedPosition = resolve5(opts.position);
+  const position = await fs4.realpath(requestedPosition).catch(() => requestedPosition);
+  const [repoRoot, composed] = await Promise.all([
+    resolveRepoRoot(position),
+    composeContractAlongPath(position)
+  ]);
+  if (!composed.spaceRoot)
+    return null;
+  const base = repoRoot ?? composed.spaceRoot;
+  const lastShaPromise = opts.lastSha === void 0 ? repoRoot ? readSeenRef(repoRoot) : Promise.resolve(void 0) : Promise.resolve(opts.lastSha ?? void 0);
+  const pathContextPromise = walkPathContext(base, position);
+  const gitPromise = repoRoot ? gitState(repoRoot) : Promise.resolve(null);
+  const staleDocsPromise = repoRoot ? collectDocDependencies(repoRoot, repoRoot).then((docs) => staleDocSignals(repoRoot, docs)) : Promise.resolve([]);
+  const sectionsPromise = lastShaPromise.then((lastSha) => readAwarenessSections({
+    root: position,
+    activityRoot: base,
+    contract: composed.contract,
+    lastSha,
+    maxChanges: opts.maxChanges,
+    nowExcerptLength: opts.nowExcerptLength,
+    summaryExcerptLength: opts.summaryExcerptLength
+  }));
+  const [context, git, staleDocs, sections] = await Promise.all([
+    pathContextPromise,
+    gitPromise,
+    staleDocsPromise,
+    sectionsPromise
+  ]);
+  const missingDirection = [];
+  if (!composed.contract.purpose)
+    missingDirection.push("purpose");
+  if (!composed.contract.now)
+    missingDirection.push("now");
+  return {
+    kind: "content",
+    spaceRoot: composed.spaceRoot,
+    position: { path: position, base, repoRoot, context },
+    ...sections,
+    git,
+    staleDocs,
+    missingDirection
+  };
+}
+function renderContentAwareness(manifest, opts = {}) {
+  return renderAwarenessSections(manifest, opts);
+}
+async function readAwarenessSections(opts) {
+  const { root, activityRoot, contract, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
+  const now = extractNow(contract, nowExcerptLength);
+  const contractEntries = buildContractEntries(contract, summaryExcerptLength);
+  const [tree, skills, activity] = await Promise.all([
+    buildTree(root),
+    readSkills(root, summaryExcerptLength),
+    lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
+  ]);
+  return {
+    now,
+    tree,
+    contract: contractEntries,
+    skills,
+    activity
+  };
+}
+function renderAwarenessSections(data, opts) {
+  const included = new Set(opts.sections ?? CONTENT_AWARENESS_SECTIONS);
+  const sections = [];
+  for (const section of CONTENT_AWARENESS_SECTIONS) {
+    if (!included.has(section))
+      continue;
+    let rendered = null;
+    switch (section) {
+      case "position":
+        rendered = data.position ? renderPosition({
+          pos: data.position.path,
+          base: data.position.base,
+          repoRoot: data.position.repoRoot,
+          ctx: data.position.context
+        }) : null;
+        break;
+      case "now":
+        rendered = data.now ? `Now: ${data.now.text}` : null;
+        break;
+      case "tree":
+        rendered = data.tree ? renderTree(data.tree) : null;
+        break;
+      case "contract":
+        rendered = renderContract(data.contract);
+        break;
+      case "skills":
+        rendered = renderSkills(data.skills);
+        break;
+      case "activity":
+        rendered = data.activity ? renderActivity(data.activity) : null;
+        break;
+      case "git":
+        rendered = data.git ? renderGitState(data.git) : null;
+        break;
+      case "stale-docs":
+        rendered = renderStaleDocs(data.staleDocs, opts.maxDrift ?? DEFAULT_MAX_DRIFT);
+        break;
+      case "direction-drift":
+        rendered = renderDirectionDrift(data.missingDirection);
+        break;
+    }
+    if (rendered)
+      sections.push(rendered);
+  }
+  return sections.join("\n\n");
+}
+function buildContractEntries(contract, max) {
+  const entries = [];
+  for (const name of CONTRACT_ORDER) {
+    const entry = contract[name];
+    if (!entry)
+      continue;
+    entries.push({
+      name,
+      path: entry.path,
+      ...hasLevel(entry) ? { level: entry.level } : {},
+      summary: describeFile(entry.content, max)
+    });
+  }
+  return entries;
+}
+function hasLevel(entry) {
+  return "level" in entry;
+}
+async function readSkills(root, max) {
+  const skillsDir = join5(root, "_agent", "skills");
+  let entries;
+  try {
+    entries = (await fs4.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
+  } catch {
+    return [];
+  }
+  return Promise.all(entries.map(async (file) => {
+    const path = join5(skillsDir, file);
+    try {
+      const content = await fs4.readFile(path, "utf-8");
+      return {
+        name: file.replace(/\.md$/, ""),
+        path,
+        summary: describeFile(content, max)
+      };
+    } catch {
+      return {
+        name: file.replace(/\.md$/, ""),
+        path,
+        summary: null
+      };
+    }
+  }));
+}
+async function readActivity(repoRoot, lastSha, maxChanges) {
+  const { changedFiles } = await recentActivity(repoRoot, lastSha);
+  if (!changedFiles.length)
+    return null;
+  const changes = changedFiles.slice(0, maxChanges);
+  return {
+    totalChanges: changedFiles.length,
+    changes,
+    omittedChanges: changedFiles.length - changes.length
+  };
+}
+function describeFile(content, max) {
+  const summary = extractSummary(content);
+  if (summary)
+    return truncate(summary, max);
+  const body = stripFrontmatter(content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    return truncate(line, max);
+  }
+  return null;
+}
+function extractNow(contract, max) {
+  const entry = contract.now;
+  if (!entry)
+    return null;
+  const body = stripFrontmatter(entry.content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    if (line.startsWith(">")) {
+      const stripped = line.replace(/^>+\s*/, "").trim();
+      if (stripped)
+        return { text: truncate(stripped, max), source: entry.path };
+      continue;
+    }
+    return { text: truncate(line, max), source: entry.path };
+  }
+  return null;
+}
+function truncate(value, max) {
+  return value.length <= max ? value : `${value.slice(0, max).trimEnd()}\u2026`;
+}
+async function buildTree(root) {
+  let entries;
+  try {
+    const dirents = await fs4.readdir(root, { withFileTypes: true });
+    entries = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
+  } catch {
+    return null;
+  }
+  const dirs = entries.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
+  const files = entries.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).map((entry) => entry.name).sort();
+  if (!dirs.length && !files.length)
+    return null;
+  const [totalMarkdownFiles, dirCounts] = await Promise.all([
+    countMarkdown(root),
+    Promise.all(dirs.map((dir) => countMarkdown(join5(root, dir))))
+  ]);
+  return {
+    totalMarkdownFiles,
+    entries: [
+      ...dirs.map((name, index) => ({
+        name,
+        kind: "directory",
+        markdownFiles: dirCounts[index]
+      })),
+      ...files.map((name) => ({ name, kind: "markdown" }))
+    ]
+  };
+}
+async function countMarkdown(dir) {
+  let count = 0;
+  let dirents;
+  try {
+    dirents = await fs4.readdir(dir, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  for (const entry of dirents) {
+    if (entry.name.startsWith("."))
+      continue;
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS2.has(entry.name))
+        continue;
+      count += await countMarkdown(join5(dir, entry.name));
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      count += 1;
+    }
+  }
+  return count;
+}
+function renderTree(tree) {
+  const lines = [`Tree (${tree.totalMarkdownFiles} files):`];
+  for (const entry of tree.entries) {
+    if (entry.kind === "directory") {
+      lines.push(entry.markdownFiles ? `  ${entry.name}/ (${entry.markdownFiles})` : `  ${entry.name}/`);
+    } else {
+      lines.push(`  ${entry.name}`);
+    }
+  }
+  return lines.join("\n");
+}
+function renderContract(entries) {
+  if (!entries.length)
+    return null;
+  const lines = ["Agent context:"];
+  for (const entry of entries) {
+    lines.push(entry.summary ? `  ${entry.name} \u2014 ${entry.summary}` : `  ${entry.name}`);
+  }
+  return lines.join("\n");
+}
+function renderSkills(skills) {
+  if (!skills.length)
+    return null;
+  const lines = ["Operating skills:"];
+  for (const skill of skills) {
+    lines.push(skill.summary ? `  ${skill.name} \u2014 ${skill.summary}` : `  ${skill.name}`);
+  }
+  return lines.join("\n");
+}
+function renderActivity(activity) {
+  const lines = [`Since last session (${activity.totalChanges} changes):`];
+  for (const change of activity.changes) {
+    lines.push(`  ${change.status}	${change.path}`);
+  }
+  if (activity.omittedChanges) {
+    lines.push(`  ... and ${activity.omittedChanges} more`);
+  }
+  return lines.join("\n");
+}
+function renderGitState(state) {
+  const bits = [];
+  if (state.branch)
+    bits.push(`branch ${state.branch}`);
+  if (state.ahead != null && state.behind != null && (state.ahead || state.behind)) {
+    bits.push(`\u2191${state.ahead} \u2193${state.behind}`);
+  }
+  if (state.dirty)
+    bits.push("dirty");
+  if (state.untrackedInTrackedDirs.length) {
+    bits.push(`${state.untrackedInTrackedDirs.length} untracked`);
+  }
+  return bits.length ? `Git: ${bits.join(", ")}` : null;
+}
+function renderStaleDocs(signals, max) {
+  if (!signals.length)
+    return null;
+  const lines = ["\u26A0 Possible stale docs \u2014 verify before quoting their status:"];
+  for (const signal of signals.slice(0, max)) {
+    lines.push(signal.kind === "stale" ? `  ${signal.doc} \u2014 \`${signal.newestCode}\` was committed after the doc` : `  ${signal.doc} \u2014 references missing path(s): ${signal.missing.join(", ")}`);
+  }
+  if (signals.length > max) {
+    lines.push(`  \u2026 and ${signals.length - max} more`);
+  }
+  return lines.join("\n");
+}
+function renderDirectionDrift(missing) {
+  const lines = [];
+  if (missing.includes("purpose")) {
+    lines.push("\u26A0 `_agent/purpose.md` not yet captured. The contract names it; suggest capturing at a natural moment.");
+  }
+  if (missing.includes("now")) {
+    lines.push("\u26A0 `_agent/now.md` not yet captured. Suggest capturing what's currently active.");
+  }
+  return lines.length ? lines.join("\n") : null;
+}
+
+// node_modules/@ideaspaces/protocol/dist/skill-catalog.generated.js
+var SKILL_CATALOG = {
+  "awareness": `---
+name: awareness
+description: >
+  Check alignment between declared understanding and actual state at any position.
+  Use after substantive work \u2014 multiple writes, restructuring, perspective application \u2014
+  or when asked "is this still accurate?", "has this drifted?", "does the README match?".
+  The protocol: read declarations, read reality, compare, propose updates or stay silent.
+---
+
+# Awareness \u2014 Delta Protocol
+
+After substantive changes at a position, check whether the shared understanding still holds \u2014 does the declared understanding match reality? Drift is the default. Recalibration is the work.
+
+## When to Run
+
+- After writing multiple Notes in a branch
+- After restructuring (moving files, creating new branches)
+- After applying perspectives that produce new content
+- At session start, if the branch has been active recently
+- When something feels off \u2014 the content doesn't match the branch description
+
+## The Protocol
+
+### 1. Read Declarations
+
+At the current position, read what's declared:
+
+- \`_agent/purpose.md\` \u2014 why this place exists
+- \`_agent/now.md\` \u2014 what we're focused on
+- \`_agent/guide.md\` \u2014 how to work here
+- \`README.md\` \u2014 what this branch is about
+
+Read each one. Some may not exist \u2014 that's information too (a branch without purpose is directionless).
+
+### 2. Read Reality
+
+What actually exists here:
+
+- recent changes \u2014 what changed recently in this subtree
+- the tree at this position \u2014 what children exist, how many files, what they're about
+- the actual content of this directory \u2014 what the material here is really about
+
+**Before asserting that something "shipped" / "is implemented" / "is pending" from a doc, check the code \u2014 and the code may live in a *different repo*.** A space often spans several repos in the active context: a doc describing access control may sit in a docs repo while the implementation lives in a code repo. Locate the code wherever it is (grep/search across the repos in context), read its git history, and compare timestamps to the doc. Don't trust a doc's status line on its own \u2014 verify against the actual code, even when that means looking outside this repo. (The session-start drift block flags *same-repo* staleness automatically; cross-repo staleness is yours to check by reasoning, since you have git and know the repos in play.)
+
+### 3. Compare
+
+For each declaration, ask: does this still match?
+
+| Declaration | Delta question |
+|---|---|
+| README.md says "this branch is about X" | Are the children actually about X? |
+| purpose.md says "we're here because Y" | Does recent work serve Y? |
+| now.md says "focused on Z" | Is Z done? Changed? Superseded? |
+| guide.md says "work this way" | Is the guidance still relevant? |
+
+### 4. Output
+
+**If aligned:** Say nothing. Don't generate a report for the sake of reporting.
+
+**If drifted:** Propose a specific change. Not an essay \u2014 a concrete edit:
+
+- "now.md says 'evaluate 20 companies' but 18 are done. Propose update: 'Finalize remaining 2 evaluations, then synthesize patterns across the batch.'"
+- "README says 'early stage startups' but 4 of 8 Notes are Series B. Either update README or consider splitting the branch."
+- "No purpose.md at this branch. Based on content, this is about regulatory risk in health-tech. Want me to create one?"
+
+Keep it terse. The user decides whether to accept the proposal.
+
+## What This Is Not
+
+- **Not memory.** The skill doesn't save facts or accumulate knowledge. It proposes changes to the Space's scaffolding.
+- **Not a report.** Don't generate awareness reports. Either there's drift to surface or there isn't.
+- **Not mandatory.** The agent uses judgment about when to run this. After a single quick edit, skip it. After a deep restructuring session, run it.
+`,
+  "capture": `---
+name: capture
+description: >
+  Draw out understanding through conversation, crystallize into Notes that
+  compound. Use when the user wants to persist knowledge, save what's been
+  discussed, or capture expertise from conversation.
+---
+
+# Capture
+
+Draw out understanding through conversation, crystallize into Notes that compound.
+
+## Elicitation
+
+Indirect over direct. "Tell me about a case you evaluated recently" reveals real criteria \u2014 "What's your evaluation framework?" gets generic answers. Comparison reveals dimensions users can't name. Reflect to refine \u2014 each reflection is a checkpoint. Probe decision points: "What made this difficult?" Know when to stop: circling means ready to crystallize.
+
+## Crystallization
+
+Too early loses nuance, too late loses coherence. Ready: clarity reached, same points recurring. Not ready: still exploring, contradictions unresolved. Offer, don't announce: "I think I have enough to structure this. Want to see?"
+
+## Writing Standard
+
+Notes are retrieval artifacts \u2014 what you write now serves a future search.
+
+- **Signal density** \u2014 one clear thing per sentence. "Revenue grew 40% in Q3" not "significant growth."
+- **Summary first** \u2014 orient immediately, dense with meaning, stands alone. It is what a reader and a search see first.
+- **Self-contained sections** \u2014 each independently meaningful. No "as mentioned above." Headings are contracts.
+- **Fact vs interpretation** \u2014 distinguish, attribute, never blend. Gaps are information.
+- **Progressive disclosure** \u2014 title \u2192 summary \u2192 sections. Each level adds detail without contradicting.
+
+## Workflow
+
+1. Elicit understanding through conversation
+2. Recognize crystallization readiness
+3. Draft \u2014 show the user before persisting
+4. User reviews, iterates, approves
+5. Persist with tags (retrieval decisions) and references (provenance)
+
+## URL Capture
+
+Fetch a page as markdown. From there: save directly as a Note, transform through a Perspective, or use in conversation. If fetching fails (site blocks, fetcher down), ask the user for the content directly. Structure it the same way.
+
+## Placement
+
+The directory tree is the structure. Place Notes where they compound with related content \u2014 the path IS the context.
+
+**Before placing:**
+1. Check the tree (loaded from your current position). What branches exist, how deep, what READMEs say.
+2. Prefer existing locations. New directories only when nothing fits.
+3. When many Notes share a tag, that's accumulation pressure \u2014 the tag may deserve to become a directory.
+
+**Tags** are descriptors for filtered search \u2014 not location. The path is location. Look at what tags already exist before tagging. 1-3 tags per Note. Reuse existing tags first.
+
+**Show your reasoning.** "I'd place this under \`venture/climate-tech/\` because your README there focuses on deep-tech teams with regulatory tailwinds, which matches this company."
+
+## Multiple Notes
+
+A conversation can produce multiple Notes. When the discussion covers distinct topics, draft each one separately. Each Note gets its own name, content, tags, and summary. Don't merge distinct ideas into one Note \u2014 self-contained sections within a Note is fine, but separate topics deserve separate Notes.
+`,
+  "form-perspective": `---
+name: form-perspective
+description: >
+  Codify a reusable thinking pattern through progressive elicitation. Use when
+  the user wants to make their evaluation criteria, analysis framework, or
+  judgment process repeatable and consistent.
+---
+
+# Form Perspective
+
+Codify a reusable thinking pattern through progressive elicitation.
+
+## Three Required Components
+
+Elicit progressively \u2014 don't demand all at once:
+
+1. **Object Definition** \u2014 what gets analyzed. Clear boundaries. What's in scope, what's not.
+2. **Thinking Structure** \u2014 operationalized criteria, sequenced attention, decision rules. Not "strong team" but "relevant exits + domain expertise + technical depth in the problem domain."
+3. **Expected Outcome** \u2014 section structure, detail level, conclusion format. What the output Note looks like.
+
+## Operationalization
+
+The gap between intention and execution is where Perspectives fail. "Evaluate the team" is intention. "For each team member: relevant exits (count, scale, domain), domain expertise (years, publications, prior companies), role fit (technical depth vs problem complexity)" \u2014 that's operationalized.
+
+Push every criterion until it's testable. If two people applying this Perspective would produce different results, it's not operationalized enough.
+
+## Workflow
+
+1. Understand what the user wants to make repeatable
+2. Elicit examples \u2014 "Tell me about a time you evaluated this well"
+3. Extract the implicit criteria from the examples
+4. Draft \u2014 show the Perspective definition before persisting
+5. Validate: would this produce the right output on a real case?
+6. Persist as a Perspective
+
+## Reference Material
+
+Look for existing Notes that exemplify good and bad cases, and read them. Real examples ground the Perspective in the user's actual thinking, not abstract criteria.
+`,
+  "form-primitive": '---\nname: form-primitive\ndescription: >\n  Help users create reusable agent instructions \u2014 procedures, checklists,\n  review patterns, memory routines, or any repeatable pattern. Use when the\n  user wants to define how the agent should work in specific situations.\n  Produces a file in _agent/ with name + description frontmatter.\n---\n\n# Form Primitive\n\nHelp the user create a reusable instruction that shapes how you work together. Not a Perspective (those have a specific three-component structure and are applied as a structured transformation). A primitive is any part of `_agent/` \u2014 a procedure, a checklist, a review pattern, a memory routine, whatever helps at that position.\n\n## The L1 Contract\n\nEvery primitive needs frontmatter with `name` and `description`. The description tells the agent when to use it \u2014 like a trigger condition.\n\n```yaml\n---\nname: Weekly Review\ndescription: >\n  Review the week\'s captures, surface patterns, update Now.\n  Use at the end of each week or when the user asks to reflect.\n---\n```\n\nThe name says what it is. The description says when to use it. Both are required. Both show up when browsing the tree. The description is how the agent decides "this is relevant right now."\n\n## Elicitation\n\nThe user knows what they want to make repeatable. They may not know how to structure it.\n\n1. **Start with the trigger.** "When does this happen? What situation makes you think \'I should do X\'?" This becomes the description.\n\n2. **Walk through a real instance.** "Last time you did this, what did you do step by step?" Real examples beat abstract procedures.\n\n3. **Find the invariant.** What stays the same every time vs what changes with context? The invariant is the instruction. The variable parts are what the agent adapts.\n\n4. **Draft and validate.** Show the primitive before saving. "If I followed this next time, would it produce the right behavior?"\n\n## Structure\n\nNo prescribed format. The content should be whatever makes the instruction clear and followable. Common patterns:\n\n**Procedural** \u2014 step by step:\n```markdown\n## When to use\n[trigger condition]\n\n## Steps\n1. ...\n2. ...\n3. ...\n\n## Output\n[what gets produced]\n```\n\n**Checklist** \u2014 verify against criteria:\n```markdown\n## Check\n- [ ] Does it have X?\n- [ ] Is Y consistent with Z?\n- [ ] Flag if A but not B.\n\n## If issues found\n[what to do]\n```\n\n**Routine** \u2014 recurring pattern:\n```markdown\n## Trigger\n[when this runs \u2014 weekly, on entering a position, on capture, etc.]\n\n## What to do\n[the routine]\n\n## What to capture\n[what Note or update to produce]\n```\n\n**Review** \u2014 evaluate something:\n```markdown\n## What to review\n[scope \u2014 a Note, a branch, a set of captures]\n\n## Criteria\n[what good looks like]\n\n## Output\n[Note with findings, or update to the reviewed content]\n```\n\nThe user can invent any structure. These are starting points, not requirements.\n\n## Where It Lives\n\nPrimitives go in `_agent/` at the level where they apply. Everything in `_agent/` composes along the path, root \u2192 current position:\n\n- `_agent/reviewer.md` at repo root \u2192 applies everywhere\n- `startups/_agent/due-diligence-checklist.md` \u2192 applies in startups/ and below\n- `clients/acme/_agent/communication-style.md` \u2192 applies when working on Acme\n\n## Creating Agents\n\nA special case of primitive: a full agent definition. When the user wants a specialized agent (not just an instruction), create `_agent/{agent-name}/agent.md`:\n\n```yaml\n---\nname: "Regulatory Analyst"\ntools: ["read", "write", "search", "git"]\n---\n\nAn agent specialized in regulatory risk analysis. Evaluates compliance\nrequirements, flags regulatory gaps, tracks regulatory changes.\n```\n\nThe optional `tools` field restricts which tools the agent can use. Omit it for full access. The body describes what the agent does.\n\nAlso create `_agent/{agent-name}/soul.md` to define how the agent shows up \u2014 its character and approach. And optionally `purpose.md` and `now.md` for the agent\'s own direction. The agent becomes available for conversations once these files exist.\n\n## What It Is NOT\n\n- **Not a Perspective.** Perspectives have Object Definition, Thinking Structure, Expected Outcome. They\'re applied as a structured transformation. If the user wants to evaluate/analyze things consistently, use the **form-perspective** skill instead.\n- **Not a Note.** Notes are knowledge \u2014 content that accumulates in the Space. Primitives are instructions \u2014 they shape how the agent works, not what the agent knows.\n- **Not guide.md.** The guide is general behavioral guidance for a branch. A primitive is a specific, named, reusable pattern with a trigger condition. Both live in `_agent/` \u2014 both are part of the shared understanding about how we work here.\n\n## Validation\n\nBefore saving, check:\n- Does it have `name` and `description` in frontmatter?\n- Does the description clearly say when to use it?\n- Is the instruction clear enough that you could follow it without asking questions?\n- Would it produce consistent results across different situations?\n\nIf any of these fail, iterate with the user before persisting.\n',
+  "guide": "---\nname: guide\ndescription: >\n  How to establish and maintain shared understanding at any position.\n  Always in awareness. Use when: a new folder has no _agent/, the user\n  asks what this place is for, purpose or now feel stale, or the\n  shared understanding needs renegotiating.\n---\n\n# Guide\n\n`_agent/` is how we work here, as far as we've figured it out.\nFoundation, guide, purpose, now, next \u2014 when any of them contradict\ncurrent practice, or go silent on something we keep doing \u2014 surface\nit. Propose an update. The understanding maintains itself through use.\n\n## What to pay attention to\n\nEvery position has dimensions that shape how we work here:\n\n| Dimension | File | The question |\n|---|---|---|\n| What is this place | README.md | Does the contract match what's actually here? |\n| Why does it exist | `_agent/purpose.md` | Clear direction, or still emerging? |\n| What's active | `_agent/now.md` | Concrete and current, or stale? |\n| What's queued | `_agent/next.md` | Identified, even if vague? |\n| How we work here | `_agent/guide.md` | Scope-specific, beyond foundation? |\n\nNot every position needs all of them. A deep branch might only need\na README. Root usually carries more. Each dimension can be empty,\nemerging, established, or drifted.\n\nMost turns you're just working. The guide posture is background\nawareness \u2014 you notice the state of these dimensions while doing\nother things. When a gap matters, you feel it: the user is making\ndecisions without a purpose to anchor them, or now describes work\nthat's already done. That's when to surface it.\n\n## When a position is fresh\n\nStart with the user, not the system. \"What kind of work happens\nhere?\" \u2014 not \"Let me set up your _agent/ folder.\"\n\nCapture something real first. The best onboarding is a Note that\nmatters, sitting in a directory that makes sense. Structure follows\ncontent. One branch, one real thing. Depth follows use, not planning.\n\nWhen you have enough signal about what this place is \u2014 propose.\nPreview before writing. The user confirms, edits, or starts smaller.\nNothing writes without agreement.\n\n## The readiness check\n\nBefore every capture \u2014 writing a Note, updating purpose, creating\na README \u2014 pause. \"I'm about to commit X. Is this what you mean?\"\n\nThe readiness check is the anti-hallucination primitive. Hallucination\nis what happens when either side commits before both are ready.\n\n## What this guide does not cover\n\nTools self-describe. Domain skills (founder, vc, research) add their\nown structure. Platform setup (auth, hooks, sync) is handled by\nsetup skills. This guide is about shared understanding \u2014 how you\nand the user figure out what this place is and keep that agreement\nhonest.\n",
+  "purpose-elicitation": `---
+name: purpose-elicitation
+description: >
+  Help articulate the repo's North Star \u2014 why this place exists and where
+  it's heading. Use when working on _agent/purpose.md, when purpose is
+  missing, or when the user asks about direction, goals, or what matters.
+---
+
+# Purpose Elicitation
+
+Help the user articulate why this Space exists and where it's heading.
+
+## What Purpose Is
+
+Purpose is the North Star \u2014 the organizing principle that makes every other decision easier. "Should I capture this?" becomes answerable when you know what this place is for. Purpose isn't a mission statement. It's a working document that evolves.
+
+## Elicitation Approach
+
+Don't ask "What's your purpose?" \u2014 that produces generic answers. Instead:
+
+- **Start with what's here.** Look at existing Notes, branches, perspectives. "You have 30 Notes about climate-tech startups and 5 about regulatory frameworks. What connects these?"
+- **Surface through contrast.** "What would NOT belong here?" reveals boundaries better than "What belongs?"
+- **Find the decision test.** "When you're deciding whether to capture something, what makes you say yes?" The answer is the purpose in operational form.
+- **Listen for energy.** What the user talks about with most specificity and excitement is often the real purpose, even if their stated purpose is different.
+
+## Structure
+
+Purpose typically has three layers:
+
+1. **What this place is for** \u2014 the domain, the scope, the boundary
+2. **Where it's heading** \u2014 the direction, what "more" looks like
+3. **The decision test** \u2014 how to know if something belongs
+
+## Writing It
+
+Keep it short. A paragraph or two. Written in the user's voice, not formal language. It should feel like the user explaining their Space to a friend.
+
+Persist to \`_agent/purpose.md\` \u2014 this loads at session start and orients every conversation.
+
+## When Purpose Is Missing
+
+If \`_agent/purpose.md\` doesn't exist and the Space has content, the content itself is evidence. Read a few Notes, look at the tree structure, and reflect what you see: "Based on what's here, this Space seems focused on X. Is that right?" Let the user correct and refine.
+
+If the Space is empty, explore what the user wants to build: "What kind of knowledge do you want to accumulate here?"
+`,
+  "repo-context": `---
+name: repo-context
+description: >
+  Help describe what this place is and who works here. Use when working on
+  _agent/repo-context.md, when onboarding to a new repo, or when the agent
+  needs to understand the repo's identity.
+---
+
+# Repo Context
+
+Help the user describe what this Space is and who works here.
+
+## What Repo Context Is
+
+Repo context is the "What" and "Who" \u2014 it tells the agent what kind of place this is. A personal research repo, a team knowledge base, a client portfolio tracker. It shapes how the agent speaks, what it assumes, and how it names things.
+
+## What to Include
+
+- **What this place is** \u2014 domain, scope, what kind of knowledge lives here
+- **Who works here** \u2014 individual, team, organization. How they think about their work.
+- **Vocabulary** \u2014 terms that mean specific things here. "Deal" might mean venture investment or sales opportunity depending on context.
+- **Conventions** \u2014 naming patterns, preferred structure, anything the agent should follow
+
+## Elicitation
+
+If the user hasn't written repo context yet:
+
+1. Look at existing content \u2014 tree structure, Note names, README files
+2. Reflect what you see: "This looks like a personal research space focused on X"
+3. Ask what's missing from that picture
+4. Draft and refine together
+
+## Writing It
+
+Concise. A few paragraphs. Written for the agent \u2014 this loads at session start and orients every conversation. Focus on what would change the agent's behavior: vocabulary, assumptions, conventions.
+
+Persist to \`_agent/repo-context.md\`.
+`,
+  "writing": '---\nname: writing\ndescription: >\n  Writing standard for Notes. Structure for retrieval, summaries for discovery,\n  entities for connection. Use when creating or substantially revising Notes,\n  or when asked "write this well", "capture this", "create a Note about".\n  Derived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n---\n\n# Writing Standard\n\nNotes that compound follow these principles. They\'re functional requirements for knowledge that works \u2014 clear writing is easy to find and reuse, dense summaries drive discovery, well-scoped sections make a Note precise to navigate and search.\n\nDerived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n\n## Summary Is Everything\n\nThe `summary` field is the most important thing you write. It\'s what search results show. It\'s what shows when browsing the tree. It\'s what loads in awareness context. Write it like the first thing someone reads \u2014 because it is.\n\nTwo sentences max. Dense. Immediate orientation. "What is this and why does it matter." Early words carry disproportionate weight \u2014 they anchor how the Note reads and how it is found.\n\n## Conciseness (Strunk & White)\n\n"Omit needless words." Every word in a Note earns its place.\n\n| Padded | Clean |\n|--------|-------|\n| "The question as to whether" | "Whether" |\n| "This is a company that" | "This company" |\n| "It is important to note that" | (delete \u2014 just state it) |\n| "In terms of revenue growth" | "Revenue grew" |\n\nActive voice over passive. "The startup was analyzed" \u2192 "We analyzed the startup." Passive only when the actor is unknown or irrelevant.\n\n## Clarity (Zinsser)\n\n"Clear thinking becomes clear writing." If you can\'t write it clearly, you don\'t understand it yet.\n\n- Strip every sentence to its cleanest components\n- Clutter words add nothing: "basically," "actually," "in order to," "at this point in time"\n- The first paragraph orients the reader immediately \u2014 if someone reads only the summary, they know what this is about\n\n## Concreteness\n\nSpecifics connect a Note to related specifics; abstractions blur those connections.\n\n| Abstract | Concrete |\n|----------|----------|\n| "Significant growth" | "Revenue grew 40% in Q3" |\n| "Strong team" | "3 ex-Google engineers, 2 successful exits" |\n| "Large market" | "$4.2B TAM, growing 25% annually" |\n\nPrefer the specific to the general, the definite to the vague. Concrete facts can be abstracted later. You can\'t recover specifics from abstractions.\n\n## Objectivity (Kovach & Rosenstiel)\n\nDistinguish fact from interpretation. Never blend them.\n\n| Type | Example |\n|------|---------|\n| Fact | "Raised $10M Series A in March 2025" |\n| Interpretation | "The funding suggests investor confidence" |\n| Claim (attributed) | "The CEO states they are \'market leaders\'" |\n\nEvery claim traces to a source. "According to the landing page..." or "The pitch deck states..." \u2014 the reader knows provenance.\n\n**What the agent does NOT do:** verify claims, add information not in the source, editorialize ("impressive team"), fill gaps with plausible content. If the source doesn\'t mention revenue, note the absence \u2014 don\'t guess.\n\n## Well-Scoped Sections\n\nEach `## heading` scopes one distinct point. Well-scoped sections = precise navigation and search.\n\n- A Note with five distinct sections makes five findable, comparable points\n- A wall of text blurs into one undifferentiated block \u2014 hard to find, hard to compare\n- Each section makes a complete point independently\n- Headings are contracts \u2014 "Team Analysis" contains team analysis, not market commentary\n- Target: 3-10 paragraphs per section. Too short = insufficient signal. Too long = diluted topic.\n\nProgressive disclosure: Title \u2192 Summary \u2192 Sections. Each level complete at its depth.\n\n## Primary Attachment\n\nUse `attached_to` for the one thing this Note is primarily about \u2014 like putting a sticky note on an object. It is singular: choose zero or one primary anchor, written `<type>:<id>`.\n\nThe type vocabulary is your platform\'s \u2014 the protocol fixes only the `<type>:<id>` shape. Common types a platform resolves might include a person (`person:alice`), an agent (`agent:assistant`), or a web page (`web_page:https://example.com/report.pdf`).\n\nIf the Note mentions several things, don\'t put all of them in `attached_to`. Choose the primary anchor, split the Note, use tags, or link in prose. Use `references` only for hard sources.\n\n## Cross-Note Links\n\nUse standard markdown links with relative paths for reader navigation. They are portable across editors, Obsidian, print/exports, and plain LLM context.\n\n```markdown\nSee [Acme profile](../companies/acme.md) for background.\nSee [Market map](../markets/README.md) for the branch overview.\n```\n\nPath links are user-facing handles. They may break when the target is renamed unless the editor/tool rewrites them; use editor rename refactors when available. Inline prose links are reader navigation, not provenance \u2014 they don\'t populate `references`.\n\nWhen renaming a Note and heavily rewriting it, commit the rename separately from the rewrite. Git rename detection is similarity-based; a rename plus large content change in one commit can defeat it, losing the file\'s history link.\n\n## Sources and References\n\nUse `references` only for hard sources: the small set of Notes this Note was produced from or grounded in. Perspective outputs and synthesis Notes use `references` for their input Notes. If a Note merely mentions or points to another Note, use an inline markdown link instead.\n\n## Sentence-Level Mechanics\n\n- **Put emphatic words at the end.** "In Q3, revenue grew 40%" not "Revenue is what grew 40% in Q3"\n- **Keep related words together.** Don\'t separate subject and verb with long interruptions\n- **Parallel construction.** "Fast, reliable, and affordable" not "speed, being reliable, and costs less"\n- **One idea per sentence.** Most of the time, two sentences are clearer than one compound one\n\n## Common Failure Modes\n\n- **Throat-clearing.** "Before we dive into the analysis..." \u2014 delete, start with the analysis\n- **Hedge stacking.** "It seems like it might possibly be somewhat relevant" \u2014 state or acknowledge uncertainty once\n- **Elegant variation.** If it\'s a "startup" in paragraph one, don\'t call it a "venture" in paragraph two for variety. Consistency aids findability.\n- **Nominalization.** "Make a determination" \u2192 "determine." "Performed an analysis" \u2192 "analyzed."\n- **Weasel words.** "Some experts say," "studies show" \u2014 without attribution, these are noise\n\n## The Standard\n\nKnowledge capture succeeds when:\n\n1. A human can scan the output and orient in seconds\n2. A machine can index the output and retrieve it precisely\n3. Every sentence traces to a source or is explicitly marked as interpretation\n4. Nothing is added that wasn\'t in the input\n5. Nothing important from the input is lost without acknowledgment\n6. The reader trusts the capture because the method is transparent\n'
+};
+
+// node_modules/@ideaspaces/protocol/dist/skills.js
+async function listSkills() {
+  return Object.keys(SKILL_CATALOG).sort().map((name) => ({ name, description: extractDescription(SKILL_CATALOG[name]) }));
+}
+async function readSkill(name) {
+  if (name.includes("/") || name.includes("\\") || name.includes("..")) {
+    throw new Error(`Invalid skill name: ${name}`);
+  }
+  const content = SKILL_CATALOG[name];
+  if (content === void 0)
+    throw new Error(`Unknown skill: ${name}`);
+  return { name, description: extractDescription(content), content };
+}
+
+// node_modules/@ideaspaces/protocol/dist/conformance.js
+var import_yaml3 = __toESM(require_dist2(), 1);
 
 // src/change-state.ts
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname as dirname2 } from "node:path";
 function writePersistedChange(file, rec) {
-  mkdirSync(dirname(file), { recursive: true });
+  mkdirSync(dirname2(file), { recursive: true });
   writeFileSync(file, JSON.stringify(rec) + "\n");
 }
 function clearPersistedChange(file) {
@@ -28448,6 +29579,124 @@ function clearPersistedChange(file) {
   } catch {
     return false;
   }
+}
+
+// src/change-tool-state.ts
+function resolveArmedChange(current, persisted, sessionId) {
+  if (current) return current;
+  return armingDecision(persisted, sessionId) === "arm" ? persisted.change_id : void 0;
+}
+function statusChange(armed, persisted) {
+  if (armed) {
+    return {
+      open: armed,
+      // A failed persist can leave a stale record for a different Change.
+      ...persisted?.change_id === armed ? { opened_at: persisted.opened_at } : {}
+    };
+  }
+  if (!persisted) return void 0;
+  return {
+    persisted: persisted.change_id,
+    opened_at: persisted.opened_at,
+    hint: `From a previous session \u2014 resume with is_change_open({ id: "${persisted.change_id}" }) or clear with is_change_close.`
+  };
+}
+function planChangeClose(armed, persisted, hasCacheFile) {
+  if (!armed) {
+    if (persisted && hasCacheFile) {
+      return {
+        clearPersisted: true,
+        current: void 0,
+        message: `Cleared persisted Change ${persisted.change_id} (opened in a previous session). Later commits won't carry it.`
+      };
+    }
+    return {
+      clearPersisted: false,
+      current: void 0,
+      message: "No Change is open."
+    };
+  }
+  if (!hasCacheFile || !persisted || persisted.change_id === armed) {
+    return {
+      clearPersisted: hasCacheFile,
+      current: void 0,
+      message: `Change closed: ${armed}. Later commits won't carry it.`
+    };
+  }
+  return {
+    clearPersisted: false,
+    current: void 0,
+    message: `Change closed: ${armed}. A different Change (${persisted.change_id}) was opened elsewhere since \u2014 its record is left in place.`
+  };
+}
+
+// src/read-tools.ts
+import { stat } from "node:fs/promises";
+import { resolve as resolve6 } from "node:path";
+async function readStatus(opts = {}) {
+  const cwd = resolve6(opts.cwd || process.cwd());
+  const repoRoot = await resolveRepoRoot(cwd);
+  if (!repoRoot) return { ok: false, error: "not inside a git repository" };
+  if (opts.path) {
+    const status = await pathStatus(resolve6(cwd, opts.path), repoRoot);
+    return {
+      ok: true,
+      text: JSON.stringify(
+        {
+          path: opts.path,
+          exists: status.exists,
+          sha: status.sha,
+          in_index: status.inIndex,
+          modified: status.modified,
+          in_tracked: status.inTracked
+        },
+        null,
+        2
+      )
+    };
+  }
+  const [state, captures] = await Promise.all([
+    gitState(repoRoot),
+    stagedIdeaspacePaths(repoRoot)
+  ]);
+  return {
+    ok: true,
+    text: JSON.stringify(
+      {
+        repoRoot: state.repoRoot,
+        branch: state.branch,
+        ahead: state.ahead,
+        behind: state.behind,
+        dirty: state.dirty,
+        untracked_in_tracked_dirs: state.untrackedInTrackedDirs,
+        tracked_captures: captures
+      },
+      null,
+      2
+    )
+  };
+}
+async function readNavigate(opts = {}) {
+  const cwd = resolve6(opts.cwd || process.cwd());
+  const raw = (opts.path ?? ".").trim() || ".";
+  const target = resolve6(cwd, raw);
+  let targetStat;
+  try {
+    targetStat = await stat(target);
+  } catch {
+    return { ok: false, error: `No such path: ${target}` };
+  }
+  if (!targetStat.isDirectory()) {
+    return { ok: false, error: `Not a directory: ${target}` };
+  }
+  const manifest = await assembleContentAwareness({ position: target });
+  if (!manifest) {
+    return {
+      ok: true,
+      text: "No _agent/ contract resolves at this position."
+    };
+  }
+  return { ok: true, text: renderContentAwareness(manifest) };
 }
 
 // src/tool-parameters.ts
@@ -28525,16 +29774,16 @@ function hasAnyNonEmptyString(keys, values) {
 // src/index.ts
 function resolveCli() {
   if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
-  const __dirname = dirname2(fileURLToPath(import.meta.url));
-  const relative = join2(__dirname, "../cli/bundle/ideaspaces.js");
-  if (existsSync2(relative)) return relative;
+  const __dirname = dirname3(fileURLToPath(import.meta.url));
+  const relative3 = join6(__dirname, "../cli/bundle/ideaspaces.js");
+  if (existsSync2(relative3)) return relative3;
   return "ideaspaces";
 }
 var CLI = resolveCli();
 function cli(args, stdin, cwd) {
-  return new Promise((resolve2) => {
+  return new Promise((resolve7) => {
     const isFile = CLI.includes("/") || CLI.includes("\\") || CLI.endsWith(".js");
-    const proc = spawn(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
+    const proc = spawn2(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
       stdio: ["pipe", "pipe", "pipe"],
       // The MCP server starts in whatever cwd Claude Code launched it from
       // (the user's session-start dir). The agent may have `cd`-ed inside
@@ -28548,8 +29797,8 @@ function cli(args, stdin, cwd) {
     let err = "";
     proc.stdout.on("data", (d) => out += d);
     proc.stderr.on("data", (d) => err += d);
-    proc.on("close", (code) => resolve2({ out, err, code: code ?? 1 }));
-    proc.on("error", (e) => resolve2({ out: "", err: e.message, code: 1 }));
+    proc.on("close", (code) => resolve7({ out, err, code: code ?? 1 }));
+    proc.on("error", (e) => resolve7({ out: "", err: e.message, code: 1 }));
     if (stdin != null) proc.stdin.write(stdin);
     proc.stdin.end();
   });
@@ -28560,14 +29809,10 @@ function ok(t) {
 function fail(t) {
   return { content: [{ type: "text", text: t }], isError: true };
 }
-async function cliJson(args, stdin, cwd) {
-  const { out, err, code } = await cli(["--json", ...args], stdin, cwd);
-  if (code !== 0) return { ok: false, error: err.trim() || out.trim() || `Exit ${code}` };
-  return { ok: true, text: out.trim() || err.trim() || "Done" };
-}
 async function run(args, stdin, cwd) {
-  const r = await cliJson(args, stdin, cwd);
-  return r.ok ? ok(r.text) : fail(r.error);
+  const { out, err, code } = await cli(["--json", ...args], stdin, cwd);
+  if (code !== 0) return fail(err.trim() || out.trim() || `Exit ${code}`);
+  return ok(out.trim() || err.trim() || "Done");
 }
 var currentChangeId;
 var AGENT_PRINCIPAL = resolveAgentPrincipal(
@@ -28598,9 +29843,7 @@ function changeCacheFile() {
 async function openChangeState() {
   const file = changeCacheFile();
   const rec = file ? await readPersistedChange(file) : void 0;
-  if (!currentChangeId && armingDecision(rec, readSessionId()) === "arm") {
-    currentChangeId = rec.change_id;
-  }
+  currentChangeId = resolveArmedChange(currentChangeId, rec, readSessionId());
   return { armed: currentChangeId, rec };
 }
 async function resolveChangeId() {
@@ -28706,21 +29949,10 @@ server.tool(
   async () => {
     const file = changeCacheFile();
     const { armed, rec } = await openChangeState();
-    if (!armed) {
-      if (rec && file) {
-        clearPersistedChange(file);
-        return ok(`Cleared persisted Change ${rec.change_id} (opened in a previous session). Later commits won't carry it.`);
-      }
-      return ok("No Change is open.");
-    }
-    currentChangeId = void 0;
-    if (file && (!rec || rec.change_id === armed)) {
-      clearPersistedChange(file);
-      return ok(`Change closed: ${armed}. Later commits won't carry it.`);
-    }
-    return ok(
-      `Change closed: ${armed}. A different Change (${rec.change_id}) was opened elsewhere since \u2014 its record is left in place.`
-    );
+    const plan = planChangeClose(armed, rec, Boolean(file));
+    currentChangeId = plan.current;
+    if (plan.clearPersisted && file) clearPersistedChange(file);
+    return ok(plan.message);
   }
 );
 server.tool(
@@ -28728,28 +29960,12 @@ server.tool(
   "Capture state: overall git position + staged knowledge awaiting commit, or single-file state. With a path, the returned sha is the if_match token for a first update. Also reports the open Change as a `change` field: armed and stamping commits, or persisted by a previous session and awaiting an explicit resume/close.",
   MCP_TOOL_PARAMETERS.is_status,
   async ({ path, cwd }) => {
-    const a = ["status"];
-    if (path) a.push("--path", path);
-    const r = await cliJson(a, void 0, cwd);
-    if (!r.ok) return fail(r.error);
-    const text = r.text;
+    const result = await readStatus({ path, cwd });
+    if (!result.ok) return fail(result.error);
     const { armed, rec } = await openChangeState();
-    let change;
-    if (armed) {
-      change = { open: armed, ...rec?.change_id === armed ? { opened_at: rec.opened_at } : {} };
-    } else if (rec) {
-      change = {
-        persisted: rec.change_id,
-        opened_at: rec.opened_at,
-        hint: `From a previous session \u2014 resume with is_change_open({ id: "${rec.change_id}" }) or clear with is_change_close.`
-      };
-    }
-    if (!change) return ok(text);
-    try {
-      return ok(JSON.stringify({ ...JSON.parse(text), change }, null, 2));
-    } catch {
-      return ok(text);
-    }
+    const change = statusChange(armed, rec);
+    if (!change) return ok(result.text);
+    return ok(JSON.stringify({ ...JSON.parse(result.text), change }, null, 2));
   }
 );
 server.tool(
@@ -28757,15 +29973,8 @@ server.tool(
   "Re-derive orientation at a position \u2014 the fractal contract (foundation + the deepest guide/purpose/now along the path), tree, git-state, and drift for that branch. Read-only: it does NOT change the working directory; Read/Edit/Bash still take explicit paths. Use when you move into a subtree (e.g. a nested space) and want its contract, or to re-orient mid-session.",
   MCP_TOOL_PARAMETERS.is_navigate,
   async ({ path, cwd }) => {
-    const r = await cli(["--json", "navigate", path ?? "."], void 0, cwd);
-    if (r.code !== 0) return fail(r.err.trim() || r.out.trim() || `Exit ${r.code}`);
-    let text;
-    try {
-      text = JSON.parse(r.out).text;
-    } catch {
-      return fail(`Could not parse navigate output: ${r.out.trim()}`);
-    }
-    return ok(typeof text === "string" && text ? text : "No _agent/ contract resolves at this position.");
+    const result = await readNavigate({ path, cwd });
+    return result.ok ? ok(result.text) : fail(result.error);
   }
 );
 server.tool(
@@ -28805,32 +30014,24 @@ server.tool(
     return run(a, void 0, cwd);
   }
 );
-try {
-  const listed = await cli(["--json", "skills"]);
-  if (listed.code === 0) {
-    const skills = JSON.parse(listed.out);
-    for (const skill of skills) {
-      server.registerResource(
-        `skill-${skill.name}`,
-        `ideaspaces://skill/${skill.name}`,
-        {
-          title: skill.name,
-          description: skill.description ?? void 0,
-          mimeType: "text/markdown"
-        },
-        async (uri) => {
-          const r = await cli(["--json", "skills", skill.name]);
-          if (r.code !== 0) throw new Error(r.err.trim() || `Failed to read skill: ${skill.name}`);
-          const text = JSON.parse(r.out).content;
-          return { contents: [{ uri: uri.href, mimeType: "text/markdown", text }] };
-        }
-      );
+for (const skill of await listSkills()) {
+  server.registerResource(
+    `skill-${skill.name}`,
+    `ideaspaces://skill/${skill.name}`,
+    {
+      title: skill.name,
+      description: skill.description ?? void 0,
+      mimeType: "text/markdown"
+    },
+    async (uri) => {
+      const resolved = await readSkill(skill.name);
+      return {
+        contents: [
+          { uri: uri.href, mimeType: "text/markdown", text: resolved.content }
+        ]
+      };
     }
-  }
-} catch (err) {
-  const message = err instanceof Error ? err.message : String(err);
-  process.stderr.write(`ideaspaces-mcp: skill resources unavailable: ${message}
-`);
+  );
 }
 var transport = new StdioServerTransport();
 await server.connect(transport);

@@ -39,7 +39,7 @@ async function main(): Promise<void> {
 
   // Silent outside an ideaspace and across a nested repo boundary unless that
   // nested repo carries its own `_agent/` contract.
-  if (!shouldNudgeKnowledgePath(abs)) return;
+  if (!(await shouldNudgeKnowledgePath(abs))) return;
 
   const nudge =
     `Knowledge file written with native Write/Edit: \`${filePath}\`. ` +
