@@ -1,10 +1,9 @@
 // Bundles the plugin's hooks → dist/*.js.
 // The plugin ships pre-built; users / Claude Code never run npm install here.
 //
-// The hooks are SDK-free (the awareness hook shells the bundled CLI; the
-// capture-nudge hook does local `_agent/` and git-ownership walks), so this
-// bundle inlines only node built-ins — no createRequire shim for the SDK's CJS
-// deps is needed.
+// The hooks import the protocol directly for local shape reads. Its YAML parser
+// includes guarded CommonJS requires, so the ESM bundle needs a Node
+// `createRequire` bridge (the same boundary as the MCP server bundle).
 
 import * as esbuild from "esbuild";
 
@@ -15,7 +14,13 @@ await esbuild.build({
   target: "node18",
   format: "esm",
   outdir: "dist",
-  banner: { js: "#!/usr/bin/env node" },
+  banner: {
+    js: [
+      "#!/usr/bin/env node",
+      'import { createRequire as __isCreateRequire } from "node:module";',
+      "const require = __isCreateRequire(import.meta.url);",
+    ].join("\n"),
+  },
   legalComments: "none",
   logLevel: "info",
 });

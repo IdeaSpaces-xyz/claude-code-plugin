@@ -13,10 +13,10 @@
   },
   "mcp-server": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
-    "commit": "c0f9bf73c8feea4b2ba72ca0eabbab0d3ea430cf",
+    "commit": "75526bcdfc649d641cc998c50aea297d106fd75e",
     "sourceArtifact": "bundle/index.js",
     "vendoredArtifact": "dist/index.js",
-    "sha256": "b274f1db18501859a2a3a819d0ca1823deef01961c58de4977ec3f06999dcfa8",
+    "sha256": "07062186ba746517d0dee340c8a5c66036216752f545386bbc6b1f2594d348ce",
     "rebuildInCi": false,
     "commands": [
       "npm run bundle"
