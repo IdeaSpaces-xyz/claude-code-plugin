@@ -34,8 +34,8 @@ jobs:
             ## Context
             - This repo: Claude Code plugin (`ideaspaces`). Distributes pre-built bundles for MCP server (`dist/index.js`) and CLI (`cli/bundle/ideaspaces.js`) plus a plugin-owned SessionStart hook (`dist/awareness-hook.js` from `src/awareness-hook.ts`).
             - Skills (`skills/`) describe agent behavior; hook surfaces awareness inline at session start; `.claude-plugin/plugin.json` is the manifest.
-            - Architectural invariants: thin MCP, no forked logic, bundles regenerate from sibling repos (`mcp-server/`, `cli/`, `sdk/`), self-contained on install (rules from this monorepo's layout don't travel).
-            - Plugin-owned source = plugin-specific behavior only (the SessionStart hook); reusable surface stays in source repos.
+            - Architectural invariants: `@ideaspaces/protocol` owns portable local shape reads + canonical awareness rendering; MCP consumes that shape; the CLI remains the platform client and transitional local-write backend. Vendored MCP/CLI bundles regenerate from sibling repos; the plugin stays self-contained on install.
+            - Plugin-owned source = Claude-specific behavior: SessionStart placement, session-id/open-Change bridges, seen-ref lifecycle writes, and hook failure handling. Portable facts/wording come directly from the protocol; do not recreate them in the hook.
             - Reference: `_agent/foundation.md` (plugin invariants), `_agent/guide.md` (this scope's agreements), root CLAUDE.md, ideaspace/architecture/plans/plugin-local-first/.
 
             ## SLC label context
@@ -47,7 +47,7 @@ jobs:
 
             ### Simple 🎯
             - Is this the simplest implementation that solves the problem?
-            - Plugin-owned source stays minimal — anything reusable across MCP / CLI surfaces belongs in `mcp-server/`, `cli/`, or `sdk/`.
+            - Plugin-owned source stays minimal — portable local shape and awareness semantics belong in `@ideaspaces/protocol`; platform operations stay in the CLI; exact Claude placement/session behavior stays here.
             - Bundles regenerated from documented sources; no hand-edits to `dist/index.js` or `cli/bundle/ideaspaces.js`.
             - Skill descriptions are tight; no marketing prose.
 
@@ -64,14 +64,15 @@ jobs:
             - Skills cohesive: descriptions match what they actually do; capture/reflect/writing/space/setup framing local-first.
 
             ## Plugin-specific checks
-            - **Bundle hygiene.** If `dist/index.js` or `cli/bundle/ideaspaces.js` changes, the source repos' main branches should also reflect that work — bundles aren't authored here.
+            - **Bundle hygiene.** If `dist/index.js` or `cli/bundle/ideaspaces.js` changes, the source repos' main branches should also reflect that work — bundles aren't authored here. Hook bundles are generated locally from `src/` and the exact-pinned protocol dependency.
+            - **Protocol/harness boundary.** SessionStart hooks may assemble/render protocol facts in-process, but Claude placement, session bridges, open-Change display, seen-ref writes, and best-effort lifecycle behavior remain plugin-owned.
             - **Hook safety.** `awareness-hook.js` must always exit 0 and never block session start; errors go to stderr only.
             - **`hooks/hooks.json` schema.** Matchers (`startup|resume`) and command paths use `${CLAUDE_PLUGIN_ROOT}` so the plugin works on any install location.
             - **Skill descriptions.** `description` fields are agent-facing — they should help the agent decide when to invoke the skill, not just describe the file.
             - **`.gitignore` discipline.** Code repo with shared `_agent/` (the plugin is collaborative agent-shaping work) — `_agent/` stays committed; per-developer drafts/scratch go to `*.draft.md`, `scratch/`, `_local/`.
 
             ## Anti-pattern detection 🚨
-            - Authoring source for things that belong in the source repos (cli logic, MCP tools, SDK primitives).
+            - Reimplementing protocol shape/awareness facts in the hook, or moving Claude-specific placement/session mechanics into the protocol.
             - Reintroducing stripped MCP tools (`is_explore`, `is_find`, `is_read`) or stripped CLI commands.
             - Skill descriptions that promise behavior the skill doesn't actually do.
             - Hook code that could block session start (synchronous heavy work, throwing without catching, exits with non-zero).
