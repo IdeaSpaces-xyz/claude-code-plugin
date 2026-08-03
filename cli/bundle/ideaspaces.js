@@ -7482,6 +7482,24 @@ var UnauthorizedError = class extends Error {
     this.name = "UnauthorizedError";
   }
 };
+var NetworkError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "NetworkError";
+  }
+};
+function isConnectionFailure(err) {
+  return err instanceof TypeError && /fetch failed/i.test(err.message);
+}
+function unreachableMessage(apiUrl, timedOut) {
+  let host = apiUrl;
+  try {
+    host = new URL(apiUrl).host;
+  } catch {
+  }
+  const lead = timedOut ? `Reaching ${host} timed out \u2014 the server may be slow, or the network unreachable.` : `Can't reach ${host} \u2014 the network looks unreachable.`;
+  return `${lead} If you're in Cowork, its sandbox blocks remote access \u2014 switch to Claude Code view to browse and sync (local capture still works).`;
+}
 function authHeaders(config, extra) {
   return {
     "Content-Type": "application/json",
@@ -7518,7 +7536,10 @@ async function request(config, method, path, body, opts = {}) {
       if (timedOut && attempt < maxAttempts)
         continue;
       if (timedOut) {
-        throw new Error(`${method} ${path} timed out after ${timeoutMs}ms`);
+        throw new NetworkError(unreachableMessage(config.apiUrl, true));
+      }
+      if (isConnectionFailure(err)) {
+        throw new NetworkError(unreachableMessage(config.apiUrl, false));
       }
       throw err;
     } finally {
@@ -7660,8 +7681,16 @@ import { existsSync as existsSync2 } from "node:fs";
 import { resolve } from "node:path";
 var GitError = class extends Error {
 };
+var GIT_MISSING_HINT = "git not found \u2014 install it and retry (macOS: `brew install git`; Windows: `winget install Git.Git`; Linux: your package manager).";
+function gitAvailable() {
+  return spawnSync("git", ["--version"]).error === void 0;
+}
 function git(args2, cwd) {
   const r = spawnSync("git", args2, { encoding: "utf-8", cwd });
+  if (r.error) {
+    const code = r.error.code;
+    return { ok: false, out: "", err: code === "ENOENT" ? GIT_MISSING_HINT : `git could not run: ${r.error.message}` };
+  }
   return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() };
 }
 function gitExit(args2, cwd) {
@@ -8056,11 +8085,12 @@ var createCommand = {
       output.result({ target: targetDir, shape, privateAgent, nestedInRepo: inspection.nestedInRepo, plan: plan.steps }, renderPlanText({ targetDir, name, shape, privateAgent, plan, nestedInRepo: inspection.nestedInRepo }));
       return 0;
     }
+    let versioned;
+    let gitNote;
     try {
-      await applyPlan({ targetDir, inspection, privateAgent });
+      ({ versioned, gitNote } = await applyPlan({ targetDir, inspection, privateAgent }));
     } catch (err) {
-      output.error(`Scaffold failed midway: ${err instanceof Error ? err.message : String(err)}
-Use \`git status\` / \`git restore\` to recover.`);
+      output.error(`Scaffold failed: ${err instanceof Error ? err.message : String(err)}`);
       return 1;
     }
     const where = name ? `./${name}` : "this directory";
@@ -8070,11 +8100,14 @@ Use \`git status\` / \`git restore\` to recover.`);
     if (inspection.nestedInRepo) {
       lines.push(nestingNotice(targetDir, inspection.nestedInRepo));
     }
+    if (!versioned) {
+      lines.push(`Working locally \u2014 no version history yet. ${gitNote ?? ""}`.trim(), `Once git is ready, from ${where}: \`git init -b main && git add . && git commit -m "Initial ideaspace scaffold"\`.`);
+    }
     lines.push(`Next: open Claude Code in ${where} \u2014 the agent will read foundation+guide and propose capturing purpose / now / next in conversation.`);
-    if (loadStoredCredentials()) {
+    if (versioned && loadStoredCredentials()) {
       lines.push(`When ready to host this remotely, run \`ideaspaces publish\` from inside ${where}.`);
     }
-    output.result({ target: targetDir, shape, privateAgent, scaffolded: true }, lines.join("\n"));
+    output.result({ target: targetDir, shape, privateAgent, scaffolded: true, versioned }, lines.join("\n"));
     return 0;
   }
 };
@@ -8193,10 +8226,6 @@ function renderPlanText(opts) {
 async function applyPlan(opts) {
   const { targetDir, inspection, privateAgent } = opts;
   await fs.mkdir(targetDir, { recursive: true });
-  if (!inspection.isGitRepo) {
-    runGit(targetDir, ["init", "-q", "-b", "main"]);
-  }
-  await maybeSetIdentity(targetDir);
   await fs.mkdir(join3(targetDir, "_agent"), { recursive: true });
   for (const [name, content] of Object.entries(CONTRACT_TEMPLATES)) {
     await fs.writeFile(join3(targetDir, "_agent", `${name}.md`), content, "utf-8");
@@ -8219,8 +8248,19 @@ async function applyPlan(opts) {
   } else {
     await fs.writeFile(gitignorePath, additions.replace(/^\n/, ""), "utf-8");
   }
-  runGit(targetDir, ["add", "."]);
-  runGit(targetDir, ["commit", "-q", "-m", "Initial ideaspace scaffold"]);
+  if (!gitAvailable())
+    return { versioned: false, gitNote: GIT_MISSING_HINT };
+  try {
+    if (!inspection.isGitRepo) {
+      runGit(targetDir, ["init", "-q", "-b", "main"]);
+    }
+    await maybeSetIdentity(targetDir);
+    runGit(targetDir, ["add", "."]);
+    runGit(targetDir, ["commit", "-q", "-m", "Initial ideaspace scaffold"]);
+    return { versioned: true };
+  } catch (err) {
+    return { versioned: false, gitNote: err instanceof Error ? err.message : String(err) };
+  }
 }
 async function maybeSetIdentity(targetDir) {
   const stored = loadStoredCredentials();
@@ -8236,8 +8276,11 @@ async function maybeSetIdentity(targetDir) {
 }
 function runGit(cwd, args2) {
   const r = spawnSync2("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  if (r.error) {
+    throw new Error(`git ${args2.join(" ")}: ${r.error.message}`);
+  }
   if (r.status !== 0) {
-    const message = r.stderr.trim() || r.stdout.trim() || `exit ${r.status}`;
+    const message = (r.stderr ?? "").trim() || (r.stdout ?? "").trim() || `exit ${r.status}`;
     throw new Error(`git ${args2.join(" ")}: ${message}`);
   }
 }
@@ -11857,7 +11900,7 @@ function makeConversationCommand(local) {
       "ideaspaces conversation participants repo_abc c_123",
       "ideaspaces conversation remove repo_abc c_123 alice",
       "ideaspaces conversation send repo_abc c_123 --message 'Hi'  # streams JSON lines",
-      "ideaspaces conversation send --local --context /ws --conversation c1 --message 'Hi' --ext a,b --skill a/skills,b/skills --pi-bin /path/pi --pi-model sonnet  # local pi turn",
+      "ideaspaces conversation send --local --context /ws --conversation c1 --message 'Hi' --ext a,b --skill a/skills,b/skills --pi-bin /path/pi --pi-model sonnet --pi-thinking high  # local pi turn",
       "ideaspaces conversation get repo_abc c_123        # detail + history",
       "ideaspaces conversation cancel repo_abc c_123     # stop the active turn"
     ],
@@ -12831,6 +12874,10 @@ function lastPosition(tools) {
   }
   return "";
 }
+var PI_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+function isValidPiThinkingLevel(level) {
+  return PI_THINKING_LEVELS.includes(level);
+}
 function deriveConversationName(message) {
   const line = message.split("\n").find((l) => l.trim()) ?? message;
   const clean = line.replace(/\s+/g, " ").trim();
@@ -12862,6 +12909,8 @@ function buildPiArgs(opts) {
     args2.push("--skill", skill);
   if (opts.piModel)
     args2.push("--model", opts.piModel);
+  if (opts.thinkingLevel)
+    args2.push("--thinking", opts.thinkingLevel);
   return args2;
 }
 async function* runLocalTurn(opts) {
@@ -13130,6 +13179,11 @@ async function send(flags2, output) {
   const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
   const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
   const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
+  const piThinking = typeof flags2["pi-thinking"] === "string" ? flags2["pi-thinking"] : void 0;
+  if (piThinking !== void 0 && !isValidPiThinkingLevel(piThinking)) {
+    output.error(`Invalid thinking level "${piThinking}". Valid values: ${PI_THINKING_LEVELS.join(", ")}`);
+    return 1;
+  }
   const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : void 0;
   const controller = new AbortController();
   let signalled = false;
@@ -13151,6 +13205,7 @@ async function send(flags2, output) {
       sessionDir,
       modelTier,
       piModel,
+      thinkingLevel: piThinking,
       piBin,
       signal: controller.signal
     })) {
