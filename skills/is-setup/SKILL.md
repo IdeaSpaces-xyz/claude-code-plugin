@@ -84,7 +84,7 @@ For a code repo where the user wants shared (committed) `_agent/`, add `--shared
 node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create --yes --shared
 ```
 
-The CLI handles git init (if needed), `_agent/foundation.md`, `_agent/guide.md`, `CLAUDE.md` (or `CLAUDE.local.md`), `.gitattributes`, `.gitignore` defaults, and the initial commit. Errors don't roll back partial scaffolds — git is the recovery surface.
+The CLI writes the files (`_agent/foundation.md`, `_agent/guide.md`, `CLAUDE.md` or `CLAUDE.local.md`, `.gitattributes`, `.gitignore` defaults) first, then git (init + initial commit) as a **best-effort finalize**. If git is missing or its identity isn't configured, the space is still created — just **unversioned** — and the CLI says so and prints the exact `git init …` commands to add history later. **Relay the CLI's own stdout; don't assume a commit happened.**
 
 **Why seed-only:** `foundation.md` + `guide.md` describe the contract that names `purpose.md`, `now.md`, and `next.md`. Reading them, an agent sees those names without matching files and the drift rule fires — propose creating them. Real content from real exchange beats placeholder filler.
 
@@ -123,7 +123,7 @@ Summarize what landed:
 - `_agent/purpose.md` / `now.md` / `next.md` if captured in conversation; missing if skipped
 - `CLAUDE.md` (or `CLAUDE.local.md`) added
 - `.gitattributes` + `.gitignore` defaults
-- Initial commit + any capture commits
+- Version history: an initial commit **only if git ran** — the CLI's stdout says whether the space is versioned. If it reported "Working locally — no version history yet," relay that (and the `git init …` follow-up) instead of claiming a commit.
 
 > "You're set. Next session will start oriented to your space. Run `/is-publish` when you're ready to host this remotely."
 
@@ -140,5 +140,5 @@ Summarize what landed:
 If anything goes sideways during scaffold:
 
 - The CLI's plan is dry-run by default — re-run without `--yes` to preview again
-- Partial scaffolds can be cleaned up with `git status` + `git restore` (or `git clean -n` to preview untracked files)
+- In a **versioned** space, partial changes can be cleaned up with `git status` + `git restore` (or `git clean -n` to preview untracked files). If the space is **unversioned** (no git), there's no git recovery surface — edit or remove the scaffolded files directly
 - The CLI is idempotent on existing files (won't overwrite `CLAUDE.md`, won't double-append `.gitignore` block) — re-running with `--yes` is safe
