@@ -2,8 +2,8 @@
 //
 // Entrypoint skills (`skills/*/SKILL.md`) carry intent + this surface's tool
 // mechanics. They MUST NOT re-state the identity/provenance contract or
-// reference removed commands — those live once in SPEC.md and the SDK skill
-// catalog. This guard keeps the entrypoints from drifting back: it would have
+// reference removed commands — those live once in SPEC.md and the protocol
+// skill catalog. This guard keeps the entrypoints from drifting back: it would have
 // caught both the `contributed_by`-as-frontmatter bug (is-space) and the
 // `ideaspaces id --fix` stale-command bug (is-publish).
 //
@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const skillsDir = join(root, "skills");
 
-// Tokens that belong to SPEC.md / the SDK catalog, never an entrypoint.
+// Tokens that belong to SPEC.md / the protocol catalog, never an entrypoint.
 const FORBIDDEN = [
   { re: /contributed_by/, why: "provenance is a git/projection concern — see SPEC.md Identity" },
   { re: /\bnode_id\b/, why: "platform identity lives in the map — see SPEC.md, not the entrypoint" },
@@ -47,7 +47,7 @@ for (const entry of await readdir(skillsDir, { withFileTypes: true })) {
 if (violations.length) {
   console.error(
     "Skill entrypoints must not re-state platform internals " +
-      "(keep them in SPEC.md / the SDK catalog and point to them):\n",
+      "(keep them in SPEC.md / the protocol catalog and point to them):\n",
   );
   console.error(violations.join("\n"));
   console.error(`\n${violations.length} violation(s). Move the fact to its canonical home and rephrase the entrypoint.`);

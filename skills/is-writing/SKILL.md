@@ -6,7 +6,7 @@ user-invocable: false
 
 # Writing Standard for IdeaSpaces
 
-**The full standard lives in `${CLAUDE_PLUGIN_ROOT}/reference/writing.md`** — generated from the canonical SDK skill catalog. Read it when writing or revising a Note: it covers summaries, sections as the semantic fingerprint, concreteness, progressive disclosure, and what not to do. The notes below are only the surface-specific bits.
+**The full standard lives in `${CLAUDE_PLUGIN_ROOT}/reference/writing.md`** — generated from the canonical protocol skill catalog. Read it when writing or revising a Note: it covers summaries, sections as the semantic fingerprint, concreteness, progressive disclosure, and what not to do. The notes below are only the surface-specific bits.
 
 ## Frontmatter this surface writes
 
