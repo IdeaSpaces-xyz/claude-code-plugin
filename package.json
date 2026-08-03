@@ -16,7 +16,6 @@
   },
   "devDependencies": {
     "@ideaspaces/protocol": "github:IdeaSpaces-xyz/ideaspace-protocol#8e549db00c47fa2c0750466aed789cb1cbb619da",
-    "@ideaspaces/sdk": "github:IdeaSpaces-xyz/sdk#de0eeddd3ad9431c97b30a34ed97fc6f0be91d84",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^20.0.0",
     "esbuild": "^0.24.0",

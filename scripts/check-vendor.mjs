@@ -55,8 +55,8 @@ try {
     run("git", ["-C", checkout, "fetch", "--quiet", "--depth", "1", "origin", entry.commit], temp);
     run("git", ["-C", checkout, "checkout", "--quiet", "--detach", "FETCH_HEAD"], temp);
 
-    // Git dependencies (SDK → protocol) need their prepare scripts so their
-    // declared dist/ exports exist before the connector itself builds.
+    // Git dependencies need their prepare scripts so declared dist/ exports
+    // exist before the connector itself builds.
     run("npm", ["ci", "--no-audit", "--no-fund"], checkout);
     for (const command of entry.commands) shell(command, checkout);
 

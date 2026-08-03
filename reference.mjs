@@ -1,15 +1,15 @@
-// Build reference/ from the SDK's canonical skill catalog via readSkill() —
-// the same API the embedded catalog backs and the MCP server serves. One
-// source for every surface: plugin reference/, MCP resources, and the CLI all
-// resolve to the same skill content.
+// Build reference/ directly from the protocol's canonical skill catalog — the
+// same API the embedded catalog backs and the MCP server serves. One source for
+// every surface: plugin reference/, MCP resources, and the CLI all resolve to
+// the same skill content.
 //
 // reference/ is committed (the plugin ships pre-built). Re-run after bumping
-// the SDK dependency.
+// the protocol dependency.
 
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { listSkills, readSkill } from "@ideaspaces/sdk";
+import { listSkills, readSkill } from "@ideaspaces/protocol";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dst = join(root, "reference");
@@ -18,7 +18,7 @@ let skills;
 try {
   skills = await listSkills();
 } catch {
-  console.error("✗ SDK skill catalog unavailable — run `npm install` first.");
+  console.error("✗ Protocol skill catalog unavailable — run `npm install` first.");
   process.exit(1);
 }
 

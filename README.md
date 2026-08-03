@@ -139,7 +139,7 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 
 Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
 
-MCP stays thin: every tool and resource shells the bundled CLI with `--json`. One implementation, many surfaces — and the logic stays in the CLI + SDK, out of the agent's context.
+MCP stays thin: portable local reads use the protocol in-process, while platform and write verbs shell the bundled CLI with `--json`. Shared shape stays in the protocol; harness lifecycle and presentation stay on the surface.
 
 ### Skills
 
@@ -160,7 +160,7 @@ reaches for them from their `description`, and typing `/name` will not work:
 - **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
 - **is-writing** — writing standard for Notes that compound
 
-Skills read their full protocols from `reference/` (the SDK's canonical skill catalog, built via `readSkill()`).
+Skills read their full protocols from `reference/` (the protocol's canonical skill catalog, built via `readSkill()`).
 
 ### Hooks
 
@@ -178,18 +178,18 @@ Contributors who want local agent orientation can manually create a private `_ag
 
 ### Rebuilding
 
-The plugin ships pre-built: the CLI and MCP bundles are vendored from the sibling repos, the skill `reference/` is built from the SDK, and the hooks are built here. To update after code changes:
+The plugin ships pre-built: the CLI and MCP bundles are vendored from the sibling repos, the skill `reference/` is built directly from the protocol, and the hooks are built here. To update after code changes:
 
 ```bash
 # 1. Rebuild the sibling bundles
 cd ../cli && npm run build && npm run bundle
 cd ../mcp-server && npm run build && npm run bundle
 
-# 2. In the plugin: refresh the SDK, vendor the bundles, build reference + hooks
+# 2. In the plugin: install the protocol pin, vendor bundles, build reference + hooks
 cd ../ideaspaces-plugin
-npm install                # pin the current SDK
+npm install                # install the exact protocol pin
 npm run vendor             # bundles ← sibling repos; refreshes vendor-lock.json
-npm run build:reference    # reference/*.md ← SDK readSkill()
+npm run build:reference    # reference/*.md ← protocol readSkill()
 npm run build:hook         # SessionStart + capture-nudge hooks
 npm run typecheck
 
