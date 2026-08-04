@@ -1,12 +1,20 @@
-# IdeaSpaces
+# IdeaSpaces for Claude Code and Cowork
 
-> A shared place for you and your agent to think together. It's a folder of markdown, synced with git — knowledge that compounds across sessions instead of vanishing when the chat ends.
+[![CI](https://github.com/IdeaSpaces-xyz/claude-code-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/IdeaSpaces-xyz/claude-code-plugin/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-You talk with an agent, understanding builds up, and then it's gone. IdeaSpaces gives that understanding a home: a plain folder where decisions, notes, and context are written down as you work, kept in git, and there again the next time — for you and for anyone on your team.
+> Give Claude a durable place to think with you: plain Markdown, an explicit agent contract, and git history that survives the chat.
 
-Everything is local by default. Nothing leaves your machine unless you choose to publish a space to a remote.
+IdeaSpaces is a local-first plugin for **Claude Code and Cowork**. It orients Claude from the folder you are working in, helps preserve decisions and insights as they crystallize, and carries that shared understanding into later sessions. Everything stays on your machine unless you choose to publish or sync it.
 
----
+[Explore the protocol as an Ideaspace](https://ideaspaces.xyz/spaces/n_64dbf7878f05362337a6cda6) · [Read the protocol](https://github.com/IdeaSpaces-xyz/ideaspace-protocol) · [Use IdeaSpaces with Pi](https://github.com/IdeaSpaces-xyz/pi-is-space)
+
+## What you get
+
+- **Awareness on arrival** — Claude reads the active `_agent/` agreement, current direction, tree, and recent movement.
+- **Knowledge that compounds** — capture decisions and context into ordinary Markdown rather than leaving them trapped in transcripts.
+- **Explicit agreement** — commits preserve authorship, agent contribution, conversation provenance, and multi-commit Changes.
+- **Optional collaboration** — work fully offline, then publish, push, or pull when you want remote access.
 
 ## Install
 
@@ -135,6 +143,8 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 | `is_navigate` | Re-derive orientation at a position — the fractal `_agent` contract (foundation + deepest guide/purpose/now), tree, git-state, and drift. Read-only. |
 | `is_pull` | Integrate remote changes into the local space; never pushes; refuses on a dirty/uncommitted tree. |
 | `is_push` | Send committed captures to the remote; never pulls; refuses when behind — pull first. |
+| `is_spaces` | List remote spaces available to the signed-in person. |
+| `is_clone` | Clone a selected remote space into a local folder. |
 | `is_auth` | Log in / out for optional remote hosting. |
 
 Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
@@ -201,3 +211,11 @@ node cli/bundle/ideaspaces.js skills
 ```
 
 `vendor-lock.json` records each upstream repository commit and expected bundle hash. Vendor CI rebuilds public upstreams byte-for-byte and verifies every committed copy against its lock. The private MCP source repo enforces source → bundle freshness in its own CI; plugin CI verifies that exact bundle's locked hash without requiring cross-repo credentials.
+
+## Status
+
+Public preview. The local orientation and capture loop is in active use; the protocol remains provisional before 1.0, and remote hosting is optional.
+
+## License
+
+[MIT](LICENSE)
