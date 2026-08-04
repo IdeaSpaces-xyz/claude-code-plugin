@@ -1,10 +1,10 @@
 {
   "cli": {
     "repository": "https://github.com/IdeaSpaces-xyz/cli.git",
-    "commit": "c46aa5e8fe0df3b68cab53836c1b023433c25ba1",
+    "commit": "c59e596020f2c4c2fc78994adf1d1208cf90639f",
     "sourceArtifact": "bundle/ideaspaces.js",
     "vendoredArtifact": "cli/bundle/ideaspaces.js",
-    "sha256": "d19cfe8b48819ddf50d6d08e03f616afbfb3fe9979a86160e36f561a16d0379f",
+    "sha256": "5cb6f7a20b4d28d62baa32f5fe4f04d78a81fe87c78c71b3b13a18a2864aa144",
     "rebuildInCi": true,
     "commands": [
       "npm run build",

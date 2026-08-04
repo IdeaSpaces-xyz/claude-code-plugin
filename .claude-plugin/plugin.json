@@ -1,6 +1,6 @@
 {
   "name": "ideaspaces",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Durable local-first knowledge for Claude Code and Cowork. Markdown, agent skills, git history, and optional remote sync.",
   "author": {
     "name": "IdeaSpaces",

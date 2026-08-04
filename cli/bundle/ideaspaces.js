@@ -7222,7 +7222,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument4(source, options = {}) {
+    function parseDocument3(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -7248,7 +7248,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver && typeof reviver === "object") {
         options = reviver;
       }
-      const doc = parseDocument4(src, options);
+      const doc = parseDocument3(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning) => log.warn(doc.options.logLevel, warning));
@@ -7284,7 +7284,7 @@ var require_public_api = __commonJS({
     }
     exports.parse = parse;
     exports.parseAllDocuments = parseAllDocuments;
-    exports.parseDocument = parseDocument4;
+    exports.parseDocument = parseDocument3;
     exports.stringify = stringify;
   }
 });
@@ -7482,6 +7482,24 @@ var UnauthorizedError = class extends Error {
     this.name = "UnauthorizedError";
   }
 };
+var NetworkError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "NetworkError";
+  }
+};
+function isConnectionFailure(err) {
+  return err instanceof TypeError && /fetch failed/i.test(err.message);
+}
+function unreachableMessage(apiUrl, timedOut) {
+  let host = apiUrl;
+  try {
+    host = new URL(apiUrl).host;
+  } catch {
+  }
+  const lead = timedOut ? `Reaching ${host} timed out \u2014 the server may be slow, or the network unreachable.` : `Can't reach ${host} \u2014 the network looks unreachable.`;
+  return `${lead} If you're in Cowork, its sandbox blocks remote access \u2014 switch to Claude Code view to browse and sync (local capture still works).`;
+}
 function authHeaders(config, extra) {
   return {
     "Content-Type": "application/json",
@@ -7518,7 +7536,10 @@ async function request(config, method, path, body, opts = {}) {
       if (timedOut && attempt < maxAttempts)
         continue;
       if (timedOut) {
-        throw new Error(`${method} ${path} timed out after ${timeoutMs}ms`);
+        throw new NetworkError(unreachableMessage(config.apiUrl, true));
+      }
+      if (isConnectionFailure(err)) {
+        throw new NetworkError(unreachableMessage(config.apiUrl, false));
       }
       throw err;
     } finally {
@@ -7660,8 +7681,16 @@ import { existsSync as existsSync2 } from "node:fs";
 import { resolve } from "node:path";
 var GitError = class extends Error {
 };
+var GIT_MISSING_HINT = "git not found \u2014 install it and retry (macOS: `brew install git`; Windows: `winget install Git.Git`; Linux: your package manager).";
+function gitAvailable() {
+  return spawnSync("git", ["--version"]).error === void 0;
+}
 function git(args2, cwd) {
   const r = spawnSync("git", args2, { encoding: "utf-8", cwd });
+  if (r.error) {
+    const code = r.error.code;
+    return { ok: false, out: "", err: code === "ENOENT" ? GIT_MISSING_HINT : `git could not run: ${r.error.message}` };
+  }
   return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() };
 }
 function gitExit(args2, cwd) {
@@ -8056,11 +8085,12 @@ var createCommand = {
       output.result({ target: targetDir, shape, privateAgent, nestedInRepo: inspection.nestedInRepo, plan: plan.steps }, renderPlanText({ targetDir, name, shape, privateAgent, plan, nestedInRepo: inspection.nestedInRepo }));
       return 0;
     }
+    let versioned;
+    let gitNote;
     try {
-      await applyPlan({ targetDir, inspection, privateAgent });
+      ({ versioned, gitNote } = await applyPlan({ targetDir, inspection, privateAgent }));
     } catch (err) {
-      output.error(`Scaffold failed midway: ${err instanceof Error ? err.message : String(err)}
-Use \`git status\` / \`git restore\` to recover.`);
+      output.error(`Scaffold failed: ${err instanceof Error ? err.message : String(err)}`);
       return 1;
     }
     const where = name ? `./${name}` : "this directory";
@@ -8070,11 +8100,14 @@ Use \`git status\` / \`git restore\` to recover.`);
     if (inspection.nestedInRepo) {
       lines.push(nestingNotice(targetDir, inspection.nestedInRepo));
     }
+    if (!versioned) {
+      lines.push(`Working locally \u2014 no version history yet. ${gitNote ?? ""}`.trim(), `Once git is ready, from ${where}: \`git init -b main && git add . && git commit -m "Initial ideaspace scaffold"\`.`);
+    }
     lines.push(`Next: open Claude Code in ${where} \u2014 the agent will read foundation+guide and propose capturing purpose / now / next in conversation.`);
-    if (loadStoredCredentials()) {
+    if (versioned && loadStoredCredentials()) {
       lines.push(`When ready to host this remotely, run \`ideaspaces publish\` from inside ${where}.`);
     }
-    output.result({ target: targetDir, shape, privateAgent, scaffolded: true }, lines.join("\n"));
+    output.result({ target: targetDir, shape, privateAgent, scaffolded: true, versioned }, lines.join("\n"));
     return 0;
   }
 };
@@ -8193,10 +8226,6 @@ function renderPlanText(opts) {
 async function applyPlan(opts) {
   const { targetDir, inspection, privateAgent } = opts;
   await fs.mkdir(targetDir, { recursive: true });
-  if (!inspection.isGitRepo) {
-    runGit(targetDir, ["init", "-q", "-b", "main"]);
-  }
-  await maybeSetIdentity(targetDir);
   await fs.mkdir(join3(targetDir, "_agent"), { recursive: true });
   for (const [name, content] of Object.entries(CONTRACT_TEMPLATES)) {
     await fs.writeFile(join3(targetDir, "_agent", `${name}.md`), content, "utf-8");
@@ -8219,8 +8248,19 @@ async function applyPlan(opts) {
   } else {
     await fs.writeFile(gitignorePath, additions.replace(/^\n/, ""), "utf-8");
   }
-  runGit(targetDir, ["add", "."]);
-  runGit(targetDir, ["commit", "-q", "-m", "Initial ideaspace scaffold"]);
+  if (!gitAvailable())
+    return { versioned: false, gitNote: GIT_MISSING_HINT };
+  try {
+    if (!inspection.isGitRepo) {
+      runGit(targetDir, ["init", "-q", "-b", "main"]);
+    }
+    await maybeSetIdentity(targetDir);
+    runGit(targetDir, ["add", "."]);
+    runGit(targetDir, ["commit", "-q", "-m", "Initial ideaspace scaffold"]);
+    return { versioned: true };
+  } catch (err) {
+    return { versioned: false, gitNote: err instanceof Error ? err.message : String(err) };
+  }
 }
 async function maybeSetIdentity(targetDir) {
   const stored = loadStoredCredentials();
@@ -8236,8 +8276,11 @@ async function maybeSetIdentity(targetDir) {
 }
 function runGit(cwd, args2) {
   const r = spawnSync2("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  if (r.error) {
+    throw new Error(`git ${args2.join(" ")}: ${r.error.message}`);
+  }
   if (r.status !== 0) {
-    const message = r.stderr.trim() || r.stdout.trim() || `exit ${r.status}`;
+    const message = (r.stderr ?? "").trim() || (r.stdout ?? "").trim() || `exit ${r.status}`;
     throw new Error(`git ${args2.join(" ")}: ${message}`);
   }
 }
@@ -8304,7 +8347,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve15, reject) => {
+  return new Promise((resolve16, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -8331,7 +8374,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve15({
+      resolve16({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -8558,8 +8601,8 @@ async function composeContractAlongPath(position) {
 }
 
 // node_modules/@ideaspaces/protocol/dist/awareness.js
-import { promises as fs3 } from "node:fs";
-import { join as join6 } from "node:path";
+import { promises as fs5 } from "node:fs";
+import { join as join8, resolve as resolve7 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
@@ -8716,14 +8759,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit2(repoRoot2, args2) {
-  return new Promise((resolve15) => {
+  return new Promise((resolve16) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve15({ ok: code === 0, out }));
-    proc.on("error", () => resolve15({ ok: false, out: "" }));
+    proc.on("close", (code) => resolve16({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve16({ ok: false, out: "", code: null }));
   });
 }
 async function lastCommitTime(repoRoot2, path) {
@@ -8816,169 +8859,9 @@ async function recentActivity(repoRoot2, sinceSha, limit = DEFAULT_COMMIT_LIMIT)
   return { commits, changedFiles };
 }
 
-// node_modules/@ideaspaces/protocol/dist/awareness.js
-var SKIP_DIRS = /* @__PURE__ */ new Set([
-  "_agent",
-  "node_modules",
-  ".git",
-  ".github",
-  ".vscode",
-  ".idea",
-  "dist",
-  "build"
-]);
-var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
-async function assembleAwareness(opts) {
-  const { root, contract, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
-  const sections = [];
-  const nowLine = extractNowLine(contract, nowExcerptLength);
-  if (nowLine)
-    sections.push(`Now: ${nowLine}`);
-  const tree = await buildTreeSection(root);
-  if (tree)
-    sections.push(tree);
-  const agentContext = buildAgentContextSection(contract, summaryExcerptLength);
-  if (agentContext)
-    sections.push(agentContext);
-  const skills = await buildSkillsSection(root, summaryExcerptLength);
-  if (skills)
-    sections.push(skills);
-  if (lastSha) {
-    const { changedFiles } = await recentActivity(root, lastSha);
-    if (changedFiles.length) {
-      const total = changedFiles.length;
-      const head = changedFiles.slice(0, maxChanges);
-      const lines = [`Since last session (${total} changes):`];
-      for (const c of head)
-        lines.push(`  ${c.status}	${c.path}`);
-      if (total > maxChanges)
-        lines.push(`  ... and ${total - maxChanges} more`);
-      sections.push(lines.join("\n"));
-    }
-  }
-  return sections.join("\n\n");
-}
-function buildAgentContextSection(contract, max) {
-  const present = CONTRACT_ORDER.filter((name) => contract[name]);
-  if (!present.length)
-    return null;
-  const lines = ["Agent context:"];
-  for (const name of present) {
-    const entry = contract[name];
-    const blurb = describeFile(entry.content, max);
-    lines.push(blurb ? `  ${name} \u2014 ${blurb}` : `  ${name}`);
-  }
-  return lines.join("\n");
-}
-async function buildSkillsSection(root, max) {
-  const skillsDir = join6(root, "_agent", "skills");
-  let entries;
-  try {
-    entries = (await fs3.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
-  } catch {
-    return null;
-  }
-  if (!entries.length)
-    return null;
-  const blurbs = await Promise.all(entries.map(async (file) => {
-    try {
-      const content = await fs3.readFile(join6(skillsDir, file), "utf-8");
-      return describeFile(content, max);
-    } catch {
-      return null;
-    }
-  }));
-  const lines = ["Operating skills:"];
-  for (let i = 0; i < entries.length; i++) {
-    const name = entries[i].replace(/\.md$/, "");
-    const blurb = blurbs[i];
-    lines.push(blurb ? `  ${name} \u2014 ${blurb}` : `  ${name}`);
-  }
-  return lines.join("\n");
-}
-function describeFile(content, max) {
-  const summary = extractSummary(content);
-  if (summary)
-    return truncate(summary, max);
-  const body = stripFrontmatter(content);
-  for (const raw of body.split("\n")) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#"))
-      continue;
-    return truncate(line, max);
-  }
-  return null;
-}
-function extractNowLine(contract, max) {
-  if (!contract.now)
-    return null;
-  const body = stripFrontmatter(contract.now.content);
-  for (const raw of body.split("\n")) {
-    const line = raw.trim();
-    if (!line)
-      continue;
-    if (line.startsWith("#"))
-      continue;
-    if (line.startsWith(">")) {
-      const stripped = line.replace(/^>+\s*/, "").trim();
-      if (stripped)
-        return truncate(stripped, max);
-      continue;
-    }
-    return truncate(line, max);
-  }
-  return null;
-}
-function truncate(s, max) {
-  return s.length <= max ? s : `${s.slice(0, max).trimEnd()}\u2026`;
-}
-async function buildTreeSection(root) {
-  let entries;
-  try {
-    const dirents = await fs3.readdir(root, { withFileTypes: true });
-    entries = dirents.filter((e) => !e.name.startsWith(".") || e.name === ".gitignore").map((e) => ({ name: e.name, isDir: e.isDirectory() }));
-  } catch {
-    return null;
-  }
-  const dirs = entries.filter((e) => e.isDir && !SKIP_DIRS.has(e.name)).map((e) => e.name).sort();
-  const files = entries.filter((e) => !e.isDir && e.name.endsWith(".md")).map((e) => e.name).sort();
-  if (!dirs.length && !files.length)
-    return null;
-  const totalFiles = await countMarkdown(root);
-  const lines = [`Tree (${totalFiles} files):`];
-  for (const d of dirs) {
-    const count = await countMarkdown(join6(root, d));
-    lines.push(count ? `  ${d}/ (${count})` : `  ${d}/`);
-  }
-  for (const f of files)
-    lines.push(`  ${f}`);
-  return lines.join("\n");
-}
-async function countMarkdown(dir) {
-  let count = 0;
-  let dirents;
-  try {
-    dirents = await fs3.readdir(dir, { withFileTypes: true });
-  } catch {
-    return 0;
-  }
-  for (const entry of dirents) {
-    if (entry.name.startsWith("."))
-      continue;
-    if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name))
-        continue;
-      count += await countMarkdown(join6(dir, entry.name));
-    } else if (entry.isFile() && entry.name.endsWith(".md")) {
-      count += 1;
-    }
-  }
-  return count;
-}
-
 // node_modules/@ideaspaces/protocol/dist/path-context.js
-import { promises as fs4 } from "node:fs";
-import { isAbsolute, join as join7, relative as relative2, resolve as resolve5, sep } from "node:path";
+import { promises as fs3 } from "node:fs";
+import { isAbsolute, join as join6, relative as relative2, resolve as resolve5, sep } from "node:path";
 function spaceRootLevel(ctx) {
   return ctx.levels.find((l) => l.foundation) ?? null;
 }
@@ -8988,6 +8871,19 @@ function currentBranchLevel(ctx) {
       return ctx.levels[i];
   }
   return null;
+}
+function renderPosition({ pos, base, repoRoot: repoRoot2, ctx }) {
+  const spaceRoot = spaceRootLevel(ctx);
+  const branch = currentBranchLevel(ctx);
+  const lines = ["Position:"];
+  if (repoRoot2)
+    lines.push(`  repo: ${repoRoot2}`);
+  lines.push(`  cwd: ${relative2(base, pos) || "."}`);
+  if (spaceRoot)
+    lines.push(`  space root: ${spaceRoot.path || "."}`);
+  if (branch)
+    lines.push(`  active _agent: ${branch.path || "."}`);
+  return lines.join("\n");
 }
 async function walkPathContext(repoRoot2, currentPath, opts = {}) {
   const { includeContent = false } = opts;
@@ -9005,11 +8901,11 @@ async function walkPathContext(repoRoot2, currentPath, opts = {}) {
   return { position, levels };
 }
 async function readLevel(root, relPath, includeContent) {
-  const absPath = relPath ? join7(root, relPath) : root;
-  const agentDir = join7(absPath, "_agent");
+  const absPath = relPath ? join6(root, relPath) : root;
+  const agentDir = join6(absPath, "_agent");
   const [hasAgent, readme] = await Promise.all([
     isDirectory2(agentDir),
-    readFileOrNull(join7(absPath, "README.md"))
+    readFileOrNull(join6(absPath, "README.md"))
   ]);
   let contract = {};
   if (hasAgent)
@@ -9047,14 +8943,14 @@ function describe(content) {
 }
 async function isDirectory2(path) {
   try {
-    return (await fs4.stat(path)).isDirectory();
+    return (await fs3.stat(path)).isDirectory();
   } catch {
     return false;
   }
 }
 async function readFileOrNull(path) {
   try {
-    return await fs4.readFile(path, "utf-8");
+    return await fs3.readFile(path, "utf-8");
   } catch {
     return null;
   }
@@ -9062,9 +8958,9 @@ async function readFileOrNull(path) {
 
 // node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
-import { promises as fs5 } from "node:fs";
-import { join as join8, relative as relative3, resolve as resolve6 } from "node:path";
-var SKIP_DIRS2 = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
+import { promises as fs4 } from "node:fs";
+import { join as join7, relative as relative3, resolve as resolve6 } from "node:path";
+var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
 async function collectDocDependencies(repoRoot2, docDir) {
   const root = resolve6(repoRoot2);
   const start = resolve6(root, docDir);
@@ -9072,7 +8968,7 @@ async function collectDocDependencies(repoRoot2, docDir) {
   async function walk(dir) {
     let entries;
     try {
-      entries = (await fs5.readdir(dir, { withFileTypes: true })).map((e) => ({
+      entries = (await fs4.readdir(dir, { withFileTypes: true })).map((e) => ({
         name: e.name,
         isDir: e.isDirectory()
       }));
@@ -9082,9 +8978,9 @@ async function collectDocDependencies(repoRoot2, docDir) {
     for (const entry of entries) {
       if (entry.name.startsWith("."))
         continue;
-      const abs = join8(dir, entry.name);
+      const abs = join7(dir, entry.name);
       if (entry.isDir) {
-        if (!SKIP_DIRS2.has(entry.name))
+        if (!SKIP_DIRS.has(entry.name))
           await walk(abs);
       } else if (entry.name.endsWith(".md")) {
         const content = await readFileOrNull2(abs);
@@ -9106,7 +9002,7 @@ async function staleDocSignals(repoRoot2, docs) {
   for (const { path, codePaths } of docs) {
     const missing = [];
     for (const code of codePaths) {
-      if (!await exists(join8(root, code)))
+      if (!await exists(join7(root, code)))
         missing.push(code);
     }
     if (missing.length)
@@ -9167,18 +9063,491 @@ function readCodePaths(content) {
 }
 async function readFileOrNull2(path) {
   try {
-    return await fs5.readFile(path, "utf-8");
+    return await fs4.readFile(path, "utf-8");
   } catch {
     return null;
   }
 }
 async function exists(path) {
   try {
-    await fs5.stat(path);
+    await fs4.stat(path);
     return true;
   } catch {
     return false;
   }
+}
+
+// node_modules/@ideaspaces/protocol/dist/trailers.js
+var CHANGE_ID_PATTERN = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
+var CANONICAL_KEYS = {
+  op: "Op",
+  conversation: "Conversation",
+  turn: "Turn",
+  coAuthoredBy: "Co-authored-by",
+  changeId: "Change-Id"
+};
+var FIELD_BY_KEY = {
+  op: "op",
+  conversation: "conversation",
+  turn: "turn",
+  "co-authored-by": "coAuthoredBy",
+  "change-id": "changeId"
+};
+var TRAILER_LINE = /^([A-Za-z][A-Za-z0-9-]*):[ \t]*(.*)$/;
+var SUFFIX_LENGTH = 4;
+var BASE36 = "0123456789abcdefghijklmnopqrstuvwxyz";
+function isValidChangeId(id) {
+  return CHANGE_ID_PATTERN.test(id);
+}
+function slugify(text) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function formatChangeId(slug, suffix) {
+  const normSuffix = suffix.toLowerCase();
+  if (!/^[a-z0-9]+$/.test(normSuffix)) {
+    throw new Error(`invalid Change-Id suffix: ${JSON.stringify(suffix)}`);
+  }
+  const normSlug = slugify(slug);
+  const id = normSlug ? `chg_${normSlug}-${normSuffix}` : `chg_${normSuffix}`;
+  if (!isValidChangeId(id)) {
+    throw new Error(`could not format a valid Change-Id from ${JSON.stringify({ slug, suffix })}`);
+  }
+  return id;
+}
+function mintChangeId(text, rng = randomSuffix) {
+  return formatChangeId(text, rng());
+}
+function randomSuffix() {
+  const bytes = new Uint8Array(SUFFIX_LENGTH);
+  globalThis.crypto.getRandomValues(bytes);
+  let out = "";
+  for (const b of bytes)
+    out += BASE36[b % 36];
+  return out;
+}
+function parseTrailers(message) {
+  const block = findTrailerBlock(message.split("\n"));
+  const result = {};
+  if (!block)
+    return result;
+  for (const line of block.lines) {
+    const m = TRAILER_LINE.exec(line);
+    if (!m)
+      continue;
+    const field = FIELD_BY_KEY[m[1].toLowerCase()];
+    if (!field)
+      continue;
+    const value = m[2].trim();
+    if (field === "coAuthoredBy") {
+      (result.coAuthoredBy ??= []).push(value);
+    } else if (field === "turn") {
+      const n = Number.parseInt(value, 10);
+      if (Number.isInteger(n))
+        result.turn = n;
+    } else if (field === "op") {
+      result.op = value;
+    } else if (field === "conversation") {
+      result.conversation = value;
+    } else if (field === "changeId") {
+      result.changeId = value;
+    }
+  }
+  return result;
+}
+function appendTrailers(message, add) {
+  if (add.changeId !== void 0)
+    assertChangeId(add.changeId);
+  const lines = message.split("\n");
+  const block = findTrailerBlock(lines);
+  const existing = block ? parseTrailers(message) : {};
+  const additions = diffTrailers(existing, add);
+  if (additions.length === 0)
+    return message;
+  if (block) {
+    const before = lines.slice(0, block.end + 1);
+    const after = lines.slice(block.end + 1);
+    return [...before, ...additions, ...after].join("\n");
+  }
+  let end = lines.length - 1;
+  while (end >= 0 && lines[end].trim() === "")
+    end--;
+  const body = lines.slice(0, end + 1);
+  const sep2 = body.length > 0 ? [""] : [];
+  return [...body, ...sep2, ...additions].join("\n");
+}
+function findTrailerBlock(rawLines) {
+  let end = rawLines.length - 1;
+  while (end >= 0 && rawLines[end].trim() === "")
+    end--;
+  if (end < 0)
+    return null;
+  let above = end;
+  while (above >= 0 && TRAILER_LINE.test(rawLines[above]))
+    above--;
+  const start = above + 1;
+  if (start > end)
+    return null;
+  if (above >= 0 && rawLines[above].trim() !== "")
+    return null;
+  return { start, end, lines: rawLines.slice(start, end + 1) };
+}
+function diffTrailers(existing, add) {
+  const out = [];
+  if (add.op !== void 0)
+    pushSingle(out, CANONICAL_KEYS.op, existing.op, add.op);
+  if (add.conversation !== void 0) {
+    pushSingle(out, CANONICAL_KEYS.conversation, existing.conversation, add.conversation);
+  }
+  if (add.turn !== void 0) {
+    pushSingle(out, CANONICAL_KEYS.turn, existing.turn === void 0 ? void 0 : String(existing.turn), String(add.turn));
+  }
+  for (const ca of add.coAuthoredBy ?? []) {
+    if (!(existing.coAuthoredBy ?? []).includes(ca)) {
+      out.push(`${CANONICAL_KEYS.coAuthoredBy}: ${ca}`);
+    }
+  }
+  if (add.changeId !== void 0) {
+    pushSingle(out, CANONICAL_KEYS.changeId, existing.changeId, add.changeId);
+  }
+  return out;
+}
+function pushSingle(out, key, existingVal, addVal) {
+  if (existingVal !== void 0) {
+    if (existingVal !== addVal) {
+      throw new Error(`trailer conflict on ${key}: existing ${JSON.stringify(existingVal)} != ${JSON.stringify(addVal)}`);
+    }
+    return;
+  }
+  out.push(`${key}: ${addVal}`);
+}
+function assertChangeId(id) {
+  if (!isValidChangeId(id)) {
+    throw new Error(`invalid Change-Id: ${JSON.stringify(id)} (must match ${CHANGE_ID_PATTERN})`);
+  }
+}
+
+// node_modules/@ideaspaces/protocol/dist/filesystem.js
+var DEFAULT_IGNORED_DIRECTORIES = [
+  ".git",
+  ".github",
+  ".vscode",
+  ".idea",
+  "node_modules",
+  "dist",
+  "build"
+];
+
+// node_modules/@ideaspaces/protocol/dist/awareness.js
+var CONTENT_AWARENESS_SECTIONS = [
+  "position",
+  "now",
+  "tree",
+  "contract",
+  "skills",
+  "activity",
+  "git",
+  "stale-docs",
+  "direction-drift"
+];
+var SKIP_DIRS2 = /* @__PURE__ */ new Set(["_agent", ...DEFAULT_IGNORED_DIRECTORIES]);
+var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
+var LEGACY_AWARENESS_SECTIONS = [
+  "now",
+  "tree",
+  "contract",
+  "skills",
+  "activity"
+];
+var DEFAULT_MAX_DRIFT = 10;
+async function assembleAwareness(opts) {
+  const sections = await readAwarenessSections({
+    ...opts,
+    activityRoot: opts.root
+  });
+  return renderAwarenessSections({
+    ...sections,
+    position: void 0,
+    git: null,
+    staleDocs: [],
+    missingDirection: []
+  }, { sections: LEGACY_AWARENESS_SECTIONS });
+}
+async function readAwarenessSections(opts) {
+  const { root, activityRoot, contract, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
+  const now = extractNow(contract, nowExcerptLength);
+  const contractEntries = buildContractEntries(contract, summaryExcerptLength);
+  const [tree, skills, activity] = await Promise.all([
+    buildTree(root),
+    readSkills(root, summaryExcerptLength),
+    lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
+  ]);
+  return {
+    now,
+    tree,
+    contract: contractEntries,
+    skills,
+    activity
+  };
+}
+function renderAwarenessSections(data, opts) {
+  const included = new Set(opts.sections ?? CONTENT_AWARENESS_SECTIONS);
+  const sections = [];
+  for (const section of CONTENT_AWARENESS_SECTIONS) {
+    if (!included.has(section))
+      continue;
+    let rendered = null;
+    switch (section) {
+      case "position":
+        rendered = data.position ? renderPosition({
+          pos: data.position.path,
+          base: data.position.base,
+          repoRoot: data.position.repoRoot,
+          ctx: data.position.context
+        }) : null;
+        break;
+      case "now":
+        rendered = data.now ? `Now: ${data.now.text}` : null;
+        break;
+      case "tree":
+        rendered = data.tree ? renderTree(data.tree) : null;
+        break;
+      case "contract":
+        rendered = renderContract(data.contract);
+        break;
+      case "skills":
+        rendered = renderSkills(data.skills);
+        break;
+      case "activity":
+        rendered = data.activity ? renderActivity(data.activity) : null;
+        break;
+      case "git":
+        rendered = data.git ? renderGitState(data.git) : null;
+        break;
+      case "stale-docs":
+        rendered = renderStaleDocs(data.staleDocs, opts.maxDrift ?? DEFAULT_MAX_DRIFT);
+        break;
+      case "direction-drift":
+        rendered = renderDirectionDrift(data.missingDirection);
+        break;
+    }
+    if (rendered)
+      sections.push(rendered);
+  }
+  return sections.join("\n\n");
+}
+function buildContractEntries(contract, max) {
+  const entries = [];
+  for (const name of CONTRACT_ORDER) {
+    const entry = contract[name];
+    if (!entry)
+      continue;
+    entries.push({
+      name,
+      path: entry.path,
+      ...hasLevel(entry) ? { level: entry.level } : {},
+      summary: describeFile(entry.content, max)
+    });
+  }
+  return entries;
+}
+function hasLevel(entry) {
+  return "level" in entry;
+}
+async function readSkills(root, max) {
+  const skillsDir = join8(root, "_agent", "skills");
+  let entries;
+  try {
+    entries = (await fs5.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
+  } catch {
+    return [];
+  }
+  return Promise.all(entries.map(async (file) => {
+    const path = join8(skillsDir, file);
+    try {
+      const content = await fs5.readFile(path, "utf-8");
+      return {
+        name: file.replace(/\.md$/, ""),
+        path,
+        summary: describeFile(content, max)
+      };
+    } catch {
+      return {
+        name: file.replace(/\.md$/, ""),
+        path,
+        summary: null
+      };
+    }
+  }));
+}
+async function readActivity(repoRoot2, lastSha, maxChanges) {
+  const { changedFiles } = await recentActivity(repoRoot2, lastSha);
+  if (!changedFiles.length)
+    return null;
+  const changes = changedFiles.slice(0, maxChanges);
+  return {
+    totalChanges: changedFiles.length,
+    changes,
+    omittedChanges: changedFiles.length - changes.length
+  };
+}
+function describeFile(content, max) {
+  const summary = extractSummary(content);
+  if (summary)
+    return truncate(summary, max);
+  const body = stripFrontmatter(content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    return truncate(line, max);
+  }
+  return null;
+}
+function extractNow(contract, max) {
+  const entry = contract.now;
+  if (!entry)
+    return null;
+  const body = stripFrontmatter(entry.content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    if (line.startsWith(">")) {
+      const stripped = line.replace(/^>+\s*/, "").trim();
+      if (stripped)
+        return { text: truncate(stripped, max), source: entry.path };
+      continue;
+    }
+    return { text: truncate(line, max), source: entry.path };
+  }
+  return null;
+}
+function truncate(value, max) {
+  return value.length <= max ? value : `${value.slice(0, max).trimEnd()}\u2026`;
+}
+async function buildTree(root) {
+  let entries;
+  try {
+    const dirents = await fs5.readdir(root, { withFileTypes: true });
+    entries = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
+  } catch {
+    return null;
+  }
+  const dirs = entries.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
+  const files = entries.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).map((entry) => entry.name).sort();
+  if (!dirs.length && !files.length)
+    return null;
+  const [totalMarkdownFiles, dirCounts] = await Promise.all([
+    countMarkdown(root),
+    Promise.all(dirs.map((dir) => countMarkdown(join8(root, dir))))
+  ]);
+  return {
+    totalMarkdownFiles,
+    entries: [
+      ...dirs.map((name, index) => ({
+        name,
+        kind: "directory",
+        markdownFiles: dirCounts[index]
+      })),
+      ...files.map((name) => ({ name, kind: "markdown" }))
+    ]
+  };
+}
+async function countMarkdown(dir) {
+  let count = 0;
+  let dirents;
+  try {
+    dirents = await fs5.readdir(dir, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  for (const entry of dirents) {
+    if (entry.name.startsWith("."))
+      continue;
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS2.has(entry.name))
+        continue;
+      count += await countMarkdown(join8(dir, entry.name));
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      count += 1;
+    }
+  }
+  return count;
+}
+function renderTree(tree) {
+  const lines = [`Tree (${tree.totalMarkdownFiles} files):`];
+  for (const entry of tree.entries) {
+    if (entry.kind === "directory") {
+      lines.push(entry.markdownFiles ? `  ${entry.name}/ (${entry.markdownFiles})` : `  ${entry.name}/`);
+    } else {
+      lines.push(`  ${entry.name}`);
+    }
+  }
+  return lines.join("\n");
+}
+function renderContract(entries) {
+  if (!entries.length)
+    return null;
+  const lines = ["Agent context:"];
+  for (const entry of entries) {
+    lines.push(entry.summary ? `  ${entry.name} \u2014 ${entry.summary}` : `  ${entry.name}`);
+  }
+  return lines.join("\n");
+}
+function renderSkills(skills) {
+  if (!skills.length)
+    return null;
+  const lines = ["Operating skills:"];
+  for (const skill of skills) {
+    lines.push(skill.summary ? `  ${skill.name} \u2014 ${skill.summary}` : `  ${skill.name}`);
+  }
+  return lines.join("\n");
+}
+function renderActivity(activity) {
+  const lines = [`Since last session (${activity.totalChanges} changes):`];
+  for (const change of activity.changes) {
+    lines.push(`  ${change.status}	${change.path}`);
+  }
+  if (activity.omittedChanges) {
+    lines.push(`  ... and ${activity.omittedChanges} more`);
+  }
+  return lines.join("\n");
+}
+function renderGitState(state) {
+  const bits = [];
+  if (state.branch)
+    bits.push(`branch ${state.branch}`);
+  if (state.ahead != null && state.behind != null && (state.ahead || state.behind)) {
+    bits.push(`\u2191${state.ahead} \u2193${state.behind}`);
+  }
+  if (state.dirty)
+    bits.push("dirty");
+  if (state.untrackedInTrackedDirs.length) {
+    bits.push(`${state.untrackedInTrackedDirs.length} untracked`);
+  }
+  return bits.length ? `Git: ${bits.join(", ")}` : null;
+}
+function renderStaleDocs(signals, max) {
+  if (!signals.length)
+    return null;
+  const lines = ["\u26A0 Possible stale docs \u2014 verify before quoting their status:"];
+  for (const signal of signals.slice(0, max)) {
+    lines.push(signal.kind === "stale" ? `  ${signal.doc} \u2014 \`${signal.newestCode}\` was committed after the doc` : `  ${signal.doc} \u2014 references missing path(s): ${signal.missing.join(", ")}`);
+  }
+  if (signals.length > max) {
+    lines.push(`  \u2026 and ${signals.length - max} more`);
+  }
+  return lines.join("\n");
+}
+function renderDirectionDrift(missing) {
+  const lines = [];
+  if (missing.includes("purpose")) {
+    lines.push("\u26A0 `_agent/purpose.md` not yet captured. The contract names it; suggest capturing at a natural moment.");
+  }
+  if (missing.includes("now")) {
+    lines.push("\u26A0 `_agent/now.md` not yet captured. Suggest capturing what's currently active.");
+  }
+  return lines.length ? lines.join("\n") : null;
 }
 
 // node_modules/@ideaspaces/protocol/dist/skill-catalog.generated.js
@@ -9455,292 +9824,6 @@ async function readSkill(name) {
     throw new Error(`Unknown skill: ${name}`);
   return { name, description: extractDescription(content), content };
 }
-
-// node_modules/@ideaspaces/protocol/dist/conformance.js
-var import_yaml3 = __toESM(require_dist(), 1);
-
-// node_modules/@ideaspaces/protocol/dist/trailers.js
-var CHANGE_ID_PATTERN = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
-var CANONICAL_KEYS = {
-  op: "Op",
-  conversation: "Conversation",
-  turn: "Turn",
-  coAuthoredBy: "Co-authored-by",
-  changeId: "Change-Id"
-};
-var FIELD_BY_KEY = {
-  op: "op",
-  conversation: "conversation",
-  turn: "turn",
-  "co-authored-by": "coAuthoredBy",
-  "change-id": "changeId"
-};
-var TRAILER_LINE = /^([A-Za-z][A-Za-z0-9-]*):[ \t]*(.*)$/;
-var SUFFIX_LENGTH = 4;
-var BASE36 = "0123456789abcdefghijklmnopqrstuvwxyz";
-function isValidChangeId(id) {
-  return CHANGE_ID_PATTERN.test(id);
-}
-function slugify(text) {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
-function formatChangeId(slug, suffix) {
-  const normSuffix = suffix.toLowerCase();
-  if (!/^[a-z0-9]+$/.test(normSuffix)) {
-    throw new Error(`invalid Change-Id suffix: ${JSON.stringify(suffix)}`);
-  }
-  const normSlug = slugify(slug);
-  const id = normSlug ? `chg_${normSlug}-${normSuffix}` : `chg_${normSuffix}`;
-  if (!isValidChangeId(id)) {
-    throw new Error(`could not format a valid Change-Id from ${JSON.stringify({ slug, suffix })}`);
-  }
-  return id;
-}
-function mintChangeId(text, rng = randomSuffix) {
-  return formatChangeId(text, rng());
-}
-function randomSuffix() {
-  const bytes = new Uint8Array(SUFFIX_LENGTH);
-  globalThis.crypto.getRandomValues(bytes);
-  let out = "";
-  for (const b of bytes)
-    out += BASE36[b % 36];
-  return out;
-}
-function parseTrailers(message) {
-  const block = findTrailerBlock(message.split("\n"));
-  const result = {};
-  if (!block)
-    return result;
-  for (const line of block.lines) {
-    const m = TRAILER_LINE.exec(line);
-    if (!m)
-      continue;
-    const field = FIELD_BY_KEY[m[1].toLowerCase()];
-    if (!field)
-      continue;
-    const value = m[2].trim();
-    if (field === "coAuthoredBy") {
-      (result.coAuthoredBy ??= []).push(value);
-    } else if (field === "turn") {
-      const n = Number.parseInt(value, 10);
-      if (Number.isInteger(n))
-        result.turn = n;
-    } else if (field === "op") {
-      result.op = value;
-    } else if (field === "conversation") {
-      result.conversation = value;
-    } else if (field === "changeId") {
-      result.changeId = value;
-    }
-  }
-  return result;
-}
-function appendTrailers(message, add) {
-  if (add.changeId !== void 0)
-    assertChangeId(add.changeId);
-  const lines = message.split("\n");
-  const block = findTrailerBlock(lines);
-  const existing = block ? parseTrailers(message) : {};
-  const additions = diffTrailers(existing, add);
-  if (additions.length === 0)
-    return message;
-  if (block) {
-    const before = lines.slice(0, block.end + 1);
-    const after = lines.slice(block.end + 1);
-    return [...before, ...additions, ...after].join("\n");
-  }
-  let end = lines.length - 1;
-  while (end >= 0 && lines[end].trim() === "")
-    end--;
-  const body = lines.slice(0, end + 1);
-  const sep2 = body.length > 0 ? [""] : [];
-  return [...body, ...sep2, ...additions].join("\n");
-}
-function findTrailerBlock(rawLines) {
-  let end = rawLines.length - 1;
-  while (end >= 0 && rawLines[end].trim() === "")
-    end--;
-  if (end < 0)
-    return null;
-  let above = end;
-  while (above >= 0 && TRAILER_LINE.test(rawLines[above]))
-    above--;
-  const start = above + 1;
-  if (start > end)
-    return null;
-  if (above >= 0 && rawLines[above].trim() !== "")
-    return null;
-  return { start, end, lines: rawLines.slice(start, end + 1) };
-}
-function diffTrailers(existing, add) {
-  const out = [];
-  if (add.op !== void 0)
-    pushSingle(out, CANONICAL_KEYS.op, existing.op, add.op);
-  if (add.conversation !== void 0) {
-    pushSingle(out, CANONICAL_KEYS.conversation, existing.conversation, add.conversation);
-  }
-  if (add.turn !== void 0) {
-    pushSingle(out, CANONICAL_KEYS.turn, existing.turn === void 0 ? void 0 : String(existing.turn), String(add.turn));
-  }
-  for (const ca of add.coAuthoredBy ?? []) {
-    if (!(existing.coAuthoredBy ?? []).includes(ca)) {
-      out.push(`${CANONICAL_KEYS.coAuthoredBy}: ${ca}`);
-    }
-  }
-  if (add.changeId !== void 0) {
-    pushSingle(out, CANONICAL_KEYS.changeId, existing.changeId, add.changeId);
-  }
-  return out;
-}
-function pushSingle(out, key, existingVal, addVal) {
-  if (existingVal !== void 0) {
-    if (existingVal !== addVal) {
-      throw new Error(`trailer conflict on ${key}: existing ${JSON.stringify(existingVal)} != ${JSON.stringify(addVal)}`);
-    }
-    return;
-  }
-  out.push(`${key}: ${addVal}`);
-}
-function assertChangeId(id) {
-  if (!isValidChangeId(id)) {
-    throw new Error(`invalid Change-Id: ${JSON.stringify(id)} (must match ${CHANGE_ID_PATTERN})`);
-  }
-}
-
-// node_modules/@ideaspaces/sdk/dist/keeper-events.js
-function emptyWorkspaceSurface() {
-  return { created: [], modified: [], deleted: [], read: [], mentioned: [] };
-}
-function zeroUsage(modelTier) {
-  return {
-    input_tokens: 0,
-    output_tokens: 0,
-    cache_read_tokens: 0,
-    cache_creation_tokens: 0,
-    model_tier: modelTier,
-    total_tokens: 0,
-    cost_usd: 0
-  };
-}
-
-// node_modules/@ideaspaces/sdk/dist/agent-to-keeper.js
-var PREVIEW_LIMIT = 500;
-function defaultToolResultPreview(result) {
-  let text;
-  const content = result?.content;
-  if (Array.isArray(content)) {
-    text = content.map((c) => c && typeof c === "object" && "text" in c ? String(c.text) : "").filter(Boolean).join("\n");
-    if (!text)
-      text = JSON.stringify(result);
-  } else if (typeof result === "string") {
-    text = result;
-  } else {
-    text = JSON.stringify(result) ?? "";
-  }
-  return text.length > PREVIEW_LIMIT ? `${text.slice(0, PREVIEW_LIMIT)}\u2026` : text;
-}
-var KeeperTranslator = class {
-  cfg;
-  responseText = "";
-  iterations = 0;
-  started = false;
-  ended = false;
-  toolCalls = [];
-  invocations = [];
-  toolStart = /* @__PURE__ */ new Map();
-  constructor(config) {
-    this.cfg = {
-      position: "",
-      now: () => Date.now(),
-      harvestWorkspace: () => emptyWorkspaceSurface(),
-      finalUsage: () => zeroUsage(config.modelTier),
-      toolResultPreview: defaultToolResultPreview,
-      ...config
-    };
-  }
-  /** Translate one pi event into zero-or-more Keeper events. */
-  translate(ev) {
-    switch (ev.type) {
-      case "agent_start": {
-        if (this.started)
-          return [];
-        this.started = true;
-        return [
-          { type: "message_start", conversation_id: this.cfg.conversationId, model_tier: this.cfg.modelTier }
-        ];
-      }
-      case "turn_start":
-        this.iterations += 1;
-        return [];
-      case "message_update": {
-        const a = ev.assistantMessageEvent;
-        if (a.type === "thinking_delta" && a.delta)
-          return [{ type: "thinking_delta", delta: a.delta }];
-        if (a.type === "text_delta" && a.delta) {
-          this.responseText += a.delta;
-          return [{ type: "text_delta", delta: a.delta }];
-        }
-        return [];
-      }
-      case "tool_execution_start":
-        this.toolStart.set(ev.toolCallId, { args: ev.args, at: this.cfg.now() });
-        return [{ type: "tool_start", tool_name: ev.toolName, tool_call_id: ev.toolCallId, tool_args: ev.args }];
-      case "tool_execution_end": {
-        const s = this.toolStart.get(ev.toolCallId);
-        const args2 = s?.args ?? {};
-        const duration_ms = s ? Math.max(0, this.cfg.now() - s.at) : 0;
-        this.toolStart.delete(ev.toolCallId);
-        this.toolCalls.push({ name: ev.toolName, args: args2, duration_ms, is_error: ev.isError });
-        this.invocations.push({ name: ev.toolName, args: args2, result: ev.result, isError: ev.isError });
-        return [
-          {
-            type: "tool_result",
-            tool_call_id: ev.toolCallId,
-            tool_name: ev.toolName,
-            result_preview: this.cfg.toolResultPreview(ev.result),
-            is_error: ev.isError,
-            duration_ms
-          }
-        ];
-      }
-      case "agent_end": {
-        if (this.ended)
-          return [];
-        this.ended = true;
-        const usage = this.cfg.finalUsage();
-        const result = {
-          response: this.responseText,
-          usage,
-          tool_calls: this.toolCalls,
-          iterations: this.iterations,
-          position: this.cfg.position,
-          workspace: this.cfg.harvestWorkspace(this.invocations)
-        };
-        return [
-          { type: "message_delta", usage },
-          { type: "turn_complete", result }
-        ];
-      }
-      default:
-        return [];
-    }
-  }
-  /** Terminal: the run was aborted. The caller detects this from the RPC layer. */
-  cancelled(reason) {
-    this.ended = true;
-    return { type: "cancelled", reason };
-  }
-  /** Terminal: the run errored. The caller detects this from the RPC layer. */
-  error(errorType, message) {
-    this.ended = true;
-    return { type: "error", error_type: errorType, message };
-  }
-  /** Whether a terminal event (turn_complete/cancelled/error) has been emitted. */
-  get isEnded() {
-    return this.ended;
-  }
-};
 
 // dist/frontmatter-report.js
 async function scanMarkdownFrontmatterSyntaxFiles(files) {
@@ -10058,7 +10141,7 @@ ${push2.stderr}${hint}`);
 // dist/commands/write.js
 import { promises as fs6 } from "node:fs";
 import { existsSync as existsSync6, statSync as statSync2 } from "node:fs";
-import { dirname as dirname2, join as join10, relative as relative5, resolve as resolve7 } from "node:path";
+import { dirname as dirname2, join as join10, relative as relative5, resolve as resolve8 } from "node:path";
 
 // dist/argv.js
 function parseBool(value, dflt = true) {
@@ -10202,7 +10285,7 @@ var writeCommand = {
     const force = Boolean(flags2.force);
     const stage = parseBool(flags2.stage, true);
     const ifMatch = flags2["if-match"];
-    const absPath = resolve7(path);
+    const absPath = resolve8(path);
     if (ifMatch !== void 0) {
       const currentSha = blobSha(absPath);
       if (currentSha !== ifMatch && !force) {
@@ -10249,7 +10332,7 @@ function parseOptionalString(value) {
 function isBatchTarget(targets) {
   if (targets.length > 1)
     return true;
-  const abs = resolve7(targets[0]);
+  const abs = resolve8(targets[0]);
   return existsSync6(abs) && statSync2(abs).isDirectory();
 }
 async function runBatchStage(targets, flags2, output) {
@@ -10293,7 +10376,7 @@ async function collectMarkdown(targets) {
   const missing = [];
   const skipped = [];
   for (const t of targets) {
-    const abs = resolve7(t);
+    const abs = resolve8(t);
     if (!existsSync6(abs)) {
       missing.push(t);
     } else if (statSync2(abs).isDirectory()) {
@@ -10335,7 +10418,7 @@ function healthIssues(content) {
 }
 
 // dist/commands/commit.js
-import { resolve as resolve8 } from "node:path";
+import { resolve as resolve9 } from "node:path";
 var OP_SET = {
   create: true,
   update: true,
@@ -10421,7 +10504,7 @@ var commitCommand = {
         output.log(`Leaving ${other.length} non-ideaspace staged path(s) for you to commit: ${other.join(", ")}`);
       }
     } else {
-      paths = args2.map((p) => resolve8(p));
+      paths = args2.map((p) => resolve9(p));
     }
     if (!paths.length) {
       output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --all.');
@@ -10484,7 +10567,7 @@ var changeCommand = {
 };
 
 // dist/commands/navigate.js
-import { relative as relative6, resolve as resolve9 } from "node:path";
+import { relative as relative6, resolve as resolve10 } from "node:path";
 import { statSync as statSync3, existsSync as existsSync8 } from "node:fs";
 import { spawnSync as spawnSync4 } from "node:child_process";
 
@@ -10623,19 +10706,6 @@ function gitRef(cwd, args2) {
   const r = spawnSync4("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
   return r.status === 0 ? r.stdout.trim() || null : null;
 }
-function formatPositionSection(pos, base, repoRoot2, pathContext) {
-  const spaceRoot = spaceRootLevel(pathContext);
-  const branch = currentBranchLevel(pathContext);
-  const lines = ["Position:"];
-  if (repoRoot2)
-    lines.push(`  repo: ${repoRoot2}`);
-  lines.push(`  cwd: ${relative6(base, pos) || "."}`);
-  if (spaceRoot)
-    lines.push(`  space root: ${spaceRoot.path || "."}`);
-  if (branch)
-    lines.push(`  active _agent: ${branch.path || "."}`);
-  return lines.join("\n");
-}
 function parsePullable(raw) {
   if (typeof raw !== "string")
     return [];
@@ -10647,7 +10717,7 @@ function parsePullable(raw) {
 var BARE_FOLDER_HINT = "You're at a workspace folder (no `_agent/` contract here). Navigate into a repo below (`ideaspaces navigate <repo>`), or pull one that's behind.";
 var EMPTY_FOLDER_HINT = "You're at a workspace folder with no repos yet. Clone one to get started (`ideaspaces clone`).";
 function planCatalog(flags2, povRepoRoot) {
-  const workspace = typeof flags2.workspace === "string" ? resolve9(flags2.workspace) : null;
+  const workspace = typeof flags2.workspace === "string" ? resolve10(flags2.workspace) : null;
   if (!workspace)
     return { kind: "none" };
   if (!existsSync8(workspace) || !statSync3(workspace).isDirectory()) {
@@ -10670,7 +10740,7 @@ var navigateCommand = {
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const raw = (args2[0] ?? ".").trim();
-    const target = resolve9(raw === "" ? "." : raw);
+    const target = resolve10(raw === "" ? "." : raw);
     if (!existsSync8(target)) {
       output.error(`No such path: ${target}`);
       return 1;
@@ -10711,8 +10781,9 @@ var navigateCommand = {
       cat.kind === "ok" ? formatWorkingSetSection(composed.spaceRoot, cat.mounts) : Promise.resolve(null)
     ]);
     const sections = [];
-    if (pathContext && base)
-      sections.push(formatPositionSection(target, base, repoRoot2, pathContext));
+    if (pathContext && base) {
+      sections.push(renderPosition({ pos: target, base, repoRoot: repoRoot2, ctx: pathContext }));
+    }
     if (block.trim())
       sections.push(block);
     if (cat.kind === "warn")
@@ -10768,7 +10839,7 @@ var navigateCommand = {
 };
 
 // dist/commands/status.js
-import { resolve as resolve10 } from "node:path";
+import { resolve as resolve11 } from "node:path";
 var statusCommand = {
   name: "status",
   description: "Show git position and plugin-tracked captures awaiting commit",
@@ -10791,7 +10862,7 @@ var statusCommand = {
     }
     const pathArg = typeof flags2.path === "string" ? flags2.path : void 0;
     if (pathArg) {
-      const ps = pathStatus(resolve10(pathArg), root);
+      const ps = pathStatus(resolve11(pathArg), root);
       output.result({
         path: pathArg,
         exists: ps.exists,
@@ -11333,7 +11404,7 @@ var catalogCommand = {
 };
 
 // dist/commands/clone.js
-import { resolve as resolve11 } from "node:path";
+import { resolve as resolve12 } from "node:path";
 var cloneCommand = {
   name: "clone",
   description: "Clone one of your spaces into a local folder",
@@ -11384,7 +11455,7 @@ var cloneCommand = {
       return 1;
     }
     const url = `${deriveGitBase(config.apiUrl)}/${namespace}/${repo.slug}.git`;
-    const dir = resolve11(args2[1] ?? repo.slug);
+    const dir = resolve12(args2[1] ?? repo.slug);
     await registerGitCredentialHelper();
     output.progress(`Cloning ${namespace}/${repo.slug}\u2026`);
     try {
@@ -11433,7 +11504,7 @@ var clonesCommand = {
 };
 
 // dist/commands/link.js
-import { resolve as resolve12 } from "node:path";
+import { resolve as resolve13 } from "node:path";
 function repoKey(repo, me, gitBase) {
   const namespace = repo.hostname ?? me.username;
   if (!namespace)
@@ -11455,7 +11526,7 @@ var linkCommand = {
       output.error("Usage: ideaspaces link <dir> [space]");
       return 1;
     }
-    const dir = resolve12(dirArg);
+    const dir = resolve13(dirArg);
     if (!isInsideWorkTree(dir)) {
       output.error(`${dir} is not a git repository. Use \`clone\` to make one, or point at an existing clone.`);
       return 1;
@@ -11549,7 +11620,7 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 // dist/commands/forget.js
 import { rmSync } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { dirname as dirname3, resolve as resolve13 } from "node:path";
+import { dirname as dirname3, resolve as resolve14 } from "node:path";
 var forgetCommand = {
   name: "forget",
   description: "Stop tracking a local clone (optionally delete its folder)",
@@ -11565,9 +11636,9 @@ var forgetCommand = {
       output.error("Usage: ideaspaces forget <dir> [--delete]");
       return 1;
     }
-    const dir = resolve13(dirArg);
+    const dir = resolve14(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve13(homedir2()) || dirname3(dir) === dir)) {
+    if (del && (dir === resolve14(homedir2()) || dirname3(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -11857,7 +11928,7 @@ function makeConversationCommand(local) {
       "ideaspaces conversation participants repo_abc c_123",
       "ideaspaces conversation remove repo_abc c_123 alice",
       "ideaspaces conversation send repo_abc c_123 --message 'Hi'  # streams JSON lines",
-      "ideaspaces conversation send --local --context /ws --conversation c1 --message 'Hi' --ext a,b --skill a/skills,b/skills --pi-bin /path/pi --pi-model sonnet  # local pi turn",
+      "ideaspaces conversation send --local --context /ws --conversation c1 --message 'Hi' --ext a,b --skill a/skills,b/skills --pi-bin /path/pi --pi-model sonnet --pi-thinking high  # local pi turn",
       "ideaspaces conversation get repo_abc c_123        # detail + history",
       "ideaspaces conversation cancel repo_abc c_123     # stop the active turn"
     ],
@@ -12156,7 +12227,7 @@ var searchCommand = {
 
 // dist/commands/ls.js
 import { statSync as statSync4 } from "node:fs";
-import { resolve as resolve14 } from "node:path";
+import { resolve as resolve15 } from "node:path";
 
 // dist/file-listing.js
 import { existsSync as existsSync9, readdirSync } from "node:fs";
@@ -12251,7 +12322,7 @@ var lsCommand = {
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
-    const root = resolve14(args2[0] ?? ".");
+    const root = resolve15(args2[0] ?? ".");
     try {
       if (!statSync4(root).isDirectory()) {
         output.error(`Not a directory: ${root}`);
@@ -12697,7 +12768,7 @@ function trimModel(m) {
 var QUERY_ID = "__models";
 var TIMEOUT_MS = 2e4;
 function queryPiModels(piBin) {
-  return new Promise((resolve15, reject) => {
+  return new Promise((resolve16, reject) => {
     const pi = spawn2(piBin, ["--mode", "rpc", "--no-extensions"], {
       cwd: process.cwd(),
       stdio: ["pipe", "pipe", "pipe"]
@@ -12743,7 +12814,7 @@ function queryPiModels(piBin) {
         }
         const data = msg.data;
         const models = (data?.models ?? []).map(trimModel);
-        finish(() => resolve15({ models }));
+        finish(() => resolve16({ models }));
       }
     });
     try {
@@ -12789,6 +12860,142 @@ import { spawn as spawn3 } from "node:child_process";
 import { existsSync as existsSync13, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
 import { join as join17 } from "node:path";
 import readline from "node:readline";
+
+// node_modules/@ideaspaces/sdk/dist/keeper-events.js
+function emptyWorkspaceSurface() {
+  return { created: [], modified: [], deleted: [], read: [], mentioned: [] };
+}
+function zeroUsage(modelTier) {
+  return {
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_read_tokens: 0,
+    cache_creation_tokens: 0,
+    model_tier: modelTier,
+    total_tokens: 0,
+    cost_usd: 0
+  };
+}
+
+// node_modules/@ideaspaces/sdk/dist/agent-to-keeper.js
+var PREVIEW_LIMIT = 500;
+function defaultToolResultPreview(result) {
+  let text;
+  const content = result?.content;
+  if (Array.isArray(content)) {
+    text = content.map((c) => c && typeof c === "object" && "text" in c ? String(c.text) : "").filter(Boolean).join("\n");
+    if (!text)
+      text = JSON.stringify(result);
+  } else if (typeof result === "string") {
+    text = result;
+  } else {
+    text = JSON.stringify(result) ?? "";
+  }
+  return text.length > PREVIEW_LIMIT ? `${text.slice(0, PREVIEW_LIMIT)}\u2026` : text;
+}
+var KeeperTranslator = class {
+  cfg;
+  responseText = "";
+  iterations = 0;
+  started = false;
+  ended = false;
+  toolCalls = [];
+  invocations = [];
+  toolStart = /* @__PURE__ */ new Map();
+  constructor(config) {
+    this.cfg = {
+      position: "",
+      now: () => Date.now(),
+      harvestWorkspace: () => emptyWorkspaceSurface(),
+      finalUsage: () => zeroUsage(config.modelTier),
+      toolResultPreview: defaultToolResultPreview,
+      ...config
+    };
+  }
+  /** Translate one pi event into zero-or-more Keeper events. */
+  translate(ev) {
+    switch (ev.type) {
+      case "agent_start": {
+        if (this.started)
+          return [];
+        this.started = true;
+        return [
+          { type: "message_start", conversation_id: this.cfg.conversationId, model_tier: this.cfg.modelTier }
+        ];
+      }
+      case "turn_start":
+        this.iterations += 1;
+        return [];
+      case "message_update": {
+        const a = ev.assistantMessageEvent;
+        if (a.type === "thinking_delta" && a.delta)
+          return [{ type: "thinking_delta", delta: a.delta }];
+        if (a.type === "text_delta" && a.delta) {
+          this.responseText += a.delta;
+          return [{ type: "text_delta", delta: a.delta }];
+        }
+        return [];
+      }
+      case "tool_execution_start":
+        this.toolStart.set(ev.toolCallId, { args: ev.args, at: this.cfg.now() });
+        return [{ type: "tool_start", tool_name: ev.toolName, tool_call_id: ev.toolCallId, tool_args: ev.args }];
+      case "tool_execution_end": {
+        const s = this.toolStart.get(ev.toolCallId);
+        const args2 = s?.args ?? {};
+        const duration_ms = s ? Math.max(0, this.cfg.now() - s.at) : 0;
+        this.toolStart.delete(ev.toolCallId);
+        this.toolCalls.push({ name: ev.toolName, args: args2, duration_ms, is_error: ev.isError });
+        this.invocations.push({ name: ev.toolName, args: args2, result: ev.result, isError: ev.isError });
+        return [
+          {
+            type: "tool_result",
+            tool_call_id: ev.toolCallId,
+            tool_name: ev.toolName,
+            result_preview: this.cfg.toolResultPreview(ev.result),
+            is_error: ev.isError,
+            duration_ms
+          }
+        ];
+      }
+      case "agent_end": {
+        if (this.ended)
+          return [];
+        this.ended = true;
+        const usage = this.cfg.finalUsage();
+        const result = {
+          response: this.responseText,
+          usage,
+          tool_calls: this.toolCalls,
+          iterations: this.iterations,
+          position: this.cfg.position,
+          workspace: this.cfg.harvestWorkspace(this.invocations)
+        };
+        return [
+          { type: "message_delta", usage },
+          { type: "turn_complete", result }
+        ];
+      }
+      default:
+        return [];
+    }
+  }
+  /** Terminal: the run was aborted. The caller detects this from the RPC layer. */
+  cancelled(reason) {
+    this.ended = true;
+    return { type: "cancelled", reason };
+  }
+  /** Terminal: the run errored. The caller detects this from the RPC layer. */
+  error(errorType, message) {
+    this.ended = true;
+    return { type: "error", error_type: errorType, message };
+  }
+  /** Whether a terminal event (turn_complete/cancelled/error) has been emitted. */
+  get isEnded() {
+    return this.ended;
+  }
+};
+
+// dist/pi/local-agent.js
 var NON_AGENT_TYPES = /* @__PURE__ */ new Set(["response", "extension_ui_request"]);
 function harvestWorkspace(tools) {
   const ws = emptyWorkspaceSurface();
@@ -12831,6 +13038,10 @@ function lastPosition(tools) {
   }
   return "";
 }
+var PI_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+function isValidPiThinkingLevel(level) {
+  return PI_THINKING_LEVELS.includes(level);
+}
 function deriveConversationName(message) {
   const line = message.split("\n").find((l) => l.trim()) ?? message;
   const clean = line.replace(/\s+/g, " ").trim();
@@ -12862,6 +13073,8 @@ function buildPiArgs(opts) {
     args2.push("--skill", skill);
   if (opts.piModel)
     args2.push("--model", opts.piModel);
+  if (opts.thinkingLevel)
+    args2.push("--thinking", opts.thinkingLevel);
   return args2;
 }
 async function* runLocalTurn(opts) {
@@ -13130,6 +13343,11 @@ async function send(flags2, output) {
   const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
   const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
   const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
+  const piThinking = typeof flags2["pi-thinking"] === "string" ? flags2["pi-thinking"] : void 0;
+  if (piThinking !== void 0 && !isValidPiThinkingLevel(piThinking)) {
+    output.error(`Invalid thinking level "${piThinking}". Valid values: ${PI_THINKING_LEVELS.join(", ")}`);
+    return 1;
+  }
   const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : void 0;
   const controller = new AbortController();
   let signalled = false;
@@ -13151,6 +13369,7 @@ async function send(flags2, output) {
       sessionDir,
       modelTier,
       piModel,
+      thinkingLevel: piThinking,
       piBin,
       signal: controller.signal
     })) {
