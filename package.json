@@ -1,9 +1,18 @@
 {
   "name": "ideaspaces-plugin",
   "version": "0.3.0",
-  "description": "Local-first knowledge space for Claude Code.",
+  "description": "Local-first IdeaSpaces plugin for Claude Code and Cowork.",
   "private": true,
   "type": "module",
+  "license": "MIT",
+  "homepage": "https://ideaspaces.xyz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IdeaSpaces-xyz/claude-code-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/IdeaSpaces-xyz/claude-code-plugin/issues"
+  },
   "scripts": {
     "build:hook": "node build-hook.mjs",
     "build:reference": "node reference.mjs",

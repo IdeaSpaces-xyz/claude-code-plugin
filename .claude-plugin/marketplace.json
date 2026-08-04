@@ -5,13 +5,13 @@
     "email": "hello@ideaspaces.xyz"
   },
   "metadata": {
-    "description": "Local-first knowledge space for Claude Code. A markdown folder, agent skills, git as sync."
+    "description": "Local-first knowledge spaces for Claude Code and Cowork. Markdown, agent skills, and git history."
   },
   "plugins": [
     {
       "name": "ideaspaces",
       "source": "./",
-      "description": "Local-first knowledge space for Claude Code."
+      "description": "Durable local-first knowledge for Claude Code and Cowork."
     }
   ]
 }
