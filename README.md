@@ -3,17 +3,20 @@
 [![CI](https://github.com/IdeaSpaces-xyz/claude-code-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/IdeaSpaces-xyz/claude-code-plugin/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> Give Claude a durable place to think with you: plain Markdown, an explicit agent contract, and git history that survives the chat.
+> Give Claude a standard way to turn useful work into knowledge that survives the chat.
 
-IdeaSpaces is a local-first plugin for **Claude Code and Cowork**. It orients Claude from the folder you are working in, helps preserve decisions and insights as they crystallize, and carries that shared understanding into later sessions. Everything stays on your machine unless you choose to publish or sync it.
+Useful decisions, findings, plans, and context should not disappear with the chat. This local-first plugin gives Claude a standard way to orient in your work, recognize when understanding has changed, and capture what matters as ordinary Markdown with git history.
 
-[Explore the protocol as an Ideaspace](https://ideaspaces.xyz/spaces/n_64dbf7878f05362337a6cda6) · [Read the protocol](https://github.com/IdeaSpaces-xyz/ideaspace-protocol) · [Use IdeaSpaces with Pi](https://github.com/IdeaSpaces-xyz/pi-is-space)
+The [protocol](https://github.com/IdeaSpaces-xyz/ideaspace-protocol) defines the repository shape and operating loop. This plugin makes that standard native to **Claude Code and Cowork** through session awareness, capture skills, and safe commit/sync tools. Everything stays on your machine unless you choose to publish or sync it.
+
+[Install IdeaSpaces](#install) · [Explore the protocol as an Ideaspace](https://ideaspaces.xyz/spaces/n_64dbf7878f05362337a6cda6) · [Use IdeaSpaces with Pi](https://github.com/IdeaSpaces-xyz/pi-is-space)
 
 ## What you get
 
 - **Awareness on arrival** — Claude reads the active `_agent/` agreement, current direction, tree, and recent movement.
-- **Knowledge that compounds** — capture decisions and context into ordinary Markdown rather than leaving them trapped in transcripts.
-- **Explicit agreement** — commits preserve authorship, agent contribution, conversation provenance, and multi-commit Changes.
+- **Deliberate capture** — when understanding crystallizes, Claude proposes preserving it, stages the agreed draft, and commits only after explicit confirmation.
+- **Knowledge that compounds** — decisions and context become ordinary Markdown rather than remaining trapped in transcripts.
+- **Explicit history** — commits preserve authorship, agent contribution, conversation provenance, and multi-commit Changes.
 - **Optional collaboration** — work fully offline, then publish, push, or pull when you want remote access.
 
 ## Install
