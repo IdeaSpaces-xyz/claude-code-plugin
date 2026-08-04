@@ -1,6 +1,6 @@
 {
   "name": "ideaspaces-plugin",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local-first IdeaSpaces plugin for Claude Code and Cowork.",
   "private": true,
   "type": "module",
