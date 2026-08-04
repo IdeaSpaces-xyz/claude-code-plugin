@@ -5,13 +5,13 @@
     "email": "hello@ideaspaces.xyz"
   },
   "metadata": {
-    "description": "Local-first knowledge spaces for Claude Code and Cowork. Markdown, agent skills, and git history."
+    "description": "Ideaspace Protocol for Claude Code and Cowork — durable awareness, deliberate capture, optional sync."
   },
   "plugins": [
     {
       "name": "ideaspaces",
       "source": "./",
-      "description": "Durable local-first knowledge for Claude Code and Cowork."
+      "description": "Ideaspace Protocol for Claude Code and Cowork — durable awareness, deliberate capture, optional sync."
     }
   ]
 }

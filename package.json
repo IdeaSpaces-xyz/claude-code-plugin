@@ -1,7 +1,7 @@
 {
   "name": "ideaspaces-plugin",
   "version": "0.3.1",
-  "description": "Local-first IdeaSpaces plugin for Claude Code and Cowork.",
+  "description": "Ideaspace Protocol for Claude Code and Cowork — durable awareness, deliberate capture, optional sync.",
   "private": true,
   "type": "module",
   "license": "MIT",
