@@ -143,6 +143,8 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 | `is_navigate` | Re-derive orientation at a position — the fractal `_agent` contract (foundation + deepest guide/purpose/now), tree, git-state, and drift. Read-only. |
 | `is_pull` | Integrate remote changes into the local space; never pushes; refuses on a dirty/uncommitted tree. |
 | `is_push` | Send committed captures to the remote; never pulls; refuses when behind — pull first. |
+| `is_spaces` | List remote spaces available to the signed-in person. |
+| `is_clone` | Clone a selected remote space into a local folder. |
 | `is_auth` | Log in / out for optional remote hosting. |
 
 Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
