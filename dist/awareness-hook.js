@@ -7431,12 +7431,22 @@ async function composeContractAlongPath(position) {
       }
     }
   }
-  return { position: start, spaceRoot, contract, levels: found.map((f) => f.dir) };
+  const stack = [...found].reverse().map(({ dir: levelDir, contract: levelContract }) => ({
+    dir: levelDir,
+    contract: levelContract
+  }));
+  return {
+    position: start,
+    spaceRoot,
+    contract,
+    stack,
+    levels: found.map((f) => f.dir)
+  };
 }
 
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 import { promises as fs4 } from "node:fs";
-import { join as join4, resolve as resolve4 } from "node:path";
+import { join as join4, relative as relative3, resolve as resolve4 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
@@ -7849,6 +7859,17 @@ async function readSeenRef(repoRoot) {
   return res.ok ? res.out.trim() || void 0 : void 0;
 }
 
+// node_modules/@ideaspaces/protocol/dist/filesystem.js
+var DEFAULT_IGNORED_DIRECTORIES = [
+  ".git",
+  ".github",
+  ".vscode",
+  ".idea",
+  "node_modules",
+  "dist",
+  "build"
+];
+
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 var CONTENT_AWARENESS_SECTIONS = [
   "position",
@@ -7861,16 +7882,7 @@ var CONTENT_AWARENESS_SECTIONS = [
   "stale-docs",
   "direction-drift"
 ];
-var SKIP_DIRS2 = /* @__PURE__ */ new Set([
-  "_agent",
-  "node_modules",
-  ".git",
-  ".github",
-  ".vscode",
-  ".idea",
-  "dist",
-  "build"
-]);
+var SKIP_DIRS2 = /* @__PURE__ */ new Set(["_agent", ...DEFAULT_IGNORED_DIRECTORIES]);
 var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 var DEFAULT_MAX_DRIFT = 10;
 async function assembleContentAwareness(opts) {
@@ -7891,6 +7903,7 @@ async function assembleContentAwareness(opts) {
     root: position,
     activityRoot: base,
     contract: composed.contract,
+    stack: composed.stack,
     lastSha,
     maxChanges: opts.maxChanges,
     nowExcerptLength: opts.nowExcerptLength,
@@ -7918,15 +7931,15 @@ async function assembleContentAwareness(opts) {
   };
 }
 function renderContentAwareness(manifest, opts = {}) {
-  return renderAwarenessSections(manifest, opts);
+  return renderAwarenessSections({ ...manifest, levelBase: manifest.spaceRoot }, opts);
 }
 async function readAwarenessSections(opts) {
-  const { root, activityRoot, contract, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
+  const { root, activityRoot, contract, stack, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
   const now = extractNow(contract, nowExcerptLength);
-  const contractEntries = buildContractEntries(contract, summaryExcerptLength);
+  const contractEntries = stack?.length ? buildStackedContractEntries(stack, summaryExcerptLength) : buildContractEntries(contract, summaryExcerptLength);
   const [tree, skills, activity] = await Promise.all([
     buildTree(root),
-    readSkills(root, summaryExcerptLength),
+    readSkills(stack?.length ? stack.map((level) => level.dir) : [root], summaryExcerptLength),
     lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
   ]);
   return {
@@ -7960,10 +7973,10 @@ function renderAwarenessSections(data, opts) {
         rendered = data.tree ? renderTree(data.tree) : null;
         break;
       case "contract":
-        rendered = renderContract(data.contract);
+        rendered = renderContract(data.contract, data.levelBase);
         break;
       case "skills":
-        rendered = renderSkills(data.skills);
+        rendered = renderSkills(data.skills, data.levelBase);
         break;
       case "activity":
         rendered = data.activity ? renderActivity(data.activity) : null;
@@ -8001,31 +8014,45 @@ function buildContractEntries(contract, max) {
 function hasLevel(entry) {
   return "level" in entry;
 }
-async function readSkills(root, max) {
-  const skillsDir = join4(root, "_agent", "skills");
-  let entries;
-  try {
-    entries = (await fs4.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
-  } catch {
-    return [];
-  }
-  return Promise.all(entries.map(async (file) => {
-    const path = join4(skillsDir, file);
-    try {
-      const content = await fs4.readFile(path, "utf-8");
-      return {
-        name: file.replace(/\.md$/, ""),
-        path,
-        summary: describeFile(content, max)
-      };
-    } catch {
-      return {
-        name: file.replace(/\.md$/, ""),
-        path,
-        summary: null
-      };
+function buildStackedContractEntries(stack, max) {
+  const entries = [];
+  for (const name of CONTRACT_ORDER) {
+    for (const level of stack) {
+      const entry = level.contract[name];
+      if (!entry)
+        continue;
+      entries.push({
+        name,
+        path: entry.path,
+        level: level.dir,
+        summary: describeFile(entry.content, max)
+      });
     }
-  }));
+  }
+  return entries;
+}
+async function readSkills(levels, max) {
+  const byName = /* @__PURE__ */ new Map();
+  for (const dir of levels) {
+    const skillsDir = join4(dir, "_agent", "skills");
+    let entries;
+    try {
+      entries = (await fs4.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
+    } catch {
+      continue;
+    }
+    for (const file of entries) {
+      const path = join4(skillsDir, file);
+      const name = file.replace(/\.md$/, "");
+      try {
+        const content = await fs4.readFile(path, "utf-8");
+        byName.set(name, { name, path, level: dir, summary: describeFile(content, max) });
+      } catch {
+        byName.set(name, { name, path, level: dir, summary: null });
+      }
+    }
+  }
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 async function readActivity(repoRoot, lastSha, maxChanges) {
   const { changedFiles } = await recentActivity(repoRoot, lastSha);
@@ -8133,21 +8160,29 @@ function renderTree(tree) {
   }
   return lines.join("\n");
 }
-function renderContract(entries) {
+function levelAnnotation(level, base) {
+  if (!level || !base || level === base)
+    return "";
+  const rel = relative3(base, level);
+  return rel && !rel.startsWith("..") ? ` (${rel}/)` : "";
+}
+function renderContract(entries, levelBase) {
   if (!entries.length)
     return null;
   const lines = ["Agent context:"];
   for (const entry of entries) {
-    lines.push(entry.summary ? `  ${entry.name} \u2014 ${entry.summary}` : `  ${entry.name}`);
+    const name = `${entry.name}${levelAnnotation(entry.level, levelBase)}`;
+    lines.push(entry.summary ? `  ${name} \u2014 ${entry.summary}` : `  ${name}`);
   }
   return lines.join("\n");
 }
-function renderSkills(skills) {
+function renderSkills(skills, levelBase) {
   if (!skills.length)
     return null;
   const lines = ["Operating skills:"];
   for (const skill of skills) {
-    lines.push(skill.summary ? `  ${skill.name} \u2014 ${skill.summary}` : `  ${skill.name}`);
+    const name = `${skill.name}${levelAnnotation(skill.level, levelBase)}`;
+    lines.push(skill.summary ? `  ${name} \u2014 ${skill.summary}` : `  ${name}`);
   }
   return lines.join("\n");
 }
