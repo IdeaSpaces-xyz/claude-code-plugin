@@ -37,51 +37,17 @@ Native `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` remain the default fo
 
 **Returning?** The SessionStart hook surfaces what's present inline along with each file's summary and any operating skills. If you need to refresh at the current position or a branch, use **is-orient** or `is_navigate`.
 
-Read `_agent/foundation.md` and `_agent/guide.md` first when acting beyond the injected awareness — they always exist on a scaffolded space. Then `_agent/purpose.md`, `now.md`, `next.md` when present. **Missing files are first-class drift signals**: the contract names them, so absence means direction hasn't been captured. Surface this and propose capturing them in conversation before doing other work.
+Read `_agent/foundation.md` and `_agent/guide.md` first when acting beyond the injected awareness — they always exist on a scaffolded space. Then `_agent/purpose.md`, `now.md`, `next.md` when present; a named-but-absent file is a drift signal — surface it and propose capturing before other work.
 
-## The five-file `_agent/` contract
+## The `_agent/` contract
 
-Every ideaspace carries an `_agent/` folder at root. Two layers:
+The contract's shape is deliberately not restated here. Every scaffolded space carries it in its own `_agent/foundation.md` — the five files, seed vs emergent, the skills/perspectives dimensions, the `.gitignore` boundary — and the shared operating standard lives in `${CLAUDE_PLUGIN_ROOT}/reference/guide.md`. Read the space's foundation; restating shape in entrypoints is how drift happens. Not in a space yet? `/is-setup` scaffolds the seed.
 
-**Seed** (always scaffolded by `ideaspaces create` / `/is-setup`):
-
-| File | Role |
-|---|---|
-| `foundation.md` | What this place is, baseline behaviors. Lives only at the space root and always loads. |
-| `guide.md` | How agent and human work together at this scope, anchored to foundation. |
-
-**Emergent** (captured in conversation when content exists, not as placeholder writes):
-
-| File | Role |
-|---|---|
-| `purpose.md` | Why this space exists. The North Star. |
-| `now.md` | What's currently active. |
-| `next.md` | What's queued. |
-
-The contract is self-bootstrapping — `foundation.md` + `guide.md` name the emergent files, so an agent reading the seed sees the gap and proposes capturing the rest. Real content over placeholder filler.
-
-Read all five at session start when present; surface the gap when not.
-
-`CLAUDE.md` at the space root tells Claude Code where the contract is — without it, the runtime reads ancestor `CLAUDE.md` only and misses the space-specific Agreement.
-
-Branches (deeper directories) can refine via their own `_agent/` (any of guide / purpose / now / next) without re-declaring foundation. Most branches don't need their own — a `README.md` is enough when the agreement is light.
-
-`.gitignore` is also part of the Agreement — the boundary between what's shared and what stays local. Drafts, scratch, secrets, per-developer context go there. Propose changes; never edit silently.
-
-### Optional: `_agent/skills/`
-
-A space can carry **operating skills** as markdown files in `_agent/skills/`. Each skill describes a procedure the agent should follow when working in this space — for example, `_agent/skills/commit.md` defining a three-tier commit shape. Skills are surfaced at session start (the awareness block lists them by name + summary), with full content loaded on demand when invoked.
-
-Read a skill when the agent reaches for the procedure it describes. Don't preload — the listing is enough orientation; the body matters at the moment of use.
+Branches (deeper directories) refine via their own `_agent/` without re-declaring foundation; most branches need only a `README.md`. Operating skills in `_agent/skills/` are listed at session start by name + summary — read a skill's body at the moment of use, don't preload.
 
 ## Two Roles at every position
 
-Every position in the tree holds two kinds of content. The folder convention enforces the split.
-
-| Role | What | Folder convention |
-|------|------|-------------------|
-| **User content** | Notes — knowledge that accumulates | regular `.md` files |
-| **Agent context** | Instructions that shape the agent | `_agent/`, `README.md` |
+Knowledge (regular `.md` files) and agent context (`_agent/`, `README.md`) — the protocol's split: the first is content that accumulates, the second is instruction read by position.
 
 Within user content, voices can coexist at different branches. Don't mix them in one folder — use a subfolder to mark the shift:
 

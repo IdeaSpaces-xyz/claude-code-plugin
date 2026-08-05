@@ -34,7 +34,7 @@ Reflection is the trigger; recalibration is what it runs. Offered as a readiness
 
 Read current state first — `Read` `_agent/purpose.md` and `_agent/now.md`. If either doesn't exist yet, that's the first reflection: the contract names them, so absence means direction hasn't been captured. Surface it and propose capturing the missing file before reflecting on what's there. Inspect recent activity with `Glob`, `Grep`, or `Bash` (`git diff`, `git log`) when needed.
 
-Before asserting that something "shipped", "is implemented", or "is pending" based on a doc, check it against the code. The code may live in a sibling repo. Use `Grep`, `Bash`, and `Read` to compare the doc with implementation reality; treat status lines as hints, not authority.
+Verify before claiming status — the Delta Protocol in `${CLAUDE_PLUGIN_ROOT}/reference/awareness.md`. In short: check the doc against the code (which may live in a sibling repo) with `Grep`, `Bash`, and `Read`; status lines are hints, not authority.
 
 Be specific: "The Now says 'build skill packages.' We've defined three. Update the bullets?" Not "should we update Now?"
 
