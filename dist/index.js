@@ -3596,49 +3596,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative3, options, skipNormalization) {
+    function resolveComponent(base, relative4, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative3 = parse3(serialize(relative3, options), options);
+        relative4 = parse3(serialize(relative4, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative3.scheme) {
-        target.scheme = relative3.scheme;
-        target.userinfo = relative3.userinfo;
-        target.host = relative3.host;
-        target.port = relative3.port;
-        target.path = removeDotSegments(relative3.path || "");
-        target.query = relative3.query;
+      if (!options.tolerant && relative4.scheme) {
+        target.scheme = relative4.scheme;
+        target.userinfo = relative4.userinfo;
+        target.host = relative4.host;
+        target.port = relative4.port;
+        target.path = removeDotSegments(relative4.path || "");
+        target.query = relative4.query;
       } else {
-        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
-          target.userinfo = relative3.userinfo;
-          target.host = relative3.host;
-          target.port = relative3.port;
-          target.path = removeDotSegments(relative3.path || "");
-          target.query = relative3.query;
+        if (relative4.userinfo !== void 0 || relative4.host !== void 0 || relative4.port !== void 0) {
+          target.userinfo = relative4.userinfo;
+          target.host = relative4.host;
+          target.port = relative4.port;
+          target.path = removeDotSegments(relative4.path || "");
+          target.query = relative4.query;
         } else {
-          if (!relative3.path) {
+          if (!relative4.path) {
             target.path = base.path;
-            if (relative3.query !== void 0) {
-              target.query = relative3.query;
+            if (relative4.query !== void 0) {
+              target.query = relative4.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative3.path[0] === "/") {
-              target.path = removeDotSegments(relative3.path);
+            if (relative4.path[0] === "/") {
+              target.path = removeDotSegments(relative4.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative3.path;
+                target.path = "/" + relative4.path;
               } else if (!base.path) {
-                target.path = relative3.path;
+                target.path = relative4.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative4.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative3.query;
+            target.query = relative4.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3646,7 +3646,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative3.fragment;
+      target.fragment = relative4.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -14014,7 +14014,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument4(source, options = {}) {
+    function parseDocument3(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -14040,7 +14040,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver && typeof reviver === "object") {
         options = reviver;
       }
-      const doc = parseDocument4(src, options);
+      const doc = parseDocument3(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning) => log.warn(doc.options.logLevel, warning));
@@ -14076,7 +14076,7 @@ var require_public_api = __commonJS({
     }
     exports.parse = parse3;
     exports.parseAllDocuments = parseAllDocuments;
-    exports.parseDocument = parseDocument4;
+    exports.parseDocument = parseDocument3;
     exports.stringify = stringify;
   }
 });
@@ -28436,12 +28436,22 @@ async function composeContractAlongPath(position) {
       }
     }
   }
-  return { position: start, spaceRoot, contract, levels: found.map((f) => f.dir) };
+  const stack = [...found].reverse().map(({ dir: levelDir, contract: levelContract }) => ({
+    dir: levelDir,
+    contract: levelContract
+  }));
+  return {
+    position: start,
+    spaceRoot,
+    contract,
+    stack,
+    levels: found.map((f) => f.dir)
+  };
 }
 
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 import { promises as fs4 } from "node:fs";
-import { join as join5, resolve as resolve5 } from "node:path";
+import { join as join5, relative as relative3, resolve as resolve5 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist2(), 1);
@@ -28937,6 +28947,17 @@ async function readSeenRef(repoRoot) {
   return res.ok ? res.out.trim() || void 0 : void 0;
 }
 
+// node_modules/@ideaspaces/protocol/dist/filesystem.js
+var DEFAULT_IGNORED_DIRECTORIES = [
+  ".git",
+  ".github",
+  ".vscode",
+  ".idea",
+  "node_modules",
+  "dist",
+  "build"
+];
+
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 var CONTENT_AWARENESS_SECTIONS = [
   "position",
@@ -28949,16 +28970,7 @@ var CONTENT_AWARENESS_SECTIONS = [
   "stale-docs",
   "direction-drift"
 ];
-var SKIP_DIRS2 = /* @__PURE__ */ new Set([
-  "_agent",
-  "node_modules",
-  ".git",
-  ".github",
-  ".vscode",
-  ".idea",
-  "dist",
-  "build"
-]);
+var SKIP_DIRS2 = /* @__PURE__ */ new Set(["_agent", ...DEFAULT_IGNORED_DIRECTORIES]);
 var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 var DEFAULT_MAX_DRIFT = 10;
 async function assembleContentAwareness(opts) {
@@ -28979,6 +28991,7 @@ async function assembleContentAwareness(opts) {
     root: position,
     activityRoot: base,
     contract: composed.contract,
+    stack: composed.stack,
     lastSha,
     maxChanges: opts.maxChanges,
     nowExcerptLength: opts.nowExcerptLength,
@@ -29006,15 +29019,15 @@ async function assembleContentAwareness(opts) {
   };
 }
 function renderContentAwareness(manifest, opts = {}) {
-  return renderAwarenessSections(manifest, opts);
+  return renderAwarenessSections({ ...manifest, levelBase: manifest.spaceRoot }, opts);
 }
 async function readAwarenessSections(opts) {
-  const { root, activityRoot, contract, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
+  const { root, activityRoot, contract, stack, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
   const now = extractNow(contract, nowExcerptLength);
-  const contractEntries = buildContractEntries(contract, summaryExcerptLength);
+  const contractEntries = stack?.length ? buildStackedContractEntries(stack, summaryExcerptLength) : buildContractEntries(contract, summaryExcerptLength);
   const [tree, skills, activity] = await Promise.all([
     buildTree(root),
-    readSkills(root, summaryExcerptLength),
+    readSkills(stack?.length ? stack.map((level) => level.dir) : [root], summaryExcerptLength),
     lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
   ]);
   return {
@@ -29048,10 +29061,10 @@ function renderAwarenessSections(data, opts) {
         rendered = data.tree ? renderTree(data.tree) : null;
         break;
       case "contract":
-        rendered = renderContract(data.contract);
+        rendered = renderContract(data.contract, data.levelBase);
         break;
       case "skills":
-        rendered = renderSkills(data.skills);
+        rendered = renderSkills(data.skills, data.levelBase);
         break;
       case "activity":
         rendered = data.activity ? renderActivity(data.activity) : null;
@@ -29089,31 +29102,45 @@ function buildContractEntries(contract, max) {
 function hasLevel(entry) {
   return "level" in entry;
 }
-async function readSkills(root, max) {
-  const skillsDir = join5(root, "_agent", "skills");
-  let entries;
-  try {
-    entries = (await fs4.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
-  } catch {
-    return [];
-  }
-  return Promise.all(entries.map(async (file) => {
-    const path = join5(skillsDir, file);
-    try {
-      const content = await fs4.readFile(path, "utf-8");
-      return {
-        name: file.replace(/\.md$/, ""),
-        path,
-        summary: describeFile(content, max)
-      };
-    } catch {
-      return {
-        name: file.replace(/\.md$/, ""),
-        path,
-        summary: null
-      };
+function buildStackedContractEntries(stack, max) {
+  const entries = [];
+  for (const name of CONTRACT_ORDER) {
+    for (const level of stack) {
+      const entry = level.contract[name];
+      if (!entry)
+        continue;
+      entries.push({
+        name,
+        path: entry.path,
+        level: level.dir,
+        summary: describeFile(entry.content, max)
+      });
     }
-  }));
+  }
+  return entries;
+}
+async function readSkills(levels, max) {
+  const byName = /* @__PURE__ */ new Map();
+  for (const dir of levels) {
+    const skillsDir = join5(dir, "_agent", "skills");
+    let entries;
+    try {
+      entries = (await fs4.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
+    } catch {
+      continue;
+    }
+    for (const file of entries) {
+      const path = join5(skillsDir, file);
+      const name = file.replace(/\.md$/, "");
+      try {
+        const content = await fs4.readFile(path, "utf-8");
+        byName.set(name, { name, path, level: dir, summary: describeFile(content, max) });
+      } catch {
+        byName.set(name, { name, path, level: dir, summary: null });
+      }
+    }
+  }
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 async function readActivity(repoRoot, lastSha, maxChanges) {
   const { changedFiles } = await recentActivity(repoRoot, lastSha);
@@ -29221,21 +29248,29 @@ function renderTree(tree) {
   }
   return lines.join("\n");
 }
-function renderContract(entries) {
+function levelAnnotation(level, base) {
+  if (!level || !base || level === base)
+    return "";
+  const rel = relative3(base, level);
+  return rel && !rel.startsWith("..") ? ` (${rel}/)` : "";
+}
+function renderContract(entries, levelBase) {
   if (!entries.length)
     return null;
   const lines = ["Agent context:"];
   for (const entry of entries) {
-    lines.push(entry.summary ? `  ${entry.name} \u2014 ${entry.summary}` : `  ${entry.name}`);
+    const name = `${entry.name}${levelAnnotation(entry.level, levelBase)}`;
+    lines.push(entry.summary ? `  ${name} \u2014 ${entry.summary}` : `  ${name}`);
   }
   return lines.join("\n");
 }
-function renderSkills(skills) {
+function renderSkills(skills, levelBase) {
   if (!skills.length)
     return null;
   const lines = ["Operating skills:"];
   for (const skill of skills) {
-    lines.push(skill.summary ? `  ${skill.name} \u2014 ${skill.summary}` : `  ${skill.name}`);
+    const name = `${skill.name}${levelAnnotation(skill.level, levelBase)}`;
+    lines.push(skill.summary ? `  ${name} \u2014 ${skill.summary}` : `  ${name}`);
   }
   return lines.join("\n");
 }
@@ -29459,7 +29494,7 @@ Push every criterion until it's testable. If two people applying this Perspectiv
 
 Look for existing Notes that exemplify good and bad cases, and read them. Real examples ground the Perspective in the user's actual thinking, not abstract criteria.
 `,
-  "form-primitive": '---\nname: form-primitive\ndescription: >\n  Help users create reusable agent instructions \u2014 procedures, checklists,\n  review patterns, memory routines, or any repeatable pattern. Use when the\n  user wants to define how the agent should work in specific situations.\n  Produces a file in _agent/ with name + description frontmatter.\n---\n\n# Form Primitive\n\nHelp the user create a reusable instruction that shapes how you work together. Not a Perspective (those have a specific three-component structure and are applied as a structured transformation). A primitive is any part of `_agent/` \u2014 a procedure, a checklist, a review pattern, a memory routine, whatever helps at that position.\n\n## The L1 Contract\n\nEvery primitive needs frontmatter with `name` and `description`. The description tells the agent when to use it \u2014 like a trigger condition.\n\n```yaml\n---\nname: Weekly Review\ndescription: >\n  Review the week\'s captures, surface patterns, update Now.\n  Use at the end of each week or when the user asks to reflect.\n---\n```\n\nThe name says what it is. The description says when to use it. Both are required. Both show up when browsing the tree. The description is how the agent decides "this is relevant right now."\n\n## Elicitation\n\nThe user knows what they want to make repeatable. They may not know how to structure it.\n\n1. **Start with the trigger.** "When does this happen? What situation makes you think \'I should do X\'?" This becomes the description.\n\n2. **Walk through a real instance.** "Last time you did this, what did you do step by step?" Real examples beat abstract procedures.\n\n3. **Find the invariant.** What stays the same every time vs what changes with context? The invariant is the instruction. The variable parts are what the agent adapts.\n\n4. **Draft and validate.** Show the primitive before saving. "If I followed this next time, would it produce the right behavior?"\n\n## Structure\n\nNo prescribed format. The content should be whatever makes the instruction clear and followable. Common patterns:\n\n**Procedural** \u2014 step by step:\n```markdown\n## When to use\n[trigger condition]\n\n## Steps\n1. ...\n2. ...\n3. ...\n\n## Output\n[what gets produced]\n```\n\n**Checklist** \u2014 verify against criteria:\n```markdown\n## Check\n- [ ] Does it have X?\n- [ ] Is Y consistent with Z?\n- [ ] Flag if A but not B.\n\n## If issues found\n[what to do]\n```\n\n**Routine** \u2014 recurring pattern:\n```markdown\n## Trigger\n[when this runs \u2014 weekly, on entering a position, on capture, etc.]\n\n## What to do\n[the routine]\n\n## What to capture\n[what Note or update to produce]\n```\n\n**Review** \u2014 evaluate something:\n```markdown\n## What to review\n[scope \u2014 a Note, a branch, a set of captures]\n\n## Criteria\n[what good looks like]\n\n## Output\n[Note with findings, or update to the reviewed content]\n```\n\nThe user can invent any structure. These are starting points, not requirements.\n\n## Where It Lives\n\nPrimitives go in `_agent/` at the level where they apply. Everything in `_agent/` composes along the path, root \u2192 current position:\n\n- `_agent/reviewer.md` at repo root \u2192 applies everywhere\n- `startups/_agent/due-diligence-checklist.md` \u2192 applies in startups/ and below\n- `clients/acme/_agent/communication-style.md` \u2192 applies when working on Acme\n\n## Creating Agents\n\nA special case of primitive: a full agent definition. When the user wants a specialized agent (not just an instruction), create `_agent/{agent-name}/agent.md`:\n\n```yaml\n---\nname: "Regulatory Analyst"\ntools: ["read", "write", "search", "git"]\n---\n\nAn agent specialized in regulatory risk analysis. Evaluates compliance\nrequirements, flags regulatory gaps, tracks regulatory changes.\n```\n\nThe optional `tools` field restricts which tools the agent can use. Omit it for full access. The body describes what the agent does.\n\nAlso create `_agent/{agent-name}/soul.md` to define how the agent shows up \u2014 its character and approach. And optionally `purpose.md` and `now.md` for the agent\'s own direction. The agent becomes available for conversations once these files exist.\n\n## What It Is NOT\n\n- **Not a Perspective.** Perspectives have Object Definition, Thinking Structure, Expected Outcome. They\'re applied as a structured transformation. If the user wants to evaluate/analyze things consistently, use the **form-perspective** skill instead.\n- **Not a Note.** Notes are knowledge \u2014 content that accumulates in the Space. Primitives are instructions \u2014 they shape how the agent works, not what the agent knows.\n- **Not guide.md.** The guide is general behavioral guidance for a branch. A primitive is a specific, named, reusable pattern with a trigger condition. Both live in `_agent/` \u2014 both are part of the shared understanding about how we work here.\n\n## Validation\n\nBefore saving, check:\n- Does it have `name` and `description` in frontmatter?\n- Does the description clearly say when to use it?\n- Is the instruction clear enough that you could follow it without asking questions?\n- Would it produce consistent results across different situations?\n\nIf any of these fail, iterate with the user before persisting.\n',
+  "form-primitive": '---\nname: form-primitive\ndescription: >\n  Help users create reusable agent instructions \u2014 procedures, checklists,\n  review patterns, memory routines, or any repeatable pattern. Use when the\n  user wants to define how the agent should work in specific situations.\n  Produces a file in _agent/ with name + description frontmatter.\n---\n\n# Form Primitive\n\nHelp the user create a reusable instruction that shapes how you work together. Not a Perspective (those have a specific three-component structure and are applied as a structured transformation). A primitive is any part of `_agent/` \u2014 a procedure, a checklist, a review pattern, a memory routine, whatever helps at that position.\n\n## The L1 Contract\n\nEvery primitive needs frontmatter with `name` and `description`. The description tells the agent when to use it \u2014 like a trigger condition.\n\n```yaml\n---\nname: Weekly Review\ndescription: >\n  Review the week\'s captures, surface patterns, update Now.\n  Use at the end of each week or when the user asks to reflect.\n---\n```\n\nThe name says what it is. The description says when to use it. Both are required. Both show up when browsing the tree. The description is how the agent decides "this is relevant right now."\n\n## Elicitation\n\nThe user knows what they want to make repeatable. They may not know how to structure it.\n\n1. **Start with the trigger.** "When does this happen? What situation makes you think \'I should do X\'?" This becomes the description.\n\n2. **Walk through a real instance.** "Last time you did this, what did you do step by step?" Real examples beat abstract procedures.\n\n3. **Find the invariant.** What stays the same every time vs what changes with context? The invariant is the instruction. The variable parts are what the agent adapts.\n\n4. **Draft and validate.** Show the primitive before saving. "If I followed this next time, would it produce the right behavior?"\n\n## Structure\n\nNo prescribed format. The content should be whatever makes the instruction clear and followable. Common patterns:\n\n**Procedural** \u2014 step by step:\n```markdown\n## When to use\n[trigger condition]\n\n## Steps\n1. ...\n2. ...\n3. ...\n\n## Output\n[what gets produced]\n```\n\n**Checklist** \u2014 verify against criteria:\n```markdown\n## Check\n- [ ] Does it have X?\n- [ ] Is Y consistent with Z?\n- [ ] Flag if A but not B.\n\n## If issues found\n[what to do]\n```\n\n**Routine** \u2014 recurring pattern:\n```markdown\n## Trigger\n[when this runs \u2014 weekly, on entering a position, on capture, etc.]\n\n## What to do\n[the routine]\n\n## What to capture\n[what Note or update to produce]\n```\n\n**Review** \u2014 evaluate something:\n```markdown\n## What to review\n[scope \u2014 a Note, a branch, a set of captures]\n\n## Criteria\n[what good looks like]\n\n## Output\n[Note with findings, or update to the reviewed content]\n```\n\nThe user can invent any structure. These are starting points, not requirements.\n\n## Where It Lives\n\nPrimitives go in `_agent/` at the level where they apply. Everything in `_agent/` composes along the path, root \u2192 current position:\n\n- `_agent/reviewer.md` at repo root \u2192 applies everywhere\n- `startups/_agent/due-diligence-checklist.md` \u2192 applies in startups/ and below\n- `clients/acme/_agent/communication-style.md` \u2192 applies when working on Acme\n\n## Creating Agents\n\nA full agent definition is not a special file \u2014 it is a **vantage-shaped space**: an ideaspace whose five-file `_agent/` contract *is* the character. When the user wants a specialized agent (not just an instruction), create a dedicated space (its own folder or repo) and write its contract:\n\n- `_agent/foundation.md` \u2014 what this agent is, its character, its boundaries. State plainly that the space is a vantage, not a subject: an agent launched here inhabits it.\n- `_agent/guide.md` \u2014 how work goes when inhabiting it.\n- `_agent/skills/` \u2014 the procedures this agent can repeat.\n- `_agent/purpose.md` and `_agent/now.md` \u2014 the agent\'s own direction, as they emerge.\n\nThe same loader that reads any space reads this one; no new file type, no separate agent format. Identity \u2014 a name others can select, address, and grant access to \u2014 is a platform concern layered on top of the shape, not a file in it.\n\nDo **not** create `soul.md` or `agent.md` \u2014 nothing loads them; character belongs in the contract files above. (`_agent/<agent-id>/` folders are per-agent working records inside a shared space, not agent definitions.)\n\n## What It Is NOT\n\n- **Not a Perspective.** Perspectives have Object Definition, Thinking Structure, Expected Outcome. They\'re applied as a structured transformation. If the user wants to evaluate/analyze things consistently, use the **form-perspective** skill instead.\n- **Not a Note.** Notes are knowledge \u2014 content that accumulates in the Space. Primitives are instructions \u2014 they shape how the agent works, not what the agent knows.\n- **Not guide.md.** The guide is general behavioral guidance for a branch. A primitive is a specific, named, reusable pattern with a trigger condition. Both live in `_agent/` \u2014 both are part of the shared understanding about how we work here.\n\n## Validation\n\nBefore saving, check:\n- Does it have `name` and `description` in frontmatter?\n- Does the description clearly say when to use it?\n- Is the instruction clear enough that you could follow it without asking questions?\n- Would it produce consistent results across different situations?\n\nIf any of these fail, iterate with the user before persisting.\n',
   "guide": "---\nname: guide\ndescription: >\n  How to establish and maintain shared understanding at any position.\n  Always in awareness. Use when: a new folder has no _agent/, the user\n  asks what this place is for, purpose or now feel stale, or the\n  shared understanding needs renegotiating.\n---\n\n# Guide\n\n`_agent/` is how we work here, as far as we've figured it out.\nFoundation, guide, purpose, now, next \u2014 when any of them contradict\ncurrent practice, or go silent on something we keep doing \u2014 surface\nit. Propose an update. The understanding maintains itself through use.\n\n## What to pay attention to\n\nEvery position has dimensions that shape how we work here:\n\n| Dimension | File | The question |\n|---|---|---|\n| What is this place | README.md | Does the contract match what's actually here? |\n| Why does it exist | `_agent/purpose.md` | Clear direction, or still emerging? |\n| What's active | `_agent/now.md` | Concrete and current, or stale? |\n| What's queued | `_agent/next.md` | Identified, even if vague? |\n| How we work here | `_agent/guide.md` | Scope-specific, beyond foundation? |\n\nNot every position needs all of them. A deep branch might only need\na README. Root usually carries more. Each dimension can be empty,\nemerging, established, or drifted.\n\nMost turns you're just working. The guide posture is background\nawareness \u2014 you notice the state of these dimensions while doing\nother things. When a gap matters, you feel it: the user is making\ndecisions without a purpose to anchor them, or now describes work\nthat's already done. That's when to surface it.\n\n## When a position is fresh\n\nStart with the user, not the system. \"What kind of work happens\nhere?\" \u2014 not \"Let me set up your _agent/ folder.\"\n\nCapture something real first. The best onboarding is a Note that\nmatters, sitting in a directory that makes sense. Structure follows\ncontent. One branch, one real thing. Depth follows use, not planning.\n\nWhen you have enough signal about what this place is \u2014 propose.\nPreview before writing. The user confirms, edits, or starts smaller.\nNothing writes without agreement.\n\n## The readiness check\n\nBefore every capture \u2014 writing a Note, updating purpose, creating\na README \u2014 pause. \"I'm about to commit X. Is this what you mean?\"\n\nThe readiness check is the anti-hallucination primitive. Hallucination\nis what happens when either side commits before both are ready.\n\n## What this guide does not cover\n\nTools self-describe. Domain skills (founder, vc, research) add their\nown structure. Platform setup (auth, hooks, sync) is handled by\nsetup skills. This guide is about shared understanding \u2014 how you\nand the user figure out what this place is and keep that agreement\nhonest.\n",
   "purpose-elicitation": `---
 name: purpose-elicitation
@@ -29506,44 +29541,7 @@ If \`_agent/purpose.md\` doesn't exist and the Space has content, the content it
 
 If the Space is empty, explore what the user wants to build: "What kind of knowledge do you want to accumulate here?"
 `,
-  "repo-context": `---
-name: repo-context
-description: >
-  Help describe what this place is and who works here. Use when working on
-  _agent/repo-context.md, when onboarding to a new repo, or when the agent
-  needs to understand the repo's identity.
----
-
-# Repo Context
-
-Help the user describe what this Space is and who works here.
-
-## What Repo Context Is
-
-Repo context is the "What" and "Who" \u2014 it tells the agent what kind of place this is. A personal research repo, a team knowledge base, a client portfolio tracker. It shapes how the agent speaks, what it assumes, and how it names things.
-
-## What to Include
-
-- **What this place is** \u2014 domain, scope, what kind of knowledge lives here
-- **Who works here** \u2014 individual, team, organization. How they think about their work.
-- **Vocabulary** \u2014 terms that mean specific things here. "Deal" might mean venture investment or sales opportunity depending on context.
-- **Conventions** \u2014 naming patterns, preferred structure, anything the agent should follow
-
-## Elicitation
-
-If the user hasn't written repo context yet:
-
-1. Look at existing content \u2014 tree structure, Note names, README files
-2. Reflect what you see: "This looks like a personal research space focused on X"
-3. Ask what's missing from that picture
-4. Draft and refine together
-
-## Writing It
-
-Concise. A few paragraphs. Written for the agent \u2014 this loads at session start and orients every conversation. Focus on what would change the agent's behavior: vocabulary, assumptions, conventions.
-
-Persist to \`_agent/repo-context.md\`.
-`,
+  "repo-context": '---\nname: repo-context\ndescription: >\n  Help describe what this place is and who works here. Use when onboarding to\n  a new repo, when the space\'s identity is unclear, or when drafting the\n  what/who parts of the _agent/ contract.\n---\n\n# Repo Context\n\nHelp the user describe what this Space is and who works here.\n\n## What Repo Context Is\n\nRepo context is the "What" and "Who" \u2014 it tells the agent what kind of place this is. A personal research repo, a team knowledge base, a client portfolio tracker. It shapes how the agent speaks, what it assumes, and how it names things.\n\n## What to Include\n\n- **What this place is** \u2014 domain, scope, what kind of knowledge lives here\n- **Who works here** \u2014 individual, team, organization. How they think about their work.\n- **Vocabulary** \u2014 terms that mean specific things here. "Deal" might mean venture investment or sales opportunity depending on context.\n- **Conventions** \u2014 naming patterns, preferred structure, anything the agent should follow\n\n## Elicitation\n\nIf the user hasn\'t written repo context yet:\n\n1. Look at existing content \u2014 tree structure, Note names, README files\n2. Reflect what you see: "This looks like a personal research space focused on X"\n3. Ask what\'s missing from that picture\n4. Draft and refine together\n\n## Writing It\n\nConcise. A few paragraphs. Written for the agent \u2014 surfaces load the `_agent/` contract by position, so this orients every conversation held here. Focus on what would change the agent\'s behavior: vocabulary, assumptions, conventions.\n\nPersist into the contract: what this place is and who works here is the `_agent/foundation.md` handshake\'s job; conventions and vocabulary the agent should follow belong in `_agent/guide.md`. (Some platforms additionally read `_agent/repo-context.md`; the contract is the portable home.)\n',
   "writing": '---\nname: writing\ndescription: >\n  Writing standard for Notes. Structure for retrieval, summaries for discovery,\n  entities for connection. Use when creating or substantially revising Notes,\n  or when asked "write this well", "capture this", "create a Note about".\n  Derived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n---\n\n# Writing Standard\n\nNotes that compound follow these principles. They\'re functional requirements for knowledge that works \u2014 clear writing is easy to find and reuse, dense summaries drive discovery, well-scoped sections make a Note precise to navigate and search.\n\nDerived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n\n## Summary Is Everything\n\nThe `summary` field is the most important thing you write. It\'s what search results show. It\'s what shows when browsing the tree. It\'s what loads in awareness context. Write it like the first thing someone reads \u2014 because it is.\n\nTwo sentences max. Dense. Immediate orientation. "What is this and why does it matter." Early words carry disproportionate weight \u2014 they anchor how the Note reads and how it is found.\n\n## Conciseness (Strunk & White)\n\n"Omit needless words." Every word in a Note earns its place.\n\n| Padded | Clean |\n|--------|-------|\n| "The question as to whether" | "Whether" |\n| "This is a company that" | "This company" |\n| "It is important to note that" | (delete \u2014 just state it) |\n| "In terms of revenue growth" | "Revenue grew" |\n\nActive voice over passive. "The startup was analyzed" \u2192 "We analyzed the startup." Passive only when the actor is unknown or irrelevant.\n\n## Clarity (Zinsser)\n\n"Clear thinking becomes clear writing." If you can\'t write it clearly, you don\'t understand it yet.\n\n- Strip every sentence to its cleanest components\n- Clutter words add nothing: "basically," "actually," "in order to," "at this point in time"\n- The first paragraph orients the reader immediately \u2014 if someone reads only the summary, they know what this is about\n\n## Concreteness\n\nSpecifics connect a Note to related specifics; abstractions blur those connections.\n\n| Abstract | Concrete |\n|----------|----------|\n| "Significant growth" | "Revenue grew 40% in Q3" |\n| "Strong team" | "3 ex-Google engineers, 2 successful exits" |\n| "Large market" | "$4.2B TAM, growing 25% annually" |\n\nPrefer the specific to the general, the definite to the vague. Concrete facts can be abstracted later. You can\'t recover specifics from abstractions.\n\n## Objectivity (Kovach & Rosenstiel)\n\nDistinguish fact from interpretation. Never blend them.\n\n| Type | Example |\n|------|---------|\n| Fact | "Raised $10M Series A in March 2025" |\n| Interpretation | "The funding suggests investor confidence" |\n| Claim (attributed) | "The CEO states they are \'market leaders\'" |\n\nEvery claim traces to a source. "According to the landing page..." or "The pitch deck states..." \u2014 the reader knows provenance.\n\n**What the agent does NOT do:** verify claims, add information not in the source, editorialize ("impressive team"), fill gaps with plausible content. If the source doesn\'t mention revenue, note the absence \u2014 don\'t guess.\n\n## Well-Scoped Sections\n\nEach `## heading` scopes one distinct point. Well-scoped sections = precise navigation and search.\n\n- A Note with five distinct sections makes five findable, comparable points\n- A wall of text blurs into one undifferentiated block \u2014 hard to find, hard to compare\n- Each section makes a complete point independently\n- Headings are contracts \u2014 "Team Analysis" contains team analysis, not market commentary\n- Target: 3-10 paragraphs per section. Too short = insufficient signal. Too long = diluted topic.\n\nProgressive disclosure: Title \u2192 Summary \u2192 Sections. Each level complete at its depth.\n\n## Primary Attachment\n\nUse `attached_to` for the one thing this Note is primarily about \u2014 like putting a sticky note on an object. It is singular: choose zero or one primary anchor, written `<type>:<id>`.\n\nThe type vocabulary is your platform\'s \u2014 the protocol fixes only the `<type>:<id>` shape. Common types a platform resolves might include a person (`person:alice`), an agent (`agent:assistant`), or a web page (`web_page:https://example.com/report.pdf`).\n\nIf the Note mentions several things, don\'t put all of them in `attached_to`. Choose the primary anchor, split the Note, use tags, or link in prose. Use `references` only for hard sources.\n\n## Cross-Note Links\n\nUse standard markdown links with relative paths for reader navigation. They are portable across editors, Obsidian, print/exports, and plain LLM context.\n\n```markdown\nSee [Acme profile](../companies/acme.md) for background.\nSee [Market map](../markets/README.md) for the branch overview.\n```\n\nPath links are user-facing handles. They may break when the target is renamed unless the editor/tool rewrites them; use editor rename refactors when available. Inline prose links are reader navigation, not provenance \u2014 they don\'t populate `references`.\n\nWhen renaming a Note and heavily rewriting it, commit the rename separately from the rewrite. Git rename detection is similarity-based; a rename plus large content change in one commit can defeat it, losing the file\'s history link.\n\n## Sources and References\n\nUse `references` only for hard sources: the small set of Notes this Note was produced from or grounded in. Perspective outputs and synthesis Notes use `references` for their input Notes. If a Note merely mentions or points to another Note, use an inline markdown link instead.\n\n## Sentence-Level Mechanics\n\n- **Put emphatic words at the end.** "In Q3, revenue grew 40%" not "Revenue is what grew 40% in Q3"\n- **Keep related words together.** Don\'t separate subject and verb with long interruptions\n- **Parallel construction.** "Fast, reliable, and affordable" not "speed, being reliable, and costs less"\n- **One idea per sentence.** Most of the time, two sentences are clearer than one compound one\n\n## Common Failure Modes\n\n- **Throat-clearing.** "Before we dive into the analysis..." \u2014 delete, start with the analysis\n- **Hedge stacking.** "It seems like it might possibly be somewhat relevant" \u2014 state or acknowledge uncertainty once\n- **Elegant variation.** If it\'s a "startup" in paragraph one, don\'t call it a "venture" in paragraph two for variety. Consistency aids findability.\n- **Nominalization.** "Make a determination" \u2192 "determine." "Performed an analysis" \u2192 "analyzed."\n- **Weasel words.** "Some experts say," "studies show" \u2014 without attribution, these are noise\n\n## The Standard\n\nKnowledge capture succeeds when:\n\n1. A human can scan the output and orient in seconds\n2. A machine can index the output and retrieve it precisely\n3. Every sentence traces to a source or is explicitly marked as interpretation\n4. Nothing is added that wasn\'t in the input\n5. Nothing important from the input is lost without acknowledgment\n6. The reader trusts the capture because the method is transparent\n'
 };
 
@@ -29560,9 +29558,6 @@ async function readSkill(name) {
     throw new Error(`Unknown skill: ${name}`);
   return { name, description: extractDescription(content), content };
 }
-
-// node_modules/@ideaspaces/protocol/dist/conformance.js
-var import_yaml3 = __toESM(require_dist2(), 1);
 
 // src/change-state.ts
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
@@ -29753,9 +29748,8 @@ var MCP_TOOL_PARAMETERS = {
     dry_run: external_exports.boolean().optional().describe("Preview ahead/what would push; mutates nothing."),
     cwd: cwdField
   },
-  // Surface-specific to this (Claude Code / MCP) connector — not in the shared
-  // COMMON_TOOL_CONTRACT, the same allowance Pi uses for is_mount/is_unmount.
-  // is_spaces (list) is a promotion candidate if another surface grows listing;
+  // Surface-specific to this (Claude Code / MCP) connector. is_spaces (list)
+  // is a promotion candidate if another surface grows listing;
   // is_clone stays MCP-only (Pi accesses spaces via mount, not git clone).
   is_spaces: {},
   is_clone: {
@@ -29775,8 +29769,8 @@ function hasAnyNonEmptyString(keys, values) {
 function resolveCli() {
   if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
   const __dirname = dirname3(fileURLToPath(import.meta.url));
-  const relative3 = join6(__dirname, "../cli/bundle/ideaspaces.js");
-  if (existsSync2(relative3)) return relative3;
+  const relative4 = join6(__dirname, "../cli/bundle/ideaspaces.js");
+  if (existsSync2(relative4)) return relative4;
   return "ideaspaces";
 }
 var CLI = resolveCli();

@@ -27,7 +27,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@ideaspaces/protocol": "github:IdeaSpaces-xyz/ideaspace-protocol#8e549db00c47fa2c0750466aed789cb1cbb619da",
+    "@ideaspaces/protocol": "github:IdeaSpaces-xyz/ideaspace-protocol#bbdd07fb93895c8dbea31f389cbf4ce2dcf4d726",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^20.0.0",
     "esbuild": "^0.24.0",
