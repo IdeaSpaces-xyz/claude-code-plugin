@@ -24,6 +24,14 @@ const FORBIDDEN = [
   { re: /Co-authored-by/i, why: "trailer format lives in SPEC.md / the commit skill" },
   { re: /\bideaspaces id\b/, why: "removed command (identity-in-the-map)" },
   { re: /\bid --fix\b/, why: "removed command flag (identity-in-the-map)" },
+  // Conduct/shape restatements deduped 2026-08-05 — the space's foundation
+  // (core-composed since cli#99) and reference/ carry these once; entrypoints
+  // point, they do not restate. Mirrors the CLI's byte-inclusion test.
+  { re: /Real content (over placeholder|from real exchange)/, why: "scaffold-template phrase — the space's foundation carries it" },
+  { re: /\.gitignore is also part of the Agreement/, why: "foundation-template sentence — the space carries it" },
+  { re: /Capture is conscious/, why: "the foundation core's line — point at the space's contract or reference/, don't restate" },
+  { re: /Nothing writes without agreement/, why: "reference/guide.md's line — point, don't restate" },
+  { re: /\|\s*`foundation\.md`\s*\|/, why: "the contract table lives in the space's foundation and SPEC — not in entrypoints" },
 ];
 
 const violations = [];
