@@ -8293,7 +8293,7 @@ async function main() {
   const { sessionId, projectDir } = captureSessionId(await readStdin());
   const openChange = changeLine(sessionId, projectDir);
   try {
-    const manifest = await assembleContentAwareness({ position: process.cwd() });
+    const manifest = await assembleContentAwareness({ position: projectDir });
     if (manifest) {
       const text = renderContentAwareness(manifest);
       if (text.trim()) process.stdout.write(text + "\n");
