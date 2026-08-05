@@ -90,7 +90,10 @@ async function main(): Promise<void> {
   const openChange = changeLine(sessionId, projectDir);
 
   try {
-    const manifest = await assembleContentAwareness({ position: process.cwd() });
+    // Awareness renders at the resolved project dir, not the spawn cwd — the
+    // harness may launch hooks from elsewhere (CLAUDE_PROJECT_DIR is the
+    // contract; input.cwd and process.cwd() are fallbacks, in that order).
+    const manifest = await assembleContentAwareness({ position: projectDir });
     if (manifest) {
       const text = renderContentAwareness(manifest);
       if (text.trim()) process.stdout.write(text + "\n");

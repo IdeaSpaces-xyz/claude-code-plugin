@@ -101,6 +101,43 @@ describe("shipped in-process awareness hook", () => {
       "session-a\n",
     );
   });
+
+  it("renders awareness at the resolved project dir, not the spawn cwd", () => {
+    const space = tempDir("is-awareness-hook-proj-");
+    const elsewhere = tempDir("is-awareness-hook-elsewhere-");
+    const home = tempDir("is-awareness-hook-home2-");
+
+    mkdirSync(join(space, "_agent"));
+    writeFileSync(join(space, "_agent", "foundation.md"), "# Foundation\n\nFixture.\n");
+    writeFileSync(join(space, "_agent", "now.md"), "# Now\n\nProject-dir state.\n");
+
+    // The harness contract: CLAUDE_PROJECT_DIR names the project; the hook may
+    // be spawned from anywhere. The old bug rendered awareness at process.cwd(),
+    // which this setup makes an empty unrelated directory.
+    const viaEnv = spawnSync("node", [HOOK], {
+      cwd: elsewhere,
+      env: { ...process.env, HOME: home, CLAUDE_PROJECT_DIR: space },
+      input: JSON.stringify({ session_id: "session-b", cwd: elsewhere }),
+      encoding: "utf-8",
+    });
+    expect(viaEnv.status).toBe(0);
+    expect(viaEnv.stderr).toBe("");
+    expect(viaEnv.stdout).toContain("Now: Project-dir state.");
+    expect(viaEnv.stdout).toContain("active _agent: .");
+
+    // Without the env var, input.cwd is the next authority — still not the
+    // spawn cwd.
+    const envWithout = { ...process.env, HOME: home };
+    delete (envWithout as Record<string, string | undefined>).CLAUDE_PROJECT_DIR;
+    const viaInput = spawnSync("node", [HOOK], {
+      cwd: elsewhere,
+      env: envWithout,
+      input: JSON.stringify({ session_id: "session-b", cwd: space }),
+      encoding: "utf-8",
+    });
+    expect(viaInput.status).toBe(0);
+    expect(viaInput.stdout).toContain("Now: Project-dir state.");
+  });
 });
 
 /** Mirror the protocol's public project-cache key for the persisted bridge assertion. */
