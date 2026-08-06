@@ -1,0 +1,40 @@
+# Tag main with v<version> whenever the plugin version changes.
+#
+# The marketplace distributes from main and never reads tags — these exist for
+# provenance: `git checkout v0.3.2` shows exactly what a user reporting 0.3.2
+# has installed, and `git log v0.3.1..v0.3.2` bounds a release for changelogs.
+# The release guard forces the bump on artifact PRs; this workflow makes the
+# tag automatic on merge, so no human step exists to forget.
+
+name: Tag release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.claude-plugin/plugin.json'
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag v<version> if missing
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create annotated tag for the current version
+        run: |
+          ver=$(node -pe 'JSON.parse(require("fs").readFileSync(".claude-plugin/plugin.json","utf8")).version')
+          tag="v$ver"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "$tag already exists — nothing to do."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "ideaspaces plugin $tag"
+          git push origin "$tag"
+          echo "Tagged $GITHUB_SHA as $tag"

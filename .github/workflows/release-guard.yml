@@ -1,0 +1,56 @@
+# Release guard — every change to what users receive carries a version bump.
+#
+# Claude Code keys the install cache by the plugin version, so an unbumped
+# artifact change mutates users' installed slot in place while update checks
+# report "already at the latest version" (how 0.3.1 accumulated four
+# unversioned content PRs). This check makes that impossible to merge.
+
+name: Release guard
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  version-bump:
+    name: Version bump on shipped-artifact change
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require version bump when shipped artifacts change
+        run: |
+          git fetch -q origin "$GITHUB_BASE_REF"
+          base="origin/$GITHUB_BASE_REF"
+
+          # Paths that end up in a user's install.
+          shipped=$(git diff --name-only "$base"...HEAD -- \
+            dist/ cli/bundle/ reference/ skills/ hooks/ \
+            .claude-plugin/ .mcp.json vendor-lock.json)
+
+          head_ver=$(node -pe 'JSON.parse(require("fs").readFileSync(".claude-plugin/plugin.json","utf8")).version')
+          pkg_ver=$(node -pe 'JSON.parse(require("fs").readFileSync("package.json","utf8")).version')
+          base_ver=$(git show "$base":.claude-plugin/plugin.json | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).version')
+
+          if [ "$head_ver" != "$pkg_ver" ]; then
+            echo "::error::.claude-plugin/plugin.json ($head_ver) and package.json ($pkg_ver) versions differ — keep them identical"
+            exit 1
+          fi
+
+          if [ -z "$shipped" ]; then
+            echo "No shipped artifacts changed — version $head_ver may stay."
+            exit 0
+          fi
+
+          echo "Shipped artifacts changed:"
+          echo "$shipped" | sed 's/^/  /'
+
+          if [ "$head_ver" = "$base_ver" ]; then
+            echo "::error::Shipped artifacts changed but the plugin version is still $base_ver — bump the version in .claude-plugin/plugin.json and package.json (see CLAUDE.md, Releasing)"
+            exit 1
+          fi
+
+          echo "Version bumped: $base_ver → $head_ver ✓"
