@@ -1,13 +1,14 @@
 ---
 name: is-setup
 description: >
-  Conversational onboarding for an ideaspace — create a new one here, or open an
-  existing remote space you already have. Create: inspects what's here
+  Conversational onboarding for an ideaspace — create a new space or agent here,
+  or open an existing remote space you already have. Create: inspects what's here
   (greenfield, existing markdowns, old `_agent/`, code repo), confirms, then runs
-  `ideaspaces create`. Open: lists your remote spaces (`is_spaces`), clones the
-  chosen one (`is_clone`), and orients there. Use when: user says "set up a
-  space", "add ideaspaces here", "get me into my space", "clone my notes", or is
-  a returning user with nothing local yet.
+  `ideaspaces create` (with `--agent` for an agent vantage plus character
+  elicitation). Open: lists your remote spaces (`is_spaces`), clones the chosen
+  one (`is_clone`), and orients there. Use when: user says "set up a space",
+  "add ideaspaces here", "create an agent", "make me an agent", "get me into my
+  space", "clone my notes", or is a returning user with nothing local yet.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_auth mcp__plugin_ideaspaces_core__is_spaces mcp__plugin_ideaspaces_core__is_clone mcp__plugin_ideaspaces_core__is_navigate Edit Read Write Glob Bash"
 ---
 
@@ -23,14 +24,35 @@ The CLI ships inside this plugin at `${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces
 
 Don't offer unprompted. Wait for a signal — "set up a space", "add ideaspaces here", or detection of a directory the user wants structured.
 
-## Create new, or open existing?
+## Create new, open existing, or create an agent?
 
-Two arrivals, one skill — read the signal before proceeding:
+Three arrivals, one skill — read the signal before proceeding:
 
 - **Create new** — structure *this* folder as a fresh space. Signals: "set up a space", "add ideaspaces here", a directory the user wants structured. → **Inspect → Reflect → create**, below.
 - **Open existing** — the user already has spaces on the remote and wants one on this machine (new laptop, joining a team, "get me into my space", "clone my notes"). → **Open an existing space**, below. Requires login.
+- **Create an agent** — the user wants an agent persona, not a knowledge space: "create an agent", "make me a research assistant", "I want a writing agent". → **Create an agent**, below.
 
 Ambiguous (logged in, has spaces, empty cwd)? Ask which they want — don't assume.
+
+## Create an agent
+
+An agent is a **vantage-shaped space**: the five-file `_agent/` contract *is* the character (see `${CLAUDE_PLUGIN_ROOT}/reference/form-primitive.md`, Creating Agents). The space is not knowledge *about* the agent — it is the position the agent looks from, and the tree becomes its memory.
+
+1. **Name it.** Ask what the agent should be called (short, filesystem-friendly — letters, digits, spaces, `. _ -`; the CLI refuses names that would not survive frontmatter). The agent gets its own folder.
+2. **Scaffold.** Dry-run first, then apply on confirmation:
+
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create <name> --agent
+   node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create <name> --agent --yes
+   ```
+
+   The vantage foundation lands with **elicitation prompts** in Character, Boundaries, and What-this-vantage-is-not — placeholders meant to be replaced, never left standing.
+3. **Elicit the character — this is the heart of the flow.** Draw it out from real examples, not adjectives: *"Walk me through a task you'd hand this agent. What did a good result look like? Where would you not trust it?"* Three to five character traits, each grounded in what it means in practice; boundaries as things it refuses or never claims without checking; one neighboring role it should not be confused with.
+4. **Replace the prompts.** Use native `Edit` on `_agent/foundation.md` (contract files carry the character, not Note frontmatter), show the result, and on confirmation commit with `is_commit` using explicit paths.
+5. **Offer skills.** If a repeatable procedure surfaced during elicitation ("it always formats reports the same way"), offer **is-shape** to capture it into `_agent/skills/` — and `ideaspaces skills sync` after, so the skill becomes invocable.
+6. **Purpose / now stay emergent** like any space — elicit them when there is real signal, or let the drift rule surface them next session.
+
+The agent is used by opening a session in its folder: Claude Code reads the vantage and inhabits it. Publishing works like any space when the user wants it on other devices.
 
 ## Open an existing space
 

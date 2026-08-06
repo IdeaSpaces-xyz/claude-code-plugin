@@ -53,6 +53,10 @@ claude plugin install ideaspaces@ideaspaces-xyz
 - ✅ **Working locally works fully.** Create a space and capture notes as usual — Cowork writes to a folder you've **connected on the desktop**, so your markdown is saved to real files that persist. Create your space *inside* a connected folder.
 - ⚠️ **Remote sync may be blocked — switch to Claude Code view.** Publishing and `is_push` / `is_pull` reach a git host outside the sandbox, which the Cowork view restricts. The fix is simple: **switch to Claude Code view and ask the agent to push or pull there.** Sync works from Claude Code view, and it's the same space, so nothing is lost — capture in Cowork, sync in Code.
 
+### Your first session
+
+Open Claude Code in any folder and say **"set up an ideaspace"** — or **"create an agent"**. The conversation takes it from there: what's already in the folder gets inspected and confirmed before anything is written, and an agent's character is drawn out from real examples rather than a form.
+
 ### For a whole team (auto-install)
 
 Commit this to your project's `.claude/settings.json` and everyone who trusts the repo gets IdeaSpaces automatically:
