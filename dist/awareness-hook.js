@@ -7899,6 +7899,8 @@ async function assembleContentAwareness(opts) {
   const pathContextPromise = walkPathContext(base, position);
   const gitPromise = repoRoot ? gitState(repoRoot) : Promise.resolve(null);
   const staleDocsPromise = repoRoot ? collectDocDependencies(repoRoot, repoRoot).then((docs) => staleDocSignals(repoRoot, docs)) : Promise.resolve([]);
+  const treeDepth = Math.min(4, Math.max(1, Math.trunc(opts.treeDepth ?? 1)));
+  const treeMaxEntries = opts.treeMaxEntries ?? 50;
   const sectionsPromise = lastShaPromise.then((lastSha) => readAwarenessSections({
     root: position,
     activityRoot: base,
@@ -7907,7 +7909,13 @@ async function assembleContentAwareness(opts) {
     lastSha,
     maxChanges: opts.maxChanges,
     nowExcerptLength: opts.nowExcerptLength,
-    summaryExcerptLength: opts.summaryExcerptLength
+    summaryExcerptLength: opts.summaryExcerptLength,
+    tree: {
+      depth: treeDepth,
+      maxEntries: treeMaxEntries,
+      summaries: true,
+      summaryLength: opts.summaryExcerptLength ?? 200
+    }
   }));
   const [context, git, staleDocs, sections] = await Promise.all([
     pathContextPromise,
@@ -7935,10 +7943,16 @@ function renderContentAwareness(manifest, opts = {}) {
 }
 async function readAwarenessSections(opts) {
   const { root, activityRoot, contract, stack, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
+  const treeOpts = opts.tree ?? {
+    depth: 1,
+    maxEntries: 50,
+    summaries: true,
+    summaryLength: summaryExcerptLength
+  };
   const now = extractNow(contract, nowExcerptLength);
   const contractEntries = stack?.length ? buildStackedContractEntries(stack, summaryExcerptLength) : buildContractEntries(contract, summaryExcerptLength);
   const [tree, skills, activity] = await Promise.all([
-    buildTree(root),
+    buildTree(root, treeOpts),
     readSkills(stack?.length ? stack.map((level) => level.dir) : [root], summaryExcerptLength),
     lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
   ]);
@@ -8100,33 +8114,64 @@ function extractNow(contract, max) {
 function truncate(value, max) {
   return value.length <= max ? value : `${value.slice(0, max).trimEnd()}\u2026`;
 }
-async function buildTree(root) {
-  let entries;
+async function childSummary(path, isDir, max) {
   try {
-    const dirents = await fs4.readdir(root, { withFileTypes: true });
-    entries = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
+    const source = isDir ? join4(path, "README.md") : path;
+    return describeFile(await fs4.readFile(source, "utf-8"), max);
   } catch {
     return null;
   }
-  const dirs = entries.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
-  const files = entries.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).map((entry) => entry.name).sort();
-  if (!dirs.length && !files.length)
+}
+async function buildTree(root, opts) {
+  const listed = await listTreeLevel(root, opts, opts.depth);
+  if (!listed)
     return null;
-  const [totalMarkdownFiles, dirCounts] = await Promise.all([
-    countMarkdown(root),
-    Promise.all(dirs.map((dir) => countMarkdown(join4(root, dir))))
-  ]);
+  const totalMarkdownFiles = await countMarkdown(root);
   return {
     totalMarkdownFiles,
-    entries: [
-      ...dirs.map((name, index) => ({
-        name,
-        kind: "directory",
-        markdownFiles: dirCounts[index]
-      })),
-      ...files.map((name) => ({ name, kind: "markdown" }))
-    ]
+    entries: listed.entries,
+    ...listed.omitted ? { omittedEntries: listed.omitted } : {}
   };
+}
+async function listTreeLevel(dir, opts, levelsLeft) {
+  let raw;
+  try {
+    const dirents = await fs4.readdir(dir, { withFileTypes: true });
+    raw = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
+  } catch {
+    return null;
+  }
+  const dirs = raw.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
+  const atTop = levelsLeft === opts.depth;
+  const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => atTop || entry.name !== "README.md").map((entry) => entry.name).sort();
+  if (!dirs.length && !files.length)
+    return null;
+  const all = [
+    ...dirs.map((name) => ({ name, isDir: true })),
+    ...files.map((name) => ({ name, isDir: false }))
+  ];
+  const shown = Number.isFinite(opts.maxEntries) ? all.slice(0, opts.maxEntries) : all;
+  const omitted = all.length - shown.length;
+  const withSummaries = opts.summaries && atTop;
+  const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
+    const path = join4(dir, name);
+    const entry = isDir ? { name, kind: "directory", markdownFiles: await countMarkdown(path) } : { name, kind: "markdown" };
+    if (withSummaries) {
+      const summary = await childSummary(path, isDir, opts.summaryLength);
+      if (summary)
+        entry.summary = summary;
+    }
+    if (isDir && levelsLeft > 1) {
+      const deeper = await listTreeLevel(path, opts, levelsLeft - 1);
+      if (deeper) {
+        entry.children = deeper.entries;
+        if (deeper.omitted)
+          entry.omittedChildren = deeper.omitted;
+      }
+    }
+    return entry;
+  }));
+  return { entries, omitted };
 }
 async function countMarkdown(dir) {
   let count = 0;
@@ -8151,14 +8196,23 @@ async function countMarkdown(dir) {
 }
 function renderTree(tree) {
   const lines = [`Tree (${tree.totalMarkdownFiles} files):`];
-  for (const entry of tree.entries) {
-    if (entry.kind === "directory") {
-      lines.push(entry.markdownFiles ? `  ${entry.name}/ (${entry.markdownFiles})` : `  ${entry.name}/`);
-    } else {
-      lines.push(`  ${entry.name}`);
+  renderTreeEntries(tree.entries, 1, lines);
+  if (tree.omittedEntries)
+    lines.push(`  \u2026 and ${tree.omittedEntries} more`);
+  return lines.join("\n");
+}
+function renderTreeEntries(entries, level, lines) {
+  const indent = "  ".repeat(level);
+  for (const entry of entries) {
+    const base = entry.kind === "directory" ? entry.markdownFiles ? `${indent}${entry.name}/ (${entry.markdownFiles})` : `${indent}${entry.name}/` : `${indent}${entry.name}`;
+    lines.push(entry.summary ? `${base} \u2014 ${entry.summary}` : base);
+    if (entry.children) {
+      renderTreeEntries(entry.children, level + 1, lines);
+      if (entry.omittedChildren) {
+        lines.push(`${"  ".repeat(level + 1)}\u2026 and ${entry.omittedChildren} more`);
+      }
     }
   }
-  return lines.join("\n");
 }
 function levelAnnotation(level, base) {
   if (!level || !base || level === base)
