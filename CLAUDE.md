@@ -28,3 +28,9 @@ Keep the plugin small, and keep the seam where the protocol puts it: **the user'
 - Write verbs (`is_write`, `is_commit`) also shell the CLI today; that is transitional (a protocol local-write module is planned), not a design commitment.
 
 Local workflow goes through the bundled CLI and skills.
+
+## Releasing
+
+Every PR that changes what users receive — `dist/`, `cli/bundle/`, `reference/`, `skills/`, hooks, or `.claude-plugin/` — **bumps the version** in both `.claude-plugin/plugin.json` and `package.json` (patch unless the surface changed). Claude Code keys the install cache by that version; an unbumped release mutates users' existing `cache/<marketplace>/ideaspaces/<version>/` slot in place, and update checks report "already at the latest version" while content silently drifts (how 0.3.1 accumulated four unversioned content PRs).
+
+Ritual: bump the protocol pin if it moved → `npm install` → `npm run build:reference && npm run build:hook` → `npm run vendor` (siblings on clean `main` with fresh bundles) → bump both version fields → `typecheck` + `test` + `lint:skills` + `check:vendor` → PR.

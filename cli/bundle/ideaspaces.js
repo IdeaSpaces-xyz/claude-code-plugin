@@ -8639,6 +8639,8 @@ async function assembleContentAwareness(opts) {
   const pathContextPromise = walkPathContext(base, position);
   const gitPromise = repoRoot2 ? gitState(repoRoot2) : Promise.resolve(null);
   const staleDocsPromise = repoRoot2 ? collectDocDependencies(repoRoot2, repoRoot2).then((docs) => staleDocSignals(repoRoot2, docs)) : Promise.resolve([]);
+  const treeDepth = Math.min(4, Math.max(1, Math.trunc(opts.treeDepth ?? 1)));
+  const treeMaxEntries = opts.treeMaxEntries ?? 50;
   const sectionsPromise = lastShaPromise.then((lastSha) => readAwarenessSections({
     root: position,
     activityRoot: base,
@@ -8647,7 +8649,13 @@ async function assembleContentAwareness(opts) {
     lastSha,
     maxChanges: opts.maxChanges,
     nowExcerptLength: opts.nowExcerptLength,
-    summaryExcerptLength: opts.summaryExcerptLength
+    summaryExcerptLength: opts.summaryExcerptLength,
+    tree: {
+      depth: treeDepth,
+      maxEntries: treeMaxEntries,
+      summaries: true,
+      summaryLength: opts.summaryExcerptLength ?? 200
+    }
   }));
   const [context, git2, staleDocs, sections] = await Promise.all([
     pathContextPromise,
@@ -8675,10 +8683,16 @@ function renderContentAwareness(manifest, opts = {}) {
 }
 async function readAwarenessSections(opts) {
   const { root, activityRoot, contract, stack, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
+  const treeOpts = opts.tree ?? {
+    depth: 1,
+    maxEntries: 50,
+    summaries: true,
+    summaryLength: summaryExcerptLength
+  };
   const now = extractNow(contract, nowExcerptLength);
   const contractEntries = stack?.length ? buildStackedContractEntries(stack, summaryExcerptLength) : buildContractEntries(contract, summaryExcerptLength);
   const [tree, skills, activity] = await Promise.all([
-    buildTree(root),
+    buildTree(root, treeOpts),
     readSkills(stack?.length ? stack.map((level) => level.dir) : [root], summaryExcerptLength),
     lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
   ]);
@@ -8840,33 +8854,64 @@ function extractNow(contract, max) {
 function truncate(value, max) {
   return value.length <= max ? value : `${value.slice(0, max).trimEnd()}\u2026`;
 }
-async function buildTree(root) {
-  let entries;
+async function childSummary(path, isDir, max) {
   try {
-    const dirents = await fs4.readdir(root, { withFileTypes: true });
-    entries = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
+    const source = isDir ? join6(path, "README.md") : path;
+    return describeFile(await fs4.readFile(source, "utf-8"), max);
   } catch {
     return null;
   }
-  const dirs = entries.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
-  const files = entries.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).map((entry) => entry.name).sort();
-  if (!dirs.length && !files.length)
+}
+async function buildTree(root, opts) {
+  const listed = await listTreeLevel(root, opts, opts.depth);
+  if (!listed)
     return null;
-  const [totalMarkdownFiles, dirCounts] = await Promise.all([
-    countMarkdown(root),
-    Promise.all(dirs.map((dir) => countMarkdown(join6(root, dir))))
-  ]);
+  const totalMarkdownFiles = await countMarkdown(root);
   return {
     totalMarkdownFiles,
-    entries: [
-      ...dirs.map((name, index) => ({
-        name,
-        kind: "directory",
-        markdownFiles: dirCounts[index]
-      })),
-      ...files.map((name) => ({ name, kind: "markdown" }))
-    ]
+    entries: listed.entries,
+    ...listed.omitted ? { omittedEntries: listed.omitted } : {}
   };
+}
+async function listTreeLevel(dir, opts, levelsLeft) {
+  let raw;
+  try {
+    const dirents = await fs4.readdir(dir, { withFileTypes: true });
+    raw = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
+  } catch {
+    return null;
+  }
+  const dirs = raw.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
+  const atTop = levelsLeft === opts.depth;
+  const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => atTop || entry.name !== "README.md").map((entry) => entry.name).sort();
+  if (!dirs.length && !files.length)
+    return null;
+  const all = [
+    ...dirs.map((name) => ({ name, isDir: true })),
+    ...files.map((name) => ({ name, isDir: false }))
+  ];
+  const shown = Number.isFinite(opts.maxEntries) ? all.slice(0, opts.maxEntries) : all;
+  const omitted = all.length - shown.length;
+  const withSummaries = opts.summaries && atTop;
+  const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
+    const path = join6(dir, name);
+    const entry = isDir ? { name, kind: "directory", markdownFiles: await countMarkdown(path) } : { name, kind: "markdown" };
+    if (withSummaries) {
+      const summary = await childSummary(path, isDir, opts.summaryLength);
+      if (summary)
+        entry.summary = summary;
+    }
+    if (isDir && levelsLeft > 1) {
+      const deeper = await listTreeLevel(path, opts, levelsLeft - 1);
+      if (deeper) {
+        entry.children = deeper.entries;
+        if (deeper.omitted)
+          entry.omittedChildren = deeper.omitted;
+      }
+    }
+    return entry;
+  }));
+  return { entries, omitted };
 }
 async function countMarkdown(dir) {
   let count = 0;
@@ -8891,14 +8936,23 @@ async function countMarkdown(dir) {
 }
 function renderTree(tree) {
   const lines = [`Tree (${tree.totalMarkdownFiles} files):`];
-  for (const entry of tree.entries) {
-    if (entry.kind === "directory") {
-      lines.push(entry.markdownFiles ? `  ${entry.name}/ (${entry.markdownFiles})` : `  ${entry.name}/`);
-    } else {
-      lines.push(`  ${entry.name}`);
+  renderTreeEntries(tree.entries, 1, lines);
+  if (tree.omittedEntries)
+    lines.push(`  \u2026 and ${tree.omittedEntries} more`);
+  return lines.join("\n");
+}
+function renderTreeEntries(entries, level, lines) {
+  const indent = "  ".repeat(level);
+  for (const entry of entries) {
+    const base = entry.kind === "directory" ? entry.markdownFiles ? `${indent}${entry.name}/ (${entry.markdownFiles})` : `${indent}${entry.name}/` : `${indent}${entry.name}`;
+    lines.push(entry.summary ? `${base} \u2014 ${entry.summary}` : base);
+    if (entry.children) {
+      renderTreeEntries(entry.children, level + 1, lines);
+      if (entry.omittedChildren) {
+        lines.push(`${"  ".repeat(level + 1)}\u2026 and ${entry.omittedChildren} more`);
+      }
     }
   }
-  return lines.join("\n");
 }
 function levelAnnotation(level, base) {
   if (!level || !base || level === base)
@@ -9193,44 +9247,7 @@ If \`_agent/purpose.md\` doesn't exist and the Space has content, the content it
 
 If the Space is empty, explore what the user wants to build: "What kind of knowledge do you want to accumulate here?"
 `,
-  "repo-context": `---
-name: repo-context
-description: >
-  Help describe what this place is and who works here. Use when working on
-  _agent/repo-context.md, when onboarding to a new repo, or when the agent
-  needs to understand the repo's identity.
----
-
-# Repo Context
-
-Help the user describe what this Space is and who works here.
-
-## What Repo Context Is
-
-Repo context is the "What" and "Who" \u2014 it tells the agent what kind of place this is. A personal research repo, a team knowledge base, a client portfolio tracker. It shapes how the agent speaks, what it assumes, and how it names things.
-
-## What to Include
-
-- **What this place is** \u2014 domain, scope, what kind of knowledge lives here
-- **Who works here** \u2014 individual, team, organization. How they think about their work.
-- **Vocabulary** \u2014 terms that mean specific things here. "Deal" might mean venture investment or sales opportunity depending on context.
-- **Conventions** \u2014 naming patterns, preferred structure, anything the agent should follow
-
-## Elicitation
-
-If the user hasn't written repo context yet:
-
-1. Look at existing content \u2014 tree structure, Note names, README files
-2. Reflect what you see: "This looks like a personal research space focused on X"
-3. Ask what's missing from that picture
-4. Draft and refine together
-
-## Writing It
-
-Concise. A few paragraphs. Written for the agent \u2014 this loads at session start and orients every conversation. Focus on what would change the agent's behavior: vocabulary, assumptions, conventions.
-
-Persist to \`_agent/repo-context.md\`.
-`,
+  "repo-context": '---\nname: repo-context\ndescription: >\n  Help describe what this place is and who works here. Use when onboarding to\n  a new repo, when the space\'s identity is unclear, or when drafting the\n  what/who parts of the _agent/ contract.\n---\n\n# Repo Context\n\nHelp the user describe what this Space is and who works here.\n\n## What Repo Context Is\n\nRepo context is the "What" and "Who" \u2014 it tells the agent what kind of place this is. A personal research repo, a team knowledge base, a client portfolio tracker. It shapes how the agent speaks, what it assumes, and how it names things.\n\n## What to Include\n\n- **What this place is** \u2014 domain, scope, what kind of knowledge lives here\n- **Who works here** \u2014 individual, team, organization. How they think about their work.\n- **Vocabulary** \u2014 terms that mean specific things here. "Deal" might mean venture investment or sales opportunity depending on context.\n- **Conventions** \u2014 naming patterns, preferred structure, anything the agent should follow\n\n## Elicitation\n\nIf the user hasn\'t written repo context yet:\n\n1. Look at existing content \u2014 tree structure, Note names, README files\n2. Reflect what you see: "This looks like a personal research space focused on X"\n3. Ask what\'s missing from that picture\n4. Draft and refine together\n\n## Writing It\n\nConcise. A few paragraphs. Written for the agent \u2014 surfaces load the `_agent/` contract by position, so this orients every conversation held here. Focus on what would change the agent\'s behavior: vocabulary, assumptions, conventions.\n\nPersist into the contract: what this place is and who works here is the `_agent/foundation.md` handshake\'s job; conventions and vocabulary the agent should follow belong in `_agent/guide.md`. (Some platforms additionally read `_agent/repo-context.md`; the contract is the portable home.)\n',
   "writing": '---\nname: writing\ndescription: >\n  Writing standard for Notes. Structure for retrieval, summaries for discovery,\n  entities for connection. Use when creating or substantially revising Notes,\n  or when asked "write this well", "capture this", "create a Note about".\n  Derived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n---\n\n# Writing Standard\n\nNotes that compound follow these principles. They\'re functional requirements for knowledge that works \u2014 clear writing is easy to find and reuse, dense summaries drive discovery, well-scoped sections make a Note precise to navigate and search.\n\nDerived from Strunk & White, Zinsser, Kovach & Rosenstiel.\n\n## Summary Is Everything\n\nThe `summary` field is the most important thing you write. It\'s what search results show. It\'s what shows when browsing the tree. It\'s what loads in awareness context. Write it like the first thing someone reads \u2014 because it is.\n\nTwo sentences max. Dense. Immediate orientation. "What is this and why does it matter." Early words carry disproportionate weight \u2014 they anchor how the Note reads and how it is found.\n\n## Conciseness (Strunk & White)\n\n"Omit needless words." Every word in a Note earns its place.\n\n| Padded | Clean |\n|--------|-------|\n| "The question as to whether" | "Whether" |\n| "This is a company that" | "This company" |\n| "It is important to note that" | (delete \u2014 just state it) |\n| "In terms of revenue growth" | "Revenue grew" |\n\nActive voice over passive. "The startup was analyzed" \u2192 "We analyzed the startup." Passive only when the actor is unknown or irrelevant.\n\n## Clarity (Zinsser)\n\n"Clear thinking becomes clear writing." If you can\'t write it clearly, you don\'t understand it yet.\n\n- Strip every sentence to its cleanest components\n- Clutter words add nothing: "basically," "actually," "in order to," "at this point in time"\n- The first paragraph orients the reader immediately \u2014 if someone reads only the summary, they know what this is about\n\n## Concreteness\n\nSpecifics connect a Note to related specifics; abstractions blur those connections.\n\n| Abstract | Concrete |\n|----------|----------|\n| "Significant growth" | "Revenue grew 40% in Q3" |\n| "Strong team" | "3 ex-Google engineers, 2 successful exits" |\n| "Large market" | "$4.2B TAM, growing 25% annually" |\n\nPrefer the specific to the general, the definite to the vague. Concrete facts can be abstracted later. You can\'t recover specifics from abstractions.\n\n## Objectivity (Kovach & Rosenstiel)\n\nDistinguish fact from interpretation. Never blend them.\n\n| Type | Example |\n|------|---------|\n| Fact | "Raised $10M Series A in March 2025" |\n| Interpretation | "The funding suggests investor confidence" |\n| Claim (attributed) | "The CEO states they are \'market leaders\'" |\n\nEvery claim traces to a source. "According to the landing page..." or "The pitch deck states..." \u2014 the reader knows provenance.\n\n**What the agent does NOT do:** verify claims, add information not in the source, editorialize ("impressive team"), fill gaps with plausible content. If the source doesn\'t mention revenue, note the absence \u2014 don\'t guess.\n\n## Well-Scoped Sections\n\nEach `## heading` scopes one distinct point. Well-scoped sections = precise navigation and search.\n\n- A Note with five distinct sections makes five findable, comparable points\n- A wall of text blurs into one undifferentiated block \u2014 hard to find, hard to compare\n- Each section makes a complete point independently\n- Headings are contracts \u2014 "Team Analysis" contains team analysis, not market commentary\n- Target: 3-10 paragraphs per section. Too short = insufficient signal. Too long = diluted topic.\n\nProgressive disclosure: Title \u2192 Summary \u2192 Sections. Each level complete at its depth.\n\n## Primary Attachment\n\nUse `attached_to` for the one thing this Note is primarily about \u2014 like putting a sticky note on an object. It is singular: choose zero or one primary anchor, written `<type>:<id>`.\n\nThe type vocabulary is your platform\'s \u2014 the protocol fixes only the `<type>:<id>` shape. Common types a platform resolves might include a person (`person:alice`), an agent (`agent:assistant`), or a web page (`web_page:https://example.com/report.pdf`).\n\nIf the Note mentions several things, don\'t put all of them in `attached_to`. Choose the primary anchor, split the Note, use tags, or link in prose. Use `references` only for hard sources.\n\n## Cross-Note Links\n\nUse standard markdown links with relative paths for reader navigation. They are portable across editors, Obsidian, print/exports, and plain LLM context.\n\n```markdown\nSee [Acme profile](../companies/acme.md) for background.\nSee [Market map](../markets/README.md) for the branch overview.\n```\n\nPath links are user-facing handles. They may break when the target is renamed unless the editor/tool rewrites them; use editor rename refactors when available. Inline prose links are reader navigation, not provenance \u2014 they don\'t populate `references`.\n\nWhen renaming a Note and heavily rewriting it, commit the rename separately from the rewrite. Git rename detection is similarity-based; a rename plus large content change in one commit can defeat it, losing the file\'s history link.\n\n## Sources and References\n\nUse `references` only for hard sources: the small set of Notes this Note was produced from or grounded in. Perspective outputs and synthesis Notes use `references` for their input Notes. If a Note merely mentions or points to another Note, use an inline markdown link instead.\n\n## Sentence-Level Mechanics\n\n- **Put emphatic words at the end.** "In Q3, revenue grew 40%" not "Revenue is what grew 40% in Q3"\n- **Keep related words together.** Don\'t separate subject and verb with long interruptions\n- **Parallel construction.** "Fast, reliable, and affordable" not "speed, being reliable, and costs less"\n- **One idea per sentence.** Most of the time, two sentences are clearer than one compound one\n\n## Common Failure Modes\n\n- **Throat-clearing.** "Before we dive into the analysis..." \u2014 delete, start with the analysis\n- **Hedge stacking.** "It seems like it might possibly be somewhat relevant" \u2014 state or acknowledge uncertainty once\n- **Elegant variation.** If it\'s a "startup" in paragraph one, don\'t call it a "venture" in paragraph two for variety. Consistency aids findability.\n- **Nominalization.** "Make a determination" \u2192 "determine." "Performed an analysis" \u2192 "analyzed."\n- **Weasel words.** "Some experts say," "studies show" \u2014 without attribution, these are noise\n\n## The Standard\n\nKnowledge capture succeeds when:\n\n1. A human can scan the output and orient in seconds\n2. A machine can index the output and retrieve it precisely\n3. Every sentence traces to a source or is explicitly marked as interpretation\n4. Nothing is added that wasn\'t in the input\n5. Nothing important from the input is lost without acknowledgment\n6. The reader trusts the capture because the method is transparent\n'
 };
 
@@ -10877,10 +10894,11 @@ function planCatalog(flags2, povRepoRoot) {
 var navigateCommand = {
   name: "navigate",
   description: "Re-derive orientation (fractal contract, tree, drift) at a position",
-  usage: "ideaspaces navigate [<path>] [--mark-seen] [--workspace <dir>] [--mount <a,b,c>] [--pullable <s:ns,\u2026>] [--no-git]",
+  usage: "ideaspaces navigate [<path>] [--depth <1..4>] [--mark-seen] [--workspace <dir>] [--mount <a,b,c>] [--pullable <s:ns,\u2026>] [--no-git]",
   examples: [
     "ideaspaces navigate --json            # orient at the current directory",
     "ideaspaces navigate docs --json       # orient at a branch",
+    "ideaspaces navigate --depth 2 --json  # probe the map: name-rung outline one level below",
     "ideaspaces navigate --workspace . --mount ../other-repo --json  # + local repo catalog + working set",
     "ideaspaces navigate --workspace . --pullable team:acme.com,notes:alice --no-git --json  # + remote tier; caller renders its own state"
   ],
@@ -10898,7 +10916,11 @@ var navigateCommand = {
     }
     const repoRoot2 = await resolveRepoRoot(target);
     const cat = planCatalog(flags2, repoRoot2);
-    const manifest = await assembleContentAwareness({ position: target });
+    const depth = typeof flags2.depth === "string" ? Number.parseInt(flags2.depth, 10) : void 0;
+    const manifest = await assembleContentAwareness({
+      position: target,
+      ...depth && Number.isFinite(depth) ? { treeDepth: depth } : {}
+    });
     if (!manifest) {
       const position2 = relative7(repoRoot2 ?? target, target) || ".";
       const bare = [];
