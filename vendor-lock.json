@@ -4,7 +4,7 @@
     "commit": "959338d90887e55a6aa05fccc67fe6e62e979c96",
     "sourceArtifact": "bundle/ideaspaces.js",
     "vendoredArtifact": "cli/bundle/ideaspaces.js",
-    "sha256": "99f0705febef1788b4aced81960ea40308a05789a933cfd00d972549439bebf1",
+    "sha256": "5b053b4958a081a536b0c3fdb6bbb03b0daeffe7944326ebb30047ad7971c5bc",
     "rebuildInCi": true,
     "commands": [
       "npm run build",
