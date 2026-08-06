@@ -7572,6 +7572,12 @@ async function fetchAuthMe(config, opts) {
 async function createRepo(config, body, opts) {
   return request(config, "POST", `${API_V1}/repos`, body, opts);
 }
+async function getSpace(config, rootNodeId, opts) {
+  return request(config, "GET", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}`, void 0, opts);
+}
+async function copySpace(config, rootNodeId, body, opts) {
+  return request(config, "POST", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/copy`, body, opts);
+}
 async function fetchConversations(config, repoId, opts) {
   return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations?limit=50&offset=0`, void 0, opts);
 }
@@ -8151,14 +8157,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot2, args2) {
-  return new Promise((resolve16) => {
+  return new Promise((resolve17) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve16({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve16({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve17({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve17({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -9321,6 +9327,20 @@ var FOUNDATION_CORE = "You inhabit the Space; the user owns it. Position persist
 var FOUNDATION_CORE_VERSION = "0.5.0";
 
 // dist/templates/default.js
+var FOUNDATION_CLOSING = `---
+
+## The Agreement
+
+${FOUNDATION_CORE.trim()}
+
+---
+
+## Practice
+
+- **No slop.** Every line earns its place.
+- **Three-tier commits.** Subject (one line), body (what shifted, why),
+  trailers (\`Co-authored-by\`, etc.).
+`;
 var FOUNDATION_MD = `---
 name: Foundation
 summary: Baseline contract for this ideaspace \u2014 what kind of place this is, how
@@ -9370,20 +9390,130 @@ Dimensions inside \`_agent/\` (grown as the space earns them):
 shared and what stays local. Drafts, scratch, secrets, per-developer context
 go there. Propose changes; never edit silently.
 
+${FOUNDATION_CLOSING}`;
+function agentFoundationMd(agentName) {
+  return `---
+name: Foundation \u2014 ${agentName}
+summary: The declared vantage of ${agentName}. This space is not a subject to
+  study \u2014 it is a way of looking, inhabited by an agent. Character, boundaries,
+  and what this vantage is not.
+core_version: ${FOUNDATION_CORE_VERSION}
 ---
 
-## The Agreement
+# Foundation \u2014 ${agentName}
 
-${FOUNDATION_CORE.trim()}
+> This space is a **vantage**, not a subject. An agent launched here inhabits
+> ${agentName}: nothing in this tree is knowledge *about* ${agentName} \u2014 it is
+> the position ${agentName} looks from, and the memory that position accumulates.
 
+\`agent = stable identity + name + description + declared vantage\`. This file
+is the declared vantage. The habitat (Claude Code, Pi, \u2026) supplies model,
+tools, and reach; identity names who is inhabiting.
+
+The five-file contract, read agent-first:
+
+- \`foundation.md\` \u2014 this file. What ${agentName} is, character, boundaries.
+- \`guide.md\` \u2014 how work goes when inhabiting ${agentName}.
+- \`purpose.md\` \u2014 why this vantage exists (emergent).
+- \`now.md\` \u2014 the current lane (emergent).
+- \`next.md\` \u2014 what's queued (emergent).
+
+## Character
+
+_Elicit and replace: how does ${agentName} show up? Three to five traits,
+each one bolded line + one sentence of what it means in practice. Drawn from
+real examples of the work, not adjectives._
+
+## Boundaries
+
+_Elicit and replace: what does ${agentName} refuse to do, and what does it
+never claim without checking? Boundaries are what make an agent trustworthy
+enough to delegate to._
+
+## What this vantage is not
+
+_Elicit and replace: name the neighboring role people might confuse this
+with, and where the line sits._
+
+Dimensions inside \`_agent/\` (grown as the character earns them):
+
+- \`skills/\` \u2014 what ${agentName} can repeat: procedures worth doing the same
+  way every time. Each skill's \`description\` is its trigger; skills compose
+  along the path.
+- \`perspectives/\` \u2014 how ${agentName} sees: reusable thinking patterns.
+
+The content tree is ${agentName}'s memory \u2014 what it has produced and learned.
+Capture is conscious there like anywhere else.
+
+${FOUNDATION_CLOSING}`;
+}
+function isSafeAgentName(name) {
+  return /^[\p{L}\p{N}][\p{L}\p{N} ._-]{0,63}$/u.test(name) && !/[ ]$/.test(name);
+}
+function agentGuideMd(agentName) {
+  return `---
+name: Guide \u2014 ${agentName}
+summary: How work goes when inhabiting ${agentName} \u2014 working rhythm,
+  conventions, and what gets captured where. Grows from real sessions.
 ---
 
-## Practice
+# Guide \u2014 ${agentName}
 
-- **No slop.** Every line earns its place.
-- **Three-tier commits.** Subject (one line), body (what shifted, why),
-  trailers (\`Co-authored-by\`, etc.).
+> How work goes when inhabiting [${agentName}](foundation.md).
+
+_Fill in as patterns emerge from real sessions. Examples to consider:_
+
+- What does a typical ${agentName} session produce, and where does it land
+  in the tree?
+- Which decisions does ${agentName} make alone, and which does it bring back?
+- What gets captured into memory, and what stays in the conversation?
+
+## When the Agreement drifts
+
+If \`now.md\` stops matching reality, or the character in
+[foundation](foundation.md) contradicts how ${agentName} actually works \u2014
+surface it. Character changes cross the same capture boundary as knowledge.
 `;
+}
+function agentClaudeMd(agentName) {
+  return `---
+name: Claude Code orientation \u2014 ${agentName}
+summary: Tells Claude Code this space is a vantage, not a subject. Launching
+  here means inhabiting ${agentName}.
+---
+
+# CLAUDE.md \u2014 ${agentName}
+
+> This ideaspace is a **vantage**, not a subject. Launching here means
+> inhabiting ${agentName}, not studying it.
+
+## Orient
+
+Read in order:
+
+1. [\`_agent/foundation.md\`](_agent/foundation.md) \u2014 the declared vantage:
+   character and boundaries
+2. [\`_agent/guide.md\`](_agent/guide.md) \u2014 how work goes when inhabiting it
+3. \`_agent/purpose.md\` / \`_agent/now.md\` / \`_agent/next.md\` \u2014 direction
+   (emergent; their absence is a prompt to elicit, not invent)
+
+If the Character, Boundaries, or "What this vantage is not" sections still
+carry elicitation prompts, that is the first conversation: draw the character
+out from the user with real examples, replace the prompts, and confirm before
+committing.
+
+## The work
+
+The content tree here is ${agentName}'s memory. The subject of the work may
+live elsewhere \u2014 this repo carries the position it is seen from.
+`;
+}
+function agentContractTemplates(agentName) {
+  return {
+    foundation: agentFoundationMd(agentName),
+    guide: agentGuideMd(agentName)
+  };
+}
 var GUIDE_MD = `---
 name: Guide
 summary: Specific agreements for working in this space. As patterns emerge \u2014
@@ -9520,12 +9650,13 @@ var OLD_AGENT_FILES = ["always.md", "rules.md", "soul.md", "guidance.md"];
 var createCommand = {
   name: "create",
   description: "Scaffold an ideaspace (seed _agent/ contract + CLAUDE.md + .gitignore defaults)",
-  usage: "ideaspaces create [name] [--yes] [--shared]",
+  usage: "ideaspaces create [name] [--yes] [--shared] [--agent]",
   examples: [
     "ideaspaces create my-space             # plan in ./my-space/, exit without applying",
     "ideaspaces create my-space --yes       # scaffold and commit",
     "ideaspaces create --yes                # scaffold in current directory",
-    "ideaspaces create --yes --shared       # in a code repo, opt into shared (committed) _agent/"
+    "ideaspaces create --yes --shared       # in a code repo, opt into shared (committed) _agent/",
+    "ideaspaces create scribe --yes --agent # agent vantage: the space IS the character"
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
@@ -9543,10 +9674,22 @@ var createCommand = {
       output.error(`${describeTarget(targetDir, name)} has an \`_agent/\` in the legacy shape (always.md / rules.md / soul.md). Migration is not yet automated; move their content into the current \`_agent/\` contract (foundation.md / guide.md / purpose.md / now.md / next.md) by hand.`);
       return 5;
     }
+    const agentMode = Boolean(flags2.agent);
+    if (agentMode && shape === "code-repo") {
+      output.error(`${describeTarget(targetDir, name)} looks like a code repo. An agent vantage is its own space \u2014 the tree is the agent's memory, not a codebase. Create it in a fresh folder: \`ideaspaces create <name> --agent\`.`);
+      return 5;
+    }
     const privateAgent = shape === "code-repo" && !sharedFlag;
-    const plan = buildPlan({ targetDir, name, shape, inspection, privateAgent });
+    const agentName = name ?? basename(targetDir);
+    if (agentMode && !isSafeAgentName(agentName)) {
+      output.error(`Agent name \`${agentName}\` contains characters that don't survive frontmatter (allowed: letters, digits, spaces, . _ -). ${name ? "Pick a simpler name." : "This directory's name isn't usable \u2014 pass a name: `ideaspaces create <name> --agent`."}`);
+      return 5;
+    }
+    const contract = agentMode ? agentContractTemplates(agentName) : CONTRACT_TEMPLATES;
+    const claudeMd = agentMode ? agentClaudeMd(agentName) : CLAUDE_MD;
+    const plan = buildPlan({ targetDir, name, shape, inspection, privateAgent, contract });
     if (!apply) {
-      output.result({ target: targetDir, shape, privateAgent, nestedInRepo: inspection.nestedInRepo, plan: plan.steps }, renderPlanText({ targetDir, name, shape, privateAgent, plan, nestedInRepo: inspection.nestedInRepo }));
+      output.result({ target: targetDir, shape, privateAgent, agent: agentMode, nestedInRepo: inspection.nestedInRepo, plan: plan.steps }, renderPlanText({ targetDir, name, shape, privateAgent, plan, nestedInRepo: inspection.nestedInRepo, agentName: agentMode ? agentName : void 0 }));
       return 0;
     }
     let versioned;
@@ -9556,7 +9699,9 @@ var createCommand = {
       ({ versioned, gitNote, commitPaths: committablePaths } = await applyPlan({
         targetDir,
         inspection,
-        privateAgent
+        privateAgent,
+        contract,
+        claudeMd
       }));
     } catch (err) {
       output.error(`Scaffold failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -9564,7 +9709,7 @@ var createCommand = {
     }
     const where = name ? `./${name}` : "this directory";
     const lines = [
-      `Scaffolded ${describeTarget(targetDir, name)} (${shape}${privateAgent ? ", private _agent/" : ""}).`
+      `Scaffolded ${describeTarget(targetDir, name)} (${agentMode ? `agent vantage: ${agentName}` : shape}${privateAgent ? ", private _agent/" : ""}).`
     ];
     if (inspection.nestedInRepo) {
       lines.push(nestingNotice(targetDir, inspection.nestedInRepo));
@@ -9572,11 +9717,11 @@ var createCommand = {
     if (!versioned) {
       lines.push(`Working locally \u2014 no version history yet. ${gitNote ?? ""}`.trim(), `Once git is ready, from ${where}: \`git init -b main && git add ${committablePaths.join(" ")} && git commit -m "Initial ideaspace scaffold"\`.`);
     }
-    lines.push(`Next: open Claude Code in ${where} \u2014 the agent will read foundation+guide and propose capturing purpose / now / next in conversation.`);
+    lines.push(agentMode ? `Next: open Claude Code in ${where} \u2014 the agent will read the vantage contract and help you shape ${agentName}'s character in conversation.` : `Next: open Claude Code in ${where} \u2014 the agent will read foundation+guide and propose capturing purpose / now / next in conversation.`);
     if (versioned && loadStoredCredentials()) {
       lines.push(`When ready to host this remotely, run \`ideaspaces publish\` from inside ${where}.`);
     }
-    output.result({ target: targetDir, shape, privateAgent, scaffolded: true, versioned }, lines.join("\n"));
+    output.result({ target: targetDir, shape, privateAgent, agent: agentMode, scaffolded: true, versioned }, lines.join("\n"));
     return 0;
   }
 };
@@ -9643,7 +9788,7 @@ function detectShape(inspection) {
   return "greenfield";
 }
 function buildPlan(opts) {
-  const { targetDir, name, inspection, privateAgent } = opts;
+  const { targetDir, name, inspection, privateAgent, contract } = opts;
   const steps = [];
   if (name && !inspection.exists) {
     steps.push({ op: "mkdir", path: targetDir });
@@ -9651,7 +9796,7 @@ function buildPlan(opts) {
   if (!inspection.isGitRepo) {
     steps.push({ op: "git-init", path: targetDir });
   }
-  for (const fileName of Object.keys(CONTRACT_TEMPLATES)) {
+  for (const fileName of Object.keys(contract)) {
     steps.push({ op: "write", path: join7(targetDir, "_agent", `${fileName}.md`) });
   }
   for (const dim of Object.keys(CONVENTION_READMES)) {
@@ -9681,9 +9826,9 @@ function buildPlan(opts) {
   return { steps };
 }
 function renderPlanText(opts) {
-  const { targetDir, name, shape, privateAgent, plan, nestedInRepo } = opts;
+  const { targetDir, name, shape, privateAgent, plan, nestedInRepo, agentName } = opts;
   const lines = [];
-  lines.push(`Plan for ${describeTarget(targetDir, name)} \u2014 shape: ${shape}${privateAgent ? " (private _agent/)" : ""}`);
+  lines.push(`Plan for ${describeTarget(targetDir, name)} \u2014 ${agentName ? `agent vantage: ${agentName} (the space IS the character)` : `shape: ${shape}`}${privateAgent ? " (private _agent/)" : ""}`);
   if (nestedInRepo) {
     lines.push("");
     lines.push(nestingNotice(targetDir, nestedInRepo));
@@ -9700,12 +9845,12 @@ function renderPlanText(opts) {
   return lines.join("\n");
 }
 async function applyPlan(opts) {
-  const { targetDir, inspection, privateAgent } = opts;
+  const { targetDir, inspection, privateAgent, contract, claudeMd } = opts;
   const commitPaths2 = [];
   const trackAgent = !privateAgent;
   await fs5.mkdir(targetDir, { recursive: true });
   await fs5.mkdir(join7(targetDir, "_agent"), { recursive: true });
-  for (const [name, content] of Object.entries(CONTRACT_TEMPLATES)) {
+  for (const [name, content] of Object.entries(contract)) {
     const rel = join7("_agent", `${name}.md`);
     await fs5.writeFile(join7(targetDir, rel), content, "utf-8");
     if (trackAgent)
@@ -9723,7 +9868,7 @@ async function applyPlan(opts) {
   }
   const claudeFile = privateAgent ? "CLAUDE.local.md" : "CLAUDE.md";
   if (!inspection.hasClaude) {
-    await fs5.writeFile(join7(targetDir, claudeFile), CLAUDE_MD, "utf-8");
+    await fs5.writeFile(join7(targetDir, claudeFile), claudeMd, "utf-8");
     if (!privateAgent)
       commitPaths2.push(claudeFile);
   }
@@ -9849,7 +9994,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve16, reject) => {
+  return new Promise((resolve17, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -9876,7 +10021,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve16({
+      resolve17({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -10030,6 +10175,63 @@ function removeSpace(absolutePath) {
   return true;
 }
 
+// dist/space-locator.js
+var NODE_ID_RE = /^n_(?:[0-9a-f]{12}|[0-9a-f]{24})$/;
+function withoutTrailingSlash(value) {
+  return value.replace(/\/+$/, "");
+}
+function canonicalSpaceUrl(apiUrl, rootNodeId) {
+  return `${withoutTrailingSlash(deriveWebBase(apiUrl))}/spaces/${encodeURIComponent(rootNodeId)}`;
+}
+function canonicalGitUrl(apiUrl, rootNodeId) {
+  return `${withoutTrailingSlash(deriveGitBase(apiUrl))}/spaces/${encodeURIComponent(rootNodeId)}.git`;
+}
+function parseSpaceLocator(value, apiUrl) {
+  let supplied;
+  let configured;
+  try {
+    supplied = new URL(value);
+    configured = new URL(deriveWebBase(apiUrl));
+  } catch {
+    throw new Error("Expected a canonical Space URL: /spaces/{root_node_id}");
+  }
+  if (supplied.origin !== configured.origin || supplied.username || supplied.password || supplied.search || supplied.hash) {
+    throw new Error(`Space URL must use the configured host ${configured.origin}`);
+  }
+  const basePath = configured.pathname.replace(/\/+$/, "");
+  const prefix = `${basePath}/spaces/`;
+  if (!supplied.pathname.startsWith(prefix)) {
+    throw new Error("Expected a canonical Space URL: /spaces/{root_node_id}");
+  }
+  const rootNodeId = supplied.pathname.slice(prefix.length);
+  if (!NODE_ID_RE.test(rootNodeId)) {
+    throw new Error("Space URL must contain one valid root_node_id and no trailing path");
+  }
+  return {
+    rootNodeId,
+    canonicalUrl: canonicalSpaceUrl(apiUrl, rootNodeId)
+  };
+}
+function repoRouteNamespace(repo, username) {
+  if (repo.route_status !== void 0) {
+    return repo.route_status === "resolved" ? repo.route_namespace ?? null : null;
+  }
+  return repo.hostname ?? username;
+}
+function spaceRecordForRepo(repo, username) {
+  const routeNamespace = repoRouteNamespace(repo, username);
+  return {
+    repo_id: repo.repo_id,
+    slug: repo.route_slug ?? repo.slug,
+    namespace: routeNamespace ?? repo.hostname ?? username ?? "",
+    ...repo.root_node_id ? { root_node_id: repo.root_node_id } : {},
+    ...repo.route_status ? { route_status: repo.route_status } : {},
+    ...repo.route_namespace !== void 0 ? { route_namespace: repo.route_namespace } : {},
+    ...repo.route_slug !== void 0 ? { route_slug: repo.route_slug } : {},
+    ...repo.canonical_path !== void 0 ? { canonical_path: repo.canonical_path } : {}
+  };
+}
+
 // dist/frontmatter-report.js
 import { readFile } from "node:fs/promises";
 import { relative as relative5 } from "node:path";
@@ -10080,10 +10282,10 @@ function runGit3(cwd, args2) {
     stdout: (r.stdout || "").trim()
   };
 }
-function defaultGitUrl(apiUrl, namespace, slug) {
+function legacyGitUrl(apiUrl, namespace, slug) {
   return `${deriveGitBase(apiUrl)}/${namespace}/${slug}.git`;
 }
-function spaceWebUrl(apiUrl, namespace, slug) {
+function legacyWebUrl(apiUrl, namespace, slug) {
   return `${deriveWebBase(apiUrl)}/${namespace}/${slug}`;
 }
 var SIZE_CAP_BYTES = 2e5;
@@ -10245,7 +10447,13 @@ var publishCommand = {
         return 1;
       }
       output.log(`This folder is already published as ${existing.namespace}/${existing.slug} (repo_id=${existing.repo_id}). Re-pushing to the same remote. Use --force to provision a new one \u2014 the old server repo isn't deleted, just unlinked from this folder.`);
-      repo = { repo_id: existing.repo_id, slug: existing.slug, name: existing.slug };
+      const projected2 = me.repos.find((candidate) => candidate.repo_id === existing.repo_id);
+      repo = {
+        repo_id: existing.repo_id,
+        root_node_id: projected2?.root_node_id ?? existing.root_node_id ?? void 0,
+        slug: existing.slug,
+        name: existing.slug
+      };
       namespace = existing.namespace;
     } else {
       const folderName = basename2(cwd);
@@ -10295,7 +10503,7 @@ Git needs a \`user.name\` to commit. Run \`git config --local user.name "Your Na
         }
       }
     }
-    const remoteUrl = defaultGitUrl(config.apiUrl, namespace, repo.slug);
+    const remoteUrl = repo.root_node_id ? canonicalGitUrl(config.apiUrl, repo.root_node_id) : legacyGitUrl(config.apiUrl, namespace, repo.slug);
     const existingRemote = runGit3(cwd, ["remote", "get-url", "origin"]);
     if (existingRemote.ok) {
       if (existingRemote.stdout && existingRemote.stdout !== remoteUrl) {
@@ -10322,23 +10530,44 @@ Git needs a \`user.name\` to commit. Run \`git config --local user.name "Your Na
 ${push2.stderr}${hint}`);
       return 1;
     }
-    saveSpace(cwd, {
-      repo_id: repo.repo_id,
-      slug: repo.slug,
-      namespace
-    });
-    const webUrl = spaceWebUrl(config.apiUrl, namespace, repo.slug);
-    output.result({
+    let projected = me.repos.find((candidate) => candidate.repo_id === repo.repo_id);
+    if (repo.root_node_id && !projected) {
+      try {
+        const refreshed = await fetchAuthMe(config);
+        projected = refreshed.repos.find((candidate) => candidate.repo_id === repo.repo_id);
+      } catch {
+        output.log("Published successfully, but current route metadata could not be refreshed; stable Space identity was saved.");
+      }
+    }
+    const record = projected ? spaceRecordForRepo(projected, me.username) : {
       repo_id: repo.repo_id,
       slug: repo.slug,
       namespace,
+      ...repo.root_node_id ? {
+        root_node_id: repo.root_node_id,
+        route_status: "unavailable",
+        route_namespace: null,
+        route_slug: null,
+        canonical_path: `/spaces/${repo.root_node_id}`
+      } : {}
+    };
+    saveSpace(cwd, record);
+    const webUrl = repo.root_node_id ? canonicalSpaceUrl(config.apiUrl, repo.root_node_id) : legacyWebUrl(config.apiUrl, namespace, repo.slug);
+    output.result({
+      repo_id: repo.repo_id,
+      root_node_id: repo.root_node_id ?? record.root_node_id ?? null,
+      slug: repo.slug,
+      namespace,
+      route_status: record.route_status ?? null,
+      route_namespace: record.route_namespace ?? null,
+      route_slug: record.route_slug ?? null,
       remote_url: remoteUrl,
+      space_url: webUrl,
       web_url: webUrl,
       identity_email: identityEmail2
     }, [
       `Published ${repo.name}.`,
-      `View: ${webUrl}`,
-      `Git remote: ${remoteUrl}`,
+      `Space: ${webUrl}`,
       `Local git identity set to ${identityEmail2} (this dir only \u2014 your global git config is untouched).`
     ].join("\n"));
     return 0;
@@ -11580,8 +11809,10 @@ var reposCommand = {
       repo_id: r.repo_id,
       slug: r.slug,
       hostname: r.hostname,
-      // Namespace for clone-URL construction: org hostname, else the username.
-      namespace: r.hostname ?? me.username,
+      root_node_id: r.root_node_id ?? null,
+      route_status: r.route_status ?? null,
+      namespace: repoRouteNamespace(r, me.username),
+      space_url: r.root_node_id ? canonicalSpaceUrl(config.apiUrl, r.root_node_id) : null,
       role: r.role,
       member_count: r.member_count
     }));
@@ -11620,7 +11851,7 @@ function deriveCatalog(me, clones, statusByPath) {
   const entries = [];
   const used = /* @__PURE__ */ new Set();
   for (const repo of me.repos) {
-    const namespace = repo.hostname ?? me.username ?? "";
+    const namespace = repoRouteNamespace(repo, me.username) ?? "";
     const matching = clonesByRepo.get(repo.repo_id) ?? [];
     if (matching.length === 0) {
       entries.push({
@@ -11766,11 +11997,11 @@ var catalogCommand = {
 import { resolve as resolve12 } from "node:path";
 var cloneCommand = {
   name: "clone",
-  description: "Clone one of your spaces into a local folder",
-  usage: "ideaspaces clone <space> [dir]",
+  description: "Clone an authorized Space into a local folder",
+  usage: "ideaspaces clone <space-url|legacy-space> [dir]",
   examples: [
-    "ideaspaces clone notes                 # clone into ./notes",
-    "ideaspaces clone alice/notes ./n       # explicit namespace/slug + dir"
+    "ideaspaces clone https://ideaspaces.xyz/spaces/n_0123456789abcdef01234567",
+    "ideaspaces clone alice/notes ./n       # legacy compatibility locator"
   ],
   async run(args2, _flags, global2) {
     const output = createOutput(global2);
@@ -11795,28 +12026,43 @@ var cloneCommand = {
       output.error(err instanceof Error ? err.message : String(err));
       return 1;
     }
+    const urlLike = /^[a-z][a-z0-9+.-]*:/i.test(target);
+    let rootNodeId;
+    if (urlLike) {
+      try {
+        rootNodeId = parseSpaceLocator(target, config.apiUrl).rootNodeId;
+      } catch (err) {
+        output.error(err instanceof Error ? err.message : String(err));
+        return 1;
+      }
+    }
     const matches = me.repos.filter((r) => {
-      const namespace2 = r.hostname ?? me.username;
-      return r.repo_id === target || r.slug === target || `${namespace2}/${r.slug}` === target;
+      if (rootNodeId)
+        return r.root_node_id === rootNodeId;
+      const namespace2 = repoRouteNamespace(r, me.username);
+      const slug2 = r.route_slug ?? r.slug;
+      return r.repo_id === target || slug2 === target || `${namespace2}/${slug2}` === target;
     });
     if (matches.length === 0) {
-      output.error(`No space matches "${target}". Run \`ideaspaces repos\` to list yours.`);
+      output.error(`No space matches "${target}" in your Git-access catalog. Run \`ideaspaces repos\` to list yours.`);
       return 1;
     }
     if (matches.length > 1) {
-      output.error(`"${target}" is ambiguous \u2014 use namespace/slug or the repo_id.`);
+      output.error(`"${target}" is ambiguous \u2014 use its canonical Space URL.`);
       return 1;
     }
     const repo = matches[0];
-    const namespace = repo.hostname ?? me.username;
-    if (!namespace) {
-      output.error("Could not resolve the space namespace.");
+    const namespace = repoRouteNamespace(repo, me.username);
+    const slug = repo.route_slug ?? repo.slug;
+    const stableRoot = repo.root_node_id ?? rootNodeId;
+    if (!stableRoot && !namespace) {
+      output.error("Could not resolve stable Space identity or a compatibility route.");
       return 1;
     }
-    const url = `${deriveGitBase(config.apiUrl)}/${namespace}/${repo.slug}.git`;
-    const dir = resolve12(args2[1] ?? repo.slug);
+    const url = stableRoot ? canonicalGitUrl(config.apiUrl, stableRoot) : `${deriveGitBase(config.apiUrl)}/${namespace}/${slug}.git`;
+    const dir = resolve12(args2[1] ?? slug);
     await registerGitCredentialHelper();
-    output.progress(`Cloning ${namespace}/${repo.slug}\u2026`);
+    output.progress(`Cloning ${stableRoot ? canonicalSpaceUrl(config.apiUrl, stableRoot) : `${namespace}/${slug}`}\u2026`);
     try {
       cloneRepo(url, dir);
     } catch (err) {
@@ -11824,7 +12070,7 @@ var cloneCommand = {
       return 1;
     }
     try {
-      saveSpace(dir, { repo_id: repo.repo_id, slug: repo.slug, namespace });
+      saveSpace(dir, spaceRecordForRepo(repo, me.username));
     } catch {
       output.error("Clone succeeded but the folder could not be bound \u2014 re-run clone to bind it.");
     }
@@ -11835,7 +12081,16 @@ var cloneCommand = {
       } catch {
       }
     }
-    output.result({ repo_id: repo.repo_id, slug: repo.slug, namespace, path: dir }, `Cloned ${namespace}/${repo.slug} \u2192 ${dir}`);
+    const spaceUrl = stableRoot ? canonicalSpaceUrl(config.apiUrl, stableRoot) : null;
+    output.result({
+      repo_id: repo.repo_id,
+      root_node_id: stableRoot ?? null,
+      slug,
+      namespace,
+      space_url: spaceUrl,
+      remote_url: url,
+      path: dir
+    }, `Cloned ${spaceUrl ?? `${namespace}/${slug}`} \u2192 ${dir}`);
     return 0;
   }
 };
@@ -11862,13 +12117,174 @@ var clonesCommand = {
   }
 };
 
-// dist/commands/link.js
+// dist/commands/fork.js
+import { existsSync as existsSync10 } from "node:fs";
 import { resolve as resolve13 } from "node:path";
-function repoKey(repo, me, gitBase) {
-  const namespace = repo.hostname ?? me.username;
-  if (!namespace)
-    return null;
-  return normalizeRepoUrl(`${gitBase}/${namespace}/${repo.slug}.git`);
+function stringFlag(flags2, name) {
+  const value = flags2[name];
+  return typeof value === "string" && value.trim() ? value.trim() : void 0;
+}
+function fallbackRecord(result, namespace) {
+  return {
+    repo_id: result.repo_id,
+    root_node_id: result.root_node_id,
+    slug: result.slug,
+    namespace,
+    route_status: "unavailable",
+    route_namespace: null,
+    route_slug: null,
+    canonical_path: `/spaces/${result.root_node_id}`
+  };
+}
+var forkCommand = {
+  name: "fork",
+  description: "Create and clone an independent, history-free Space copy",
+  usage: "ideaspaces fork <space-url> [dir] [--location personal|<team-hostname>] [--name <name>] [--slug <slug>]",
+  examples: [
+    "ideaspaces fork https://ideaspaces.xyz/spaces/n_0123456789abcdef01234567",
+    "ideaspaces fork https://ideaspaces.xyz/spaces/n_0123456789abcdef01234567 ./manual --location acme.com"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const target = args2[0];
+    if (!target) {
+      output.error("Usage: ideaspaces fork <space-url> [dir] [--location personal|<team-hostname>]");
+      return 1;
+    }
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run `ideaspaces login`.");
+      return 1;
+    }
+    let sourceRoot;
+    try {
+      sourceRoot = parseSpaceLocator(target, config.apiUrl).rootNodeId;
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const location = stringFlag(flags2, "location") ?? "personal";
+    const hostname = location === "personal" ? null : location;
+    if (flags2.location === true || flags2.name === true || flags2.slug === true) {
+      output.error("--location, --name, and --slug require values when provided.");
+      return 1;
+    }
+    const requestedDir = args2[1] ? resolve13(args2[1]) : void 0;
+    if (requestedDir && existsSync10(requestedDir)) {
+      output.error(`${requestedDir} already exists. Choose another destination folder.`);
+      return 1;
+    }
+    let me;
+    try {
+      me = await fetchAuthMe(config);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        output.error("Session expired. Run `ideaspaces login`.");
+        return 1;
+      }
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    let source;
+    try {
+      source = await getSpace(config, sourceRoot);
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    if (!source.copy_enabled) {
+      output.error("This Space does not allow an independent copy for your account.");
+      return 1;
+    }
+    const name = stringFlag(flags2, "name") ?? source.name;
+    const slug = stringFlag(flags2, "slug");
+    output.progress(`Creating an independent copy of ${canonicalSpaceUrl(config.apiUrl, sourceRoot)}\u2026`);
+    let copied;
+    try {
+      copied = await copySpace(config, sourceRoot, {
+        name,
+        ...slug ? { slug } : {},
+        hostname
+      }, { timeoutMs: 12e4 });
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const destinationUrl = canonicalSpaceUrl(config.apiUrl, copied.root_node_id);
+    const remoteUrl = canonicalGitUrl(config.apiUrl, copied.root_node_id);
+    const dir = requestedDir ?? resolve13(copied.slug);
+    if (existsSync10(dir)) {
+      output.error(`Fork created at ${destinationUrl}, but ${dir} already exists. Clone the new Space into another folder with \`ideaspaces clone ${destinationUrl} <dir>\`.`);
+      return 1;
+    }
+    await registerGitCredentialHelper();
+    output.progress(`Cloning new Space into ${dir}\u2026`);
+    try {
+      cloneRepo(remoteUrl, dir);
+    } catch (err) {
+      output.error(`Fork created at ${destinationUrl}, but cloning failed: ${err instanceof Error ? err.message : String(err)}. Retry with \`ideaspaces clone ${destinationUrl} <dir>\`; do not repeat fork.`);
+      return 1;
+    }
+    let destinationRepo;
+    try {
+      const refreshed = await fetchAuthMe(config);
+      destinationRepo = refreshed.repos.find((repo) => repo.repo_id === copied.repo_id);
+    } catch {
+      output.log("Fork succeeded, but current route metadata could not be refreshed; stable Space identity was saved.");
+    }
+    const namespace = hostname ?? me.username ?? "";
+    const record = destinationRepo ? spaceRecordForRepo(destinationRepo, me.username) : fallbackRecord(copied, namespace);
+    try {
+      saveSpace(dir, record);
+    } catch {
+      output.error(`Fork and clone succeeded at ${destinationUrl}, but the local registry could not be updated. Run \`ideaspaces link\` from this clone to repair the binding.`);
+      return 1;
+    }
+    if (me.username) {
+      try {
+        setLocalConfig("user.email", identityEmail(me.username), dir);
+        setLocalConfig("user.name", identityName({ name: me.name, username: me.username }), dir);
+      } catch {
+      }
+    }
+    output.result({
+      source_root_node_id: sourceRoot,
+      repo_id: copied.repo_id,
+      root_node_id: copied.root_node_id,
+      slug: copied.slug,
+      route_status: record.route_status ?? null,
+      route_namespace: record.route_namespace ?? null,
+      route_slug: record.route_slug ?? null,
+      space_url: destinationUrl,
+      remote_url: remoteUrl,
+      source_history_copied: false,
+      index_status: copied.index_status,
+      path: dir
+    }, [
+      `Forked current content without source history \u2192 ${dir}`,
+      `Space: ${destinationUrl}`,
+      copied.index_status === "unindexed" ? "Content is cloned; hosted indexing needs recovery." : "Hosted index is fresh."
+    ].join("\n"));
+    return 0;
+  }
+};
+
+// dist/commands/link.js
+import { resolve as resolve14 } from "node:path";
+function repoKeys(repo, me, gitBase, apiUrl) {
+  const keys = [];
+  if (repo.root_node_id) {
+    const canonical = normalizeRepoUrl(canonicalGitUrl(apiUrl, repo.root_node_id));
+    if (canonical)
+      keys.push(canonical);
+  }
+  const namespace = repoRouteNamespace(repo, me.username);
+  if (namespace) {
+    const legacy = normalizeRepoUrl(`${gitBase}/${namespace}/${repo.route_slug ?? repo.slug}.git`);
+    if (legacy)
+      keys.push(legacy);
+  }
+  return keys;
 }
 var linkCommand = {
   name: "link",
@@ -11885,7 +12301,7 @@ var linkCommand = {
       output.error("Usage: ideaspaces link <dir> [space]");
       return 1;
     }
-    const dir = resolve13(dirArg);
+    const dir = resolve14(dirArg);
     if (!isInsideWorkTree(dir)) {
       output.error(`${dir} is not a git repository. Use \`clone\` to make one, or point at an existing clone.`);
       return 1;
@@ -11922,8 +12338,9 @@ var linkCommand = {
     let repo;
     if (target) {
       const matches = me.repos.filter((r) => {
-        const namespace2 = r.hostname ?? me.username;
-        return r.repo_id === target || r.slug === target || `${namespace2}/${r.slug}` === target;
+        const namespace2 = repoRouteNamespace(r, me.username);
+        const slug = r.route_slug ?? r.slug;
+        return r.repo_id === target || r.root_node_id === target || slug === target || `${namespace2}/${slug}` === target;
       });
       if (matches.length === 0) {
         output.error(`No space matches "${target}". Run \`ideaspaces repos\` to list yours.`);
@@ -11934,14 +12351,14 @@ var linkCommand = {
         return 1;
       }
       repo = matches[0];
-      if (repoKey(repo, me, gitBase) !== originKey) {
-        const namespace2 = repo.hostname ?? me.username;
+      if (!repoKeys(repo, me, gitBase, config.apiUrl).includes(originKey)) {
+        const expected = repo.root_node_id ? canonicalGitUrl(config.apiUrl, repo.root_node_id) : `${gitBase}/${repoRouteNamespace(repo, me.username)}/${repo.route_slug ?? repo.slug}.git`;
         output.error(`${dir}'s origin (${origin}) doesn't match ${repo.slug}.
-Expected a clone of ${gitBase}/${namespace2}/${repo.slug}.git.`);
+Expected a clone of ${expected}.`);
         return 1;
       }
     } else {
-      const matches = me.repos.filter((r) => repoKey(r, me, gitBase) === originKey);
+      const matches = me.repos.filter((r) => repoKeys(r, me, gitBase, config.apiUrl).includes(originKey));
       if (matches.length === 0) {
         output.error(`${dir}'s origin (${origin}) isn't a clone of one of your spaces.
 Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
@@ -11953,13 +12370,13 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
       }
       repo = matches[0];
     }
-    const namespace = repo.hostname ?? me.username;
+    const namespace = repoRouteNamespace(repo, me.username) ?? repo.hostname ?? me.username;
     if (!namespace) {
-      output.error("Could not resolve the space namespace.");
+      output.error("Could not resolve the Space route for display.");
       return 1;
     }
     try {
-      saveSpace(dir, { repo_id: repo.repo_id, slug: repo.slug, namespace });
+      saveSpace(dir, spaceRecordForRepo(repo, me.username));
     } catch {
       output.error("Verified the folder, but could not write the clone registry.");
       return 1;
@@ -11971,7 +12388,7 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
       } catch {
       }
     }
-    output.result({ repo_id: repo.repo_id, slug: repo.slug, namespace, path: dir }, `Linked ${namespace}/${repo.slug} \u2192 ${dir}`);
+    output.result({ repo_id: repo.repo_id, root_node_id: repo.root_node_id ?? null, slug: repo.slug, namespace, path: dir }, `Linked ${namespace}/${repo.slug} \u2192 ${dir}`);
     return 0;
   }
 };
@@ -11979,7 +12396,7 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 // dist/commands/forget.js
 import { rmSync } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { dirname as dirname4, resolve as resolve14 } from "node:path";
+import { dirname as dirname4, resolve as resolve15 } from "node:path";
 var forgetCommand = {
   name: "forget",
   description: "Stop tracking a local clone (optionally delete its folder)",
@@ -11995,9 +12412,9 @@ var forgetCommand = {
       output.error("Usage: ideaspaces forget <dir> [--delete]");
       return 1;
     }
-    const dir = resolve14(dirArg);
+    const dir = resolve15(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve14(homedir2()) || dirname4(dir) === dir)) {
+    if (del && (dir === resolve15(homedir2()) || dirname4(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -12586,18 +13003,18 @@ var searchCommand = {
 
 // dist/commands/ls.js
 import { statSync as statSync4 } from "node:fs";
-import { resolve as resolve15 } from "node:path";
+import { resolve as resolve16 } from "node:path";
 
 // dist/file-listing.js
-import { existsSync as existsSync10, readdirSync } from "node:fs";
+import { existsSync as existsSync11, readdirSync } from "node:fs";
 import { join as join14, relative as relative9 } from "node:path";
 var EXCLUDES = new Set(AUTOCOMPLETE_EXCLUDES);
 var DEFAULT_MAX_SCAN = 5e3;
 var DEFAULT_MAX_DEPTH = 10;
 function folderKind(abs) {
-  if (existsSync10(join14(abs, "_agent")))
+  if (existsSync11(join14(abs, "_agent")))
     return "ideaspace-repo";
-  if (existsSync10(join14(abs, ".git")))
+  if (existsSync11(join14(abs, ".git")))
     return "code-repo";
   return "folder";
 }
@@ -12681,7 +13098,7 @@ var lsCommand = {
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
-    const root = resolve15(args2[0] ?? ".");
+    const root = resolve16(args2[0] ?? ".");
     try {
       if (!statSync4(root).isDirectory()) {
         output.error(`Not a directory: ${root}`);
@@ -12877,13 +13294,13 @@ var shareCommand = {
 };
 
 // dist/auth/session-state.js
-import { existsSync as existsSync11, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync12, unlinkSync as unlinkSync2 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
 import { join as join15 } from "node:path";
 var SESSION_FILE = join15(homedir3(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
-    if (existsSync11(SESSION_FILE))
+    if (existsSync12(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -12905,11 +13322,11 @@ var logoutCommand = {
 
 // dist/pi/pi-status.js
 import { spawnSync as spawnSync6 } from "node:child_process";
-import { existsSync as existsSync13, readFileSync as readFileSync5 } from "node:fs";
+import { existsSync as existsSync14, readFileSync as readFileSync5 } from "node:fs";
 import { basename as basename4, join as join17 } from "node:path";
 
 // dist/pi/pi-auth.js
-import { chmodSync, existsSync as existsSync12, mkdirSync as mkdirSync3, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { chmodSync, existsSync as existsSync13, mkdirSync as mkdirSync3, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
 import { dirname as dirname5, join as join16 } from "node:path";
 function resolvePiAgentDir(env = process.env) {
@@ -12942,13 +13359,13 @@ function removeProvider(current, provider) {
   return { next, removed: true };
 }
 function readAuthFile(path) {
-  if (!existsSync12(path))
+  if (!existsSync13(path))
     return {};
   return parseAuth(readFileSync4(path, "utf8"));
 }
 function writeAuthFile(path, auth) {
   const dir = dirname5(path);
-  if (!existsSync12(dir))
+  if (!existsSync13(dir))
     mkdirSync3(dir, { recursive: true, mode: 448 });
   writeFileSync3(path, `${JSON.stringify(auth, null, 2)}
 `, { encoding: "utf8", mode: 384 });
@@ -12976,12 +13393,12 @@ function derivePiStatus(input) {
 function resolveExtension(path) {
   const name = basename4(path.replace(/[/\\]+$/, "")) || path;
   const check = (resolvable) => ({ name, path, resolvable });
-  if (!existsSync13(path))
+  if (!existsSync14(path))
     return check(false);
   if (/\.[cm]?[jt]s$/.test(path))
     return check(true);
   const pkgPath = join17(path, "package.json");
-  if (existsSync13(pkgPath)) {
+  if (existsSync14(pkgPath)) {
     try {
       const pkg = JSON.parse(readFileSync5(pkgPath, "utf8"));
       const exts = pkg.pi?.extensions;
@@ -12990,7 +13407,7 @@ function resolveExtension(path) {
     } catch {
     }
   }
-  return check(existsSync13(join17(path, "index.ts")) || existsSync13(join17(path, "index.js")));
+  return check(existsSync14(join17(path, "index.ts")) || existsSync14(join17(path, "index.js")));
 }
 function probeBinary(piBin) {
   try {
@@ -13127,7 +13544,7 @@ function trimModel(m) {
 var QUERY_ID = "__models";
 var TIMEOUT_MS = 2e4;
 function queryPiModels(piBin) {
-  return new Promise((resolve16, reject) => {
+  return new Promise((resolve17, reject) => {
     const pi = spawn2(piBin, ["--mode", "rpc", "--no-extensions"], {
       cwd: process.cwd(),
       stdio: ["pipe", "pipe", "pipe"]
@@ -13173,7 +13590,7 @@ function queryPiModels(piBin) {
         }
         const data = msg.data;
         const models = (data?.models ?? []).map(trimModel);
-        finish(() => resolve16({ models }));
+        finish(() => resolve17({ models }));
       }
     });
     try {
@@ -13216,7 +13633,7 @@ import { join as join20 } from "node:path";
 
 // dist/pi/local-agent.js
 import { spawn as spawn3 } from "node:child_process";
-import { existsSync as existsSync14, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { existsSync as existsSync15, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
 import { join as join18 } from "node:path";
 import readline from "node:readline";
 
@@ -13411,7 +13828,7 @@ function deriveConversationName(message) {
 function ensureSessionDir(dir) {
   mkdirSync4(dir, { recursive: true });
   const ignore = join18(dir, ".gitignore");
-  if (!existsSync14(ignore))
+  if (!existsSync15(ignore))
     writeFileSync4(ignore, "*\n");
 }
 function buildPiArgs(opts) {
@@ -13532,7 +13949,7 @@ async function* runLocalTurn(opts) {
 }
 
 // dist/pi/local-conversations.js
-import { existsSync as existsSync15, readdirSync as readdirSync2, readFileSync as readFileSync6, statSync as statSync5 } from "node:fs";
+import { existsSync as existsSync16, readdirSync as readdirSync2, readFileSync as readFileSync6, statSync as statSync5 } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join as join19 } from "node:path";
 function localSessionDir(contextRoot) {
@@ -13613,7 +14030,7 @@ function parseSessionJsonl(text, fallbackTs) {
   return { id, name, messages, messageCount: count, preview, updatedAt: lastTs };
 }
 function findSessionFile(dir, convId) {
-  if (!existsSync15(dir))
+  if (!existsSync16(dir))
     return null;
   const files = readdirSync2(dir).filter((f) => f.endsWith(".jsonl"));
   const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
@@ -13648,7 +14065,7 @@ function getLocalConversation(contextRoot, convId) {
 }
 function listLocalConversations(contextRoot) {
   const dir = localSessionDir(contextRoot);
-  if (!existsSync15(dir))
+  if (!existsSync16(dir))
     return { conversations: [], total: 0 };
   const summaries = [];
   for (const f of readdirSync2(dir).filter((f2) => f2.endsWith(".jsonl"))) {
@@ -13784,6 +14201,7 @@ var topLevel = [
   piLoginCommand,
   piLogoutCommand,
   cloneCommand,
+  forkCommand,
   clonesCommand,
   linkCommand,
   forgetCommand,
