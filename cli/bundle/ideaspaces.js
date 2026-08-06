@@ -1501,7 +1501,7 @@ var require_stringify = __commonJS({
         props.push(doc.directives.tagString(tag));
       return props.join(" ");
     }
-    function stringify(item, ctx, onComment, onChompKeep) {
+    function stringify2(item, ctx, onComment, onChompKeep) {
       if (identity.isPair(item))
         return item.toString(ctx, onComment, onChompKeep);
       if (identity.isAlias(item)) {
@@ -1530,7 +1530,7 @@ var require_stringify = __commonJS({
 ${ctx.indent}${str}`;
     }
     exports.createStringifyContext = createStringifyContext;
-    exports.stringify = stringify;
+    exports.stringify = stringify2;
   }
 });
 
@@ -1540,7 +1540,7 @@ var require_stringifyPair = __commonJS({
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
       const { allNullValues, doc, indent, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
@@ -1562,7 +1562,7 @@ var require_stringifyPair = __commonJS({
       });
       let keyCommentDone = false;
       let chompKeep = false;
-      let str = stringify.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
+      let str = stringify2.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
       if (!explicitKey && !ctx.inFlow && str.length > 1024) {
         if (simpleKeys)
           throw new Error("With simple keys, single line scalar must not span more than 1024 characters");
@@ -1614,7 +1614,7 @@ ${indent}:`;
         ctx.indent = ctx.indent.substring(2);
       }
       let valueCommentDone = false;
-      const valueStr = stringify.stringify(value, ctx, () => valueCommentDone = true, () => chompKeep = true);
+      const valueStr = stringify2.stringify(value, ctx, () => valueCommentDone = true, () => chompKeep = true);
       let ws = " ";
       if (keyComment || vsb || vcb) {
         ws = vsb ? "\n" : "";
@@ -1755,7 +1755,7 @@ var require_addPairToJSMap = __commonJS({
     "use strict";
     var log = require_log();
     var merge = require_merge();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var identity = require_identity();
     var toJS = require_toJS();
     function addPairToJSMap(ctx, map, { key, value }) {
@@ -1791,7 +1791,7 @@ var require_addPairToJSMap = __commonJS({
       if (typeof jsKey !== "object")
         return String(jsKey);
       if (identity.isNode(key) && ctx?.doc) {
-        const strCtx = stringify.createStringifyContext(ctx.doc, {});
+        const strCtx = stringify2.createStringifyContext(ctx.doc, {});
         strCtx.anchors = /* @__PURE__ */ new Set();
         for (const node of ctx.anchors.keys())
           strCtx.anchors.add(node.anchor);
@@ -1858,12 +1858,12 @@ var require_stringifyCollection = __commonJS({
   "node_modules/yaml/dist/stringify/stringifyCollection.js"(exports) {
     "use strict";
     var identity = require_identity();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyCollection(collection, ctx, options) {
       const flow = ctx.inFlow ?? collection.flow;
-      const stringify2 = flow ? stringifyFlowCollection : stringifyBlockCollection;
-      return stringify2(collection, ctx, options);
+      const stringify3 = flow ? stringifyFlowCollection : stringifyBlockCollection;
+      return stringify3(collection, ctx, options);
     }
     function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, flowChars, itemIndent, onChompKeep, onComment }) {
       const { indent, options: { commentString } } = ctx;
@@ -1888,7 +1888,7 @@ var require_stringifyCollection = __commonJS({
           }
         }
         chompKeep = false;
-        let str2 = stringify.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
+        let str2 = stringify2.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
         if (comment2)
           str2 += stringifyComment.lineComment(str2, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
@@ -1955,7 +1955,7 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           reqNewline = true;
-        let str = stringify.stringify(item, itemCtx, () => comment = null);
+        let str = stringify2.stringify(item, itemCtx, () => comment = null);
         reqNewline || (reqNewline = lines.length > linesAtValue || str.includes("\n"));
         if (i < items.length - 1) {
           str += ",";
@@ -3316,7 +3316,7 @@ var require_stringifyDocument = __commonJS({
   "node_modules/yaml/dist/stringify/stringifyDocument.js"(exports) {
     "use strict";
     var identity = require_identity();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyDocument(doc, options) {
       const lines = [];
@@ -3331,7 +3331,7 @@ var require_stringifyDocument = __commonJS({
       }
       if (hasDirectives)
         lines.push("---");
-      const ctx = stringify.createStringifyContext(doc, options);
+      const ctx = stringify2.createStringifyContext(doc, options);
       const { commentString } = ctx.options;
       if (doc.commentBefore) {
         if (lines.length !== 1)
@@ -3353,7 +3353,7 @@ var require_stringifyDocument = __commonJS({
           contentComment = doc.contents.comment;
         }
         const onChompKeep = contentComment ? void 0 : () => chompKeep = true;
-        let body = stringify.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
+        let body = stringify2.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
         if (contentComment)
           body += stringifyComment.lineComment(body, "", commentString(contentComment));
         if ((body[0] === "|" || body[0] === ">") && lines[lines.length - 1] === "---") {
@@ -3361,7 +3361,7 @@ var require_stringifyDocument = __commonJS({
         } else
           lines.push(body);
       } else {
-        lines.push(stringify.stringify(doc.contents, ctx));
+        lines.push(stringify2.stringify(doc.contents, ctx));
       }
       if (doc.directives?.docEnd) {
         if (doc.comment) {
@@ -5494,7 +5494,7 @@ var require_cst_scalar = __commonJS({
 var require_cst_stringify = __commonJS({
   "node_modules/yaml/dist/parse/cst-stringify.js"(exports) {
     "use strict";
-    var stringify = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
+    var stringify2 = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
     function stringifyToken(token) {
       switch (token.type) {
         case "block-scalar": {
@@ -5547,7 +5547,7 @@ var require_cst_stringify = __commonJS({
         res += stringifyToken(value);
       return res;
     }
-    exports.stringify = stringify;
+    exports.stringify = stringify2;
   }
 });
 
@@ -6892,14 +6892,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs7 = this.flowScalar(this.type);
+              const fs8 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs7, sep: [] });
+                map.items.push({ start, key: fs8, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs7);
+                this.stack.push(fs8);
               } else {
-                Object.assign(it, { key: fs7, sep: [] });
+                Object.assign(it, { key: fs8, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7027,13 +7027,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs7 = this.flowScalar(this.type);
+              const fs8 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs7, sep: [] });
+                fc.items.push({ start: [], key: fs8, sep: [] });
               else if (it.sep)
-                this.stack.push(fs7);
+                this.stack.push(fs8);
               else
-                Object.assign(it, { key: fs7, sep: [] });
+                Object.assign(it, { key: fs8, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7260,7 +7260,7 @@ var require_public_api = __commonJS({
       }
       return doc.toJS(Object.assign({ reviver: _reviver }, options));
     }
-    function stringify(value, replacer, options) {
+    function stringify2(value, replacer, options) {
       let _replacer = null;
       if (typeof replacer === "function" || Array.isArray(replacer)) {
         _replacer = replacer;
@@ -7285,7 +7285,7 @@ var require_public_api = __commonJS({
     exports.parse = parse;
     exports.parseAllDocuments = parseAllDocuments;
     exports.parseDocument = parseDocument3;
-    exports.stringify = stringify;
+    exports.stringify = stringify2;
   }
 });
 
@@ -8006,6 +8006,17 @@ function extractSummary(content) {
 }
 function extractDescription(content) {
   return extractScalarField(content, "description") ?? extractScalarField(content, "summary");
+}
+function parseFrontmatter(content) {
+  const block = frontmatterBlock(content);
+  if (!block)
+    return null;
+  const source = block.lines.slice(1, block.endLineIndex).map((line) => line.replace(/\r$/, "")).join("\n");
+  const doc = (0, import_yaml.parseDocument)(source);
+  if (doc.errors.length)
+    return null;
+  const value = doc.toJS();
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
 function extractScalarField(content, field) {
   if (!content.startsWith(`${DELIM}
@@ -8785,28 +8796,43 @@ function buildStackedContractEntries(stack, max) {
   }
   return entries;
 }
-async function readSkills(levels, max) {
+async function discoverSkillEntries(levels) {
   const byName = /* @__PURE__ */ new Map();
   for (const dir of levels) {
     const skillsDir = join6(dir, "_agent", "skills");
-    let entries;
+    let dirents;
     try {
-      entries = (await fs4.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
+      dirents = await fs4.readdir(skillsDir, { withFileTypes: true });
     } catch {
       continue;
     }
-    for (const file of entries) {
-      const path = join6(skillsDir, file);
+    const flat = dirents.filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "README.md").map((e) => e.name).sort();
+    for (const file of flat) {
       const name = file.replace(/\.md$/, "");
+      byName.set(name, { name, path: join6(skillsDir, file), level: dir });
+    }
+    const skillDirs = dirents.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+    for (const name of skillDirs) {
+      const path = join6(skillsDir, name, "SKILL.md");
       try {
-        const content = await fs4.readFile(path, "utf-8");
-        byName.set(name, { name, path, level: dir, summary: describeFile(content, max) });
+        await fs4.access(path);
+        byName.set(name, { name, path, level: dir });
       } catch {
-        byName.set(name, { name, path, level: dir, summary: null });
       }
     }
   }
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+async function readSkills(levels, max) {
+  const entries = await discoverSkillEntries(levels);
+  return Promise.all(entries.map(async ({ name, path, level }) => {
+    try {
+      const content = await fs4.readFile(path, "utf-8");
+      return { name, path, level, summary: describeSkill(content, max) };
+    } catch {
+      return { name, path, level, summary: null };
+    }
+  }));
 }
 async function readActivity(repoRoot2, lastSha, maxChanges) {
   const { changedFiles } = await recentActivity(repoRoot2, lastSha);
@@ -8831,6 +8857,12 @@ function describeFile(content, max) {
     return truncate(line, max);
   }
   return null;
+}
+function describeSkill(content, max) {
+  const description = extractDescription(content);
+  if (description)
+    return truncate(description, max);
+  return describeFile(content, max);
 }
 function extractNow(contract, max) {
   const entry = contract.now;
@@ -11210,15 +11242,187 @@ The repo may be mid-${useRebase ? "rebase" : "merge"}. Run \`${reset}\` to reset
   }
 };
 
+// dist/skills-sync.js
+var import_yaml3 = __toESM(require_dist(), 1);
+import { promises as fs7 } from "node:fs";
+import { existsSync as existsSync9 } from "node:fs";
+import { spawnSync as spawnSync5 } from "node:child_process";
+import { dirname as dirname3, join as join12, relative as relative8 } from "node:path";
+var GENERATED_MARKER = "ideaspaces:generated skill pointer";
+var MARKER_LINE = `<!-- ${GENERATED_MARKER} \u2014 edit the canonical skill, then re-run \`ideaspaces skills sync\` -->`;
+var PORTABLE_FIELDS = ["description", "license", "compatibility", "metadata", "allowed-tools"];
+async function syncSkillPointers(position, opts = {}) {
+  const composed = await composeContractAlongPath(position);
+  if (!composed.spaceRoot)
+    return null;
+  const root = composed.spaceRoot;
+  const check = opts.check === true;
+  const report = {
+    spaceRoot: root,
+    created: [],
+    updated: [],
+    removed: [],
+    skipped: [],
+    unchanged: 0,
+    privateAgentLevels: []
+  };
+  for (const level of await collectSkillLevels(root)) {
+    const entries = await discoverSkillEntries([level]);
+    const wanted = new Set(entries.map((e) => e.name));
+    const pointerRoot = join12(level, ".claude", "skills");
+    for (const entry of entries) {
+      const target = join12(pointerRoot, entry.name, "SKILL.md");
+      const desired = await renderPointer(entry.name, entry.path, dirname3(target));
+      const rel = relative8(root, target);
+      if (existsSync9(target)) {
+        const existing = await fs7.readFile(target, "utf-8");
+        if (!existing.includes(GENERATED_MARKER)) {
+          report.skipped.push(rel);
+          continue;
+        }
+        if (existing === desired) {
+          report.unchanged += 1;
+          continue;
+        }
+        report.updated.push(rel);
+        if (!check)
+          await fs7.writeFile(target, desired, "utf-8");
+      } else {
+        report.created.push(rel);
+        if (!check) {
+          await fs7.mkdir(dirname3(target), { recursive: true });
+          await fs7.writeFile(target, desired, "utf-8");
+        }
+      }
+    }
+    let pointerDirs = [];
+    try {
+      pointerDirs = (await fs7.readdir(pointerRoot, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name);
+    } catch {
+    }
+    for (const name of pointerDirs) {
+      if (wanted.has(name))
+        continue;
+      const target = join12(pointerRoot, name, "SKILL.md");
+      let existing;
+      try {
+        existing = await fs7.readFile(target, "utf-8");
+      } catch {
+        continue;
+      }
+      if (!existing.includes(GENERATED_MARKER))
+        continue;
+      report.removed.push(relative8(root, target));
+      if (!check) {
+        await fs7.rm(target);
+        await fs7.rmdir(join12(pointerRoot, name)).catch(() => {
+        });
+      }
+    }
+    if (agentIsGitignored(level))
+      report.privateAgentLevels.push(relative8(root, level) || ".");
+  }
+  return report;
+}
+async function collectSkillLevels(root) {
+  const levels = [];
+  async function walk(dir, isRoot) {
+    if (!isRoot && existsSync9(join12(dir, "_agent", "foundation.md")))
+      return;
+    if (existsSync9(join12(dir, "_agent", "skills")))
+      levels.push(dir);
+    let dirents;
+    try {
+      dirents = await fs7.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of dirents) {
+      if (!e.isDirectory())
+        continue;
+      if (e.name.startsWith(".") || e.name.startsWith("_") || e.name === "node_modules")
+        continue;
+      await walk(join12(dir, e.name), false);
+    }
+  }
+  await walk(root, true);
+  return levels;
+}
+async function renderPointer(name, canonicalPath, pointerDir) {
+  const content = await fs7.readFile(canonicalPath, "utf-8");
+  const fm = parseFrontmatter(content) ?? {};
+  const pointerFm = { name };
+  for (const field of PORTABLE_FIELDS) {
+    if (fm[field] != null)
+      pointerFm[field] = fm[field];
+  }
+  if (pointerFm.description == null && typeof fm.summary === "string") {
+    pointerFm.description = fm.summary;
+  }
+  const rel = relative8(pointerDir, canonicalPath);
+  return [
+    "---",
+    (0, import_yaml3.stringify)(pointerFm).trimEnd(),
+    "---",
+    "",
+    MARKER_LINE,
+    "",
+    `Generated pointer for **${name}**. The canonical skill lives at`,
+    `[${rel}](${rel}) \u2014 read that file and follow it as this skill's`,
+    "instructions.",
+    ""
+  ].join("\n");
+}
+function agentIsGitignored(level) {
+  const r = spawnSync5("git", ["-C", level, "check-ignore", "-q", join12(level, "_agent", "skills")], {
+    encoding: "utf-8"
+  });
+  return r.status === 0;
+}
+
 // dist/commands/skills.js
 var skillsCommand = {
   name: "skills",
-  description: "List the skill catalog, or print one skill's markdown",
-  usage: "ideaspaces skills [<name>]",
-  examples: ["ideaspaces skills", "ideaspaces skills capture", "ideaspaces skills --json"],
-  async run(args2, _flags, global2) {
+  description: "List the skill catalog, print one skill, or sync space skills to .claude/skills",
+  usage: "ideaspaces skills [<name>] | ideaspaces skills sync [--check]",
+  examples: [
+    "ideaspaces skills",
+    "ideaspaces skills capture",
+    "ideaspaces skills sync          # generate/refresh .claude/skills pointers",
+    "ideaspaces skills sync --check  # report drift without writing; exit 3 when stale"
+  ],
+  async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const name = args2[0];
+    if (name === "sync") {
+      if (args2.length > 1) {
+        output.error(`Unexpected argument \`${args2[1]}\` \u2014 usage: ideaspaces skills sync [--check]`);
+        return 1;
+      }
+      const check = Boolean(flags2.check);
+      const report = await syncSkillPointers(process.cwd(), { check });
+      if (!report) {
+        output.error("Not inside an ideaspace \u2014 no `_agent/foundation.md` found walking up from here.");
+        return 1;
+      }
+      const drift = report.created.length + report.updated.length + report.removed.length > 0;
+      const lines = [];
+      const verb = check ? "would " : "";
+      for (const p of report.created)
+        lines.push(`  ${verb}create ${p}`);
+      for (const p of report.updated)
+        lines.push(`  ${verb}update ${p}`);
+      for (const p of report.removed)
+        lines.push(`  ${verb}remove ${p}`);
+      for (const p of report.skipped)
+        lines.push(`  skip ${p} \u2014 not generated by sync; left untouched`);
+      lines.push(drift || report.unchanged ? `${check ? "Drift check" : "Synced"}: ${report.created.length} created, ${report.updated.length} updated, ${report.removed.length} removed, ${report.unchanged} unchanged.` : "No `_agent/skills/` entries to sync.");
+      if (report.privateAgentLevels.length) {
+        lines.push(`Note: \`_agent/\` is gitignored at ${report.privateAgentLevels.join(", ")} \u2014 committed pointers would dangle for cloners; consider gitignoring \`.claude/skills/\` there too.`);
+      }
+      output.result(report, lines.join("\n"));
+      return check && drift ? 3 : 0;
+    }
     try {
       if (name) {
         const skill = await readSkill(name);
@@ -11756,7 +11960,7 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 // dist/commands/forget.js
 import { rmSync } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { dirname as dirname3, resolve as resolve14 } from "node:path";
+import { dirname as dirname4, resolve as resolve14 } from "node:path";
 var forgetCommand = {
   name: "forget",
   description: "Stop tracking a local clone (optionally delete its folder)",
@@ -11774,7 +11978,7 @@ var forgetCommand = {
     }
     const dir = resolve14(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve14(homedir2()) || dirname3(dir) === dir)) {
+    if (del && (dir === resolve14(homedir2()) || dirname4(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -12221,7 +12425,7 @@ var nodeCommand = {
 
 // dist/commands/search.js
 import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 
 // dist/search.js
 var K1 = 1.2;
@@ -12312,7 +12516,7 @@ var DEFAULT_LIMIT = 20;
 function* readDocs(root, paths) {
   for (const path of paths) {
     try {
-      yield { path, content: readFileSync3(join12(root, path), "utf-8") };
+      yield { path, content: readFileSync3(join13(root, path), "utf-8") };
     } catch {
       continue;
     }
@@ -12366,15 +12570,15 @@ import { statSync as statSync4 } from "node:fs";
 import { resolve as resolve15 } from "node:path";
 
 // dist/file-listing.js
-import { existsSync as existsSync9, readdirSync } from "node:fs";
-import { join as join13, relative as relative8 } from "node:path";
+import { existsSync as existsSync10, readdirSync } from "node:fs";
+import { join as join14, relative as relative9 } from "node:path";
 var EXCLUDES = new Set(AUTOCOMPLETE_EXCLUDES);
 var DEFAULT_MAX_SCAN = 5e3;
 var DEFAULT_MAX_DEPTH = 10;
 function folderKind(abs) {
-  if (existsSync9(join13(abs, "_agent")))
+  if (existsSync10(join14(abs, "_agent")))
     return "ideaspace-repo";
-  if (existsSync9(join13(abs, ".git")))
+  if (existsSync10(join14(abs, ".git")))
     return "code-repo";
   return "folder";
 }
@@ -12400,8 +12604,8 @@ function listEntries(root, opts = {}) {
         continue;
       if (entries.length >= maxScan)
         return { entries, truncated: true };
-      const childAbs = join13(abs, dirent.name);
-      const path = toPosix(relative8(root, childAbs));
+      const childAbs = join14(abs, dirent.name);
+      const path = toPosix(relative9(root, childAbs));
       if (dirent.isDirectory()) {
         entries.push({ path, name: dirent.name, kind: folderKind(childAbs) });
         if (depth + 1 <= maxDepth)
@@ -12654,13 +12858,13 @@ var shareCommand = {
 };
 
 // dist/auth/session-state.js
-import { existsSync as existsSync10, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync11, unlinkSync as unlinkSync2 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
-import { join as join14 } from "node:path";
-var SESSION_FILE = join14(homedir3(), ".ideaspaces", "session.json");
+import { join as join15 } from "node:path";
+var SESSION_FILE = join15(homedir3(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
-    if (existsSync10(SESSION_FILE))
+    if (existsSync11(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -12681,22 +12885,22 @@ var logoutCommand = {
 };
 
 // dist/pi/pi-status.js
-import { spawnSync as spawnSync5 } from "node:child_process";
-import { existsSync as existsSync12, readFileSync as readFileSync5 } from "node:fs";
-import { basename as basename4, join as join16 } from "node:path";
+import { spawnSync as spawnSync6 } from "node:child_process";
+import { existsSync as existsSync13, readFileSync as readFileSync5 } from "node:fs";
+import { basename as basename4, join as join17 } from "node:path";
 
 // dist/pi/pi-auth.js
-import { chmodSync, existsSync as existsSync11, mkdirSync as mkdirSync3, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { chmodSync, existsSync as existsSync12, mkdirSync as mkdirSync3, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
-import { dirname as dirname4, join as join15 } from "node:path";
+import { dirname as dirname5, join as join16 } from "node:path";
 function resolvePiAgentDir(env = process.env) {
   const override = env.PI_CODING_AGENT_DIR?.trim();
   if (override)
-    return override.startsWith("~") ? join15(homedir4(), override.slice(1)) : override;
-  return join15(homedir4(), ".pi", "agent");
+    return override.startsWith("~") ? join16(homedir4(), override.slice(1)) : override;
+  return join16(homedir4(), ".pi", "agent");
 }
 function resolvePiAuthPath(env = process.env) {
-  return join15(resolvePiAgentDir(env), "auth.json");
+  return join16(resolvePiAgentDir(env), "auth.json");
 }
 function parseAuth(raw) {
   if (!raw || !raw.trim())
@@ -12719,13 +12923,13 @@ function removeProvider(current, provider) {
   return { next, removed: true };
 }
 function readAuthFile(path) {
-  if (!existsSync11(path))
+  if (!existsSync12(path))
     return {};
   return parseAuth(readFileSync4(path, "utf8"));
 }
 function writeAuthFile(path, auth) {
-  const dir = dirname4(path);
-  if (!existsSync11(dir))
+  const dir = dirname5(path);
+  if (!existsSync12(dir))
     mkdirSync3(dir, { recursive: true, mode: 448 });
   writeFileSync3(path, `${JSON.stringify(auth, null, 2)}
 `, { encoding: "utf8", mode: 384 });
@@ -12753,12 +12957,12 @@ function derivePiStatus(input) {
 function resolveExtension(path) {
   const name = basename4(path.replace(/[/\\]+$/, "")) || path;
   const check = (resolvable) => ({ name, path, resolvable });
-  if (!existsSync12(path))
+  if (!existsSync13(path))
     return check(false);
   if (/\.[cm]?[jt]s$/.test(path))
     return check(true);
-  const pkgPath = join16(path, "package.json");
-  if (existsSync12(pkgPath)) {
+  const pkgPath = join17(path, "package.json");
+  if (existsSync13(pkgPath)) {
     try {
       const pkg = JSON.parse(readFileSync5(pkgPath, "utf8"));
       const exts = pkg.pi?.extensions;
@@ -12767,11 +12971,11 @@ function resolveExtension(path) {
     } catch {
     }
   }
-  return check(existsSync12(join16(path, "index.ts")) || existsSync12(join16(path, "index.js")));
+  return check(existsSync13(join17(path, "index.ts")) || existsSync13(join17(path, "index.js")));
 }
 function probeBinary(piBin) {
   try {
-    const res = spawnSync5(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
+    const res = spawnSync6(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
     if (res.error || res.status !== 0)
       return { present: false, path: piBin, version: null };
     const m = /\d+\.\d+\.\d+[\w.-]*/.exec(res.stdout ?? "");
@@ -12989,12 +13193,12 @@ var piModelsCommand = {
 };
 
 // dist/pi/local-conversation-ops.js
-import { join as join19 } from "node:path";
+import { join as join20 } from "node:path";
 
 // dist/pi/local-agent.js
 import { spawn as spawn3 } from "node:child_process";
-import { existsSync as existsSync13, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join17 } from "node:path";
+import { existsSync as existsSync14, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { join as join18 } from "node:path";
 import readline from "node:readline";
 
 // node_modules/@ideaspaces/sdk/dist/keeper-events.js
@@ -13187,8 +13391,8 @@ function deriveConversationName(message) {
 }
 function ensureSessionDir(dir) {
   mkdirSync4(dir, { recursive: true });
-  const ignore = join17(dir, ".gitignore");
-  if (!existsSync13(ignore))
+  const ignore = join18(dir, ".gitignore");
+  if (!existsSync14(ignore))
     writeFileSync4(ignore, "*\n");
 }
 function buildPiArgs(opts) {
@@ -13309,11 +13513,11 @@ async function* runLocalTurn(opts) {
 }
 
 // dist/pi/local-conversations.js
-import { existsSync as existsSync14, readdirSync as readdirSync2, readFileSync as readFileSync6, statSync as statSync5 } from "node:fs";
+import { existsSync as existsSync15, readdirSync as readdirSync2, readFileSync as readFileSync6, statSync as statSync5 } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { join as join18 } from "node:path";
+import { join as join19 } from "node:path";
 function localSessionDir(contextRoot) {
-  return join18(contextRoot, ".pi", "sessions");
+  return join19(contextRoot, ".pi", "sessions");
 }
 function mintConversationId() {
   return `local-${randomUUID()}`;
@@ -13390,17 +13594,17 @@ function parseSessionJsonl(text, fallbackTs) {
   return { id, name, messages, messageCount: count, preview, updatedAt: lastTs };
 }
 function findSessionFile(dir, convId) {
-  if (!existsSync14(dir))
+  if (!existsSync15(dir))
     return null;
   const files = readdirSync2(dir).filter((f) => f.endsWith(".jsonl"));
   const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
   if (bySuffix)
-    return join18(dir, bySuffix);
+    return join19(dir, bySuffix);
   for (const f of files) {
     try {
-      const first = readFileSync6(join18(dir, f), "utf8").split("\n", 1)[0];
+      const first = readFileSync6(join19(dir, f), "utf8").split("\n", 1)[0];
       if (JSON.parse(first).id === convId)
-        return join18(dir, f);
+        return join19(dir, f);
     } catch {
     }
   }
@@ -13425,11 +13629,11 @@ function getLocalConversation(contextRoot, convId) {
 }
 function listLocalConversations(contextRoot) {
   const dir = localSessionDir(contextRoot);
-  if (!existsSync14(dir))
+  if (!existsSync15(dir))
     return { conversations: [], total: 0 };
   const summaries = [];
   for (const f of readdirSync2(dir).filter((f2) => f2.endsWith(".jsonl"))) {
-    const path = join18(dir, f);
+    const path = join19(dir, f);
     let text;
     try {
       text = readFileSync6(path, "utf8");
@@ -13475,7 +13679,7 @@ async function send(flags2, output) {
   }
   const skillPaths = parseCommaList(flags2.skill, process.env.IDEASPACES_PI_SKILLS);
   const repoPath = typeof flags2.context === "string" ? flags2.context : process.cwd();
-  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join19(repoPath, ".pi", "sessions");
+  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join20(repoPath, ".pi", "sessions");
   const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
   const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
   const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;

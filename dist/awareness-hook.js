@@ -7460,6 +7460,9 @@ function stripFrontmatter(content) {
 function extractSummary(content) {
   return extractScalarField(content, "summary");
 }
+function extractDescription(content) {
+  return extractScalarField(content, "description") ?? extractScalarField(content, "summary");
+}
 function extractScalarField(content, field) {
   if (!content.startsWith(`${DELIM}
 `) && !content.startsWith(`${DELIM}\r
@@ -8045,28 +8048,43 @@ function buildStackedContractEntries(stack, max) {
   }
   return entries;
 }
-async function readSkills(levels, max) {
+async function discoverSkillEntries(levels) {
   const byName = /* @__PURE__ */ new Map();
   for (const dir of levels) {
     const skillsDir = join4(dir, "_agent", "skills");
-    let entries;
+    let dirents;
     try {
-      entries = (await fs4.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
+      dirents = await fs4.readdir(skillsDir, { withFileTypes: true });
     } catch {
       continue;
     }
-    for (const file of entries) {
-      const path = join4(skillsDir, file);
+    const flat = dirents.filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "README.md").map((e) => e.name).sort();
+    for (const file of flat) {
       const name = file.replace(/\.md$/, "");
+      byName.set(name, { name, path: join4(skillsDir, file), level: dir });
+    }
+    const skillDirs = dirents.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+    for (const name of skillDirs) {
+      const path = join4(skillsDir, name, "SKILL.md");
       try {
-        const content = await fs4.readFile(path, "utf-8");
-        byName.set(name, { name, path, level: dir, summary: describeFile(content, max) });
+        await fs4.access(path);
+        byName.set(name, { name, path, level: dir });
       } catch {
-        byName.set(name, { name, path, level: dir, summary: null });
       }
     }
   }
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+async function readSkills(levels, max) {
+  const entries = await discoverSkillEntries(levels);
+  return Promise.all(entries.map(async ({ name, path, level }) => {
+    try {
+      const content = await fs4.readFile(path, "utf-8");
+      return { name, path, level, summary: describeSkill(content, max) };
+    } catch {
+      return { name, path, level, summary: null };
+    }
+  }));
 }
 async function readActivity(repoRoot, lastSha, maxChanges) {
   const { changedFiles } = await recentActivity(repoRoot, lastSha);
@@ -8091,6 +8109,12 @@ function describeFile(content, max) {
     return truncate(line, max);
   }
   return null;
+}
+function describeSkill(content, max) {
+  const description = extractDescription(content);
+  if (description)
+    return truncate(description, max);
+  return describeFile(content, max);
 }
 function extractNow(contract, max) {
   const entry = contract.now;

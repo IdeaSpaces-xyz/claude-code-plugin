@@ -36,4 +36,6 @@ Shaping changes the agent agreement, so finish with the capture boundary:
 - For native `_agent/` edits, commit the explicit changed paths with `is_commit` after confirmation.
 - If the user only wanted a draft, say that it remains local and uncommitted.
 
+After a skill lands in `_agent/skills/` (created, renamed, or its `description` changed), offer `ideaspaces skills sync` — it regenerates the committed `.claude/skills/` pointers that make space skills natively invocable in Claude Code, at the level where each skill lives. Include the regenerated pointers in the same capture commit. Skills accept both forms: flat `<name>.md` or an Agent Skills-style `<name>/SKILL.md` directory with assets.
+
 If a required MCP tool isn't loaded, reach it through `ToolSearch`.
