@@ -6911,14 +6911,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs8 = this.flowScalar(this.type);
+              const fs9 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs8, sep: [] });
+                map.items.push({ start, key: fs9, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs8);
+                this.stack.push(fs9);
               } else {
-                Object.assign(it, { key: fs8, sep: [] });
+                Object.assign(it, { key: fs9, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7046,13 +7046,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs8 = this.flowScalar(this.type);
+              const fs9 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs8, sep: [] });
+                fc.items.push({ start: [], key: fs9, sep: [] });
               else if (it.sep)
-                this.stack.push(fs8);
+                this.stack.push(fs9);
               else
-                Object.assign(it, { key: fs8, sep: [] });
+                Object.assign(it, { key: fs9, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7364,7 +7364,7 @@ var require_dist = __commonJS({
 import { writeSync } from "node:fs";
 
 // dist/commands/create.js
-import { promises as fs5 } from "node:fs";
+import { promises as fs6 } from "node:fs";
 import { existsSync as existsSync3, realpathSync } from "node:fs";
 import { spawnSync as spawnSync2 } from "node:child_process";
 import { join as join7, resolve as resolve6, relative as relative4, basename } from "node:path";
@@ -7921,8 +7921,8 @@ var CONTRACT_FILES = [
 ];
 async function isDirectory(path) {
   try {
-    const stat = await fs.stat(path);
-    return stat.isDirectory();
+    const stat2 = await fs.stat(path);
+    return stat2.isDirectory();
   } catch {
     return false;
   }
@@ -7988,7 +7988,7 @@ async function composeContractAlongPath(position) {
 }
 
 // node_modules/@ideaspaces/protocol/dist/awareness.js
-import { promises as fs4 } from "node:fs";
+import { promises as fs5 } from "node:fs";
 import { join as join6, relative as relative3, resolve as resolve5 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
@@ -8151,20 +8151,170 @@ function frontmatterBlock(content) {
   return null;
 }
 
+// node_modules/@ideaspaces/protocol/dist/markdown-inspection.js
+import { promises as fs2 } from "node:fs";
+function inspectMarkdown(content, request2) {
+  if (request2.mode === "summary") {
+    return { mode: "summary", summary: summarizeMarkdown(content) };
+  }
+  const parsed = parseHeadings(content);
+  const headings = parsed.map(publicHeading);
+  if (request2.mode === "outline") {
+    return { mode: "outline", headings };
+  }
+  const heading = request2.heading.trim();
+  if (!heading)
+    throw new TypeError("section heading must not be empty");
+  if (request2.occurrence !== void 0 && (!Number.isInteger(request2.occurrence) || request2.occurrence < 1)) {
+    throw new RangeError("section occurrence must be a positive integer");
+  }
+  const query = request2.occurrence === void 0 ? { heading } : { heading, occurrence: request2.occurrence };
+  const matches = parsed.filter((entry) => entry.text === heading);
+  if (request2.occurrence === void 0 && matches.length > 1) {
+    return {
+      mode: "section",
+      status: "ambiguous",
+      query,
+      matches: matches.map(publicHeading)
+    };
+  }
+  const selected = request2.occurrence === void 0 ? matches[0] : matches.find((entry) => entry.occurrence === request2.occurrence);
+  if (!selected) {
+    return {
+      mode: "section",
+      status: "not-found",
+      query,
+      matches: matches.map(publicHeading)
+    };
+  }
+  const selectedIndex = parsed.indexOf(selected);
+  const next = parsed.slice(selectedIndex + 1).find((entry) => entry.level <= selected.level);
+  const endOffset = next?.startOffset ?? content.length;
+  return {
+    mode: "section",
+    status: "found",
+    query,
+    heading: publicHeading(selected),
+    markdown: content.slice(selected.startOffset, endOffset)
+  };
+}
+async function inspectMarkdownFile(path, request2) {
+  return inspectMarkdown(await fs2.readFile(path, "utf-8"), request2);
+}
+function summarizeMarkdown(content) {
+  const summary = extractSummary(content);
+  if (summary)
+    return summary;
+  const body = stripFrontmatter(content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    return line;
+  }
+  return null;
+}
+function parseHeadings(content) {
+  const lines = sourceLines(content);
+  const frontmatterEnd = frontmatterEndLine(lines);
+  const occurrences = /* @__PURE__ */ new Map();
+  const headings = [];
+  let fence = null;
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    if (lineIndex <= frontmatterEnd)
+      continue;
+    const line = lines[lineIndex];
+    const marker = fenceMarker(line.text);
+    if (fence) {
+      if (marker && marker.marker === fence.marker && marker.length >= fence.length && marker.closing) {
+        fence = null;
+      }
+      continue;
+    }
+    if (marker) {
+      fence = { marker: marker.marker, length: marker.length };
+      continue;
+    }
+    const match = line.text.match(/^ {0,3}(#{1,6})(?:[\t ]+|$)(.*)$/);
+    if (!match)
+      continue;
+    const level = match[1].length;
+    const text = (match[2] ?? "").replace(/[\t ]+#+[\t ]*$/, "").trim();
+    const occurrence = (occurrences.get(text) ?? 0) + 1;
+    occurrences.set(text, occurrence);
+    headings.push({
+      level,
+      text,
+      line: lineIndex + 1,
+      occurrence,
+      startOffset: line.startOffset
+    });
+  }
+  return headings;
+}
+function publicHeading(heading) {
+  return {
+    level: heading.level,
+    text: heading.text,
+    line: heading.line,
+    occurrence: heading.occurrence
+  };
+}
+function sourceLines(content) {
+  const lines = [];
+  let startOffset = 0;
+  while (startOffset < content.length) {
+    const newline = content.indexOf("\n", startOffset);
+    const endOffset = newline === -1 ? content.length : newline;
+    lines.push({
+      text: content.slice(startOffset, endOffset).replace(/\r$/, ""),
+      startOffset
+    });
+    if (newline === -1)
+      break;
+    startOffset = newline + 1;
+  }
+  return lines;
+}
+function frontmatterEndLine(lines) {
+  if (lines[0]?.text !== "---")
+    return -1;
+  for (let index = 1; index < lines.length; index++) {
+    if (lines[index].text.trimEnd() === "---")
+      return index;
+  }
+  return -1;
+}
+function fenceMarker(line) {
+  const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+  if (!match)
+    return null;
+  const run2 = match[1];
+  const marker = run2[0];
+  const tail = match[2] ?? "";
+  if (marker === "`" && tail.includes("`"))
+    return null;
+  return {
+    marker,
+    length: run2.length,
+    closing: tail.trim() === ""
+  };
+}
+
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot2, args2) {
-  return new Promise((resolve17) => {
+  return new Promise((resolve18) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve17({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve17({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve18({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve18({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -8262,7 +8412,7 @@ async function recentActivity(repoRoot2, sinceSha, limit = DEFAULT_COMMIT_LIMIT)
 }
 
 // node_modules/@ideaspaces/protocol/dist/path-context.js
-import { promises as fs2 } from "node:fs";
+import { promises as fs3 } from "node:fs";
 import { isAbsolute, join as join4, relative, resolve as resolve3, sep } from "node:path";
 function spaceRootLevel(ctx) {
   return ctx.levels.find((l) => l.foundation) ?? null;
@@ -8345,14 +8495,14 @@ function describe(content) {
 }
 async function isDirectory2(path) {
   try {
-    return (await fs2.stat(path)).isDirectory();
+    return (await fs3.stat(path)).isDirectory();
   } catch {
     return false;
   }
 }
 async function readFileOrNull(path) {
   try {
-    return await fs2.readFile(path, "utf-8");
+    return await fs3.readFile(path, "utf-8");
   } catch {
     return null;
   }
@@ -8360,7 +8510,7 @@ async function readFileOrNull(path) {
 
 // node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
-import { promises as fs3 } from "node:fs";
+import { promises as fs4 } from "node:fs";
 import { join as join5, relative as relative2, resolve as resolve4 } from "node:path";
 var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
 async function collectDocDependencies(repoRoot2, docDir) {
@@ -8370,7 +8520,7 @@ async function collectDocDependencies(repoRoot2, docDir) {
   async function walk(dir) {
     let entries;
     try {
-      entries = (await fs3.readdir(dir, { withFileTypes: true })).map((e) => ({
+      entries = (await fs4.readdir(dir, { withFileTypes: true })).map((e) => ({
         name: e.name,
         isDir: e.isDirectory()
       }));
@@ -8465,14 +8615,14 @@ function readCodePaths(content) {
 }
 async function readFileOrNull2(path) {
   try {
-    return await fs3.readFile(path, "utf-8");
+    return await fs4.readFile(path, "utf-8");
   } catch {
     return null;
   }
 }
 async function exists(path) {
   try {
-    await fs3.stat(path);
+    await fs4.stat(path);
     return true;
   } catch {
     return false;
@@ -8663,7 +8813,7 @@ var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 var DEFAULT_MAX_DRIFT = 10;
 async function assembleContentAwareness(opts) {
   const requestedPosition = resolve5(opts.position);
-  const position = await fs4.realpath(requestedPosition).catch(() => requestedPosition);
+  const position = await fs5.realpath(requestedPosition).catch(() => requestedPosition);
   const [repoRoot2, composed] = await Promise.all([
     resolveRepoRoot(position),
     composeContractAlongPath(position)
@@ -8827,7 +8977,7 @@ async function discoverSkillEntries(levels) {
     const skillsDir = join6(dir, "_agent", "skills");
     let dirents;
     try {
-      dirents = await fs4.readdir(skillsDir, { withFileTypes: true });
+      dirents = await fs5.readdir(skillsDir, { withFileTypes: true });
     } catch {
       continue;
     }
@@ -8840,7 +8990,7 @@ async function discoverSkillEntries(levels) {
     for (const name of skillDirs) {
       const path = join6(skillsDir, name, "SKILL.md");
       try {
-        await fs4.access(path);
+        await fs5.access(path);
         byName.set(name, { name, path, level: dir });
       } catch {
       }
@@ -8852,7 +9002,7 @@ async function readSkills(levels, max) {
   const entries = await discoverSkillEntries(levels);
   return Promise.all(entries.map(async ({ name, path, level }) => {
     try {
-      const content = await fs4.readFile(path, "utf-8");
+      const content = await fs5.readFile(path, "utf-8");
       return { name, path, level, summary: describeSkill(content, max) };
     } catch {
       return { name, path, level, summary: null };
@@ -8871,17 +9021,8 @@ async function readActivity(repoRoot2, lastSha, maxChanges) {
   };
 }
 function describeFile(content, max) {
-  const summary = extractSummary(content);
-  if (summary)
-    return truncate(summary, max);
-  const body = stripFrontmatter(content);
-  for (const raw of body.split("\n")) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#"))
-      continue;
-    return truncate(line, max);
-  }
-  return null;
+  const summary = summarizeMarkdown(content);
+  return summary ? truncate(summary, max) : null;
 }
 function describeSkill(content, max) {
   const description = extractDescription(content);
@@ -8914,7 +9055,7 @@ function truncate(value, max) {
 async function childSummary(path, isDir, max) {
   try {
     const source = isDir ? join6(path, "README.md") : path;
-    return describeFile(await fs4.readFile(source, "utf-8"), max);
+    return describeFile(await fs5.readFile(source, "utf-8"), max);
   } catch {
     return null;
   }
@@ -8933,7 +9074,7 @@ async function buildTree(root, opts) {
 async function listTreeLevel(dir, opts, levelsLeft) {
   let raw;
   try {
-    const dirents = await fs4.readdir(dir, { withFileTypes: true });
+    const dirents = await fs5.readdir(dir, { withFileTypes: true });
     raw = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
   } catch {
     return null;
@@ -8974,7 +9115,7 @@ async function countMarkdown(dir) {
   let count = 0;
   let dirents;
   try {
-    dirents = await fs4.readdir(dir, { withFileTypes: true });
+    dirents = await fs5.readdir(dir, { withFileTypes: true });
   } catch {
     return 0;
   }
@@ -9755,7 +9896,7 @@ async function inspect(targetDir) {
   }
   let markdownCount = 0;
   try {
-    const entries = await fs5.readdir(targetDir, { withFileTypes: true });
+    const entries = await fs6.readdir(targetDir, { withFileTypes: true });
     for (const e of entries) {
       if (e.isFile() && e.name.endsWith(".md"))
         markdownCount += 1;
@@ -9848,11 +9989,11 @@ async function applyPlan(opts) {
   const { targetDir, inspection, privateAgent, contract, claudeMd } = opts;
   const commitPaths2 = [];
   const trackAgent = !privateAgent;
-  await fs5.mkdir(targetDir, { recursive: true });
-  await fs5.mkdir(join7(targetDir, "_agent"), { recursive: true });
+  await fs6.mkdir(targetDir, { recursive: true });
+  await fs6.mkdir(join7(targetDir, "_agent"), { recursive: true });
   for (const [name, content] of Object.entries(contract)) {
     const rel = join7("_agent", `${name}.md`);
-    await fs5.writeFile(join7(targetDir, rel), content, "utf-8");
+    await fs6.writeFile(join7(targetDir, rel), content, "utf-8");
     if (trackAgent)
       commitPaths2.push(rel);
   }
@@ -9860,33 +10001,33 @@ async function applyPlan(opts) {
     const rel = join7("_agent", dim, "README.md");
     const abs = join7(targetDir, rel);
     if (!existsSync3(abs)) {
-      await fs5.mkdir(join7(targetDir, "_agent", dim), { recursive: true });
-      await fs5.writeFile(abs, content, "utf-8");
+      await fs6.mkdir(join7(targetDir, "_agent", dim), { recursive: true });
+      await fs6.writeFile(abs, content, "utf-8");
     }
     if (trackAgent)
       commitPaths2.push(rel);
   }
   const claudeFile = privateAgent ? "CLAUDE.local.md" : "CLAUDE.md";
   if (!inspection.hasClaude) {
-    await fs5.writeFile(join7(targetDir, claudeFile), claudeMd, "utf-8");
+    await fs6.writeFile(join7(targetDir, claudeFile), claudeMd, "utf-8");
     if (!privateAgent)
       commitPaths2.push(claudeFile);
   }
   const gitattributesPath = join7(targetDir, ".gitattributes");
   if (!existsSync3(gitattributesPath)) {
-    await fs5.writeFile(gitattributesPath, GITATTRIBUTES, "utf-8");
+    await fs6.writeFile(gitattributesPath, GITATTRIBUTES, "utf-8");
     commitPaths2.push(".gitattributes");
   }
   const gitignorePath = join7(targetDir, ".gitignore");
   const additions = gitignoreDefaults({ privateAgent });
   if (inspection.hasGitignore) {
-    const existing = await fs5.readFile(gitignorePath, "utf-8");
+    const existing = await fs6.readFile(gitignorePath, "utf-8");
     if (!existing.includes("# ideaspace defaults")) {
-      await fs5.writeFile(gitignorePath, existing.endsWith("\n") ? existing + additions : existing + "\n" + additions, "utf-8");
+      await fs6.writeFile(gitignorePath, existing.endsWith("\n") ? existing + additions : existing + "\n" + additions, "utf-8");
       commitPaths2.push(".gitignore");
     }
   } else {
-    await fs5.writeFile(gitignorePath, additions.replace(/^\n/, ""), "utf-8");
+    await fs6.writeFile(gitignorePath, additions.replace(/^\n/, ""), "utf-8");
     commitPaths2.push(".gitignore");
   }
   if (!gitAvailable())
@@ -9994,7 +10135,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve17, reject) => {
+  return new Promise((resolve18, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -10021,7 +10162,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve17({
+      resolve18({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -10575,7 +10716,7 @@ ${push2.stderr}${hint}`);
 };
 
 // dist/commands/write.js
-import { promises as fs6 } from "node:fs";
+import { promises as fs7 } from "node:fs";
 import { existsSync as existsSync6, statSync as statSync2 } from "node:fs";
 import { dirname as dirname2, join as join10, relative as relative6, resolve as resolve8 } from "node:path";
 
@@ -10738,8 +10879,8 @@ Re-run with --force to overwrite, or pass --if-match <sha> for a safe update.`);
     }
     const body = stripFrontmatter(content);
     const finalContent = composeFrontmatter(fm) + body;
-    await fs6.mkdir(dirname2(absPath), { recursive: true });
-    await fs6.writeFile(absPath, finalContent, "utf-8");
+    await fs7.mkdir(dirname2(absPath), { recursive: true });
+    await fs7.writeFile(absPath, finalContent, "utf-8");
     let staged = false;
     if (stage) {
       try {
@@ -10785,7 +10926,7 @@ async function runBatchStage(targets, flags2, output) {
     return 1;
   }
   const report = await Promise.all(files.map(async (path) => {
-    const content = await fs6.readFile(path, "utf-8");
+    const content = await fs7.readFile(path, "utf-8");
     return { path, issues: healthIssues(content) };
   }));
   let staged = false;
@@ -10826,7 +10967,7 @@ async function collectMarkdown(targets) {
   return { files: [...files].sort(), missing, skipped };
 }
 async function walkMarkdown(dir, out) {
-  const entries = await fs6.readdir(dir, { withFileTypes: true });
+  const entries = await fs7.readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.name.startsWith(".") || entry.name === "node_modules")
       continue;
@@ -11254,8 +11395,224 @@ var navigateCommand = {
   }
 };
 
-// dist/commands/status.js
+// dist/commands/inspect.js
+import { stat } from "node:fs/promises";
 import { resolve as resolve11 } from "node:path";
+var USAGE2 = "ideaspaces inspect <path> [--mode summary|outline|section] [--heading <text>] [--occurrence <n>] [--max-bytes <n>] [--json]";
+var DEFAULT_MAX_BYTES = 50 * 1024;
+var MAX_MAX_BYTES = 1024 * 1024;
+var MIN_MAX_BYTES = 128;
+function byteLength(value) {
+  return Buffer.byteLength(value, "utf8");
+}
+function utf8Prefix(value, limit) {
+  const bytes = Buffer.from(value, "utf8");
+  if (bytes.length <= limit)
+    return value;
+  let end = limit;
+  while (end > 0 && (bytes[end] & 192) === 128)
+    end--;
+  return bytes.subarray(0, end).toString("utf8");
+}
+function stringTruncation(value, returned, limitBytes) {
+  const originalBytes = byteLength(value);
+  const returnedBytes = byteLength(returned);
+  return {
+    truncated: returnedBytes < originalBytes,
+    originalBytes,
+    returnedBytes,
+    limitBytes
+  };
+}
+function boundHeadings(headings, limitBytes) {
+  const originalBytes = byteLength(JSON.stringify(headings));
+  if (originalBytes <= limitBytes) {
+    return {
+      headings,
+      truncation: {
+        truncated: false,
+        originalBytes,
+        returnedBytes: originalBytes,
+        limitBytes
+      }
+    };
+  }
+  const returned = [];
+  for (const heading of headings) {
+    const candidate = [...returned, heading];
+    if (byteLength(JSON.stringify(candidate)) > limitBytes)
+      break;
+    returned.push(heading);
+  }
+  return {
+    headings: returned,
+    truncation: {
+      truncated: true,
+      originalBytes,
+      returnedBytes: byteLength(JSON.stringify(returned)),
+      limitBytes
+    }
+  };
+}
+function boundInspection(inspection, limitBytes) {
+  if (inspection.mode === "summary") {
+    if (inspection.summary === null) {
+      return {
+        inspection,
+        truncation: {
+          truncated: false,
+          originalBytes: 0,
+          returnedBytes: 0,
+          limitBytes
+        }
+      };
+    }
+    const summary = utf8Prefix(inspection.summary, limitBytes);
+    return {
+      inspection: { ...inspection, summary },
+      truncation: stringTruncation(inspection.summary, summary, limitBytes)
+    };
+  }
+  if (inspection.mode === "outline") {
+    const bounded = boundHeadings(inspection.headings, limitBytes);
+    return {
+      inspection: { mode: "outline", headings: bounded.headings },
+      truncation: bounded.truncation
+    };
+  }
+  if (inspection.status !== "found") {
+    const bounded = boundHeadings(inspection.matches, limitBytes);
+    return {
+      inspection: { ...inspection, matches: bounded.headings },
+      truncation: bounded.truncation
+    };
+  }
+  const markdown = utf8Prefix(inspection.markdown, limitBytes);
+  return {
+    inspection: { ...inspection, markdown },
+    truncation: stringTruncation(inspection.markdown, markdown, limitBytes)
+  };
+}
+function parseMode(raw) {
+  if (raw === void 0)
+    return "summary";
+  if (raw === "summary" || raw === "outline" || raw === "section")
+    return raw;
+  return null;
+}
+function parsePositiveInteger(raw) {
+  if (typeof raw !== "string" || !/^\d+$/.test(raw))
+    return null;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+function requestFor(mode, flags2) {
+  const heading = flags2.heading;
+  const occurrence = flags2.occurrence;
+  if (mode !== "section") {
+    if (heading !== void 0 || occurrence !== void 0) {
+      return { error: "--heading and --occurrence require --mode section" };
+    }
+    return { request: { mode } };
+  }
+  if (typeof heading !== "string" || !heading.trim()) {
+    return { error: "--mode section requires --heading <text>" };
+  }
+  if (occurrence === void 0) {
+    return { request: { mode: "section", heading } };
+  }
+  const parsed = parsePositiveInteger(occurrence);
+  if (parsed === null) {
+    return { error: "--occurrence must be a positive integer" };
+  }
+  return { request: { mode: "section", heading, occurrence: parsed } };
+}
+function formatHeading(heading) {
+  const duplicate = heading.occurrence > 1 ? `, occurrence ${heading.occurrence}` : "";
+  return `${"#".repeat(heading.level)} ${heading.text} (line ${heading.line}${duplicate})`;
+}
+function formatHuman(inspection, truncation) {
+  let text;
+  if (inspection.mode === "summary") {
+    text = inspection.summary ?? "(no summary)";
+  } else if (inspection.mode === "outline") {
+    text = inspection.headings.length ? inspection.headings.map(formatHeading).join("\n") : "(no headings)";
+  } else if (inspection.status === "found") {
+    text = inspection.markdown;
+  } else {
+    const label = inspection.status === "ambiguous" ? "Ambiguous heading" : "Heading not found";
+    const matches = inspection.matches.length ? `
+${inspection.matches.map(formatHeading).join("\n")}` : "";
+    text = `${label}: ${inspection.query.heading}${matches}`;
+  }
+  if (!truncation.truncated)
+    return text;
+  const notice = `[truncated: returned ${truncation.returnedBytes} of ${truncation.originalBytes} inspection bytes; --max-bytes accepts ${MIN_MAX_BYTES}..${MAX_MAX_BYTES}]`;
+  return text ? `${text}
+
+${notice}` : notice;
+}
+var inspectCommand = {
+  name: "inspect",
+  description: "Inspect a local Markdown file progressively (summary, outline, or one section)",
+  usage: USAGE2,
+  examples: [
+    "ideaspaces inspect work/Next.md",
+    "ideaspaces inspect work/Next.md --mode outline",
+    'ideaspaces inspect work/Next.md --mode section --heading "Current priority"',
+    'ideaspaces inspect work/Next.md --mode section --heading "Review" --occurrence 2 --json'
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const rawPath = args2[0];
+    if (!rawPath || args2.length !== 1) {
+      output.error(`Usage: ${USAGE2}`);
+      return 1;
+    }
+    const mode = parseMode(flags2.mode);
+    if (!mode) {
+      output.error("--mode must be summary, outline, or section");
+      return 1;
+    }
+    const requested = requestFor(mode, flags2);
+    if (!requested.request) {
+      output.error(requested.error ?? `Usage: ${USAGE2}`);
+      return 1;
+    }
+    let maxBytes = DEFAULT_MAX_BYTES;
+    if (flags2["max-bytes"] !== void 0) {
+      const parsed = parsePositiveInteger(flags2["max-bytes"]);
+      if (parsed === null || parsed < MIN_MAX_BYTES || parsed > MAX_MAX_BYTES) {
+        output.error(`--max-bytes must be an integer from ${MIN_MAX_BYTES} to ${MAX_MAX_BYTES}`);
+        return 1;
+      }
+      maxBytes = parsed;
+    }
+    const path = resolve11(rawPath);
+    try {
+      const info = await stat(path);
+      if (!info.isFile()) {
+        output.error(`Not a file: ${path}`);
+        return 1;
+      }
+      const inspected = await inspectMarkdownFile(path, requested.request);
+      const bounded = boundInspection(inspected, maxBytes);
+      const data = { path, ...bounded.inspection, truncation: bounded.truncation };
+      output.result(data, formatHuman(bounded.inspection, bounded.truncation));
+      return bounded.inspection.mode === "section" && bounded.inspection.status !== "found" ? 1 : 0;
+    } catch (err) {
+      const code = err.code;
+      if (code === "ENOENT")
+        output.error(`No such file: ${path}`);
+      else
+        output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+  }
+};
+
+// dist/commands/status.js
+import { resolve as resolve12 } from "node:path";
 var statusCommand = {
   name: "status",
   description: "Show git position and plugin-tracked captures awaiting commit",
@@ -11278,7 +11635,7 @@ var statusCommand = {
     }
     const pathArg = typeof flags2.path === "string" ? flags2.path : void 0;
     if (pathArg) {
-      const ps = pathStatus(resolve11(pathArg), root);
+      const ps = pathStatus(resolve12(pathArg), root);
       output.result({
         path: pathArg,
         exists: ps.exists,
@@ -11492,7 +11849,7 @@ The repo may be mid-${useRebase ? "rebase" : "merge"}. Run \`${reset}\` to reset
 
 // dist/skills-sync.js
 var import_yaml3 = __toESM(require_dist(), 1);
-import { promises as fs7 } from "node:fs";
+import { promises as fs8 } from "node:fs";
 import { existsSync as existsSync9 } from "node:fs";
 import { spawnSync as spawnSync5 } from "node:child_process";
 import { dirname as dirname3, join as join12, relative as relative8 } from "node:path";
@@ -11523,7 +11880,7 @@ async function syncSkillPointers(position, opts = {}) {
       const desired = await renderPointer(entry.name, entry.path, dirname3(target));
       const rel = relative8(root, target);
       if (existsSync9(target)) {
-        const existing = await fs7.readFile(target, "utf-8");
+        const existing = await fs8.readFile(target, "utf-8");
         if (!existing.includes(GENERATED_MARKER)) {
           report.skipped.push(rel);
           continue;
@@ -11534,18 +11891,18 @@ async function syncSkillPointers(position, opts = {}) {
         }
         report.updated.push(rel);
         if (!check)
-          await fs7.writeFile(target, desired, "utf-8");
+          await fs8.writeFile(target, desired, "utf-8");
       } else {
         report.created.push(rel);
         if (!check) {
-          await fs7.mkdir(dirname3(target), { recursive: true });
-          await fs7.writeFile(target, desired, "utf-8");
+          await fs8.mkdir(dirname3(target), { recursive: true });
+          await fs8.writeFile(target, desired, "utf-8");
         }
       }
     }
     let pointerDirs = [];
     try {
-      pointerDirs = (await fs7.readdir(pointerRoot, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name);
+      pointerDirs = (await fs8.readdir(pointerRoot, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name);
     } catch {
     }
     for (const name of pointerDirs) {
@@ -11554,7 +11911,7 @@ async function syncSkillPointers(position, opts = {}) {
       const target = join12(pointerRoot, name, "SKILL.md");
       let existing;
       try {
-        existing = await fs7.readFile(target, "utf-8");
+        existing = await fs8.readFile(target, "utf-8");
       } catch {
         continue;
       }
@@ -11562,8 +11919,8 @@ async function syncSkillPointers(position, opts = {}) {
         continue;
       report.removed.push(relative8(root, target));
       if (!check) {
-        await fs7.rm(target);
-        await fs7.rmdir(join12(pointerRoot, name)).catch(() => {
+        await fs8.rm(target);
+        await fs8.rmdir(join12(pointerRoot, name)).catch(() => {
         });
       }
     }
@@ -11581,7 +11938,7 @@ async function collectSkillLevels(root) {
       levels.push(dir);
     let dirents;
     try {
-      dirents = await fs7.readdir(dir, { withFileTypes: true });
+      dirents = await fs8.readdir(dir, { withFileTypes: true });
     } catch {
       return;
     }
@@ -11597,7 +11954,7 @@ async function collectSkillLevels(root) {
   return levels;
 }
 async function renderPointer(name, canonicalPath, pointerDir) {
-  const content = await fs7.readFile(canonicalPath, "utf-8");
+  const content = await fs8.readFile(canonicalPath, "utf-8");
   const fm = parseFrontmatter(content) ?? {};
   const pointerFm = { name };
   for (const field of PORTABLE_FIELDS) {
@@ -11914,7 +12271,7 @@ function stateLabel(entry) {
     base = "synced";
   return dirty ? `${base}, dirty` : base;
 }
-function formatHuman(entries, notes) {
+function formatHuman2(entries, notes) {
   const out = [...notes];
   if (entries.length === 0) {
     out.push("No repos \u2014 clone one (`ideaspaces clone`) or create a space.");
@@ -11988,13 +12345,13 @@ var catalogCommand = {
       }
     }));
     const entries = deriveCatalog(me, clones, statusByPath);
-    output.result({ logged_in: me !== null, username: me?.username ?? null, notes, entries }, formatHuman(entries, notes));
+    output.result({ logged_in: me !== null, username: me?.username ?? null, notes, entries }, formatHuman2(entries, notes));
     return 0;
   }
 };
 
 // dist/commands/clone.js
-import { resolve as resolve12 } from "node:path";
+import { resolve as resolve13 } from "node:path";
 var cloneCommand = {
   name: "clone",
   description: "Clone an authorized Space into a local folder",
@@ -12060,7 +12417,7 @@ var cloneCommand = {
       return 1;
     }
     const url = stableRoot ? canonicalGitUrl(config.apiUrl, stableRoot) : `${deriveGitBase(config.apiUrl)}/${namespace}/${slug}.git`;
-    const dir = resolve12(args2[1] ?? slug);
+    const dir = resolve13(args2[1] ?? slug);
     await registerGitCredentialHelper();
     output.progress(`Cloning ${stableRoot ? canonicalSpaceUrl(config.apiUrl, stableRoot) : `${namespace}/${slug}`}\u2026`);
     try {
@@ -12119,7 +12476,7 @@ var clonesCommand = {
 
 // dist/commands/fork.js
 import { existsSync as existsSync10 } from "node:fs";
-import { resolve as resolve13 } from "node:path";
+import { resolve as resolve14 } from "node:path";
 function stringFlag(flags2, name) {
   const value = flags2[name];
   return typeof value === "string" && value.trim() ? value.trim() : void 0;
@@ -12169,7 +12526,7 @@ var forkCommand = {
       output.error("--location, --name, and --slug require values when provided.");
       return 1;
     }
-    const requestedDir = args2[1] ? resolve13(args2[1]) : void 0;
+    const requestedDir = args2[1] ? resolve14(args2[1]) : void 0;
     if (requestedDir && existsSync10(requestedDir)) {
       output.error(`${requestedDir} already exists. Choose another destination folder.`);
       return 1;
@@ -12212,7 +12569,7 @@ var forkCommand = {
     }
     const destinationUrl = canonicalSpaceUrl(config.apiUrl, copied.root_node_id);
     const remoteUrl = canonicalGitUrl(config.apiUrl, copied.root_node_id);
-    const dir = requestedDir ?? resolve13(copied.slug);
+    const dir = requestedDir ?? resolve14(copied.slug);
     if (existsSync10(dir)) {
       output.error(`Fork created at ${destinationUrl}, but ${dir} already exists. Clone the new Space into another folder with \`ideaspaces clone ${destinationUrl} <dir>\`.`);
       return 1;
@@ -12270,7 +12627,7 @@ var forkCommand = {
 };
 
 // dist/commands/link.js
-import { resolve as resolve14 } from "node:path";
+import { resolve as resolve15 } from "node:path";
 function repoKeys(repo, me, gitBase, apiUrl) {
   const keys = [];
   if (repo.root_node_id) {
@@ -12301,7 +12658,7 @@ var linkCommand = {
       output.error("Usage: ideaspaces link <dir> [space]");
       return 1;
     }
-    const dir = resolve14(dirArg);
+    const dir = resolve15(dirArg);
     if (!isInsideWorkTree(dir)) {
       output.error(`${dir} is not a git repository. Use \`clone\` to make one, or point at an existing clone.`);
       return 1;
@@ -12396,7 +12753,7 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 // dist/commands/forget.js
 import { rmSync } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { dirname as dirname4, resolve as resolve15 } from "node:path";
+import { dirname as dirname4, resolve as resolve16 } from "node:path";
 var forgetCommand = {
   name: "forget",
   description: "Stop tracking a local clone (optionally delete its folder)",
@@ -12412,9 +12769,9 @@ var forgetCommand = {
       output.error("Usage: ideaspaces forget <dir> [--delete]");
       return 1;
     }
-    const dir = resolve15(dirArg);
+    const dir = resolve16(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve15(homedir2()) || dirname4(dir) === dir)) {
+    if (del && (dir === resolve16(homedir2()) || dirname4(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -12690,12 +13047,12 @@ async function cmdCancel(args2, output) {
     return reportError(err, output);
   }
 }
-var USAGE2 = "ideaspaces conversation <new|participants|add|remove|members|send|get|cancel> \u2026 (send --local for a local pi turn)";
+var USAGE3 = "ideaspaces conversation <new|participants|add|remove|members|send|get|cancel> \u2026 (send --local for a local pi turn)";
 function makeConversationCommand(local) {
   return {
     name: "conversation",
     description: "Create a conversation and manage its participants",
-    usage: USAGE2,
+    usage: USAGE3,
     examples: [
       "ideaspaces conversation new repo_abc --name 'Kickoff'",
       "ideaspaces conversation new repo_abc --agent agent_node_xyz  # pick the agent",
@@ -12729,7 +13086,7 @@ function makeConversationCommand(local) {
         case "cancel":
           return cmdCancel(rest, output);
         default:
-          output.error(`Usage: ${USAGE2}`);
+          output.error(`Usage: ${USAGE3}`);
           return 1;
       }
     }
@@ -12771,7 +13128,7 @@ var agentsCommand = {
 };
 
 // dist/commands/node.js
-var USAGE3 = "ideaspaces node <get <repo_id> <node_id> | put <repo_id> <path> --content ...>";
+var USAGE4 = "ideaspaces node <get <repo_id> <node_id> | put <repo_id> <path> --content ...>";
 var USAGE_GET = "ideaspaces node get <repo_id> <node_id>";
 var USAGE_PUT = "ideaspaces node put <repo_id> <path> [--content TEXT]  (else reads stdin)";
 async function readStdin3() {
@@ -12838,7 +13195,7 @@ async function cmdPut(args2, flags2, output) {
 var nodeCommand = {
   name: "node",
   description: "Resolve (get) or write (put) a note \u2014 by id or path (use --json for the full node)",
-  usage: USAGE3,
+  usage: USAGE4,
   examples: [
     "ideaspaces node get repo_abc node_xyz --json",
     "ideaspaces node put repo_abc notes/a.md --content '# Hi'",
@@ -12853,7 +13210,7 @@ var nodeCommand = {
       case "put":
         return cmdPut(rest, flags2, output);
       default:
-        output.error(`Usage: ${USAGE3}`);
+        output.error(`Usage: ${USAGE4}`);
         return 1;
     }
   }
@@ -12947,7 +13304,7 @@ function searchDocs(docs, query, limit = 20) {
 }
 
 // dist/commands/search.js
-var USAGE4 = "ideaspaces search <query> [--limit N] [--json]";
+var USAGE5 = "ideaspaces search <query> [--limit N] [--json]";
 var DEFAULT_LIMIT = 20;
 function* readDocs(root, paths) {
   for (const path of paths) {
@@ -12961,7 +13318,7 @@ function* readDocs(root, paths) {
 var searchCommand = {
   name: "search",
   description: "Search the current repo's Markdown locally (filename + BM25 full-text)",
-  usage: USAGE4,
+  usage: USAGE5,
   examples: [
     "ideaspaces search awareness loop",
     'ideaspaces search "state and location" --limit 5',
@@ -12971,7 +13328,7 @@ var searchCommand = {
     const output = createOutput(global2);
     const query = args2.join(" ").trim();
     if (!query) {
-      output.error(`Usage: ${USAGE4}`);
+      output.error(`Usage: ${USAGE5}`);
       return 1;
     }
     let root;
@@ -13003,7 +13360,7 @@ var searchCommand = {
 
 // dist/commands/ls.js
 import { statSync as statSync4 } from "node:fs";
-import { resolve as resolve16 } from "node:path";
+import { resolve as resolve17 } from "node:path";
 
 // dist/file-listing.js
 import { existsSync as existsSync11, readdirSync } from "node:fs";
@@ -13085,12 +13442,12 @@ function entryLabel(entry) {
 }
 
 // dist/commands/ls.js
-var USAGE5 = "ideaspaces ls [<path>] [--query <q>] [--limit N] [--json]";
+var USAGE6 = "ideaspaces ls [<path>] [--query <q>] [--limit N] [--json]";
 var DEFAULT_LIMIT2 = 25;
 var lsCommand = {
   name: "ls",
   description: "List files and folders under a path (typed; powers @-mention autocomplete)",
-  usage: USAGE5,
+  usage: USAGE6,
   examples: [
     "ideaspaces ls",
     "ideaspaces ls ~/IdeaSpaces --json",
@@ -13098,7 +13455,7 @@ var lsCommand = {
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
-    const root = resolve16(args2[0] ?? ".");
+    const root = resolve17(args2[0] ?? ".");
     try {
       if (!statSync4(root).isDirectory()) {
         output.error(`Not a directory: ${root}`);
@@ -13148,7 +13505,7 @@ var timesCommand = {
 };
 
 // dist/commands/share.js
-var USAGE6 = "ideaspaces share <access|set-access|members|remove|invites|invite|revoke> <repo_id> \u2026";
+var USAGE7 = "ideaspaces share <access|set-access|members|remove|invites|invite|revoke> <repo_id> \u2026";
 var INVITE_ROLES = ["MEMBER", "CLONER", "READER"];
 var COPY_LEVELS = ["owner", "member", "reader", "public"];
 function flagStr(flags2, key) {
@@ -13263,7 +13620,7 @@ copy: ${a.copy_access}`);
         return 0;
       }
       default:
-        output.error(`Usage: ${USAGE6}`);
+        output.error(`Usage: ${USAGE7}`);
         return 1;
     }
   } catch (err) {
@@ -13278,7 +13635,7 @@ copy: ${a.copy_access}`);
 var shareCommand = {
   name: "share",
   description: "Manage repo access \u2014 members, invites, and the public-link policy",
-  usage: USAGE6,
+  usage: USAGE7,
   examples: [
     "ideaspaces share access repo_abc --json",
     "ideaspaces share set-access repo_abc --public true --copy reader",
@@ -13420,7 +13777,7 @@ function probeBinary(piBin) {
     return { present: false, path: piBin, version: null };
   }
 }
-function formatHuman2(s) {
+function formatHuman3(s) {
   const out = [];
   out.push(s.binary.present ? `Pi: present${s.binary.version ? ` (${s.binary.version})` : ""} \u2014 ${s.binary.path}` : `Pi: not found (${s.binary.path}). Install pi to enable the local agent.`);
   if (s.providers.length) {
@@ -13456,7 +13813,7 @@ var piStatusCommand = {
     const extFlag = typeof flags2.ext === "string" ? flags2.ext : process.env.IDEASPACES_PI_EXTENSIONS;
     const extensions = (extFlag ?? "").split(",").map((s) => s.trim()).filter(Boolean).map(resolveExtension);
     const status = derivePiStatus({ binary, auth, extensions, now: Date.now() });
-    output.result(status, formatHuman2(status));
+    output.result(status, formatHuman3(status));
     return 0;
   }
 };
@@ -13544,7 +13901,7 @@ function trimModel(m) {
 var QUERY_ID = "__models";
 var TIMEOUT_MS = 2e4;
 function queryPiModels(piBin) {
-  return new Promise((resolve17, reject) => {
+  return new Promise((resolve18, reject) => {
     const pi = spawn2(piBin, ["--mode", "rpc", "--no-extensions"], {
       cwd: process.cwd(),
       stdio: ["pipe", "pipe", "pipe"]
@@ -13590,7 +13947,7 @@ function queryPiModels(piBin) {
         }
         const data = msg.data;
         const models = (data?.models ?? []).map(trimModel);
-        finish(() => resolve17({ models }));
+        finish(() => resolve18({ models }));
       }
     });
     try {
@@ -13601,7 +13958,7 @@ function queryPiModels(piBin) {
     }
   });
 }
-function formatHuman3(result) {
+function formatHuman4(result) {
   if (!result.models.length)
     return "No models available \u2014 configure a provider (see `pi-status`).";
   return result.models.map((m) => {
@@ -13619,7 +13976,7 @@ var piModelsCommand = {
     const piBin = typeof flags2["pi-bin"] === "string" ? flags2["pi-bin"] : "pi";
     try {
       const result = await queryPiModels(piBin);
-      output.result(result, formatHuman3(result));
+      output.result(result, formatHuman4(result));
       return 0;
     } catch (err) {
       output.error(err instanceof Error ? err.message : String(err));
@@ -14216,6 +14573,7 @@ var topLevel = [
   commitCommand,
   changeCommand,
   navigateCommand,
+  inspectCommand,
   statusCommand,
   timesCommand,
   shareCommand,
