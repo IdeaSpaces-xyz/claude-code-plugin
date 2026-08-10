@@ -34,6 +34,12 @@ function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+/** The `@ideaspaces/protocol` pin declared by a package.json, from either dep block. */
+function protocolPin(path) {
+  const pkg = JSON.parse(readFileSync(path, "utf8"));
+  return pkg.dependencies?.["@ideaspaces/protocol"] ?? pkg.devDependencies?.["@ideaspaces/protocol"] ?? null;
+}
+
 try {
   for (const [name, entry] of Object.entries(lock)) {
     const vendored = join(root, entry.vendoredArtifact);
@@ -55,6 +61,15 @@ try {
     run("git", ["-C", checkout, "fetch", "--quiet", "--depth", "1", "origin", entry.commit], temp);
     run("git", ["-C", checkout, "checkout", "--quiet", "--detach", "FETCH_HEAD"], temp);
 
+    // The recorded pin is asserted at vendor time; for repos we clone we can
+    // verify it against the commit itself rather than taking the lock's word.
+    const cloned = protocolPin(join(checkout, "package.json"));
+    if (cloned !== entry.protocolPin) {
+      throw new Error(
+        `${name}: ${entry.commit.slice(0, 7)} declares protocol ${cloned}, but vendor-lock.json records ${entry.protocolPin}`,
+      );
+    }
+
     // Git dependencies need their prepare scripts so declared dist/ exports
     // exist before the connector itself builds.
     run("npm", ["ci", "--no-audit", "--no-fund"], checkout);
@@ -68,6 +83,26 @@ try {
     }
     console.log(`✓ ${name}: ${entry.commit.slice(0, 7)} rebuild → ${entry.vendoredArtifact}`);
   }
+
+  // Every input must ship the same protocol. Each bundle inlines its own copy
+  // and the plugin's devDependency feeds the hooks and reference/, so without
+  // this the versions drift apart silently — no error, no warning, just worse
+  // output on whichever surface fell behind. See the preflight in vendor.mjs.
+  const pins = { plugin: protocolPin(join(root, "package.json")) };
+  for (const [name, entry] of Object.entries(lock)) {
+    if (!entry.protocolPin) {
+      throw new Error(`${name}: vendor-lock.json records no protocolPin — re-run \`npm run vendor\``);
+    }
+    pins[name] = entry.protocolPin;
+  }
+
+  if (new Set(Object.values(pins)).size !== 1) {
+    const rows = Object.entries(pins)
+      .map(([n, p]) => `    ${n.padEnd(12)} ${p ?? "(none declared)"}`)
+      .join("\n");
+    throw new Error(`protocol pin disagreement — inputs ship different protocol versions:\n\n${rows}\n`);
+  }
+  console.log(`✓ protocol agreement: all ${Object.keys(pins).length} inputs at ${pins.plugin.split("#")[1]?.slice(0, 7)}`);
 } finally {
   rmSync(temp, { recursive: true, force: true });
 }
