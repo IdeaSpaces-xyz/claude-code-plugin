@@ -12,6 +12,12 @@ import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
 
+// Sibling repos normally sit beside this one. `IDEASPACES_REPOS_ROOT` points
+// elsewhere so the preflight below can run from a worktree, where `../cli`
+// would resolve inside worktrees/ instead of projects/.
+const reposRoot = process.env.IDEASPACES_REPOS_ROOT ?? join(root, "..");
+const sibling = (entry) => join(reposRoot, entry.repo.replace(/^\.\.\//, ""));
+
 const VENDOR = [
   {
     name: "cli",
@@ -35,10 +41,45 @@ const VENDOR = [
   },
 ];
 
+/** The `@ideaspaces/protocol` pin declared by a package.json, from either dep block. */
+async function protocolPin(pkgPath) {
+  const pkg = JSON.parse(await readFile(pkgPath, "utf8"));
+  return pkg.dependencies?.["@ideaspaces/protocol"] ?? pkg.devDependencies?.["@ideaspaces/protocol"] ?? null;
+}
+
+// Preflight: every input must be built against the same protocol.
+//
+// Each vendored bundle inlines its own copy of the protocol, and the plugin's
+// own devDependency feeds the hooks and reference/. Nothing downstream compares
+// them, so a stale input ships beside current ones and simply renders worse —
+// no error, no warning, and both surfaces agree with themselves. v0.3.4 shipped
+// exactly that: the MCP bundle four protocol commits behind the CLI and the
+// hook, dropping tree summaries and advertising skills by body text instead of
+// their frontmatter description.
+//
+// Run this before copying anything, so a disagreement never mutates the tree.
+const pins = { plugin: await protocolPin(join(root, "package.json")) };
+for (const entry of VENDOR) {
+  pins[entry.name] = await protocolPin(join(sibling(entry), "package.json"));
+}
+
+const distinct = new Set(Object.values(pins));
+if (distinct.size !== 1) {
+  console.error("✗ protocol pin disagreement — inputs would ship different protocol versions:\n");
+  for (const [name, pin] of Object.entries(pins)) {
+    console.error(`    ${name.padEnd(12)} ${pin ?? "(none declared)"}`);
+  }
+  console.error("\n  Bring every input onto one protocol commit, rebuild the sibling bundles, and re-run.");
+  console.error("  Nothing was copied; vendor-lock.json is unchanged.");
+  process.exit(1);
+}
+const protocol = pins.plugin;
+console.log(`✓ protocol agreement: all ${Object.keys(pins).length} inputs at ${protocol.split("#")[1]?.slice(0, 7) ?? protocol}`);
+
 const lock = {};
 
 for (const entry of VENDOR) {
-  const repo = join(root, entry.repo);
+  const repo = sibling(entry);
   const src = join(repo, entry.sourceArtifact);
   const dst = join(root, entry.vendoredArtifact);
   try {
@@ -60,6 +101,7 @@ for (const entry of VENDOR) {
     sourceArtifact: entry.sourceArtifact,
     vendoredArtifact: entry.vendoredArtifact,
     sha256,
+    protocolPin: pins[entry.name],
     rebuildInCi: entry.rebuildInCi,
     commands: entry.commands,
   };

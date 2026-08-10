@@ -28532,6 +28532,21 @@ function frontmatterBlock(content) {
   return null;
 }
 
+// node_modules/@ideaspaces/protocol/dist/markdown-inspection.js
+function summarizeMarkdown(content) {
+  const summary = extractSummary(content);
+  if (summary)
+    return summary;
+  const body = stripFrontmatter(content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    return line;
+  }
+  return null;
+}
+
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 var FS = "";
@@ -28987,6 +29002,8 @@ async function assembleContentAwareness(opts) {
   const pathContextPromise = walkPathContext(base, position);
   const gitPromise = repoRoot ? gitState(repoRoot) : Promise.resolve(null);
   const staleDocsPromise = repoRoot ? collectDocDependencies(repoRoot, repoRoot).then((docs) => staleDocSignals(repoRoot, docs)) : Promise.resolve([]);
+  const treeDepth = Math.min(4, Math.max(1, Math.trunc(opts.treeDepth ?? 1)));
+  const treeMaxEntries = opts.treeMaxEntries ?? 50;
   const sectionsPromise = lastShaPromise.then((lastSha) => readAwarenessSections({
     root: position,
     activityRoot: base,
@@ -28995,7 +29012,13 @@ async function assembleContentAwareness(opts) {
     lastSha,
     maxChanges: opts.maxChanges,
     nowExcerptLength: opts.nowExcerptLength,
-    summaryExcerptLength: opts.summaryExcerptLength
+    summaryExcerptLength: opts.summaryExcerptLength,
+    tree: {
+      depth: treeDepth,
+      maxEntries: treeMaxEntries,
+      summaries: true,
+      summaryLength: opts.summaryExcerptLength ?? 200
+    }
   }));
   const [context, git, staleDocs, sections] = await Promise.all([
     pathContextPromise,
@@ -29023,10 +29046,16 @@ function renderContentAwareness(manifest, opts = {}) {
 }
 async function readAwarenessSections(opts) {
   const { root, activityRoot, contract, stack, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
+  const treeOpts = opts.tree ?? {
+    depth: 1,
+    maxEntries: 50,
+    summaries: true,
+    summaryLength: summaryExcerptLength
+  };
   const now = extractNow(contract, nowExcerptLength);
   const contractEntries = stack?.length ? buildStackedContractEntries(stack, summaryExcerptLength) : buildContractEntries(contract, summaryExcerptLength);
   const [tree, skills, activity] = await Promise.all([
-    buildTree(root),
+    buildTree(root, treeOpts),
     readSkills(stack?.length ? stack.map((level) => level.dir) : [root], summaryExcerptLength),
     lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
   ]);
@@ -29119,28 +29148,43 @@ function buildStackedContractEntries(stack, max) {
   }
   return entries;
 }
-async function readSkills(levels, max) {
+async function discoverSkillEntries(levels) {
   const byName = /* @__PURE__ */ new Map();
   for (const dir of levels) {
     const skillsDir = join5(dir, "_agent", "skills");
-    let entries;
+    let dirents;
     try {
-      entries = (await fs4.readdir(skillsDir)).filter((name) => name.endsWith(".md")).sort();
+      dirents = await fs4.readdir(skillsDir, { withFileTypes: true });
     } catch {
       continue;
     }
-    for (const file of entries) {
-      const path = join5(skillsDir, file);
+    const flat = dirents.filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "README.md").map((e) => e.name).sort();
+    for (const file of flat) {
       const name = file.replace(/\.md$/, "");
+      byName.set(name, { name, path: join5(skillsDir, file), level: dir });
+    }
+    const skillDirs = dirents.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+    for (const name of skillDirs) {
+      const path = join5(skillsDir, name, "SKILL.md");
       try {
-        const content = await fs4.readFile(path, "utf-8");
-        byName.set(name, { name, path, level: dir, summary: describeFile(content, max) });
+        await fs4.access(path);
+        byName.set(name, { name, path, level: dir });
       } catch {
-        byName.set(name, { name, path, level: dir, summary: null });
       }
     }
   }
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+async function readSkills(levels, max) {
+  const entries = await discoverSkillEntries(levels);
+  return Promise.all(entries.map(async ({ name, path, level }) => {
+    try {
+      const content = await fs4.readFile(path, "utf-8");
+      return { name, path, level, summary: describeSkill(content, max) };
+    } catch {
+      return { name, path, level, summary: null };
+    }
+  }));
 }
 async function readActivity(repoRoot, lastSha, maxChanges) {
   const { changedFiles } = await recentActivity(repoRoot, lastSha);
@@ -29154,17 +29198,14 @@ async function readActivity(repoRoot, lastSha, maxChanges) {
   };
 }
 function describeFile(content, max) {
-  const summary = extractSummary(content);
-  if (summary)
-    return truncate(summary, max);
-  const body = stripFrontmatter(content);
-  for (const raw of body.split("\n")) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#"))
-      continue;
-    return truncate(line, max);
-  }
-  return null;
+  const summary = summarizeMarkdown(content);
+  return summary ? truncate(summary, max) : null;
+}
+function describeSkill(content, max) {
+  const description = extractDescription(content);
+  if (description)
+    return truncate(description, max);
+  return describeFile(content, max);
 }
 function extractNow(contract, max) {
   const entry = contract.now;
@@ -29188,33 +29229,64 @@ function extractNow(contract, max) {
 function truncate(value, max) {
   return value.length <= max ? value : `${value.slice(0, max).trimEnd()}\u2026`;
 }
-async function buildTree(root) {
-  let entries;
+async function childSummary(path, isDir, max) {
   try {
-    const dirents = await fs4.readdir(root, { withFileTypes: true });
-    entries = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
+    const source = isDir ? join5(path, "README.md") : path;
+    return describeFile(await fs4.readFile(source, "utf-8"), max);
   } catch {
     return null;
   }
-  const dirs = entries.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
-  const files = entries.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).map((entry) => entry.name).sort();
-  if (!dirs.length && !files.length)
+}
+async function buildTree(root, opts) {
+  const listed = await listTreeLevel(root, opts, opts.depth);
+  if (!listed)
     return null;
-  const [totalMarkdownFiles, dirCounts] = await Promise.all([
-    countMarkdown(root),
-    Promise.all(dirs.map((dir) => countMarkdown(join5(root, dir))))
-  ]);
+  const totalMarkdownFiles = await countMarkdown(root);
   return {
     totalMarkdownFiles,
-    entries: [
-      ...dirs.map((name, index) => ({
-        name,
-        kind: "directory",
-        markdownFiles: dirCounts[index]
-      })),
-      ...files.map((name) => ({ name, kind: "markdown" }))
-    ]
+    entries: listed.entries,
+    ...listed.omitted ? { omittedEntries: listed.omitted } : {}
   };
+}
+async function listTreeLevel(dir, opts, levelsLeft) {
+  let raw;
+  try {
+    const dirents = await fs4.readdir(dir, { withFileTypes: true });
+    raw = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
+  } catch {
+    return null;
+  }
+  const dirs = raw.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
+  const atTop = levelsLeft === opts.depth;
+  const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => atTop || entry.name !== "README.md").map((entry) => entry.name).sort();
+  if (!dirs.length && !files.length)
+    return null;
+  const all = [
+    ...dirs.map((name) => ({ name, isDir: true })),
+    ...files.map((name) => ({ name, isDir: false }))
+  ];
+  const shown = Number.isFinite(opts.maxEntries) ? all.slice(0, opts.maxEntries) : all;
+  const omitted = all.length - shown.length;
+  const withSummaries = opts.summaries && atTop;
+  const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
+    const path = join5(dir, name);
+    const entry = isDir ? { name, kind: "directory", markdownFiles: await countMarkdown(path) } : { name, kind: "markdown" };
+    if (withSummaries) {
+      const summary = await childSummary(path, isDir, opts.summaryLength);
+      if (summary)
+        entry.summary = summary;
+    }
+    if (isDir && levelsLeft > 1) {
+      const deeper = await listTreeLevel(path, opts, levelsLeft - 1);
+      if (deeper) {
+        entry.children = deeper.entries;
+        if (deeper.omitted)
+          entry.omittedChildren = deeper.omitted;
+      }
+    }
+    return entry;
+  }));
+  return { entries, omitted };
 }
 async function countMarkdown(dir) {
   let count = 0;
@@ -29239,14 +29311,23 @@ async function countMarkdown(dir) {
 }
 function renderTree(tree) {
   const lines = [`Tree (${tree.totalMarkdownFiles} files):`];
-  for (const entry of tree.entries) {
-    if (entry.kind === "directory") {
-      lines.push(entry.markdownFiles ? `  ${entry.name}/ (${entry.markdownFiles})` : `  ${entry.name}/`);
-    } else {
-      lines.push(`  ${entry.name}`);
+  renderTreeEntries(tree.entries, 1, lines);
+  if (tree.omittedEntries)
+    lines.push(`  \u2026 and ${tree.omittedEntries} more`);
+  return lines.join("\n");
+}
+function renderTreeEntries(entries, level, lines) {
+  const indent = "  ".repeat(level);
+  for (const entry of entries) {
+    const base = entry.kind === "directory" ? entry.markdownFiles ? `${indent}${entry.name}/ (${entry.markdownFiles})` : `${indent}${entry.name}/` : `${indent}${entry.name}`;
+    lines.push(entry.summary ? `${base} \u2014 ${entry.summary}` : base);
+    if (entry.children) {
+      renderTreeEntries(entry.children, level + 1, lines);
+      if (entry.omittedChildren) {
+        lines.push(`${"  ".repeat(level + 1)}\u2026 and ${entry.omittedChildren} more`);
+      }
     }
   }
-  return lines.join("\n");
 }
 function levelAnnotation(level, base) {
   if (!level || !base || level === base)
