@@ -7527,6 +7527,21 @@ function frontmatterBlock(content) {
   return null;
 }
 
+// node_modules/@ideaspaces/protocol/dist/markdown-inspection.js
+function summarizeMarkdown(content) {
+  const summary = extractSummary(content);
+  if (summary)
+    return summary;
+  const body = stripFrontmatter(content);
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#"))
+      continue;
+    return line;
+  }
+  return null;
+}
+
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 var FS = "";
@@ -8098,17 +8113,8 @@ async function readActivity(repoRoot, lastSha, maxChanges) {
   };
 }
 function describeFile(content, max) {
-  const summary = extractSummary(content);
-  if (summary)
-    return truncate(summary, max);
-  const body = stripFrontmatter(content);
-  for (const raw of body.split("\n")) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#"))
-      continue;
-    return truncate(line, max);
-  }
-  return null;
+  const summary = summarizeMarkdown(content);
+  return summary ? truncate(summary, max) : null;
 }
 function describeSkill(content, max) {
   const description = extractDescription(content);
