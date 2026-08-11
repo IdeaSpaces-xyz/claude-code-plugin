@@ -7578,6 +7578,24 @@ async function getSpace(config, rootNodeId, opts) {
 async function copySpace(config, rootNodeId, body, opts) {
   return request(config, "POST", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/copy`, body, opts);
 }
+function describeTrailRefusal(err) {
+  const message = err instanceof Error ? err.message : String(err);
+  if (!message.includes("\u2192 404"))
+    return null;
+  if (message.includes("no_history_relation")) {
+    return "The Space's trail has not been shared with you \u2014 reading its content and reading how it got here are separate permissions. Ask whoever owns it to share history, then try again.";
+  }
+  if (message.includes("no_read_relation")) {
+    return "You no longer have read access to this Space, so its trail is out of reach too. Your local clone is unaffected \u2014 ask whoever owns it to share it again.";
+  }
+  return "The Space this clone points at could not be found. It may have been deleted, or this clone's record may be stale \u2014 `ideaspaces link .` re-binds it.";
+}
+async function fetchTrailLog(config, rootNodeId, limit, opts) {
+  return request(config, "GET", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/git?op=log&limit=${encodeURIComponent(String(limit))}`, void 0, opts);
+}
+async function fetchTrailChanges(config, rootNodeId, since, opts) {
+  return request(config, "GET", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/git?op=changes&since=${encodeURIComponent(since)}`, void 0, opts);
+}
 async function fetchConversations(config, repoId, opts) {
   return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations?limit=50&offset=0`, void 0, opts);
 }
@@ -7791,6 +7809,12 @@ function commitPaths(message, paths, cwd) {
   gitOrThrow(["commit", "-q", "-m", message, "--", ...paths], cwd);
   return headSha(cwd);
 }
+function ignoredPaths(paths, cwd) {
+  if (!paths.length)
+    return [];
+  const matched = git(["check-ignore", "--", ...paths], cwd).out.split("\n").map((line) => line.trim()).filter(Boolean);
+  return matched.filter((path) => gitExit(["ls-files", "--error-unmatch", "--", path], cwd) !== 0);
+}
 function blobSha(path, cwd) {
   const r = git(["hash-object", "--", path], cwd);
   return r.ok ? r.out : null;
@@ -7860,6 +7884,36 @@ function fileTimes(cwd) {
     created_at: created.get(path) ?? updated.get(path),
     updated_at: updated.get(path)
   }));
+}
+function mergeBaseWithUpstream(cwd) {
+  const r = git(["merge-base", "HEAD", "@{upstream}"], cwd);
+  return r.ok && r.out ? r.out : null;
+}
+function commitsAheadOfUpstream(cwd) {
+  const r = git(["log", "--format=%H%x00%s", "@{upstream}..HEAD"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  return r.out.split("\n").flatMap((line) => {
+    const [sha, subject] = line.split("\0");
+    return sha ? [{ sha, subject: subject ?? "" }] : [];
+  });
+}
+function pathsAheadOfUpstream(cwd) {
+  const r = git(["diff", "--name-only", "@{upstream}...HEAD"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  return [...new Set(r.out.split("\n").map((p) => p.trim()).filter(Boolean))];
+}
+function commitsNotInHistory(shas, cwd) {
+  if (!shas.length)
+    return /* @__PURE__ */ new Set();
+  if (!shas.every((sha) => /^[0-9a-f]{4,40}$/i.test(sha)))
+    return null;
+  const r = git(["rev-list", "--no-walk", ...shas, "--not", "HEAD"], cwd);
+  if (!r.ok)
+    return null;
+  const full = r.out.split("\n").map((s) => s.trim()).filter(Boolean);
+  return new Set(shas.filter((sha) => full.some((f) => f.startsWith(sha))));
 }
 function fetch2(cwd) {
   gitOrThrow(["fetch"], cwd);
@@ -9765,8 +9819,16 @@ function gitignoreDefaults(opts) {
   if (opts.privateAgent) {
     lines.push("# (code repo with private _agent/ \u2014 each developer's contract stays local)", "_agent/", "CLAUDE.local.md");
   }
-  lines.push("*.draft.md", "scratch/", "_local/", "");
+  lines.push("*.draft.md", "scratch/", "_local/", "# Local-only material \u2014 yours, on this machine. Never synced or shared.", "*.local.md", "");
   return lines.join("\n");
+}
+function gitignoreWithDefaults(existing, opts) {
+  const additions = gitignoreDefaults(opts);
+  if (existing === null)
+    return additions.replace(/^\n/, "");
+  if (existing.includes("# ideaspace defaults"))
+    return null;
+  return existing.endsWith("\n") ? existing + additions : existing + "\n" + additions;
 }
 var CONTRACT_TEMPLATES = {
   foundation: FOUNDATION_MD,
@@ -10019,15 +10081,10 @@ async function applyPlan(opts) {
     commitPaths2.push(".gitattributes");
   }
   const gitignorePath = join7(targetDir, ".gitignore");
-  const additions = gitignoreDefaults({ privateAgent });
-  if (inspection.hasGitignore) {
-    const existing = await fs6.readFile(gitignorePath, "utf-8");
-    if (!existing.includes("# ideaspace defaults")) {
-      await fs6.writeFile(gitignorePath, existing.endsWith("\n") ? existing + additions : existing + "\n" + additions, "utf-8");
-      commitPaths2.push(".gitignore");
-    }
-  } else {
-    await fs6.writeFile(gitignorePath, additions.replace(/^\n/, ""), "utf-8");
+  const existingIgnore = inspection.hasGitignore ? await fs6.readFile(gitignorePath, "utf-8") : null;
+  const mergedIgnore = gitignoreWithDefaults(existingIgnore, { privateAgent });
+  if (mergedIgnore !== null) {
+    await fs6.writeFile(gitignorePath, mergedIgnore, "utf-8");
     commitPaths2.push(".gitignore");
   }
   if (!gitAvailable())
@@ -10315,9 +10372,19 @@ function removeSpace(absolutePath) {
   writeFileSync2(spacesFile(), JSON.stringify(map, null, 2) + "\n", { mode: 384 });
   return true;
 }
+function withForkLineage(bound, previous) {
+  if (!previous || previous.repo_id !== bound.repo_id)
+    return bound;
+  return {
+    ...bound,
+    ...previous.source_root_node_id ? { source_root_node_id: previous.source_root_node_id } : {},
+    ...previous.source_head ? { source_head: previous.source_head } : {}
+  };
+}
 
 // dist/space-locator.js
-var NODE_ID_RE = /^n_(?:[0-9a-f]{12}|[0-9a-f]{24})$/;
+var NODE_ID_PATTERN = "n_(?:[0-9a-f]{12}|[0-9a-f]{24})";
+var NODE_ID_RE = new RegExp(`^${NODE_ID_PATTERN}$`);
 function withoutTrailingSlash(value) {
   return value.replace(/\/+$/, "");
 }
@@ -10371,6 +10438,38 @@ function spaceRecordForRepo(repo, username) {
     ...repo.route_slug !== void 0 ? { route_slug: repo.route_slug } : {},
     ...repo.canonical_path !== void 0 ? { canonical_path: repo.canonical_path } : {}
   };
+}
+function repoKeys(repo, me, gitBase, apiUrl) {
+  const keys = [];
+  if (repo.root_node_id) {
+    const canonical = normalizeRepoUrl(canonicalGitUrl(apiUrl, repo.root_node_id));
+    if (canonical)
+      keys.push(canonical);
+  }
+  const namespace = repoRouteNamespace(repo, me.username);
+  if (namespace) {
+    const legacy = normalizeRepoUrl(`${gitBase}/${namespace}/${repo.route_slug ?? repo.slug}.git`);
+    if (legacy)
+      keys.push(legacy);
+  }
+  return keys;
+}
+function rootNodeIdFromGitUrl(url, apiUrl) {
+  let parsed;
+  try {
+    const scp = /^[^/@]+@([^:/]+):(.+)$/.exec(url.trim());
+    parsed = new URL(scp ? `ssh://${scp[1]}/${scp[2]}` : url);
+  } catch {
+    return null;
+  }
+  try {
+    if (parsed.host !== new URL(deriveGitBase(apiUrl)).host)
+      return null;
+  } catch {
+    return null;
+  }
+  const match = new RegExp(`^/spaces/(${NODE_ID_PATTERN})\\.git$`).exec(parsed.pathname);
+  return match ? match[1] : null;
 }
 
 // dist/frontmatter-report.js
@@ -10995,7 +11094,7 @@ function healthIssues(content) {
 }
 
 // dist/commands/commit.js
-import { resolve as resolve9 } from "node:path";
+import { relative as relative7, resolve as resolve9 } from "node:path";
 var OP_SET = {
   create: true,
   update: true,
@@ -11087,6 +11186,15 @@ var commitCommand = {
       output.error('Refusing to commit with no paths. Name the paths to save:\n  ideaspaces commit -m "<message>" <path>...\nor use --all.');
       return 1;
     }
+    const ignored = ignoredPaths(paths, root);
+    if (ignored.length) {
+      const shown = ignored.map((p) => `  ${relative7(root, p) || p}`).join("\n");
+      output.error(`Refusing to commit ${ignored.length} local-only path(s) \u2014 an ignore rule covers them:
+${shown}
+These stay on this machine by design: they are never staged, committed, pushed, or published.
+If that is wrong, \`git check-ignore -v ${ignored.length === 1 ? relative7(root, ignored[0]) || ignored[0] : "<path>"}\` names the rule to change.`);
+      return 1;
+    }
     let finalMessage;
     try {
       finalMessage = applyTrailerFlags(message, flags2);
@@ -11144,7 +11252,7 @@ var changeCommand = {
 };
 
 // dist/commands/navigate.js
-import { relative as relative7, resolve as resolve10 } from "node:path";
+import { relative as relative8, resolve as resolve10 } from "node:path";
 import { statSync as statSync3, existsSync as existsSync8 } from "node:fs";
 import { spawnSync as spawnSync4 } from "node:child_process";
 
@@ -11343,7 +11451,7 @@ var navigateCommand = {
       ...depth && Number.isFinite(depth) ? { treeDepth: depth } : {}
     });
     if (!manifest) {
-      const position2 = relative7(repoRoot2 ?? target, target) || ".";
+      const position2 = relative8(repoRoot2 ?? target, target) || ".";
       const bare = [];
       if (cat.kind === "warn")
         bare.push(cat.text);
@@ -11388,7 +11496,7 @@ var navigateCommand = {
       } catch {
       }
     }
-    const position = relative7(manifest.position.base, manifest.position.path) || ".";
+    const position = relative8(manifest.position.base, manifest.position.path) || ".";
     const text = sections.join("\n\n");
     output.result({ text: text || null, position, root: manifest.spaceRoot, repoRoot: canonicalRepoRoot, manifest }, text || "(no orientation)");
     return 0;
@@ -11686,15 +11794,234 @@ var statusCommand = {
   }
 };
 
+// dist/auth/resolve-space.js
+function healed(existing, rootNodeId) {
+  return { ...existing, root_node_id: rootNodeId };
+}
+async function resolveSpaceBinding(dir, config) {
+  const record = findSpaceFor(dir);
+  if (record?.root_node_id)
+    return { rootNodeId: record.root_node_id, via: "record" };
+  const origin = originUrl(dir);
+  if (origin) {
+    const fromOrigin = rootNodeIdFromGitUrl(origin, config?.apiUrl ?? getDefaultApiUrl());
+    if (fromOrigin) {
+      if (record) {
+        try {
+          saveSpace(dir, healed(record, fromOrigin));
+        } catch {
+        }
+      }
+      return { rootNodeId: fromOrigin, via: "origin" };
+    }
+  }
+  if (!config || !origin)
+    return { failure: "no-match" };
+  const originKey = normalizeRepoUrl(origin);
+  if (!originKey)
+    return { failure: "no-match" };
+  let me;
+  try {
+    me = await fetchAuthMe(config);
+  } catch {
+    return { failure: "unreachable" };
+  }
+  const gitBase = deriveGitBase(config.apiUrl);
+  const matches = me.repos.filter((repo2) => repoKeys(repo2, me, gitBase, config.apiUrl).includes(originKey));
+  if (matches.length > 1)
+    return { failure: "ambiguous" };
+  if (matches.length === 0)
+    return { failure: "no-match" };
+  const repo = matches[0];
+  if (!repo.root_node_id)
+    return { failure: "no-match" };
+  try {
+    saveSpace(dir, withForkLineage(spaceRecordForRepo(repo, me.username), record));
+  } catch {
+  }
+  return { rootNodeId: repo.root_node_id, via: "account" };
+}
+
 // dist/commands/sync.js
+var DEFAULT_LIMIT = 20;
+function limitFlag(value) {
+  if (typeof value !== "string")
+    return DEFAULT_LIMIT;
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n))
+    return DEFAULT_LIMIT;
+  return Math.min(100, Math.max(1, n));
+}
+function describeChange(change) {
+  const verb = change.status.startsWith("A") ? "added" : change.status.startsWith("D") ? "deleted" : change.status.startsWith("R") ? "renamed" : change.status.startsWith("C") ? "copied" : "changed";
+  return change.old_path ? `  ${verb}  ${change.old_path} \u2192 ${change.path}` : `  ${verb}  ${change.path}`;
+}
+function describeCommit(sha, subject) {
+  return `  ${sha.slice(0, 8)}  ${subject}`;
+}
+function describeTrailCommit(commit) {
+  return describeCommit(commit.sha, commit.message.split("\n")[0]);
+}
 var syncCommand = {
   name: "sync",
-  description: "(removed) use `pull` then `push`",
-  usage: "ideaspaces pull | ideaspaces push",
-  async run(_args, _flags, global2) {
+  description: "Report where you and the Space stand \u2014 reads only, integrates nothing",
+  usage: "ideaspaces sync [--limit <n>]",
+  examples: ["ideaspaces sync", "ideaspaces sync --limit 5"],
+  async run(_args, flags2, global2) {
     const output = createOutput(global2);
-    output.error("`ideaspaces sync` has been split into two directional commands:\n  ideaspaces pull   integrate remote changes into your local ideaspace\n  ideaspaces push   send your committed captures to the remote\nIf you're diverged: pull first, then push.");
-    return 1;
+    const limit = limitFlag(flags2.limit);
+    let root;
+    try {
+      root = repoRoot();
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    try {
+      await registerGitCredentialHelper();
+    } catch {
+    }
+    let fetched = true;
+    let fetchError = null;
+    try {
+      fetch2(root);
+    } catch (err) {
+      fetched = false;
+      fetchError = err instanceof Error ? err.message : String(err);
+    }
+    const rs = remoteState(root);
+    const lines = [];
+    if (!fetched) {
+      lines.push(`Could not reach the remote (${fetchError}) \u2014 position below is from the last fetch.`);
+    }
+    if (!rs.upstream) {
+      output.result({
+        upstream: null,
+        ahead: 0,
+        behind: 0,
+        fetched,
+        incoming: null,
+        // Present and null, not absent: a --json caller reads one schema
+        // across every exit path, rather than one that varies by branch.
+        incoming_unavailable: null,
+        resolved_via: null,
+        outgoing: null,
+        integrated: false
+      }, [...lines, "No upstream configured \u2014 this ideaspace is local only.", "Publish it with: ideaspaces publish"].join("\n"));
+      return 0;
+    }
+    lines.push(`${rs.upstream}: ahead ${rs.ahead}, behind ${rs.behind}`);
+    const outgoingCommits = rs.ahead ? commitsAheadOfUpstream(root) : [];
+    const outgoingPaths = rs.ahead ? pathsAheadOfUpstream(root) : [];
+    if (rs.ahead) {
+      lines.push("", `Yours, not sent yet (${outgoingCommits.length}):`);
+      for (const c of outgoingCommits.slice(0, limit))
+        lines.push(describeCommit(c.sha, c.subject));
+      if (outgoingCommits.length > limit)
+        lines.push(`  \u2026 and ${outgoingCommits.length - limit} more`);
+      if (outgoingPaths.length) {
+        lines.push(`  paths: ${outgoingPaths.slice(0, 10).join(", ")}${outgoingPaths.length > 10 ? ` \u2026 +${outgoingPaths.length - 10}` : ""}`);
+      }
+      lines.push("  Send them with: ideaspaces push");
+    }
+    let incoming = null;
+    let incomingNote = null;
+    let unfiltered = false;
+    let windowRead = false;
+    let resolvedVia = null;
+    if (rs.behind) {
+      const config = loadConfig();
+      const binding = await resolveSpaceBinding(root, config);
+      const rootNodeId = "rootNodeId" in binding ? binding.rootNodeId : null;
+      resolvedVia = "via" in binding ? binding.via : null;
+      if (!rootNodeId) {
+        const failure = "failure" in binding ? binding.failure : "no-match";
+        incomingNote = !config ? "Log in to see what changed on the other side: ideaspaces login" : failure === "unreachable" ? "Could not reach your account to work out which Space this clone is. Retry when you're back online." : failure === "ambiguous" ? "This clone's origin matches more than one of your Spaces. Name the right one: ideaspaces link . <space>" : "Could not tell which Space this clone belongs to \u2014 its origin isn't a canonical Space URL and no Space on your account matches it. Bind it explicitly: ideaspaces link . <space>";
+      } else if (!config) {
+        incomingNote = "Log in to read this Space's trail: ideaspaces login";
+      } else {
+        const since = mergeBaseWithUpstream(root);
+        const [log, changes] = await Promise.allSettled([
+          fetchTrailLog(config, rootNodeId, limit),
+          since ? fetchTrailChanges(config, rootNodeId, since) : Promise.resolve({ op: "changes", since: "", changes: [] })
+        ]);
+        if (log.status === "fulfilled" || changes.status === "fulfilled") {
+          const reported = log.status === "fulfilled" ? log.value.entries ?? [] : [];
+          windowRead = log.status === "fulfilled";
+          const fresh = commitsNotInHistory(reported.map((c) => c.sha), root);
+          if (fresh === null)
+            unfiltered = true;
+          incoming = {
+            commits: fresh ? reported.filter((c) => fresh.has(c.sha)) : reported,
+            changes: changes.status === "fulfilled" ? changes.value.changes ?? [] : []
+          };
+          const reasons = [log, changes].filter((r) => r.status === "rejected").map((r) => {
+            const reason = r.reason;
+            return describeTrailRefusal(reason) ?? (reason instanceof Error ? reason.message : String(reason));
+          });
+          if (reasons.length)
+            incomingNote = `Partial: ${reasons.join("; ")}`;
+          else if (!since) {
+            incomingNote = "No common commit with the upstream, so the changed paths could not be asked for \u2014 the commits above are the whole answer.";
+          }
+        } else {
+          const expired = [log, changes].some((r) => r.status === "rejected" && r.reason instanceof UnauthorizedError);
+          const refusal = [log, changes].map((r) => r.status === "rejected" ? describeTrailRefusal(r.reason) : null).find(Boolean);
+          const err = log.reason;
+          incomingNote = expired ? "Session expired \u2014 run `ideaspaces login` to read the Space's trail." : refusal ?? `Could not read the Space's trail: ${err instanceof Error ? err.message : String(err)}`;
+        }
+      }
+      lines.push("", `Theirs, not here yet (behind ${rs.behind}):`);
+      if (incoming) {
+        if (!incoming.commits.length && !unfiltered && windowRead) {
+          lines.push(`  (nothing new in the Space's last ${limit} commits \u2014 raise --limit to look further back)`);
+        }
+        for (const c of incoming.commits.slice(0, limit))
+          lines.push(describeTrailCommit(c));
+        if (unfiltered) {
+          lines.push("  (showing the Space's recent commits \u2014 some may already be yours)");
+        }
+        if (incoming.changes.length) {
+          lines.push("", "What changed:");
+          for (const change of incoming.changes.slice(0, limit))
+            lines.push(describeChange(change));
+          if (incoming.changes.length > limit) {
+            lines.push(`  \u2026 and ${incoming.changes.length - limit} more (--limit ${Math.min(100, incoming.changes.length)} to see more, --json for all)`);
+          }
+        }
+        if (incomingNote)
+          lines.push(`  ${incomingNote}`);
+        lines.push("", "Integrate them when you're ready: ideaspaces pull");
+      } else {
+        lines.push(`  ${incomingNote}`);
+      }
+    }
+    if (!rs.ahead && !rs.behind)
+      lines.push("", "Nothing on either side \u2014 you are level with the Space.");
+    output.result({
+      upstream: rs.upstream,
+      ahead: rs.ahead,
+      behind: rs.behind,
+      fetched,
+      outgoing: rs.ahead ? { commits: outgoingCommits, paths: outgoingPaths } : null,
+      incoming: incoming ? {
+        commits: incoming.commits,
+        changes: incoming.changes,
+        // False when git could not separate incoming commits from ones
+        // already held: the list is the Space's recent history and may
+        // include your own. A caller that pulls on a non-empty list
+        // needs to know which of the two it is looking at.
+        commits_filtered: !unfiltered
+      } : null,
+      // Set on a partial read too, not only a total one — a caller that sees
+      // an empty change list needs to know whether that means "nothing
+      // changed" or "we could not find out".
+      incoming_unavailable: incomingNote,
+      resolved_via: resolvedVia,
+      // Stated in the payload, not only in the prose: nothing moved.
+      integrated: false
+    }, lines.join("\n"));
+    return 0;
   }
 };
 
@@ -11852,7 +12179,7 @@ var import_yaml3 = __toESM(require_dist(), 1);
 import { promises as fs8 } from "node:fs";
 import { existsSync as existsSync9 } from "node:fs";
 import { spawnSync as spawnSync5 } from "node:child_process";
-import { dirname as dirname3, join as join12, relative as relative8 } from "node:path";
+import { dirname as dirname3, join as join12, relative as relative9 } from "node:path";
 var GENERATED_MARKER = "ideaspaces:generated skill pointer";
 var MARKER_LINE = `<!-- ${GENERATED_MARKER} \u2014 edit the canonical skill, then re-run \`ideaspaces skills sync\` -->`;
 var PORTABLE_FIELDS = ["description", "license", "compatibility", "metadata", "allowed-tools"];
@@ -11878,7 +12205,7 @@ async function syncSkillPointers(position, opts = {}) {
     for (const entry of entries) {
       const target = join12(pointerRoot, entry.name, "SKILL.md");
       const desired = await renderPointer(entry.name, entry.path, dirname3(target));
-      const rel = relative8(root, target);
+      const rel = relative9(root, target);
       if (existsSync9(target)) {
         const existing = await fs8.readFile(target, "utf-8");
         if (!existing.includes(GENERATED_MARKER)) {
@@ -11917,7 +12244,7 @@ async function syncSkillPointers(position, opts = {}) {
       }
       if (!existing.includes(GENERATED_MARKER))
         continue;
-      report.removed.push(relative8(root, target));
+      report.removed.push(relative9(root, target));
       if (!check) {
         await fs8.rm(target);
         await fs8.rmdir(join12(pointerRoot, name)).catch(() => {
@@ -11925,7 +12252,7 @@ async function syncSkillPointers(position, opts = {}) {
       }
     }
     if (agentIsGitignored(level))
-      report.privateAgentLevels.push(relative8(root, level) || ".");
+      report.privateAgentLevels.push(relative9(root, level) || ".");
   }
   return report;
 }
@@ -11964,7 +12291,7 @@ async function renderPointer(name, canonicalPath, pointerDir) {
   if (pointerFm.description == null && typeof fm.summary === "string") {
     pointerFm.description = fm.summary;
   }
-  const rel = relative8(pointerDir, canonicalPath);
+  const rel = relative9(pointerDir, canonicalPath);
   return [
     "---",
     (0, import_yaml3.stringify)(pointerFm).trimEnd(),
@@ -12475,8 +12802,8 @@ var clonesCommand = {
 };
 
 // dist/commands/fork.js
-import { existsSync as existsSync10 } from "node:fs";
-import { resolve as resolve14 } from "node:path";
+import { existsSync as existsSync10, readFileSync as readFileSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join13, resolve as resolve14 } from "node:path";
 function stringFlag(flags2, name) {
   const value = flags2[name];
   return typeof value === "string" && value.trim() ? value.trim() : void 0;
@@ -12492,6 +12819,28 @@ function fallbackRecord(result, namespace) {
     route_slug: null,
     canonical_path: `/spaces/${result.root_node_id}`
   };
+}
+function scaffoldIgnoreRules(dir, output) {
+  const path = join13(dir, ".gitignore");
+  let written = false;
+  try {
+    const existing = existsSync10(path) ? readFileSync3(path, "utf-8") : null;
+    const merged = gitignoreWithDefaults(existing, { privateAgent: false });
+    if (merged === null)
+      return true;
+    writeFileSync3(path, merged);
+    written = true;
+    commitPaths("Ignore local-only files", [".gitignore"], dir);
+    return true;
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    if (written) {
+      output.log(`Fork succeeded and its .gitignore is in force, but committing it failed: ${reason}. Local-only files are ignored here; commit \`.gitignore\` to keep it that way.`);
+    } else {
+      output.error(`Fork succeeded, but its ignore rules could not be written: ${reason}. Local-only files are unprotected in this clone.`);
+    }
+    return written;
+  }
 }
 var forkCommand = {
   name: "fork",
@@ -12567,6 +12916,7 @@ var forkCommand = {
       output.error(err instanceof Error ? err.message : String(err));
       return 1;
     }
+    const pinnedHead = typeof copied.source_head === "string" && copied.source_head.trim() ? copied.source_head.trim() : null;
     const destinationUrl = canonicalSpaceUrl(config.apiUrl, copied.root_node_id);
     const remoteUrl = canonicalGitUrl(config.apiUrl, copied.root_node_id);
     const dir = requestedDir ?? resolve14(copied.slug);
@@ -12590,11 +12940,15 @@ var forkCommand = {
       output.log("Fork succeeded, but current route metadata could not be refreshed; stable Space identity was saved.");
     }
     const namespace = hostname ?? me.username ?? "";
-    const record = destinationRepo ? spaceRecordForRepo(destinationRepo, me.username) : fallbackRecord(copied, namespace);
+    const record = {
+      ...destinationRepo ? spaceRecordForRepo(destinationRepo, me.username) : fallbackRecord(copied, namespace),
+      source_root_node_id: sourceRoot,
+      ...pinnedHead ? { source_head: pinnedHead } : {}
+    };
     try {
       saveSpace(dir, record);
     } catch {
-      output.error(`Fork and clone succeeded at ${destinationUrl}, but the local registry could not be updated. Run \`ideaspaces link\` from this clone to repair the binding.`);
+      output.error(`Fork and clone succeeded at ${destinationUrl}, but the local registry could not be updated. Run \`ideaspaces link .\` from this clone to repair the binding.`);
       return 1;
     }
     if (me.username) {
@@ -12604,8 +12958,11 @@ var forkCommand = {
       } catch {
       }
     }
+    const ignoreRulesActive = scaffoldIgnoreRules(dir, output);
     output.result({
       source_root_node_id: sourceRoot,
+      source_head: pinnedHead,
+      ignore_rules_active: ignoreRulesActive,
       repo_id: copied.repo_id,
       root_node_id: copied.root_node_id,
       slug: copied.slug,
@@ -12620,7 +12977,10 @@ var forkCommand = {
     }, [
       `Forked current content without source history \u2192 ${dir}`,
       `Space: ${destinationUrl}`,
-      copied.index_status === "unindexed" ? "Content is cloned; hosted indexing needs recovery." : "Hosted index is fresh."
+      copied.index_status === "unindexed" ? "Content is cloned; hosted indexing needs recovery." : "Hosted index is fresh.",
+      // A degraded safety state belongs in the summary, not only in a log
+      // line — the human-readable path is where most people will see it.
+      ...ignoreRulesActive ? [] : ["Local-only files are NOT ignored in this clone \u2014 see the warning above."]
     ].join("\n"));
     return 0;
   }
@@ -12628,21 +12988,6 @@ var forkCommand = {
 
 // dist/commands/link.js
 import { resolve as resolve15 } from "node:path";
-function repoKeys(repo, me, gitBase, apiUrl) {
-  const keys = [];
-  if (repo.root_node_id) {
-    const canonical = normalizeRepoUrl(canonicalGitUrl(apiUrl, repo.root_node_id));
-    if (canonical)
-      keys.push(canonical);
-  }
-  const namespace = repoRouteNamespace(repo, me.username);
-  if (namespace) {
-    const legacy = normalizeRepoUrl(`${gitBase}/${namespace}/${repo.route_slug ?? repo.slug}.git`);
-    if (legacy)
-      keys.push(legacy);
-  }
-  return keys;
-}
 var linkCommand = {
   name: "link",
   description: "Bind an existing local clone to one of your spaces",
@@ -12732,8 +13077,9 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
       output.error("Could not resolve the Space route for display.");
       return 1;
     }
+    const previous = findSpaceFor(dir);
     try {
-      saveSpace(dir, spaceRecordForRepo(repo, me.username));
+      saveSpace(dir, withForkLineage(spaceRecordForRepo(repo, me.username), previous));
     } catch {
       output.error("Verified the folder, but could not write the clone registry.");
       return 1;
@@ -13217,8 +13563,8 @@ var nodeCommand = {
 };
 
 // dist/commands/search.js
-import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join13 } from "node:path";
+import { readFileSync as readFileSync4 } from "node:fs";
+import { join as join14 } from "node:path";
 
 // dist/search.js
 var K1 = 1.2;
@@ -13305,11 +13651,11 @@ function searchDocs(docs, query, limit = 20) {
 
 // dist/commands/search.js
 var USAGE5 = "ideaspaces search <query> [--limit N] [--json]";
-var DEFAULT_LIMIT = 20;
+var DEFAULT_LIMIT2 = 20;
 function* readDocs(root, paths) {
   for (const path of paths) {
     try {
-      yield { path, content: readFileSync3(join13(root, path), "utf-8") };
+      yield { path, content: readFileSync4(join14(root, path), "utf-8") };
     } catch {
       continue;
     }
@@ -13339,7 +13685,7 @@ var searchCommand = {
       return 1;
     }
     const rawLimit = typeof flags2.limit === "string" ? Number.parseInt(flags2.limit, 10) : NaN;
-    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIMIT;
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIMIT2;
     const markdown = listFiles(root).filter((p) => p.endsWith(".md"));
     const results = searchDocs(readDocs(root, markdown), query, limit);
     const data = { query, scanned: markdown.length, total: results.length, results };
@@ -13364,14 +13710,14 @@ import { resolve as resolve17 } from "node:path";
 
 // dist/file-listing.js
 import { existsSync as existsSync11, readdirSync } from "node:fs";
-import { join as join14, relative as relative9 } from "node:path";
+import { join as join15, relative as relative10 } from "node:path";
 var EXCLUDES = new Set(AUTOCOMPLETE_EXCLUDES);
 var DEFAULT_MAX_SCAN = 5e3;
 var DEFAULT_MAX_DEPTH = 10;
 function folderKind(abs) {
-  if (existsSync11(join14(abs, "_agent")))
+  if (existsSync11(join15(abs, "_agent")))
     return "ideaspace-repo";
-  if (existsSync11(join14(abs, ".git")))
+  if (existsSync11(join15(abs, ".git")))
     return "code-repo";
   return "folder";
 }
@@ -13397,8 +13743,8 @@ function listEntries(root, opts = {}) {
         continue;
       if (entries.length >= maxScan)
         return { entries, truncated: true };
-      const childAbs = join14(abs, dirent.name);
-      const path = toPosix(relative9(root, childAbs));
+      const childAbs = join15(abs, dirent.name);
+      const path = toPosix(relative10(root, childAbs));
       if (dirent.isDirectory()) {
         entries.push({ path, name: dirent.name, kind: folderKind(childAbs) });
         if (depth + 1 <= maxDepth)
@@ -13443,7 +13789,7 @@ function entryLabel(entry) {
 
 // dist/commands/ls.js
 var USAGE6 = "ideaspaces ls [<path>] [--query <q>] [--limit N] [--json]";
-var DEFAULT_LIMIT2 = 25;
+var DEFAULT_LIMIT3 = 25;
 var lsCommand = {
   name: "ls",
   description: "List files and folders under a path (typed; powers @-mention autocomplete)",
@@ -13468,7 +13814,7 @@ var lsCommand = {
     }
     const query = typeof flags2.query === "string" ? flags2.query : "";
     const rawLimit = typeof flags2.limit === "string" ? Number.parseInt(flags2.limit, 10) : NaN;
-    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIMIT2;
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIMIT3;
     const { entries: scanned, truncated } = listEntries(root);
     const entries = filterEntries(scanned, query, limit);
     const data = { root, query, scanned: scanned.length, truncated, total: entries.length, entries };
@@ -13653,8 +13999,8 @@ var shareCommand = {
 // dist/auth/session-state.js
 import { existsSync as existsSync12, unlinkSync as unlinkSync2 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
-import { join as join15 } from "node:path";
-var SESSION_FILE = join15(homedir3(), ".ideaspaces", "session.json");
+import { join as join16 } from "node:path";
+var SESSION_FILE = join16(homedir3(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
     if (existsSync12(SESSION_FILE))
@@ -13679,21 +14025,21 @@ var logoutCommand = {
 
 // dist/pi/pi-status.js
 import { spawnSync as spawnSync6 } from "node:child_process";
-import { existsSync as existsSync14, readFileSync as readFileSync5 } from "node:fs";
-import { basename as basename4, join as join17 } from "node:path";
+import { existsSync as existsSync14, readFileSync as readFileSync6 } from "node:fs";
+import { basename as basename4, join as join18 } from "node:path";
 
 // dist/pi/pi-auth.js
-import { chmodSync, existsSync as existsSync13, mkdirSync as mkdirSync3, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { chmodSync, existsSync as existsSync13, mkdirSync as mkdirSync3, readFileSync as readFileSync5, writeFileSync as writeFileSync4 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
-import { dirname as dirname5, join as join16 } from "node:path";
+import { dirname as dirname5, join as join17 } from "node:path";
 function resolvePiAgentDir(env = process.env) {
   const override = env.PI_CODING_AGENT_DIR?.trim();
   if (override)
-    return override.startsWith("~") ? join16(homedir4(), override.slice(1)) : override;
-  return join16(homedir4(), ".pi", "agent");
+    return override.startsWith("~") ? join17(homedir4(), override.slice(1)) : override;
+  return join17(homedir4(), ".pi", "agent");
 }
 function resolvePiAuthPath(env = process.env) {
-  return join16(resolvePiAgentDir(env), "auth.json");
+  return join17(resolvePiAgentDir(env), "auth.json");
 }
 function parseAuth(raw) {
   if (!raw || !raw.trim())
@@ -13718,13 +14064,13 @@ function removeProvider(current, provider) {
 function readAuthFile(path) {
   if (!existsSync13(path))
     return {};
-  return parseAuth(readFileSync4(path, "utf8"));
+  return parseAuth(readFileSync5(path, "utf8"));
 }
 function writeAuthFile(path, auth) {
   const dir = dirname5(path);
   if (!existsSync13(dir))
     mkdirSync3(dir, { recursive: true, mode: 448 });
-  writeFileSync3(path, `${JSON.stringify(auth, null, 2)}
+  writeFileSync4(path, `${JSON.stringify(auth, null, 2)}
 `, { encoding: "utf8", mode: 384 });
   chmodSync(path, 384);
 }
@@ -13754,17 +14100,17 @@ function resolveExtension(path) {
     return check(false);
   if (/\.[cm]?[jt]s$/.test(path))
     return check(true);
-  const pkgPath = join17(path, "package.json");
+  const pkgPath = join18(path, "package.json");
   if (existsSync14(pkgPath)) {
     try {
-      const pkg = JSON.parse(readFileSync5(pkgPath, "utf8"));
+      const pkg = JSON.parse(readFileSync6(pkgPath, "utf8"));
       const exts = pkg.pi?.extensions;
       if (Array.isArray(exts) && exts.length > 0)
         return check(true);
     } catch {
     }
   }
-  return check(existsSync14(join17(path, "index.ts")) || existsSync14(join17(path, "index.js")));
+  return check(existsSync14(join18(path, "index.ts")) || existsSync14(join18(path, "index.js")));
 }
 function probeBinary(piBin) {
   try {
@@ -13986,12 +14332,12 @@ var piModelsCommand = {
 };
 
 // dist/pi/local-conversation-ops.js
-import { join as join20 } from "node:path";
+import { join as join21 } from "node:path";
 
 // dist/pi/local-agent.js
 import { spawn as spawn3 } from "node:child_process";
-import { existsSync as existsSync15, mkdirSync as mkdirSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join18 } from "node:path";
+import { existsSync as existsSync15, mkdirSync as mkdirSync4, writeFileSync as writeFileSync5 } from "node:fs";
+import { join as join19 } from "node:path";
 import readline from "node:readline";
 
 // node_modules/@ideaspaces/sdk/dist/keeper-events.js
@@ -14184,9 +14530,9 @@ function deriveConversationName(message) {
 }
 function ensureSessionDir(dir) {
   mkdirSync4(dir, { recursive: true });
-  const ignore = join18(dir, ".gitignore");
+  const ignore = join19(dir, ".gitignore");
   if (!existsSync15(ignore))
-    writeFileSync4(ignore, "*\n");
+    writeFileSync5(ignore, "*\n");
 }
 function buildPiArgs(opts) {
   const args2 = [
@@ -14306,11 +14652,11 @@ async function* runLocalTurn(opts) {
 }
 
 // dist/pi/local-conversations.js
-import { existsSync as existsSync16, readdirSync as readdirSync2, readFileSync as readFileSync6, statSync as statSync5 } from "node:fs";
+import { existsSync as existsSync16, readdirSync as readdirSync2, readFileSync as readFileSync7, statSync as statSync5 } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { join as join19 } from "node:path";
+import { join as join20 } from "node:path";
 function localSessionDir(contextRoot) {
-  return join19(contextRoot, ".pi", "sessions");
+  return join20(contextRoot, ".pi", "sessions");
 }
 function mintConversationId() {
   return `local-${randomUUID()}`;
@@ -14392,12 +14738,12 @@ function findSessionFile(dir, convId) {
   const files = readdirSync2(dir).filter((f) => f.endsWith(".jsonl"));
   const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
   if (bySuffix)
-    return join19(dir, bySuffix);
+    return join20(dir, bySuffix);
   for (const f of files) {
     try {
-      const first = readFileSync6(join19(dir, f), "utf8").split("\n", 1)[0];
+      const first = readFileSync7(join20(dir, f), "utf8").split("\n", 1)[0];
       if (JSON.parse(first).id === convId)
-        return join19(dir, f);
+        return join20(dir, f);
     } catch {
     }
   }
@@ -14409,7 +14755,7 @@ function getLocalConversation(contextRoot, convId) {
     return { conversation_id: convId, repo_id: contextRoot, name: "", history: [], active_turn: null };
   }
   const mtime = statSync5(file).mtime.toISOString();
-  const s = parseSessionJsonl(readFileSync6(file, "utf8"), mtime);
+  const s = parseSessionJsonl(readFileSync7(file, "utf8"), mtime);
   return {
     conversation_id: convId,
     repo_id: contextRoot,
@@ -14426,10 +14772,10 @@ function listLocalConversations(contextRoot) {
     return { conversations: [], total: 0 };
   const summaries = [];
   for (const f of readdirSync2(dir).filter((f2) => f2.endsWith(".jsonl"))) {
-    const path = join19(dir, f);
+    const path = join20(dir, f);
     let text;
     try {
-      text = readFileSync6(path, "utf8");
+      text = readFileSync7(path, "utf8");
     } catch {
       continue;
     }
@@ -14472,7 +14818,7 @@ async function send(flags2, output) {
   }
   const skillPaths = parseCommaList(flags2.skill, process.env.IDEASPACES_PI_SKILLS);
   const repoPath = typeof flags2.context === "string" ? flags2.context : process.cwd();
-  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join20(repoPath, ".pi", "sessions");
+  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join21(repoPath, ".pi", "sessions");
   const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
   const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
   const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
