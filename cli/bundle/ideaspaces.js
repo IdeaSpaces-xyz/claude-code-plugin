@@ -7581,17 +7581,18 @@ async function copySpace(config, rootNodeId, body, opts) {
 async function getSpaceCopySnapshot(config, rootNodeId, opts) {
   return request(config, "GET", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/copy-snapshot`, void 0, opts);
 }
-function describeTrailRefusal(err) {
+function describeTrailRefusal(err, context = "clone") {
   const message = err instanceof Error ? err.message : String(err);
   if (!message.includes("\u2192 404"))
     return null;
+  const subject = context === "source" ? "source Space" : "Space";
   if (message.includes("no_history_relation")) {
-    return "The Space's trail has not been shared with you \u2014 reading its content and reading how it got here are separate permissions. Ask whoever owns it to share history, then try again.";
+    return `The ${subject}'s trail has not been shared with you \u2014 reading its content and reading how it got here are separate permissions. Ask whoever owns it to share history, then try again.`;
   }
   if (message.includes("no_read_relation")) {
-    return "You no longer have read access to this Space, so its trail is out of reach too. Your local clone is unaffected \u2014 ask whoever owns it to share it again.";
+    return `You no longer have read access to the ${subject}, so its trail is out of reach too. Your local clone is unaffected \u2014 ask whoever owns it to share it again.`;
   }
-  return "The Space this clone points at could not be found. It may have been deleted, or this clone's record may be stale \u2014 `ideaspaces link .` re-binds it.";
+  return context === "source" ? "The recorded source Space could not be found. It may have been deleted or its recorded coordinate may be stale." : "The Space this clone points at could not be found. It may have been deleted, or this clone's record may be stale \u2014 `ideaspaces link .` re-binds it.";
 }
 async function fetchTrailLog(config, rootNodeId, limit, opts) {
   return request(config, "GET", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/git?op=log&limit=${encodeURIComponent(String(limit))}`, void 0, opts);
@@ -11901,6 +11902,142 @@ async function resolveSpaceBinding(dir, config) {
 
 // dist/commands/sync.js
 var DEFAULT_LIMIT = 20;
+var SOURCE_COMMIT_LIMIT = 100;
+function sameCommit(left, right) {
+  const [shorter, longer] = [left.toLowerCase(), right.toLowerCase()].sort((a, b) => a.length - b.length);
+  return longer.startsWith(shorter);
+}
+function isTrailCommit(value) {
+  if (!value || typeof value !== "object")
+    return false;
+  const commit = value;
+  return typeof commit.sha === "string" && /^[0-9a-f]{7,40}$/i.test(commit.sha) && typeof commit.message === "string" && typeof commit.date === "string" && typeof commit.author === "string";
+}
+function isTrailChange(value) {
+  if (!value || typeof value !== "object")
+    return false;
+  const change = value;
+  return typeof change.status === "string" && typeof change.path === "string" && (change.old_path === void 0 || typeof change.old_path === "string");
+}
+function describeSourceFailure(err) {
+  if (err instanceof UnauthorizedError) {
+    return "Session expired \u2014 run `ideaspaces login` to read the source Space's trail.";
+  }
+  const refusal = describeTrailRefusal(err, "source");
+  if (refusal)
+    return refusal;
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes("\u2192 422")) {
+    return "The recorded source point is no longer available in the source trail; the source may have been rewritten.";
+  }
+  return `Could not read the source Space's trail: ${message}`;
+}
+async function readSourceAwareness(config, rootNodeId, recordedHead) {
+  const base = {
+    root_node_id: rootNodeId,
+    recorded_head: recordedHead
+  };
+  if (!/^[0-9a-f]{40}$/i.test(recordedHead)) {
+    return {
+      ...base,
+      current_head: null,
+      moved: null,
+      commits: null,
+      commits_complete: false,
+      changes: null,
+      unavailable: "This fork's recorded source head is invalid, so source movement cannot be checked."
+    };
+  }
+  const [log, changes] = await Promise.allSettled([
+    fetchTrailLog(config, rootNodeId, SOURCE_COMMIT_LIMIT),
+    fetchTrailChanges(config, rootNodeId, recordedHead)
+  ]);
+  const rawEntries = log.status === "fulfilled" ? log.value.entries : null;
+  const rawChanges = changes.status === "fulfilled" ? changes.value.changes : null;
+  const entries = Array.isArray(rawEntries) && rawEntries.every(isTrailCommit) ? rawEntries : null;
+  const changedPaths = Array.isArray(rawChanges) && rawChanges.every(isTrailChange) ? rawChanges : null;
+  const pinIndex = entries?.findIndex((entry) => sameCommit(entry.sha, recordedHead)) ?? -1;
+  const currentHead = entries?.[0]?.sha ?? null;
+  const moved = currentHead ? !sameCommit(currentHead, recordedHead) : changedPaths?.length ? true : null;
+  const validationFailures = [
+    ...log.status === "fulfilled" && entries === null ? ["The source Space returned an invalid commit list."] : [],
+    ...changes.status === "fulfilled" && changedPaths === null ? ["The source Space returned an invalid changed-path list."] : []
+  ];
+  const failures = [.../* @__PURE__ */ new Set([
+    ...validationFailures,
+    ...[log, changes].filter((result) => result.status === "rejected").map((result) => describeSourceFailure(result.reason))
+  ])];
+  return {
+    ...base,
+    current_head: currentHead,
+    moved,
+    commits: entries ? pinIndex >= 0 ? entries.slice(0, pinIndex) : entries : null,
+    commits_complete: entries !== null && pinIndex >= 0,
+    changes: changedPaths,
+    unavailable: failures.length ? failures.join("; ") : null
+  };
+}
+function sourceAwarenessFor(record, config) {
+  if (!record?.source_root_node_id)
+    return Promise.resolve(null);
+  if (!record.source_head) {
+    return Promise.resolve({
+      root_node_id: record.source_root_node_id,
+      recorded_head: null,
+      current_head: null,
+      moved: null,
+      commits: null,
+      commits_complete: false,
+      changes: null,
+      unavailable: "This fork has a recorded source but no pinned source head, so source movement cannot be checked."
+    });
+  }
+  if (!config) {
+    return Promise.resolve({
+      root_node_id: record.source_root_node_id,
+      recorded_head: record.source_head,
+      current_head: null,
+      moved: null,
+      commits: null,
+      commits_complete: false,
+      changes: null,
+      unavailable: "Log in to read the source Space's trail: ideaspaces login"
+    });
+  }
+  return readSourceAwareness(config, record.source_root_node_id, record.source_head);
+}
+function appendSourceAwareness(lines, source, limit) {
+  lines.push("", "Fork source:");
+  if (source.moved === false) {
+    lines.push(`  has not moved since ${source.recorded_head?.slice(0, 12)}`);
+  } else if (source.moved === true) {
+    lines.push(`  moved since ${source.recorded_head?.slice(0, 12)}:`);
+  }
+  for (const commit of source.commits?.slice(0, limit) ?? [])
+    lines.push(describeTrailCommit(commit));
+  if (source.commits && source.commits.length > limit) {
+    lines.push(`  \u2026 and ${source.commits.length - limit} more (--limit ${Math.min(100, source.commits.length)} to see more, --json for all)`);
+  }
+  if (source.commits && !source.commits_complete) {
+    lines.push(`  (the recorded point is not in the source's latest ${SOURCE_COMMIT_LIMIT} commits; it may be older or no longer in history \u2014 showing that recent window)`);
+  }
+  if (source.changes?.length) {
+    lines.push("", "Source paths changed:");
+    for (const change of source.changes.slice(0, limit))
+      lines.push(describeChange(change));
+    if (source.changes.length > limit) {
+      lines.push(`  \u2026 and ${source.changes.length - limit} more (--limit ${Math.min(100, source.changes.length)} to see more, --json for all)`);
+    }
+  }
+  if (source.unavailable) {
+    const prefix = source.commits !== null || source.changes !== null ? "Partial: " : "";
+    lines.push(`  ${prefix}${source.unavailable}`);
+  }
+  if (source.moved === null && !source.unavailable) {
+    lines.push("  Source movement could not be determined.");
+  }
+  lines.push("  Awareness only \u2014 no fork files were changed.");
+}
 function limitFlag(value) {
   if (typeof value !== "string")
     return DEFAULT_LIMIT;
@@ -11921,9 +12058,12 @@ function describeTrailCommit(commit) {
 }
 var syncCommand = {
   name: "sync",
-  description: "Report where you and the Space stand \u2014 reads only, integrates nothing",
+  description: "Report where you, the Space, and a fork's source stand \u2014 reads only, integrates nothing",
   usage: "ideaspaces sync [--limit <n>]",
-  examples: ["ideaspaces sync", "ideaspaces sync --limit 5"],
+  examples: [
+    "ideaspaces sync",
+    "ideaspaces sync --limit 5 # print 5 entries; source lookup still checks its bounded 100-commit window"
+  ],
   async run(_args, flags2, global2) {
     const output = createOutput(global2);
     const limit = limitFlag(flags2.limit);
@@ -11951,7 +12091,11 @@ var syncCommand = {
     if (!fetched) {
       lines.push(`Could not reach the remote (${fetchError}) \u2014 position below is from the last fetch.`);
     }
+    const config = loadConfig();
+    const record = findSpaceFor(root);
+    const sourcePromise = sourceAwarenessFor(record, config);
     if (!rs.upstream) {
+      const source2 = await sourcePromise;
       output.result({
         upstream: null,
         ahead: 0,
@@ -11963,8 +12107,14 @@ var syncCommand = {
         incoming_unavailable: null,
         resolved_via: null,
         outgoing: null,
+        source: source2,
         integrated: false
-      }, [...lines, "No upstream configured \u2014 this ideaspace is local only.", "Publish it with: ideaspaces publish"].join("\n"));
+      }, (() => {
+        const localOnlyLines = [...lines, "No upstream configured \u2014 this ideaspace is local only.", "Publish it with: ideaspaces publish"];
+        if (source2)
+          appendSourceAwareness(localOnlyLines, source2, limit);
+        return localOnlyLines.join("\n");
+      })());
       return 0;
     }
     lines.push(`${rs.upstream}: ahead ${rs.ahead}, behind ${rs.behind}`);
@@ -11987,7 +12137,6 @@ var syncCommand = {
     let windowRead = false;
     let resolvedVia = null;
     if (rs.behind) {
-      const config = loadConfig();
       const binding = await resolveSpaceBinding(root, config);
       const rootNodeId = "rootNodeId" in binding ? binding.rootNodeId : null;
       resolvedVia = "via" in binding ? binding.via : null;
@@ -12002,30 +12151,33 @@ var syncCommand = {
           fetchTrailLog(config, rootNodeId, limit),
           since ? fetchTrailChanges(config, rootNodeId, since) : Promise.resolve({ op: "changes", since: "", changes: [] })
         ]);
-        if (log.status === "fulfilled" || changes.status === "fulfilled") {
-          const reported = log.status === "fulfilled" ? log.value.entries ?? [] : [];
-          windowRead = log.status === "fulfilled";
-          const fresh = commitsNotInHistory(reported.map((c) => c.sha), root);
+        const rawReported = log.status === "fulfilled" ? log.value.entries : null;
+        const rawChangedPaths = changes.status === "fulfilled" ? changes.value.changes : null;
+        const reported = Array.isArray(rawReported) && rawReported.every(isTrailCommit) ? rawReported : null;
+        const incomingChanges = Array.isArray(rawChangedPaths) && rawChangedPaths.every(isTrailChange) ? rawChangedPaths : null;
+        const reasons = [
+          ...log.status === "fulfilled" && reported === null ? ["The Space returned an invalid commit list."] : [],
+          ...changes.status === "fulfilled" && incomingChanges === null ? ["The Space returned an invalid changed-path list."] : [],
+          ...[log, changes].filter((result) => result.status === "rejected").map((result) => describeTrailRefusal(result.reason) ?? (result.reason instanceof Error ? result.reason.message : String(result.reason)))
+        ];
+        if (reported !== null || incomingChanges !== null) {
+          windowRead = reported !== null;
+          const fresh = reported ? commitsNotInHistory(reported.map((c) => c.sha), root) : /* @__PURE__ */ new Set();
           if (fresh === null)
             unfiltered = true;
           incoming = {
-            commits: fresh ? reported.filter((c) => fresh.has(c.sha)) : reported,
-            changes: changes.status === "fulfilled" ? changes.value.changes ?? [] : []
+            commits: reported ? fresh ? reported.filter((c) => fresh.has(c.sha)) : reported : [],
+            changes: incomingChanges ?? []
           };
-          const reasons = [log, changes].filter((r) => r.status === "rejected").map((r) => {
-            const reason = r.reason;
-            return describeTrailRefusal(reason) ?? (reason instanceof Error ? reason.message : String(reason));
-          });
           if (reasons.length)
             incomingNote = `Partial: ${reasons.join("; ")}`;
           else if (!since) {
             incomingNote = "No common commit with the upstream, so the changed paths could not be asked for \u2014 the commits above are the whole answer.";
           }
         } else {
-          const expired = [log, changes].some((r) => r.status === "rejected" && r.reason instanceof UnauthorizedError);
-          const refusal = [log, changes].map((r) => r.status === "rejected" ? describeTrailRefusal(r.reason) : null).find(Boolean);
-          const err = log.reason;
-          incomingNote = expired ? "Session expired \u2014 run `ideaspaces login` to read the Space's trail." : refusal ?? `Could not read the Space's trail: ${err instanceof Error ? err.message : String(err)}`;
+          const expired = [log, changes].some((result) => result.status === "rejected" && result.reason instanceof UnauthorizedError);
+          const refusal = [log, changes].map((result) => result.status === "rejected" ? describeTrailRefusal(result.reason) : null).find(Boolean);
+          incomingNote = expired ? "Session expired \u2014 run `ideaspaces login` to read the Space's trail." : refusal ?? `Could not read the Space's trail: ${reasons.join("; ")}`;
         }
       }
       lines.push("", `Theirs, not here yet (behind ${rs.behind}):`);
@@ -12055,6 +12207,9 @@ var syncCommand = {
     }
     if (!rs.ahead && !rs.behind)
       lines.push("", "Nothing on either side \u2014 you are level with the Space.");
+    const source = await sourcePromise;
+    if (source)
+      appendSourceAwareness(lines, source, limit);
     output.result({
       upstream: rs.upstream,
       ahead: rs.ahead,
@@ -12075,6 +12230,7 @@ var syncCommand = {
       // changed" or "we could not find out".
       incoming_unavailable: incomingNote,
       resolved_via: resolvedVia,
+      source,
       // Stated in the payload, not only in the prose: nothing moved.
       integrated: false
     }, lines.join("\n"));
