@@ -8082,8 +8082,9 @@ async function discoverSkillEntries(levels) {
     for (const name of skillDirs) {
       const path = join4(skillsDir, name, "SKILL.md");
       try {
-        await fs4.access(path);
-        byName.set(name, { name, path, level: dir });
+        if ((await fs4.stat(path)).isFile()) {
+          byName.set(name, { name, path, level: dir });
+        }
       } catch {
       }
     }

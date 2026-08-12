@@ -26,7 +26,7 @@ Elicit progressively — don't demand the full structure up front. Start from a 
 
 Primitives and perspectives live in `_agent/` at the level where they apply; everything in `_agent/` composes along the path root → current position.
 
-Use native `Write` / `Edit` for `_agent/skills/*`, `_agent/perspectives/*`, and other agent-context primitives because they use `name` + `description` frontmatter, not Note `name` + `summary` frontmatter. Use `is_write` only for ordinary Note-style files such as `_agent/purpose.md` or `_agent/now.md`.
+Use native `Write` / `Edit` for `_agent/skills/*`, `_agent/perspectives/*`, and other agent-context primitives because they use `name` + `description` frontmatter, not Note `name` + `summary` frontmatter. For a skill, its entry id and frontmatter `name` must be the same portable id — follow the exact rule and worked example in the canonical form-primitive reference above. `ideaspaces skills sync` publishes that id into Claude Code's generated pointer, and protocol conformance reports divergence. Use `is_write` only for ordinary Note-style files such as `_agent/purpose.md` or `_agent/now.md`.
 
 Preview, confirm, then write — the write gate in `${CLAUDE_PLUGIN_ROOT}/reference/guide.md` applies to shaping like any capture.
 
