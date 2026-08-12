@@ -3994,10 +3994,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep2, value } = collItem;
+        const { start, key, sep: sep3, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep2?.[0],
+          next: key ?? sep3?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -4011,7 +4011,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep2) {
+          if (!keyProps.anchor && !keyProps.tag && !sep3) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -4035,7 +4035,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep2 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep3 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -4051,7 +4051,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep2, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep3, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -4142,7 +4142,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep2 = "";
+        let sep3 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -4156,13 +4156,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep2 + cb;
-              sep2 = "";
+                comment += sep3 + cb;
+              sep3 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep2 += source;
+                sep3 += source;
               hasSpace = true;
               break;
             default:
@@ -4205,18 +4205,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep2, value } = collItem;
+        const { start, key, sep: sep3, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep2?.[0],
+          next: key ?? sep3?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep2 && !value) {
+          if (!props.anchor && !props.tag && !sep3 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -4270,8 +4270,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep2 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep2, null, props, onError);
+        if (!isMap && !sep3 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep3, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -4283,7 +4283,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep2 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep3 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -4294,8 +4294,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep2)
-                for (const st of sep2) {
+              if (sep3)
+                for (const st of sep3) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -4312,7 +4312,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep2, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep3, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -4492,7 +4492,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep2 = "";
+      let sep3 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -4509,24 +4509,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep2 + indent.slice(trimIndent) + content;
-          sep2 = "\n";
+          value += sep3 + indent.slice(trimIndent) + content;
+          sep3 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep2 === " ")
-            sep2 = "\n";
-          else if (!prevMoreIndented && sep2 === "\n")
-            sep2 = "\n\n";
-          value += sep2 + indent.slice(trimIndent) + content;
-          sep2 = "\n";
+          if (sep3 === " ")
+            sep3 = "\n";
+          else if (!prevMoreIndented && sep3 === "\n")
+            sep3 = "\n\n";
+          value += sep3 + indent.slice(trimIndent) + content;
+          sep3 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep2 === "\n")
+          if (sep3 === "\n")
             value += "\n";
           else
-            sep2 = "\n";
+            sep3 = "\n";
         } else {
-          value += sep2 + content;
-          sep2 = " ";
+          value += sep3 + content;
+          sep3 = " ";
           prevMoreIndented = false;
         }
       }
@@ -4708,25 +4708,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep2 = " ";
+      let sep3 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep2 === "\n")
-            res += sep2;
+          if (sep3 === "\n")
+            res += sep3;
           else
-            sep2 = "\n";
+            sep3 = "\n";
         } else {
-          res += sep2 + match[1];
-          sep2 = " ";
+          res += sep3 + match[1];
+          sep3 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep2 + (match?.[1] ?? "");
+      return res + sep3 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -5536,14 +5536,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep2, value }) {
+    function stringifyItem({ start, key, sep: sep3, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep2)
-        for (const st of sep2)
+      if (sep3)
+        for (const st of sep3)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -6710,18 +6710,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep2;
+          let sep3;
           if (scalar.end) {
-            sep2 = scalar.end;
-            sep2.push(this.sourceToken);
+            sep3 = scalar.end;
+            sep3.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep2 = [this.sourceToken];
+            sep3 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep2 }]
+            items: [{ start, key: scalar, sep: sep3 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -6874,15 +6874,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep2 = it.sep;
-                  sep2.push(this.sourceToken);
+                  const sep3 = it.sep;
+                  sep3.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep2 }]
+                    items: [{ start: start2, key, sep: sep3 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -7076,13 +7076,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep2 = fc.end.splice(1, fc.end.length);
-            sep2.push(this.sourceToken);
+            const sep3 = fc.end.splice(1, fc.end.length);
+            sep3.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep2 }]
+              items: [{ start, key: fc, sep: sep3 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -7260,7 +7260,7 @@ var require_public_api = __commonJS({
       }
       return doc;
     }
-    function parse(src, reviver, options) {
+    function parse2(src, reviver, options) {
       let _reviver = void 0;
       if (typeof reviver === "function") {
         _reviver = reviver;
@@ -7301,7 +7301,7 @@ var require_public_api = __commonJS({
         return value.toString(options);
       return new Document.Document(value, _replacer, options).toString(options);
     }
-    exports.parse = parse;
+    exports.parse = parse2;
     exports.parseAllDocuments = parseAllDocuments;
     exports.parseDocument = parseDocument3;
     exports.stringify = stringify2;
@@ -7578,6 +7578,9 @@ async function getSpace(config, rootNodeId, opts) {
 async function copySpace(config, rootNodeId, body, opts) {
   return request(config, "POST", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/copy`, body, opts);
 }
+async function getSpaceCopySnapshot(config, rootNodeId, opts) {
+  return request(config, "GET", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/copy-snapshot`, void 0, opts);
+}
 function describeTrailRefusal(err) {
   const message = err instanceof Error ? err.message : String(err);
   if (!message.includes("\u2192 404"))
@@ -7607,8 +7610,8 @@ async function fetchAgents(config, owner, opts) {
   const res = await request(config, "GET", `${API_V1}/agents${qs}`, void 0, opts);
   return res.agents;
 }
-async function fetchNode(config, repoId, nodeId, opts) {
-  return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/nodes/${encodeURIComponent(nodeId)}`, void 0, opts);
+async function fetchNode(config, repoId, nodeId2, opts) {
+  return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/nodes/${encodeURIComponent(nodeId2)}`, void 0, opts);
 }
 function filesPath(repoId, path) {
   const segs = path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
@@ -7618,6 +7621,32 @@ async function putFile(config, repoId, path, content, opts) {
   return request(config, "PUT", filesPath(repoId, path), { content }, opts);
 }
 var repoBase = (repoId) => `${API_V1}/repos/${encodeURIComponent(repoId)}`;
+var nodeBase = (nodeId2) => `${API_V1}/nodes/${encodeURIComponent(nodeId2)}`;
+async function addPersonShare(config, targetNodeId, body, opts) {
+  return request(config, "POST", `${nodeBase(targetNodeId)}/person-shares`, body, opts);
+}
+async function listPersonShares(config, targetNodeId, opts) {
+  return request(config, "GET", `${nodeBase(targetNodeId)}/person-shares`, void 0, opts);
+}
+function describeShareRefusal(err) {
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes("root_governance_unestablished")) {
+    return "This Space cannot share with a person directly yet \u2014 its ownership record was never established, which is true of most Spaces created before the change.\nThe older path still works for it: ideaspaces share legacy-invite <repo_id> <email> --role READER";
+  }
+  if (message.includes("\u2192 409") && message.includes("Person Share is unavailable")) {
+    return "Direct person sharing is unavailable for this Space.";
+  }
+  return null;
+}
+async function removePersonShare(config, targetNodeId, userId, opts) {
+  return request(config, "DELETE", `${nodeBase(targetNodeId)}/person-shares/${encodeURIComponent(String(userId))}`, void 0, opts);
+}
+async function revokePersonShareInvite(config, targetNodeId, inviteId, opts) {
+  return request(config, "DELETE", `${nodeBase(targetNodeId)}/person-share-invites/${encodeURIComponent(inviteId)}`, void 0, opts);
+}
+async function listPersonShareInvites(config, targetNodeId, opts) {
+  return request(config, "GET", `${nodeBase(targetNodeId)}/person-share-invites`, void 0, opts);
+}
 async function listRepoMembers(config, repoId) {
   return request(config, "GET", `${repoBase(repoId)}/members`);
 }
@@ -8361,14 +8390,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot2, args2) {
-  return new Promise((resolve18) => {
+  return new Promise((resolve19) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve18({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve18({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve19({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve19({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -8778,8 +8807,8 @@ function appendTrailers(message, add) {
   while (end >= 0 && lines[end].trim() === "")
     end--;
   const body = lines.slice(0, end + 1);
-  const sep2 = body.length > 0 ? [""] : [];
-  return [...body, ...sep2, ...additions].join("\n");
+  const sep3 = body.length > 0 ? [""] : [];
+  return [...body, ...sep3, ...additions].join("\n");
 }
 function findTrailerBlock(rawLines) {
   let end = rawLines.length - 1;
@@ -10192,7 +10221,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve18, reject) => {
+  return new Promise((resolve19, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -10219,7 +10248,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve18({
+      resolve19({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -10324,10 +10353,18 @@ import { existsSync as existsSync5, statSync } from "node:fs";
 import { basename as basename2, join as join9 } from "node:path";
 
 // dist/auth/spaces.js
-import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync2, realpathSync as realpathSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join8, resolve as resolve7 } from "node:path";
 function spacesFile() {
   return join8(configDir(), "spaces.json");
+}
+function folderKey(path) {
+  const absolute = resolve7(path);
+  try {
+    return realpathSync2.native(absolute);
+  } catch {
+    return absolute;
+  }
 }
 function loadSpaces() {
   const file = spacesFile();
@@ -10344,8 +10381,12 @@ function loadSpaces() {
   }
 }
 function saveSpace(absolutePath, record) {
-  const key = resolve7(absolutePath);
+  const key = folderKey(absolutePath);
   const map = loadSpaces();
+  for (const existing of Object.keys(map)) {
+    if (existing !== key && folderKey(existing) === key)
+      delete map[existing];
+  }
   map[key] = record;
   const dir = configDir();
   if (!existsSync4(dir)) {
@@ -10354,17 +10395,27 @@ function saveSpace(absolutePath, record) {
   writeFileSync2(spacesFile(), JSON.stringify(map, null, 2) + "\n", { mode: 384 });
 }
 function findSpaceFor(absolutePath) {
-  return loadSpaces()[resolve7(absolutePath)] ?? null;
+  const map = loadSpaces();
+  const lexical = resolve7(absolutePath);
+  if (map[lexical])
+    return map[lexical];
+  const canonical = folderKey(absolutePath);
+  if (map[canonical])
+    return map[canonical];
+  const alias = Object.entries(map).find(([path]) => folderKey(path) === canonical);
+  return alias?.[1] ?? null;
 }
 function listClones() {
   return Object.entries(loadSpaces()).map(([path, record]) => ({ path, record }));
 }
 function removeSpace(absolutePath) {
-  const key = resolve7(absolutePath);
+  const canonical = folderKey(absolutePath);
   const map = loadSpaces();
-  if (!(key in map))
+  const keys = Object.keys(map).filter((path) => folderKey(path) === canonical);
+  if (!keys.length)
     return false;
-  delete map[key];
+  for (const key of keys)
+    delete map[key];
   const dir = configDir();
   if (!existsSync4(dir)) {
     mkdirSync2(dir, { recursive: true, mode: 448 });
@@ -10378,7 +10429,8 @@ function withForkLineage(bound, previous) {
   return {
     ...bound,
     ...previous.source_root_node_id ? { source_root_node_id: previous.source_root_node_id } : {},
-    ...previous.source_head ? { source_head: previous.source_head } : {}
+    ...previous.source_head ? { source_head: previous.source_head } : {},
+    ...previous.source_baseline_initialized ? { source_baseline_initialized: true } : {}
   };
 }
 
@@ -12986,8 +13038,371 @@ var forkCommand = {
   }
 };
 
+// dist/fork-update.js
+var import_yaml4 = __toESM(require_dist(), 1);
+import { spawnSync as spawnSync6 } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync as existsSync11, mkdirSync as mkdirSync3, mkdtempSync, readFileSync as readFileSync4, renameSync, rmSync, writeFileSync as writeFileSync4 } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname as dirname4, join as join14, resolve as resolve15, sep as sep2 } from "node:path";
+function runGit4(args2, cwd) {
+  const result = spawnSync6("git", args2, { cwd, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+  if (result.error)
+    throw result.error;
+  if (result.status !== 0) {
+    throw new Error((result.stderr || result.stdout || `git ${args2.join(" ")} failed`).trim());
+  }
+  return result.stdout;
+}
+function safePath(path) {
+  const normalized = path.replaceAll("\\", "/");
+  if (!normalized || normalized.startsWith("/") || normalized.split("/").includes("..") || /[\0\r\n]/.test(normalized) || !normalized.endsWith(".md")) {
+    throw new Error(`Unsafe Markdown path in source snapshot: ${path}`);
+  }
+  return normalized;
+}
+function isLocalOnly(path) {
+  return path.endsWith(".local.md");
+}
+function nodeId(content) {
+  if (!content.startsWith("---\n"))
+    return null;
+  const end = content.indexOf("\n---\n", 4);
+  if (end < 0)
+    return null;
+  try {
+    const metadata = (0, import_yaml4.parse)(content.slice(4, end));
+    const value = metadata?.node_id;
+    return typeof value === "string" && /^n_[0-9a-f]{12}(?:[0-9a-f]{12})?$/.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+function replaceNodeId(content, replacement) {
+  const end = content.indexOf("\n---\n", 4);
+  if (!content.startsWith("---\n") || end < 0) {
+    throw new Error("Projected Markdown is missing valid frontmatter");
+  }
+  const header = content.slice(4, end);
+  const nodeIdLine = /^node_id:\s*n_[0-9a-f]{12}(?:[0-9a-f]{12})?\s*$/m;
+  if (!nodeIdLine.test(header))
+    throw new Error("Projected Markdown is missing node_id");
+  const next = header.replace(nodeIdLine, `node_id: ${replacement}`);
+  return `---
+${next}${content.slice(end)}`;
+}
+function normalizeSnapshot(files, baseline) {
+  const incoming = /* @__PURE__ */ new Map();
+  for (const file of files) {
+    const path = safePath(file.path);
+    if (isLocalOnly(path))
+      continue;
+    if (incoming.has(path))
+      throw new Error(`Duplicate path in source snapshot: ${path}`);
+    incoming.set(path, file.content);
+  }
+  const idMap = /* @__PURE__ */ new Map();
+  const used = /* @__PURE__ */ new Set();
+  for (const [path, content] of incoming) {
+    const candidate = nodeId(content);
+    if (!candidate)
+      throw new Error(`Projected Markdown has no valid node_id: ${path}`);
+    const prior = baseline[path] ? nodeId(baseline[path]) : null;
+    const normalized2 = prior ?? candidate;
+    if (used.has(normalized2)) {
+      throw new Error(`Projected Markdown normalizes to a duplicate node_id: ${path}`);
+    }
+    used.add(normalized2);
+    idMap.set(candidate, normalized2);
+  }
+  const normalized = {};
+  for (const [path, original] of incoming) {
+    const candidate = nodeId(original);
+    let content = replaceNodeId(original, idMap.get(candidate));
+    for (const [from, to] of idMap) {
+      if (from === to)
+        continue;
+      content = content.replaceAll(`node:${from}`, `node:${to}`);
+      content = content.replaceAll(`/n/${from}`, `/n/${to}`);
+    }
+    normalized[path] = content;
+  }
+  return normalized;
+}
+function readLocal(path, root) {
+  const absolute = resolve15(root, path);
+  const prefix = root.endsWith(sep2) ? root : root + sep2;
+  if (!absolute.startsWith(prefix))
+    throw new Error(`Path escapes Space: ${path}`);
+  return existsSync11(absolute) ? readFileSync4(absolute, "utf-8") : null;
+}
+function planForkUpdate(baseline, incoming, root) {
+  const writes = {};
+  const deletes = [];
+  const conflicts = new Map(baseline.conflicts.map((item) => [item.path, item]));
+  const paths = /* @__PURE__ */ new Set([
+    ...Object.keys(baseline.files),
+    ...Object.keys(incoming),
+    ...baseline.conflicts.map((item) => item.path)
+  ]);
+  for (const path of [...paths].sort()) {
+    const before = baseline.files[path] ?? null;
+    const after = incoming[path] ?? null;
+    const local = readLocal(path, root);
+    if (after === before) {
+      if (conflicts.has(path) && local === after)
+        conflicts.delete(path);
+      continue;
+    }
+    if (local === before || local === after) {
+      conflicts.delete(path);
+      if (local !== after) {
+        if (after === null)
+          deletes.push(path);
+        else
+          writes[path] = after;
+      }
+      continue;
+    }
+    conflicts.set(path, {
+      path,
+      kind: before === null ? "add_add" : after === null ? "delete_change" : "content"
+    });
+  }
+  return {
+    incoming,
+    writes,
+    deletes,
+    conflicts: [...conflicts.values()].sort((a, b) => a.path.localeCompare(b.path))
+  };
+}
+function writeTree(root, files) {
+  for (const [path, content] of Object.entries(files)) {
+    const absolute = join14(root, path);
+    mkdirSync3(dirname4(absolute), { recursive: true });
+    writeFileSync4(absolute, content, "utf-8");
+  }
+}
+function applyForkUpdate(plan, root) {
+  const changed = [...Object.keys(plan.writes), ...plan.deletes];
+  if (!changed.length)
+    return;
+  const temp = mkdtempSync(join14(tmpdir(), "ideaspaces-update-"));
+  const beforeDir = join14(temp, "before");
+  const afterDir = join14(temp, "after");
+  mkdirSync3(beforeDir);
+  mkdirSync3(afterDir);
+  try {
+    const before = {};
+    const after = {};
+    for (const path of changed) {
+      const local = readLocal(path, root);
+      if (local !== null)
+        before[path] = local;
+      if (path in plan.writes)
+        after[path] = plan.writes[path];
+    }
+    writeTree(beforeDir, before);
+    writeTree(afterDir, after);
+    const diff = spawnSync6("git", ["diff", "--no-index", "--binary", "--no-renames", "--", "before", "after"], { cwd: temp, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+    if (diff.error)
+      throw diff.error;
+    if (diff.status !== 0 && diff.status !== 1) {
+      throw new Error((diff.stderr || "Could not prepare update patch").trim());
+    }
+    const patch = diff.stdout.replaceAll("a/before/", "a/").replaceAll("b/after/", "b/");
+    const applied = spawnSync6("git", ["apply", "--whitespace=nowarn", "-"], {
+      cwd: root,
+      input: patch,
+      encoding: "utf-8",
+      maxBuffer: 64 * 1024 * 1024
+    });
+    if (applied.error)
+      throw applied.error;
+    if (applied.status !== 0) {
+      throw new Error((applied.stderr || applied.stdout || "Could not apply update").trim());
+    }
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+}
+function baselinePath(root) {
+  const key = createHash("sha256").update(resolve15(root)).digest("hex");
+  return join14(configDir(), "fork-baselines", `${key}.json`);
+}
+function loadForkBaseline(root) {
+  const path = baselinePath(root);
+  if (!existsSync11(path))
+    return null;
+  try {
+    return JSON.parse(readFileSync4(path, "utf-8"));
+  } catch {
+    throw new Error("The local fork update baseline is corrupt; no files were changed.");
+  }
+}
+function saveForkBaseline(root, baseline) {
+  const path = baselinePath(root);
+  mkdirSync3(dirname4(path), { recursive: true, mode: 448 });
+  const temp = `${path}.${process.pid}.tmp`;
+  writeFileSync4(temp, JSON.stringify(baseline) + "\n", { mode: 384 });
+  renameSync(temp, path);
+}
+function initialForkBaseline(root, sourceRootNodeId, sourceHead) {
+  const roots = runGit4(["rev-list", "--max-parents=0", "HEAD"], root).trim().split("\n").filter(Boolean);
+  if (roots.length !== 1) {
+    throw new Error("The fork's initial copy commit is ambiguous; no files were changed.");
+  }
+  const commit = roots[0];
+  const paths = runGit4(["ls-tree", "-r", "--name-only", commit], root).trim().split("\n").filter((path) => path.endsWith(".md")).map(safePath).filter((path) => !isLocalOnly(path));
+  const files = {};
+  for (const path of paths)
+    files[path] = runGit4(["show", `${commit}:${path}`], root);
+  return {
+    source_root_node_id: sourceRootNodeId,
+    source_head: sourceHead,
+    files,
+    conflicts: []
+  };
+}
+function describeChanges(plan) {
+  return [
+    ...Object.keys(plan.writes).map((path) => `update ${path}`),
+    ...plan.deletes.map((path) => `delete ${path}`),
+    ...plan.conflicts.map((item) => `conflict ${item.path} (${item.kind})`)
+  ];
+}
+
+// dist/commands/update.js
+var updateCommand = {
+  name: "update",
+  description: "Apply maintained source updates to a fork without displacing local work",
+  usage: "ideaspaces update [--yes]",
+  examples: [
+    "ideaspaces update       # preview source changes and conflicts",
+    "ideaspaces update --yes # apply non-conflicting source changes"
+  ],
+  async run(_args, _flags, global2) {
+    const output = createOutput(global2);
+    let root;
+    try {
+      root = repoRoot();
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const record = findSpaceFor(root);
+    if (!record?.source_root_node_id) {
+      output.error("This Space is not recorded as a fork with a maintained source.");
+      return 1;
+    }
+    const config = loadConfig();
+    if (!config) {
+      output.error("Not logged in. Run `ideaspaces login`.");
+      return 1;
+    }
+    let baseline;
+    try {
+      baseline = loadForkBaseline(root);
+      if (baseline && baseline.source_root_node_id !== record.source_root_node_id) {
+        throw new Error("The local fork baseline names a different source; no files were changed.");
+      }
+      if (!baseline) {
+        if (record.source_baseline_initialized) {
+          throw new Error("The local fork update baseline is missing; no files were changed.");
+        }
+        if (!record.source_head) {
+          throw new Error("This fork has no pinned source head; no files were changed.");
+        }
+        baseline = initialForkBaseline(root, record.source_root_node_id, record.source_head);
+      }
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    output.progress("Reading the maintained source projection\u2026");
+    let snapshot;
+    try {
+      snapshot = await getSpaceCopySnapshot(config, record.source_root_node_id, {
+        timeoutMs: 12e4
+      });
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        output.error("Session expired. Run `ideaspaces login`.");
+      } else {
+        output.error("The maintained source update channel is unavailable; no local files were changed. " + (err instanceof Error ? err.message : String(err)));
+      }
+      return 1;
+    }
+    let plan;
+    try {
+      if (!snapshot || typeof snapshot.source_head !== "string" || !/^[0-9a-f]{40}$/.test(snapshot.source_head) || !Number.isInteger(snapshot.markdown_file_count) || snapshot.markdown_file_count < 0 || !Number.isInteger(snapshot.markdown_bytes) || snapshot.markdown_bytes < 0 || !Array.isArray(snapshot.files) || snapshot.files.length !== snapshot.markdown_file_count) {
+        throw new Error("The source returned an invalid snapshot envelope");
+      }
+      let receivedBytes = 0;
+      for (const file of snapshot.files) {
+        if (!file || typeof file.path !== "string" || typeof file.content !== "string") {
+          throw new Error("The source returned an invalid snapshot file");
+        }
+        receivedBytes += Buffer.byteLength(file.content, "utf-8");
+      }
+      if (receivedBytes > 2e7) {
+        throw new Error("The source snapshot exceeds the local update limit");
+      }
+      const incoming = normalizeSnapshot(snapshot.files, baseline.files);
+      plan = planForkUpdate(baseline, incoming, root);
+    } catch (err) {
+      output.error(`The source projection could not be validated; no local files were changed. ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    const changes = describeChanges(plan);
+    if (!global2.yes) {
+      output.result({
+        apply: false,
+        source_head: snapshot.source_head,
+        writes: Object.keys(plan.writes),
+        deletes: plan.deletes,
+        conflicts: plan.conflicts
+      }, changes.length ? [
+        `Source update ${snapshot.source_head.slice(0, 12)} is ready:`,
+        ...changes.map((change) => `  ${change}`),
+        "Run `ideaspaces update --yes` to apply non-conflicting changes."
+      ].join("\n") : "Already up to date \u2014 no source changes to apply.");
+      return 0;
+    }
+    try {
+      applyForkUpdate(plan, root);
+      saveForkBaseline(root, {
+        source_root_node_id: record.source_root_node_id,
+        source_head: snapshot.source_head,
+        files: plan.incoming,
+        conflicts: plan.conflicts
+      });
+      saveSpace(root, {
+        ...record,
+        source_head: snapshot.source_head,
+        source_baseline_initialized: true
+      });
+    } catch (err) {
+      output.error(`The update could not be finalized: ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    output.result({
+      apply: true,
+      source_head: snapshot.source_head,
+      writes: Object.keys(plan.writes),
+      deletes: plan.deletes,
+      conflicts: plan.conflicts
+    }, changes.length ? [
+      `Updated from source ${snapshot.source_head.slice(0, 12)}.`,
+      ...changes.map((change) => `  ${change}`),
+      ...plan.conflicts.length ? ["Conflicting local files were preserved; resolve them before the next update."] : []
+    ].join("\n") : "Already up to date \u2014 the source baseline is current.");
+    return 0;
+  }
+};
+
 // dist/commands/link.js
-import { resolve as resolve15 } from "node:path";
+import { resolve as resolve16 } from "node:path";
 var linkCommand = {
   name: "link",
   description: "Bind an existing local clone to one of your spaces",
@@ -13003,7 +13418,7 @@ var linkCommand = {
       output.error("Usage: ideaspaces link <dir> [space]");
       return 1;
     }
-    const dir = resolve15(dirArg);
+    const dir = resolve16(dirArg);
     if (!isInsideWorkTree(dir)) {
       output.error(`${dir} is not a git repository. Use \`clone\` to make one, or point at an existing clone.`);
       return 1;
@@ -13097,9 +13512,9 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 };
 
 // dist/commands/forget.js
-import { rmSync } from "node:fs";
+import { rmSync as rmSync2 } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { dirname as dirname4, resolve as resolve16 } from "node:path";
+import { dirname as dirname5, resolve as resolve17 } from "node:path";
 var forgetCommand = {
   name: "forget",
   description: "Stop tracking a local clone (optionally delete its folder)",
@@ -13115,9 +13530,9 @@ var forgetCommand = {
       output.error("Usage: ideaspaces forget <dir> [--delete]");
       return 1;
     }
-    const dir = resolve16(dirArg);
+    const dir = resolve17(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve16(homedir2()) || dirname4(dir) === dir)) {
+    if (del && (dir === resolve17(homedir2()) || dirname5(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -13129,7 +13544,7 @@ var forgetCommand = {
     let deleted = false;
     if (del) {
       try {
-        rmSync(dir, { recursive: true, force: true });
+        rmSync2(dir, { recursive: true, force: true });
         deleted = true;
       } catch (err) {
         output.error(`Removed the binding, but couldn't delete ${dir}: ${err instanceof Error ? err.message : String(err)}`);
@@ -13486,8 +13901,8 @@ async function readStdin3() {
   return Buffer.concat(chunks).toString("utf-8");
 }
 async function cmdGet2(args2, output) {
-  const [repoId, nodeId] = args2;
-  if (!repoId || !nodeId) {
+  const [repoId, nodeId2] = args2;
+  if (!repoId || !nodeId2) {
     output.error(`Usage: ${USAGE_GET}`);
     return 1;
   }
@@ -13497,7 +13912,7 @@ async function cmdGet2(args2, output) {
     return 1;
   }
   try {
-    const node = await fetchNode(config, repoId, nodeId);
+    const node = await fetchNode(config, repoId, nodeId2);
     const preview = node.content.replace(/\s+/g, " ").trim();
     const snippet = preview.length > 120 ? `${preview.slice(0, 119)}\u2026` : preview;
     const header = `${node.name_display || node.name} (${node.path})`;
@@ -13563,8 +13978,8 @@ var nodeCommand = {
 };
 
 // dist/commands/search.js
-import { readFileSync as readFileSync4 } from "node:fs";
-import { join as join14 } from "node:path";
+import { readFileSync as readFileSync5 } from "node:fs";
+import { join as join15 } from "node:path";
 
 // dist/search.js
 var K1 = 1.2;
@@ -13655,7 +14070,7 @@ var DEFAULT_LIMIT2 = 20;
 function* readDocs(root, paths) {
   for (const path of paths) {
     try {
-      yield { path, content: readFileSync4(join14(root, path), "utf-8") };
+      yield { path, content: readFileSync5(join15(root, path), "utf-8") };
     } catch {
       continue;
     }
@@ -13706,18 +14121,18 @@ var searchCommand = {
 
 // dist/commands/ls.js
 import { statSync as statSync4 } from "node:fs";
-import { resolve as resolve17 } from "node:path";
+import { resolve as resolve18 } from "node:path";
 
 // dist/file-listing.js
-import { existsSync as existsSync11, readdirSync } from "node:fs";
-import { join as join15, relative as relative10 } from "node:path";
+import { existsSync as existsSync12, readdirSync } from "node:fs";
+import { join as join16, relative as relative10 } from "node:path";
 var EXCLUDES = new Set(AUTOCOMPLETE_EXCLUDES);
 var DEFAULT_MAX_SCAN = 5e3;
 var DEFAULT_MAX_DEPTH = 10;
 function folderKind(abs) {
-  if (existsSync11(join15(abs, "_agent")))
+  if (existsSync12(join16(abs, "_agent")))
     return "ideaspace-repo";
-  if (existsSync11(join15(abs, ".git")))
+  if (existsSync12(join16(abs, ".git")))
     return "code-repo";
   return "folder";
 }
@@ -13743,7 +14158,7 @@ function listEntries(root, opts = {}) {
         continue;
       if (entries.length >= maxScan)
         return { entries, truncated: true };
-      const childAbs = join15(abs, dirent.name);
+      const childAbs = join16(abs, dirent.name);
       const path = toPosix(relative10(root, childAbs));
       if (dirent.isDirectory()) {
         entries.push({ path, name: dirent.name, kind: folderKind(childAbs) });
@@ -13801,7 +14216,7 @@ var lsCommand = {
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
-    const root = resolve17(args2[0] ?? ".");
+    const root = resolve18(args2[0] ?? ".");
     try {
       if (!statSync4(root).isDirectory()) {
         output.error(`Not a directory: ${root}`);
@@ -13851,9 +14266,18 @@ var timesCommand = {
 };
 
 // dist/commands/share.js
-var USAGE7 = "ideaspaces share <access|set-access|members|remove|invites|invite|revoke> <repo_id> \u2026";
-var INVITE_ROLES = ["MEMBER", "CLONER", "READER"];
+var USAGE7 = "ideaspaces share <invite|unshare|people|access|set-access|members|remove|invites|revoke|legacy-invite> \u2026";
+var GRADES = ["explore", "fork", "collaborate"];
+var LEGACY_ROLES = ["MEMBER", "READER"];
 var COPY_LEVELS = ["owner", "member", "reader", "public"];
+function requireConfig2(output) {
+  const config = loadConfig();
+  if (!config) {
+    output.error("Not logged in. Run `ideaspaces login`.");
+    return null;
+  }
+  return config;
+}
 function flagStr(flags2, key) {
   return typeof flags2[key] === "string" ? flags2[key] : void 0;
 }
@@ -13868,6 +14292,53 @@ function setup(repoId, usage, output) {
     return null;
   }
   return config;
+}
+async function resolveTarget(spaceUrl, config, output) {
+  if (spaceUrl) {
+    try {
+      return parseSpaceLocator(spaceUrl, config.apiUrl).rootNodeId;
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return null;
+    }
+  }
+  let root;
+  try {
+    root = repoRoot();
+  } catch {
+    output.error("Not inside a Space. Run this from a clone, or name one: --space <url>");
+    return null;
+  }
+  const binding = await resolveSpaceBinding(root, config);
+  if ("rootNodeId" in binding)
+    return binding.rootNodeId;
+  output.error(binding.failure === "unreachable" ? "Could not reach your account to work out which Space this is. Retry when you're back online." : binding.failure === "ambiguous" ? "This clone's origin matches more than one of your Spaces. Name one: --space <url>" : "Could not tell which Space this clone belongs to. Name one: --space <url>");
+  return null;
+}
+function describeShare(res) {
+  const who = res.relationship?.username ?? res.relationship?.email ?? res.pending_invite?.invited_email ?? "them";
+  const history = res.share_history ? ", with the trail" : "";
+  const where = res.recipient_route ? `
+They reach it at ${res.recipient_route}` : "";
+  switch (res.status) {
+    case "added":
+      return `Shared with ${who} at ${res.grade}${history}.${where}`;
+    case "invited":
+      return `No account yet \u2014 invited ${who} at ${res.grade}${history}.
+They get access when they accept.`;
+    case "already_pending":
+      return `Already invited ${who}; that invitation still stands.`;
+    case "already_direct":
+      return `${who} already has direct access here. Nothing changed.`;
+    case "self":
+      return "That is your own address \u2014 you already have this Space.";
+    case "no_match":
+      return "No account matches, and no invitation was sent.";
+    case "recipient_unavailable":
+      return `${who}'s account cannot receive access right now.`;
+    default:
+      return `${res.status}: ${who}`;
+  }
 }
 async function run(sub, rest, flags2, output) {
   const [repoId, arg] = rest;
@@ -13935,17 +14406,129 @@ copy: ${a.copy_access}`);
         return 0;
       }
       case "invite": {
-        const config = setup(repoId, "ideaspaces share invite <repo_id> <email\u2026> --role <role>", output);
+        const email = rest[0];
+        const config = requireConfig2(output);
+        if (!config)
+          return 1;
+        if (email && !email.includes("@")) {
+          output.error(`Not an email address: ${email}
+Usage: ideaspaces share invite <email> [--grade explore|fork|collaborate] [--history]`);
+          return 1;
+        }
+        if (rest.length > 1) {
+          output.error(`Refused \u2014 one address per call, and nothing was sent. A grade is per person.
+You named ${rest.length}: ${rest.join(", ")}
+Run it once per person.`);
+          return 1;
+        }
+        if (!email) {
+          output.error("Usage: ideaspaces share invite <email> [--grade explore|fork|collaborate] [--history]\nSharing a Space you are not standing in: --space <url>");
+          return 1;
+        }
+        const grade = flagStr(flags2, "grade")?.toLowerCase() ?? "explore";
+        if (!GRADES.includes(grade)) {
+          output.error(`--grade must be one of: ${GRADES.join(", ")}`);
+          return 1;
+        }
+        const target = await resolveTarget(flagStr(flags2, "space"), config, output);
+        if (!target)
+          return 1;
+        const res = await addPersonShare(config, target, {
+          email,
+          invite_if_no_match: true,
+          grade,
+          share_history: Boolean(flags2.history)
+        });
+        output.result(res, describeShare(res));
+        return 0;
+      }
+      case "people": {
+        const config = requireConfig2(output);
+        if (!config)
+          return 1;
+        const target = await resolveTarget(flagStr(flags2, "space"), config, output);
+        if (!target)
+          return 1;
+        const [peopleSettled, pendingSettled] = await Promise.allSettled([
+          listPersonShares(config, target),
+          listPersonShareInvites(config, target)
+        ]);
+        if (peopleSettled.status === "rejected")
+          throw peopleSettled.reason;
+        const people = peopleSettled.value;
+        const pending = pendingSettled.status === "fulfilled" ? pendingSettled.value : { invites: [] };
+        const invitesUnread = pendingSettled.status === "rejected" ? pendingSettled.reason instanceof Error ? pendingSettled.reason.message : String(pendingSettled.reason) : null;
+        const lines = [
+          ...people.relationships.map((r) => `  ${(r.username ?? r.email ?? `user ${r.user_id}`).padEnd(24)} ${r.access}${r.share_history ? " + history" : ""}`),
+          ...pending.invites.map((i) => `  ${i.invited_email.padEnd(24)} invited (${i.grade})`)
+        ];
+        if (!people.actions.can_add && people.actions.add_blocked_reason) {
+          lines.push("", `You cannot add people here: ${people.actions.add_blocked_reason}`);
+        }
+        if (!people.actions.can_manage_existing && people.actions.manage_blocked_reason) {
+          lines.push(`You cannot change who has it: ${people.actions.manage_blocked_reason}`);
+        }
+        if (invitesUnread) {
+          lines.push("", `Outstanding invitations could not be read: ${invitesUnread}`);
+        }
+        output.result({ ...people, pending_invites: pending.invites, invites_unavailable: invitesUnread }, lines.length ? lines.join("\n") : "nobody has direct access");
+        return 0;
+      }
+      case "unshare": {
+        const who = rest[0];
+        const config = requireConfig2(output);
+        if (!config)
+          return 1;
+        if (!who) {
+          output.error("Usage: ideaspaces share unshare <email|username> [--space <url>]");
+          return 1;
+        }
+        const target = await resolveTarget(flagStr(flags2, "space"), config, output);
+        if (!target)
+          return 1;
+        const needle = who.toLowerCase();
+        const [peopleSettled, pendingSettled] = await Promise.allSettled([
+          listPersonShares(config, target),
+          listPersonShareInvites(config, target)
+        ]);
+        if (peopleSettled.status === "rejected")
+          throw peopleSettled.reason;
+        const people = peopleSettled.value;
+        const pending = pendingSettled.status === "fulfilled" ? pendingSettled.value : { invites: [] };
+        const held = people.relationships.find((r) => r.email?.toLowerCase() === needle || r.username?.toLowerCase() === needle);
+        if (held) {
+          await removePersonShare(config, target, held.user_id);
+          output.result({ removed: { user_id: held.user_id, username: held.username ?? null }, target_node_id: target }, `Removed ${held.username ?? held.email ?? held.user_id}'s access.`);
+          return 0;
+        }
+        const invite = pending.invites.find((i) => i.invited_email.toLowerCase() === needle);
+        if (invite) {
+          await revokePersonShareInvite(config, target, invite.invite_id);
+          output.result({ revoked: invite.invite_id, invited_email: invite.invited_email, target_node_id: target }, `Withdrew the invitation to ${invite.invited_email}.`);
+          return 0;
+        }
+        output.error(pendingSettled.status === "rejected" ? `${who} holds no direct access here, and the invitation list could not be read (${pendingSettled.reason instanceof Error ? pendingSettled.reason.message : String(pendingSettled.reason)}).
+There may be an invitation outstanding that this cannot see.` : `${who} holds no direct access here and has no invitation outstanding.
+See who does: ideaspaces share people`);
+        return 1;
+      }
+      case "legacy-invite": {
+        const config = setup(repoId, "ideaspaces share legacy-invite <repo_id> <email\u2026> --role <role>", output);
         if (!config)
           return 1;
         const emails = rest.slice(1).filter(Boolean);
-        const role = flagStr(flags2, "role") ?? "READER";
+        const roleInput = (flagStr(flags2, "role") ?? "READER").toUpperCase();
         if (!emails.length) {
-          output.error("Usage: ideaspaces share invite <repo_id> <email\u2026> --role <role>");
+          output.error("Usage: ideaspaces share legacy-invite <repo_id> <email\u2026> --role <role>");
           return 1;
         }
-        if (!INVITE_ROLES.includes(role)) {
-          output.error(`--role must be one of: ${INVITE_ROLES.join(", ")}`);
+        if (roleInput === "CLONER") {
+          output.error("CLONER is gone. Copying is a grade on the Space now:\n  ideaspaces share invite <email> --grade fork");
+          return 1;
+        }
+        const role = roleInput;
+        if (!LEGACY_ROLES.includes(role)) {
+          output.error(`--role must be one of: ${LEGACY_ROLES.join(", ")}`);
           return 1;
         }
         const res = await createRepoInvites(config, repoId, emails, role);
@@ -13974,19 +14557,25 @@ copy: ${a.copy_access}`);
       output.error("Session expired. Run `ideaspaces login`.");
       return 1;
     }
-    output.error(err instanceof Error ? err.message : String(err));
+    output.error(describeShareRefusal(err) ?? (err instanceof Error ? err.message : String(err)));
     return 1;
   }
 }
 var shareCommand = {
   name: "share",
-  description: "Manage repo access \u2014 members, invites, and the public-link policy",
+  description: "Share a Space with someone, and manage who has it",
   usage: USAGE7,
   examples: [
+    "ideaspaces share invite someone@example.com",
+    "ideaspaces share invite someone@example.com --grade fork",
+    "ideaspaces share invite someone@example.com --grade collaborate --history",
+    "ideaspaces share unshare someone@example.com",
+    "ideaspaces share people --json",
+    "ideaspaces share legacy-invite repo_abc a@x.com --role MEMBER",
     "ideaspaces share access repo_abc --json",
     "ideaspaces share set-access repo_abc --public true --copy reader",
     "ideaspaces share members repo_abc --json",
-    "ideaspaces share invite repo_abc a@x.com b@x.com --role MEMBER",
+    "ideaspaces share invites repo_abc",
     "ideaspaces share revoke repo_abc inv_123"
   ],
   async run(args2, flags2, global2) {
@@ -13997,13 +14586,13 @@ var shareCommand = {
 };
 
 // dist/auth/session-state.js
-import { existsSync as existsSync12, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync13, unlinkSync as unlinkSync2 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
-import { join as join16 } from "node:path";
-var SESSION_FILE = join16(homedir3(), ".ideaspaces", "session.json");
+import { join as join17 } from "node:path";
+var SESSION_FILE = join17(homedir3(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
-    if (existsSync12(SESSION_FILE))
+    if (existsSync13(SESSION_FILE))
       unlinkSync2(SESSION_FILE);
   } catch {
   }
@@ -14024,22 +14613,22 @@ var logoutCommand = {
 };
 
 // dist/pi/pi-status.js
-import { spawnSync as spawnSync6 } from "node:child_process";
-import { existsSync as existsSync14, readFileSync as readFileSync6 } from "node:fs";
-import { basename as basename4, join as join18 } from "node:path";
+import { spawnSync as spawnSync7 } from "node:child_process";
+import { existsSync as existsSync15, readFileSync as readFileSync7 } from "node:fs";
+import { basename as basename4, join as join19 } from "node:path";
 
 // dist/pi/pi-auth.js
-import { chmodSync, existsSync as existsSync13, mkdirSync as mkdirSync3, readFileSync as readFileSync5, writeFileSync as writeFileSync4 } from "node:fs";
+import { chmodSync, existsSync as existsSync14, mkdirSync as mkdirSync4, readFileSync as readFileSync6, writeFileSync as writeFileSync5 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
-import { dirname as dirname5, join as join17 } from "node:path";
+import { dirname as dirname6, join as join18 } from "node:path";
 function resolvePiAgentDir(env = process.env) {
   const override = env.PI_CODING_AGENT_DIR?.trim();
   if (override)
-    return override.startsWith("~") ? join17(homedir4(), override.slice(1)) : override;
-  return join17(homedir4(), ".pi", "agent");
+    return override.startsWith("~") ? join18(homedir4(), override.slice(1)) : override;
+  return join18(homedir4(), ".pi", "agent");
 }
 function resolvePiAuthPath(env = process.env) {
-  return join17(resolvePiAgentDir(env), "auth.json");
+  return join18(resolvePiAgentDir(env), "auth.json");
 }
 function parseAuth(raw) {
   if (!raw || !raw.trim())
@@ -14062,15 +14651,15 @@ function removeProvider(current, provider) {
   return { next, removed: true };
 }
 function readAuthFile(path) {
-  if (!existsSync13(path))
+  if (!existsSync14(path))
     return {};
-  return parseAuth(readFileSync5(path, "utf8"));
+  return parseAuth(readFileSync6(path, "utf8"));
 }
 function writeAuthFile(path, auth) {
-  const dir = dirname5(path);
-  if (!existsSync13(dir))
-    mkdirSync3(dir, { recursive: true, mode: 448 });
-  writeFileSync4(path, `${JSON.stringify(auth, null, 2)}
+  const dir = dirname6(path);
+  if (!existsSync14(dir))
+    mkdirSync4(dir, { recursive: true, mode: 448 });
+  writeFileSync5(path, `${JSON.stringify(auth, null, 2)}
 `, { encoding: "utf8", mode: 384 });
   chmodSync(path, 384);
 }
@@ -14096,25 +14685,25 @@ function derivePiStatus(input) {
 function resolveExtension(path) {
   const name = basename4(path.replace(/[/\\]+$/, "")) || path;
   const check = (resolvable) => ({ name, path, resolvable });
-  if (!existsSync14(path))
+  if (!existsSync15(path))
     return check(false);
   if (/\.[cm]?[jt]s$/.test(path))
     return check(true);
-  const pkgPath = join18(path, "package.json");
-  if (existsSync14(pkgPath)) {
+  const pkgPath = join19(path, "package.json");
+  if (existsSync15(pkgPath)) {
     try {
-      const pkg = JSON.parse(readFileSync6(pkgPath, "utf8"));
+      const pkg = JSON.parse(readFileSync7(pkgPath, "utf8"));
       const exts = pkg.pi?.extensions;
       if (Array.isArray(exts) && exts.length > 0)
         return check(true);
     } catch {
     }
   }
-  return check(existsSync14(join18(path, "index.ts")) || existsSync14(join18(path, "index.js")));
+  return check(existsSync15(join19(path, "index.ts")) || existsSync15(join19(path, "index.js")));
 }
 function probeBinary(piBin) {
   try {
-    const res = spawnSync6(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
+    const res = spawnSync7(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
     if (res.error || res.status !== 0)
       return { present: false, path: piBin, version: null };
     const m = /\d+\.\d+\.\d+[\w.-]*/.exec(res.stdout ?? "");
@@ -14247,7 +14836,7 @@ function trimModel(m) {
 var QUERY_ID = "__models";
 var TIMEOUT_MS = 2e4;
 function queryPiModels(piBin) {
-  return new Promise((resolve18, reject) => {
+  return new Promise((resolve19, reject) => {
     const pi = spawn2(piBin, ["--mode", "rpc", "--no-extensions"], {
       cwd: process.cwd(),
       stdio: ["pipe", "pipe", "pipe"]
@@ -14293,7 +14882,7 @@ function queryPiModels(piBin) {
         }
         const data = msg.data;
         const models = (data?.models ?? []).map(trimModel);
-        finish(() => resolve18({ models }));
+        finish(() => resolve19({ models }));
       }
     });
     try {
@@ -14332,12 +14921,12 @@ var piModelsCommand = {
 };
 
 // dist/pi/local-conversation-ops.js
-import { join as join21 } from "node:path";
+import { join as join22 } from "node:path";
 
 // dist/pi/local-agent.js
 import { spawn as spawn3 } from "node:child_process";
-import { existsSync as existsSync15, mkdirSync as mkdirSync4, writeFileSync as writeFileSync5 } from "node:fs";
-import { join as join19 } from "node:path";
+import { existsSync as existsSync16, mkdirSync as mkdirSync5, writeFileSync as writeFileSync6 } from "node:fs";
+import { join as join20 } from "node:path";
 import readline from "node:readline";
 
 // node_modules/@ideaspaces/sdk/dist/keeper-events.js
@@ -14529,10 +15118,10 @@ function deriveConversationName(message) {
   return clean.length > 60 ? `${clean.slice(0, 57)}\u2026` : clean;
 }
 function ensureSessionDir(dir) {
-  mkdirSync4(dir, { recursive: true });
-  const ignore = join19(dir, ".gitignore");
-  if (!existsSync15(ignore))
-    writeFileSync5(ignore, "*\n");
+  mkdirSync5(dir, { recursive: true });
+  const ignore = join20(dir, ".gitignore");
+  if (!existsSync16(ignore))
+    writeFileSync6(ignore, "*\n");
 }
 function buildPiArgs(opts) {
   const args2 = [
@@ -14652,11 +15241,11 @@ async function* runLocalTurn(opts) {
 }
 
 // dist/pi/local-conversations.js
-import { existsSync as existsSync16, readdirSync as readdirSync2, readFileSync as readFileSync7, statSync as statSync5 } from "node:fs";
+import { existsSync as existsSync17, readdirSync as readdirSync2, readFileSync as readFileSync8, statSync as statSync5 } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { join as join20 } from "node:path";
+import { join as join21 } from "node:path";
 function localSessionDir(contextRoot) {
-  return join20(contextRoot, ".pi", "sessions");
+  return join21(contextRoot, ".pi", "sessions");
 }
 function mintConversationId() {
   return `local-${randomUUID()}`;
@@ -14733,17 +15322,17 @@ function parseSessionJsonl(text, fallbackTs) {
   return { id, name, messages, messageCount: count, preview, updatedAt: lastTs };
 }
 function findSessionFile(dir, convId) {
-  if (!existsSync16(dir))
+  if (!existsSync17(dir))
     return null;
   const files = readdirSync2(dir).filter((f) => f.endsWith(".jsonl"));
   const bySuffix = files.find((f) => f.endsWith(`_${convId}.jsonl`));
   if (bySuffix)
-    return join20(dir, bySuffix);
+    return join21(dir, bySuffix);
   for (const f of files) {
     try {
-      const first = readFileSync7(join20(dir, f), "utf8").split("\n", 1)[0];
+      const first = readFileSync8(join21(dir, f), "utf8").split("\n", 1)[0];
       if (JSON.parse(first).id === convId)
-        return join20(dir, f);
+        return join21(dir, f);
     } catch {
     }
   }
@@ -14755,7 +15344,7 @@ function getLocalConversation(contextRoot, convId) {
     return { conversation_id: convId, repo_id: contextRoot, name: "", history: [], active_turn: null };
   }
   const mtime = statSync5(file).mtime.toISOString();
-  const s = parseSessionJsonl(readFileSync7(file, "utf8"), mtime);
+  const s = parseSessionJsonl(readFileSync8(file, "utf8"), mtime);
   return {
     conversation_id: convId,
     repo_id: contextRoot,
@@ -14768,14 +15357,14 @@ function getLocalConversation(contextRoot, convId) {
 }
 function listLocalConversations(contextRoot) {
   const dir = localSessionDir(contextRoot);
-  if (!existsSync16(dir))
+  if (!existsSync17(dir))
     return { conversations: [], total: 0 };
   const summaries = [];
   for (const f of readdirSync2(dir).filter((f2) => f2.endsWith(".jsonl"))) {
-    const path = join20(dir, f);
+    const path = join21(dir, f);
     let text;
     try {
-      text = readFileSync7(path, "utf8");
+      text = readFileSync8(path, "utf8");
     } catch {
       continue;
     }
@@ -14818,7 +15407,7 @@ async function send(flags2, output) {
   }
   const skillPaths = parseCommaList(flags2.skill, process.env.IDEASPACES_PI_SKILLS);
   const repoPath = typeof flags2.context === "string" ? flags2.context : process.cwd();
-  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join21(repoPath, ".pi", "sessions");
+  const sessionDir = typeof flags2["session-dir"] === "string" ? flags2["session-dir"] : join22(repoPath, ".pi", "sessions");
   const conversationId = typeof flags2.conversation === "string" ? flags2.conversation : `local-${Date.now().toString(36)}`;
   const modelTier = typeof flags2["model-tier"] === "string" ? flags2["model-tier"] : "local";
   const piModel = typeof flags2["pi-model"] === "string" ? flags2["pi-model"] : void 0;
@@ -14905,6 +15494,7 @@ var topLevel = [
   piLogoutCommand,
   cloneCommand,
   forkCommand,
+  updateCommand,
   clonesCommand,
   linkCommand,
   forgetCommand,
