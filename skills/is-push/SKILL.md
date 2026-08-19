@@ -1,15 +1,18 @@
 ---
 name: is-push
 description: >
-  Push an ideaspace when the user says push, share, send, or publish current
-  state. Push sends your committed captures to the remote; it never pulls. If
-  you are behind the remote, pull first. Capture first if changes aren't committed.
+  Push an ideaspace when the user asks to push, sync, or send committed captures
+  to its existing remote. Push never changes recipients or public visibility;
+  use is-share for those requests. If you are behind, pull first. Capture first
+  if changes aren't committed.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_push mcp__plugin_ideaspaces_core__is_pull mcp__plugin_ideaspaces_core__is_auth Read Bash"
 ---
 
 # Push
 
 Push sends your committed captures to the remote. It is one direction across the agreement boundary — it never integrates others' work in.
+
+Push is not access sharing. Requests to share with a person or team, inspect recipients, or change public/private visibility belong to **is-share**.
 
 ## Rule
 

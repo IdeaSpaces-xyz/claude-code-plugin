@@ -3,8 +3,8 @@ name: is-space
 description: >
   Reference for working in an ideaspace — the five-file `_agent/` contract,
   Two Roles convention, and Claude plugin tool surface. Use when the user asks
-  how an ideaspace works. For active intents, prefer the loop skills:
-  is-orient, is-capture, is-push, is-pull, is-reflect, and is-shape.
+  how an ideaspace works. For active intents, prefer is-orient, is-capture,
+  is-share, is-push, is-pull, is-reflect, and is-shape.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_navigate mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_push mcp__plugin_ideaspaces_core__is_pull mcp__plugin_ideaspaces_core__is_auth Read Glob Grep Edit Write Bash"
 ---
 
@@ -21,6 +21,7 @@ arrive → orient → inspect → act → capture → push/pull → reflect
 The plugin handles **arrive** automatically with SessionStart awareness. For active work, pick the intent skill by tier:
 
 - **Daily loop** — `is-orient`, `is-capture`, `is-push` / `is-pull`, `is-reflect`.
+- **Access** — `is-share` for people, teams, and public/private visibility.
 - **Space lifecycle** — `is-setup`, `is-publish`, `is-shape`.
 - **Reference** — `is-space`, `is-writing`.
 
@@ -137,4 +138,5 @@ To host a space remotely after login, use `/is-publish` or run `ideaspaces publi
 - **is-writing** — quality standard for summaries, sections, entities
 - **is-setup** — conversational layer over `ideaspaces create` for a new or existing space
 - **is-shape** — create `_agent/` primitives and perspectives
-- **is-push** / **is-pull** — share or integrate committed captures
+- **is-share** — manage people, teams, and public/private visibility without exposing backend coordinates
+- **is-push** / **is-pull** — send or integrate committed captures
