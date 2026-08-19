@@ -100,9 +100,10 @@ Once installed, just start working — the plugin orients your agent at the star
   node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create my-space --yes
   ```
 - **Capture as you go** — when a decision or insight lands, the agent proposes writing it down. You confirm.
-- **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device or share it with your team. Optional; everything works fully offline without it.
+- **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device. Optional; everything works fully offline without it.
+- **Choose who can use it** — say *"share this with alice@example.com for Explore"*, *"share with team acme.com for Collaborate"*, or *"make this public"* (`/is-share`).
 
-Seven skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-shape`, `is-space`, `is-publish`, `is-push`, `is-pull`.
+Eight skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-shape`, `is-space`, `is-publish`, `is-share`, `is-push`, `is-pull`.
 
 Three more run on the agent's initiative rather than yours, so they won't appear in that menu: `is-capture` offers to write a Note when something crystallizes, `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how Notes get written. You reach them by saying what you want — *"capture this"*, *"has our direction changed?"* — not by typing a command.
 
@@ -134,6 +135,7 @@ The skills invoke this CLI; no global npm install is required.
 | `ideaspaces skills [<name>]` | List the skill catalog, or print one skill's markdown. |
 | `ideaspaces login` | Save optional remote credentials. |
 | `ideaspaces publish` | Create/reuse a remote IdeaSpaces repo and push the current branch. |
+| `ideaspaces share person|team|list|remove|visibility` | Manage recipients, Explore/Fork/Collaborate grades, and public/private visibility. |
 
 `publish` preflights tracked markdown frontmatter before pushing.
 
@@ -156,7 +158,7 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 
 Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
 
-MCP stays thin: portable local reads use the protocol in-process, while platform and write verbs shell the bundled CLI with `--json`. Shared shape stays in the protocol; harness lifecycle and presentation stay on the surface.
+MCP stays thin: portable local reads use the protocol in-process, while platform and write verbs shell the bundled CLI with `--json`. Shared shape stays in the protocol; harness lifecycle and presentation stay on the surface. Share is intentionally CLI-backed through `is-share` in this release; there is no native `is_share` tool.
 
 ### Skills
 
@@ -167,6 +169,7 @@ User-invocable (they appear when you type `/`):
 - **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
 - **is-publish** — conversational layer over `ideaspaces publish`
+- **is-share** — manage people, teams, Explore/Fork/Collaborate grades, and public/private visibility
 - **is-push** — send committed captures to the remote
 - **is-pull** — integrate remote changes into the local space
 
