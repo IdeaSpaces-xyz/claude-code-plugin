@@ -77,9 +77,50 @@ flipping them is what "fixed" means. Understand, fork, and know-if-current are a
 state; make-a-space and see-my-spaces are expected weak, matching on our vocabulary rather
 than the person's.
 
+## Baseline — 2026-08-20
+
+First real run. `node evals/trigger-eval.mjs --runs 3 --arm with`, worktree plugin via
+`--plugin-dir`, 63 invocations.
+
+**7 pass · 8 fail · 6 gap.**
+
+| Skill | Fires on a person's words? |
+|---|---|
+| `is-setup` | **yes** — 4/4 where expected. The only description doing real work. It also over-reaches into fork and "what is this", which is a description-boundary problem, not a bad one. |
+| `is-capture` | **never** — 0/6 across both phrasings |
+| `is-orient` | never |
+| `is-share` | never — 0/6 |
+| `is-publish` | never |
+| negatives | **3/3 correct.** Nothing over-fires on adjacent asks. |
+
+The gap rows behaved as predicted: no skill exists for understand, fork, or know-if-current,
+and two of them pulled `is-setup` instead — the wrong-thing-fired case the trigger indicator
+exists to surface.
+
+**Three hypotheses for the `is-capture` failure, all killed by test:**
+
+1. *Not reachable.* Wrong — `Skill{skill: ideaspaces:is-capture}` invokes it fine when named.
+2. *`--plugin-dir` loads differently from a marketplace install.* Wrong — the installed plugin
+   shows the same roster.
+3. *`user-invocable: false` hides it from discovery.* It **does** — removing the line makes it
+   appear in the init `skills` roster. But with it visible, the implicit cases still fired
+   nothing. Not the cause.
+
+What is left is the plain reading: the description does not match how a person asks. That was
+the thesis, and it is now measured rather than argued.
+
+Worth keeping anyway: **`user-invocable: false` removes a skill from the discovery roster.**
+`is-capture`, `is-reflect`, and `is-writing` all carry it, so all three are invisible until
+named. For `is-capture` that stacks two problems.
+
 ## Status
 
-**Not yet piloted.** `claude plugin eval` is in early access and not enabled on our account,
+**The trigger half runs today.** Outcome grading does not — `claude plugin eval` is in early
+access and not enabled on our account, so the `llm` rubrics in `rubrics/` are still
+uncalibrated predictions. The two halves are complementary: this harness answers *did the
+right skill fire*, the case files answer *was the answer any good*.
+
+**Not yet piloted (outcome half).** `claude plugin eval` is in early access and not enabled on our account,
 so every grader here is an uncalibrated prediction — written against the analysis, never run.
 
 Piloting is a gate, not a formality: run the suite, read every judge verdict, ask whether any
