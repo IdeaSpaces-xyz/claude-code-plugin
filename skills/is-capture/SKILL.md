@@ -1,12 +1,13 @@
 ---
 name: is-capture
 description: >
-  Preserve agreed understanding in the ideaspace when the user says capture,
-  remember, save this, write this into the space, or when a decision/finding has
-  crystallized. The skill chooses the mechanism: `is_write` for Notes, native
-  edits for existing docs/specs, then `is_commit` for the agreement boundary.
+  Write something down so it is not lost — a decision, a finding, a piece of
+  context worth keeping. Use when someone says write this down, note this, save
+  this, keep this somewhere, don't let me forget, remember this, put this in my
+  notes, or add this to the knowledge base; or when a decision has just been made
+  that would be expensive to relitigate. Not for saving an ordinary source or
+  config file — that is a plain file write.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_push mcp__plugin_ideaspaces_core__is_pull ToolSearch Read Glob Grep Edit Write Bash"
-user-invocable: false
 ---
 
 # Capture
