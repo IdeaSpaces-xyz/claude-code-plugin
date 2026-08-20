@@ -91,12 +91,22 @@ for (const row of rows) {
   planned.set(row.id, files);
 }
 
-// Generated case dirs are exactly the ids in the roster; anything else that
-// looks like a case dir is stale and gets reported.
+// A stale case dir is one this script generated and the roster no longer names.
+// Identify by shape — it must contain a prompt.md — never by "is a directory".
+// Removing on the looser test once deleted the results/ tree, which is exactly
+// the class of accident an eval harness must not have.
 const entries = await readdir(here, { withFileTypes: true });
-const existing = entries
-  .filter((e) => e.isDirectory() && e.name !== "rubrics")
-  .map((e) => e.name);
+const RESERVED = new Set(["rubrics", "results"]);
+const existing = [];
+for (const e of entries) {
+  if (!e.isDirectory() || RESERVED.has(e.name)) continue;
+  try {
+    await stat(join(here, e.name, "prompt.md"));
+    existing.push(e.name);
+  } catch {
+    // No prompt.md — not ours. Leave it alone.
+  }
+}
 
 const created = [], updated = [], removed = [];
 

@@ -31,6 +31,28 @@ suite exists to catch, and there is no reason to be vulnerable to it ourselves.
 Outcome rubrics live once per job in [`rubrics/`](rubrics/) and are shared by every phrasing
 of that job — what changes across types is the prompt, not what a good answer looks like.
 
+## Two audiences, and only one of them is measured here
+
+A skill can face the person or the agent, and the difference decides whether this
+suite has anything to say about it.
+
+| | Fires from | Description written for | Measured here |
+|---|---|---|---|
+| **user-intent** — is-setup, is-share, is-publish, is-push, is-pull, is-shape | what a person says | the person's words | yes |
+| **agent machinery** — is-orient, is-reflect, is-writing | the agent's own state | the agent's situation | **no** |
+| **both** — is-capture | either | both | yes, with care |
+
+`is-orient` is how the agent assembles awareness — it fires when the agent has lost
+its footing, not because someone asked a question. Scoring it against user phrasings
+produced a failure that was not a failure, and would have led to rewriting a
+description away from its actual job. `is-reflect` and `is-writing` are the same kind
+of thing and carry `user-invocable: false` to say so; `is-orient` does not, which is
+part of why the roster got it wrong.
+
+**A user phrasing that only an agent-machinery skill could serve is an unserved
+intention, not a passing one.** "What has recently happened here" is a real thing
+people say and it has no user-facing answer — it is counted as a gap.
+
 ## The four types
 
 From [OpenAI's skill-eval method](https://developers.openai.com/blog/eval-skills), which

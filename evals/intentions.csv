@@ -9,7 +9,7 @@ explicit-create-a-space,make-a-space,explicit,TRUE,is-setup,,Run ideaspaces crea
 implicit-save-what-we-decided,capture,implicit,TRUE,is-capture,mcp__plugin_ideaspaces_core__is_write,"We just worked out that we're going with the vendored-bundle approach instead of an npm dependency, because the install has to work with no network. Write that down somewhere it won't get lost."
 contextual-save-what-we-decided,capture,contextual,TRUE,is-capture,mcp__plugin_ideaspaces_core__is_write,We've gone round on this for an hour and I keep losing the thread. Before I forget — the reason we're not using the npm dep is the offline install. Keep that somewhere.
 implicit-what-do-i-have-access-to,see-my-spaces,implicit,TRUE,is-setup,mcp__plugin_ideaspaces_core__is_spaces,What have I got access to? I can't remember what's mine and what someone shared with me.
-implicit-am-i-oriented,orient,implicit,TRUE,is-orient,mcp__plugin_ideaspaces_core__is_navigate,Remind me where we are and what we were doing here.
+implicit-am-i-oriented,orient,implicit,TRUE,(none today),mcp__plugin_ideaspaces_core__is_navigate,Remind me where we are and what we were doing here.
 implicit-make-my-own-copy,fork,implicit,TRUE,(none today),,Someone sent me a link to their space and said I should make it my own and change it however I want. How do I get my own copy?
 contextual-make-my-own-copy,fork,contextual,TRUE,(none today),,I want to use their guide as a starting point but I'll be rewriting most of it and I don't want my edits going back to them. What's the right way to take it?
 explicit-fork-a-space,fork,explicit,TRUE,(none today),,Fork this space for me.
@@ -36,7 +36,7 @@ implicit-good-insights,capture,implicit,TRUE,is-capture,,"These are good insight
 implicit-commit,capture,implicit,TRUE,is-capture,,Commit
 implicit-which-repos-access,see-my-spaces,implicit,TRUE,is-setup,mcp__plugin_ideaspaces_core__is_spaces,What are knowledge repos I have access to
 implicit-team-repos,see-my-spaces,implicit,TRUE,is-setup,mcp__plugin_ideaspaces_core__is_spaces,What are the team repos I can see and work with
-implicit-what-happened-here,orient,implicit,TRUE,is-orient,,What has recently happened here
+implicit-what-happened-here,orient,implicit,TRUE,(none today),,What has recently happened here
 implicit-copy-this-space-url,fork,implicit,TRUE,(none today),,I would like to copy this space https://ideaspaces.xyz/s/acme-guide
 implicit-lets-make-a-copy,fork,implicit,TRUE,(none today),,Lets make a copy of this
 implicit-anything-new,know-if-current,implicit,TRUE,(none today),,Lets check if there is anything new
