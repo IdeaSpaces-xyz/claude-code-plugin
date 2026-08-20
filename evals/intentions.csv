@@ -1,22 +1,48 @@
 id,job,type,should_trigger,expected_skill,expected_tool,prompt
-implicit-learn-what-this-is,understand,implicit,TRUE,(none today),,"I just installed this ideaspaces thing. What is it, and what sort of stuff can I actually ask you to do with it?"
-contextual-learn-what-this-is,understand,contextual,TRUE,(none today),,"A colleague told me to install this and said it'd help me stop losing context between sessions. It's installed. Now what?"
-implicit-want-an-assistant,make-an-agent,implicit,TRUE,is-setup,,"I'd like to set up an assistant with its own personality that remembers how I like to work. Can you help me do that here?"
-explicit-want-an-agent,make-an-agent,explicit,TRUE,is-setup,,"Use is-setup to create an agent here called scribe."
-implicit-want-a-knowledge-base,make-a-space,implicit,TRUE,is-setup,,"I want to start building up a knowledge base about my customers — somewhere everything we learn about them accumulates instead of getting lost in chats. Where do I start?"
-contextual-want-a-knowledge-base,make-a-space,contextual,TRUE,is-setup,,"Every time I onboard someone I re-explain the same six things about how our billing works. I want that written down somewhere that keeps growing. Can we do that here?"
-explicit-create-a-space,make-a-space,explicit,TRUE,is-setup,,"Run ideaspaces create here to set up a space."
+implicit-learn-what-this-is,understand,implicit,TRUE,is-space,,"I just installed this ideaspaces thing. What is it, and what sort of stuff can I actually ask you to do with it?"
+contextual-learn-what-this-is,understand,contextual,TRUE,is-space,,A colleague told me to install this and said it'd help me stop losing context between sessions. It's installed. Now what?
+implicit-want-an-assistant,make-an-agent,implicit,TRUE,is-setup,,I'd like to set up an assistant with its own personality that remembers how I like to work. Can you help me do that here?
+explicit-want-an-agent,make-an-agent,explicit,TRUE,is-setup,,Use is-setup to create an agent here called scribe.
+implicit-want-a-knowledge-base,make-a-space,implicit,TRUE,is-setup,,I want to start building up a knowledge base about my customers — somewhere everything we learn about them accumulates instead of getting lost in chats. Where do I start?
+contextual-want-a-knowledge-base,make-a-space,contextual,TRUE,is-setup,,Every time I onboard someone I re-explain the same six things about how our billing works. I want that written down somewhere that keeps growing. Can we do that here?
+explicit-create-a-space,make-a-space,explicit,TRUE,is-setup,,Run ideaspaces create here to set up a space.
 implicit-save-what-we-decided,capture,implicit,TRUE,is-capture,mcp__plugin_ideaspaces_core__is_write,"We just worked out that we're going with the vendored-bundle approach instead of an npm dependency, because the install has to work with no network. Write that down somewhere it won't get lost."
-contextual-save-what-we-decided,capture,contextual,TRUE,is-capture,mcp__plugin_ideaspaces_core__is_write,"We've gone round on this for an hour and I keep losing the thread. Before I forget — the reason we're not using the npm dep is the offline install. Keep that somewhere."
-implicit-what-do-i-have-access-to,see-my-spaces,implicit,TRUE,is-setup,mcp__plugin_ideaspaces_core__is_spaces,"What have I got access to? I can't remember what's mine and what someone shared with me."
-implicit-am-i-oriented,orient,implicit,TRUE,is-orient,mcp__plugin_ideaspaces_core__is_navigate,"Remind me where we are and what we were doing here."
-implicit-make-my-own-copy,fork,implicit,TRUE,(none today),,"Someone sent me a link to their space and said I should make it my own and change it however I want. How do I get my own copy?"
-contextual-make-my-own-copy,fork,contextual,TRUE,(none today),,"I want to use their guide as a starting point but I'll be rewriting most of it and I don't want my edits going back to them. What's the right way to take it?"
-explicit-fork-a-space,fork,explicit,TRUE,(none today),,"Fork this space for me."
-implicit-am-i-current,know-if-current,implicit,TRUE,(none today),,"Has anything changed here since I last looked? I don't want to keep reading this if it's out of date."
+contextual-save-what-we-decided,capture,contextual,TRUE,is-capture,mcp__plugin_ideaspaces_core__is_write,We've gone round on this for an hour and I keep losing the thread. Before I forget — the reason we're not using the npm dep is the offline install. Keep that somewhere.
+implicit-what-do-i-have-access-to,see-my-spaces,implicit,TRUE,is-setup,mcp__plugin_ideaspaces_core__is_spaces,What have I got access to? I can't remember what's mine and what someone shared with me.
+implicit-am-i-oriented,orient,implicit,TRUE,is-orient,mcp__plugin_ideaspaces_core__is_navigate,Remind me where we are and what we were doing here.
+implicit-make-my-own-copy,fork,implicit,TRUE,(none today),,Someone sent me a link to their space and said I should make it my own and change it however I want. How do I get my own copy?
+contextual-make-my-own-copy,fork,contextual,TRUE,(none today),,I want to use their guide as a starting point but I'll be rewriting most of it and I don't want my edits going back to them. What's the right way to take it?
+explicit-fork-a-space,fork,explicit,TRUE,(none today),,Fork this space for me.
+implicit-am-i-current,know-if-current,implicit,TRUE,(none today),,Has anything changed here since I last looked? I don't want to keep reading this if it's out of date.
 implicit-let-someone-see-it,give-access,implicit,TRUE,is-share,,"Can you let anna@example.com see this? She only needs to read it, not change anything."
-contextual-let-someone-see-it,give-access,contextual,TRUE,is-share,,"Anna's joining the project Monday and needs to get up to speed on this before then. She won't be editing."
-implicit-put-it-online,publish,implicit,TRUE,is-publish,,"I want to get at this from my laptop too. Can you put it somewhere I can reach it from anywhere?"
-negative-plain-code-request,none,negative,FALSE,,,"This blows up when the account has no owner yet: `function ownerEmail(account) { return account.owner.email.toLowerCase(); }` — fix it."
-negative-push-a-branch,none,negative,FALSE,,,"Push my branch to origin so CI picks it up."
-negative-save-a-file,none,negative,FALSE,,,"Save this config to vite.config.ts."
+contextual-let-someone-see-it,give-access,contextual,TRUE,is-share,,Anna's joining the project Monday and needs to get up to speed on this before then. She won't be editing.
+implicit-put-it-online,publish,implicit,TRUE,is-publish,,I want to get at this from my laptop too. Can you put it somewhere I can reach it from anywhere?
+negative-plain-code-request,none,negative,FALSE,,,This blows up when the account has no owner yet: `function ownerEmail(account) { return account.owner.email.toLowerCase(); }` — fix it.
+negative-push-a-branch,none,negative,FALSE,,,Push my branch to origin so CI picks it up.
+negative-save-a-file,none,negative,FALSE,,,Save this config to vite.config.ts.
+implicit-what-can-i-do,understand,implicit,TRUE,is-space,,What can I do here?
+implicit-how-can-you-help,understand,implicit,TRUE,is-space,,How can you help me
+implicit-how-does-it-work,understand,implicit,TRUE,is-space,,Can you tell me how IdeaSpaces work
+implicit-what-do-i-need,run-requirements,implicit,TRUE,(none today),,What do I need to run IdeaSpaces
+implicit-executive-assistant,make-an-agent,implicit,TRUE,is-setup,,I need an executive assistant
+implicit-sales-agent,make-an-agent,implicit,TRUE,is-setup,,I’m working on sales agent
+implicit-a-critique,make-an-agent,implicit,TRUE,is-setup,,I need critique who would help me work on my plan
+implicit-recipes-kb,make-a-space,implicit,TRUE,is-setup,,I’m building my knowledge base about recepies
+implicit-team-kpis,make-a-space,implicit,TRUE,is-setup,,I need to create a repository for my teams KPI's
+implicit-transcript-vault,make-a-space,implicit,TRUE,is-setup,,I need a vault for my call transcripts
+implicit-small-crm,make-a-space,implicit,TRUE,is-setup,,I’m building small CRM
+implicit-lets-save,capture,implicit,TRUE,is-capture,,Lets save
+implicit-good-insights,capture,implicit,TRUE,is-capture,,"These are good insights, we should capture this"
+implicit-commit,capture,implicit,TRUE,is-capture,,Commit
+implicit-which-repos-access,see-my-spaces,implicit,TRUE,is-setup,mcp__plugin_ideaspaces_core__is_spaces,What are knowledge repos I have access to
+implicit-team-repos,see-my-spaces,implicit,TRUE,is-setup,mcp__plugin_ideaspaces_core__is_spaces,What are the team repos I can see and work with
+implicit-what-happened-here,orient,implicit,TRUE,is-orient,,What has recently happened here
+implicit-copy-this-space-url,fork,implicit,TRUE,(none today),,I would like to copy this space https://ideaspaces.xyz/s/acme-guide
+implicit-lets-make-a-copy,fork,implicit,TRUE,(none today),,Lets make a copy of this
+implicit-anything-new,know-if-current,implicit,TRUE,(none today),,Lets check if there is anything new
+implicit-any-updates,know-if-current,implicit,TRUE,(none today),,Are there any updates
+implicit-are-we-up-to-date,know-if-current,implicit,TRUE,(none today),,Are we up to date
+implicit-share-with-team,give-access,implicit,TRUE,is-share,,I would like to share this repository with my team
+implicit-share-with-two-people,give-access,implicit,TRUE,is-share,,I would like to share this with martins@abill.io and anna@abillio.io
+implicit-make-public-forkable,give-access,implicit,TRUE,is-share,,I would like to make this public and allow others to copy this space
+implicit-publish-for-team,publish,implicit,TRUE,is-publish,,lets publish this for my team

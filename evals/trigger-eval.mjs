@@ -30,6 +30,7 @@ const RUNS = Number(arg("runs", 3));
 const CONCURRENCY = Number(arg("concurrency", 4));
 const CASE_GLOB = arg("case", "*");
 const ARM = arg("arm", "both");
+const JOB = arg("job", null);
 const MODEL = arg("model", null);
 
 // Read-only. A fired skill self-grants its own allowed-tools, which is why
@@ -153,15 +154,18 @@ function verdict(row, fired) {
   const want = norm(row.expected_skill);
   const right = fired.filter((f) => norm(f) === want).length / fired.length;
   if (right >= 0.5) return { state: "pass", rate: right, note: "" };
-  if (rate > 0) {
-    const others = [...new Set(fired.filter(Boolean).map(norm))].join(", ");
-    return { state: "fail", rate: right, note: `wrong skill fired: ${others}` };
-  }
+  // The right skill firing on some runs is a marginal match, not a wrong one.
+  // Collapsing the two hides the cheapest fixes: a description that already
+  // half-works needs different work from one that never fires at all.
+  if (right > 0) return { state: "flaky", rate: right, note: `right skill, ${Math.round(right * fired.length)}/${fired.length} runs` };
+  const others = [...new Set(fired.filter(Boolean).map(norm))];
+  if (others.length) return { state: "fail", rate: 0, note: `wrong skill: ${others.join(", ")}` };
   return { state: "fail", rate: 0, note: "nothing fired" };
 }
 
 const rows = parseCsv(await readFile(join(here, "intentions.csv"), "utf-8"))
-  .filter((r) => globToRe(CASE_GLOB).test(r.id));
+  .filter((r) => globToRe(CASE_GLOB).test(r.id))
+  .filter((r) => !JOB || r.job === JOB);
 const arms = ARM === "both" ? [true, false] : [ARM === "with"];
 
 console.log(`${rows.length} intentions x ${RUNS} runs x ${arms.length} arm(s) = ${rows.length * RUNS * arms.length} invocations\n`);
@@ -194,7 +198,7 @@ const results = rows.map((row) => {
   };
 });
 
-const mark = { pass: "PASS", fail: "FAIL", gap: "GAP " };
+const mark = { pass: "PASS ", fail: "FAIL ", flaky: "FLAKY", gap: "GAP  " };
 const pad = (s, n) => String(s).padEnd(n).slice(0, n);
 console.log(`${pad("case", 34)} ${pad("expected", 12)} ${pad("fired", 22)} result`);
 console.log("-".repeat(84));
@@ -205,7 +209,7 @@ for (const r of results) {
   );
 }
 const tally = results.reduce((a, r) => ({ ...a, [r.state]: (a[r.state] ?? 0) + 1 }), {});
-console.log(`\n${tally.pass ?? 0} pass · ${tally.fail ?? 0} fail · ${tally.gap ?? 0} gap (known, no skill exists)`);
+console.log(`\n${tally.pass ?? 0} pass · ${tally.flaky ?? 0} flaky · ${tally.fail ?? 0} fail · ${tally.gap ?? 0} gap (known, no skill exists)`);
 
 const out = join(here, "results", `${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 await writeFile(out, JSON.stringify({ runs: RUNS, arms: ARM, results }, null, 2)).catch(async () => {
