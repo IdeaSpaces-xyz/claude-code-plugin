@@ -14,7 +14,7 @@
 // otherwise let a fired skill write before its answer came back.
 
 import { spawn } from "node:child_process";
-import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
+import { readFile, writeFile, mkdtemp, rm, cp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,15 +32,17 @@ const CASE_GLOB = arg("case", "*");
 const ARM = arg("arm", "both");
 const JOB = arg("job", null);
 const MODEL = arg("model", null);
+const SPACE = arg("space", null); // seeded ideaspace copied into each run's cwd
 
-// Read-only. A fired skill self-grants its own allowed-tools, which is why
-// runs are killed on detection rather than trusted to stay inside this.
-const ALLOWED = [
-  "Read", "Glob", "Grep", "Skill",
-  "mcp__plugin_ideaspaces_core__is_status",
-  "mcp__plugin_ideaspaces_core__is_navigate",
-  "mcp__plugin_ideaspaces_core__is_spaces",
-];
+// The full plugin surface. Withholding the write tools made the Pi-shaped route
+// — reach the intention by calling is_write directly, no skill in between —
+// impossible, and then scored its absence as a failure. Runs happen in a
+// throwaway copy of a space and are killed the moment the route is visible.
+const IS_TOOLS = [
+  "is_status", "is_navigate", "is_spaces", "is_write", "is_commit",
+  "is_push", "is_pull", "is_auth", "is_clone",
+].map((t) => `mcp__plugin_ideaspaces_core__${t}`);
+const ALLOWED = ["Read", "Glob", "Grep", "Skill", "Bash", "Write", "Edit", ...IS_TOOLS];
 
 function parseCsv(text) {
   const rows = [];
@@ -71,6 +73,7 @@ const globToRe = (g) => new RegExp("^" + g.split("*").map((s) => s.replace(/[.*+
 function runOnce(prompt, withPlugin) {
   return new Promise(async (resolve) => {
     const cwd = await mkdtemp(join(tmpdir(), "is-eval-"));
+    if (SPACE) await cp(SPACE, cwd, { recursive: true });
     const args = [
       "-p", prompt,
       "--output-format", "stream-json", "--verbose", "--include-partial-messages",
@@ -81,14 +84,14 @@ function runOnce(prompt, withPlugin) {
 
     const child = spawn("claude", args, { cwd, stdio: ["ignore", "pipe", "ignore"] });
     const tools = new Set();
-    let skill = null, buf = "", done = false;
+    let skill = null, directTool = null, buf = "", done = false;
 
     const finish = () => {
       if (done) return;
       done = true;
       child.kill("SIGKILL");
       rm(cwd, { recursive: true, force: true }).catch(() => {});
-      resolve({ skill, tools: [...tools] });
+      resolve({ skill, directTool, tools: [...tools] });
     };
 
     // Belt and braces: a run that neither fires nor finishes is a failed run,
@@ -110,6 +113,11 @@ function runOnce(prompt, withPlugin) {
           if (block.name === "Skill" && !skill) {
             skill = block.input?.skill ?? block.input?.name ?? block.input?.command ?? "(unnamed)";
           }
+          // Reaching an is_* tool with no skill in between answers the
+          // intention. That is a route, not a miss — record it as its own.
+          if (!skill && !directTool && block.name?.startsWith("mcp__plugin_ideaspaces_core__")) {
+            directTool = block.name.replace("mcp__plugin_ideaspaces_core__", "");
+          }
         }
         // Early signal from partials — cheaper and cuts the run sooner.
         if (ev?.event?.type === "content_block_start" && ev.event.content_block?.type === "tool_use") {
@@ -119,7 +127,7 @@ function runOnce(prompt, withPlugin) {
           const m = /"(?:skill|name|command)"\s*:\s*"([^"]+)"/.exec(ev.event.delta.partial_json);
           if (m && tools.has("Skill")) skill = m[1];
         }
-        if (skill) { clearTimeout(timer); return finish(); }
+        if (skill || directTool) { clearTimeout(timer); return finish(); }
         if (ev?.type === "result") { clearTimeout(timer); return finish(); }
       }
     });
@@ -142,10 +150,13 @@ const norm = (s) => (s ?? "").replace(/^ideaspaces:/, "");
 // pass / fail / gap. A row whose expected_skill is "(none today)" has no right
 // answer to reach yet — scoring it as a failure would bury it in the same
 // bucket as a description that simply needs better words.
-function verdict(row, fired) {
+function verdict(row, fired, direct) {
   const hit = fired.filter(Boolean).length;
   const rate = fired.length ? hit / fired.length : 0;
+  const viaTool = direct.filter(Boolean).length / Math.max(direct.length, 1);
+  const toolNames = [...new Set(direct.filter(Boolean))].join(", ");
   if (row.expected_skill === "(none today)") {
+    if (viaTool >= 0.5) return { state: "tool", rate: viaTool, note: `no skill, served by ${toolNames}` };
     return { state: "gap", rate, note: "no skill exists for this intention" };
   }
   if (row.should_trigger !== "TRUE") {
@@ -158,6 +169,7 @@ function verdict(row, fired) {
   // Collapsing the two hides the cheapest fixes: a description that already
   // half-works needs different work from one that never fires at all.
   if (right > 0) return { state: "flaky", rate: right, note: `right skill, ${Math.round(right * fired.length)}/${fired.length} runs` };
+  if (viaTool >= 0.5) return { state: "tool", rate: viaTool, note: `skipped the skill, used ${toolNames}` };
   const others = [...new Set(fired.filter(Boolean).map(norm))];
   if (others.length) return { state: "fail", rate: 0, note: `wrong skill: ${others.join(", ")}` };
   return { state: "fail", rate: 0, note: "nothing fired" };
@@ -184,7 +196,7 @@ process.stderr.write("\n\n");
 const results = rows.map((row) => {
   const withRuns = raw.filter((x) => x.row.id === row.id && x.withPlugin);
   const baseRuns = raw.filter((x) => x.row.id === row.id && !x.withPlugin);
-  const v = verdict(row, withRuns.map((x) => x.skill));
+  const v = verdict(row, withRuns.map((x) => x.skill), withRuns.map((x) => x.directTool));
   return {
     id: row.id, job: row.job, type: row.type,
     expected_skill: row.expected_skill || null,
@@ -198,7 +210,7 @@ const results = rows.map((row) => {
   };
 });
 
-const mark = { pass: "PASS ", fail: "FAIL ", flaky: "FLAKY", gap: "GAP  " };
+const mark = { pass: "PASS ", fail: "FAIL ", flaky: "FLAKY", tool: "TOOL ", gap: "GAP  " };
 const pad = (s, n) => String(s).padEnd(n).slice(0, n);
 console.log(`${pad("case", 34)} ${pad("expected", 12)} ${pad("fired", 22)} result`);
 console.log("-".repeat(84));
@@ -209,7 +221,7 @@ for (const r of results) {
   );
 }
 const tally = results.reduce((a, r) => ({ ...a, [r.state]: (a[r.state] ?? 0) + 1 }), {});
-console.log(`\n${tally.pass ?? 0} pass · ${tally.flaky ?? 0} flaky · ${tally.fail ?? 0} fail · ${tally.gap ?? 0} gap (known, no skill exists)`);
+console.log(`\n${tally.pass ?? 0} pass · ${tally.flaky ?? 0} flaky · ${tally.tool ?? 0} via tool, no skill · ${tally.fail ?? 0} fail · ${tally.gap ?? 0} gap`);
 
 const out = join(here, "results", `${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 await writeFile(out, JSON.stringify({ runs: RUNS, arms: ARM, results }, null, 2)).catch(async () => {
