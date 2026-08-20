@@ -1,0 +1,136 @@
+[
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "decisions/vendor-cli-bundle.md"
+    ],
+    "seconds": 55,
+    "timedOut": false
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ],
+    "seconds": 56,
+    "timedOut": false
+  },
+  {
+    "withPlugin": true,
+    "committed": false,
+    "savedSomething": false,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": false,
+    "attributed": false,
+    "noCollateral": true,
+    "touched": [],
+    "seconds": 71,
+    "timedOut": false
+  },
+  {
+    "withPlugin": true,
+    "committed": false,
+    "savedSomething": false,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": false,
+    "attributed": false,
+    "noCollateral": true,
+    "touched": [],
+    "seconds": 47,
+    "timedOut": false
+  },
+  {
+    "withPlugin": true,
+    "committed": false,
+    "savedSomething": false,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": false,
+    "attributed": false,
+    "noCollateral": true,
+    "touched": [],
+    "seconds": 69,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": false,
+    "attributed": false,
+    "noCollateral": true,
+    "touched": [],
+    "seconds": 31,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": false,
+    "attributed": false,
+    "noCollateral": true,
+    "touched": [],
+    "seconds": 19,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": false,
+    "attributed": false,
+    "noCollateral": true,
+    "touched": [],
+    "seconds": 23,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": false,
+    "attributed": false,
+    "noCollateral": true,
+    "touched": [],
+    "seconds": 17,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": false,
+    "attributed": false,
+    "noCollateral": true,
+    "touched": [],
+    "seconds": 43,
+    "timedOut": false
+  }
+]

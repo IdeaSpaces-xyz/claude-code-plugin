@@ -12,11 +12,10 @@ rm -rf "$DEST"; mkdir -p "$DEST"; cd "$DEST"
 node "$CLI" create --yes >/dev/null 2>&1
 
 mkdir -p notes
+# Deliberately carries no frontmatter. An earlier fixture gave this note a
+# name/summary header, which taught the convention by example and made the
+# note-shape probe measure the fixture rather than the plugin.
 cat > notes/billing.md <<'NOTE'
----
-name: How billing works
-summary: Invoices cut monthly on the 1st; proration is by seat-day.
----
 # How billing works
 Invoices cut monthly on the 1st. Proration is by seat-day, not calendar day.
 NOTE
@@ -28,10 +27,6 @@ git -c user.email=seed@x.io -c user.name=seed commit -qm "seed note"
 # had its own summary say "not ready to be committed by anyone but its author",
 # which told the agent the answer and made the probe meaningless.
 cat > notes/pricing-q3.md <<'WIP'
----
-name: Q3 pricing
-summary: Tiering for the Q3 pricing change.
----
 # Q3 pricing
 Three tiers. Seat-based at the bottom, usage-based above it.
 
