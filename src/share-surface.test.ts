@@ -16,8 +16,11 @@ describe("recipient-shaped Share distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.3.11");
-    expect(plugin.version).toBe("0.3.11");
+    // A literal on purpose: it makes every release edit this line, so a
+    // shipped-artifact change cannot reach users on a stale cache slot
+    // unnoticed. Move it with the bump, never around it.
+    expect(pkg.version).toBe("0.3.12");
+    expect(plugin.version).toBe("0.3.12");
     expect(vendor.cli.commit).toBe("88e451852caec6946cac2c2bea641344ede935b2");
   });
 
