@@ -33,6 +33,7 @@ const ARM = arg("arm", "both");
 const JOB = arg("job", null);
 const MODEL = arg("model", null);
 const SPACE = arg("space", null); // seeded ideaspace copied into each run's cwd
+const PLUGIN = arg("plugin", null); // override the plugin dir (e.g. a tools-only copy)
 
 // The full plugin surface. Withholding the write tools made the Pi-shaped route
 // — reach the intention by calling is_write directly, no skill in between —
@@ -79,7 +80,7 @@ function runOnce(prompt, withPlugin) {
       "--output-format", "stream-json", "--verbose", "--include-partial-messages",
       "--allowedTools", ...ALLOWED,
     ];
-    if (withPlugin) args.push("--plugin-dir", pluginDir);
+    if (withPlugin) args.push("--plugin-dir", PLUGIN ?? pluginDir);
     if (MODEL) args.push("--model", MODEL);
 
     const child = spawn("claude", args, { cwd, stdio: ["ignore", "pipe", "ignore"] });
