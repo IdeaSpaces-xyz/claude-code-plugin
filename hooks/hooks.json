@@ -7,19 +7,23 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/dist/awareness-hook.js"]
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/awareness-hook.js"
+            ]
           }
         ]
       }
     ],
-    "PostToolUse": [
+    "PreToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|Bash",
         "hooks": [
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/dist/capture-nudge-hook.js"]
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/capture-nudge-hook.js"
+            ]
           }
         ]
       }

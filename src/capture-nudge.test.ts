@@ -3,7 +3,12 @@ import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { shouldNudgeKnowledgePath } from "./capture-nudge.js";
+import {
+  isGitCommit,
+  nudgeMarkerPath,
+  shouldNudgeKnowledgeCommit,
+  shouldNudgeKnowledgePath,
+} from "./capture-nudge.js";
 
 const roots: string[] = [];
 
@@ -66,5 +71,62 @@ describe("shouldNudgeKnowledgePath", () => {
     mkdirSync(join(root, "research", "_agent"), { recursive: true });
 
     await expect(shouldNudgeKnowledgePath(join(root, "research", "finding.md"))).resolves.toBe(true);
+  });
+});
+
+describe("isGitCommit", () => {
+  it("matches the shapes a commit actually arrives in", () => {
+    for (const command of [
+      "git commit",
+      'git commit -m "capture the finding"',
+      "git commit --amend --no-edit",
+      "git add -A && git commit -m x",
+      "cd notes; git commit -m x",
+      "git -C /work/space commit -m x",
+      "git -c user.name=Bot commit -m x",
+      "GIT_AUTHOR_NAME=Bot git commit -m x",
+    ]) {
+      expect(isGitCommit(command), command).toBe(true);
+    }
+  });
+
+  it("stays out of the way of everything else", () => {
+    for (const command of [
+      "git status",
+      "git log --oneline -5",
+      "git commit-tree HEAD^{tree}",
+      "npm test",
+      "echo committing",
+      "gitcommit",
+    ]) {
+      expect(isGitCommit(command), command).toBe(false);
+    }
+  });
+});
+
+describe("shouldNudgeKnowledgeCommit", () => {
+  it("nudges inside an ideaspace and nowhere else", async () => {
+    const space = tempDir();
+    initRepo(space);
+    mkdirSync(join(space, "_agent"));
+    await expect(shouldNudgeKnowledgeCommit(space)).resolves.toBe(true);
+
+    const plain = tempDir();
+    initRepo(plain);
+    await expect(shouldNudgeKnowledgeCommit(plain)).resolves.toBe(false);
+  });
+});
+
+describe("nudgeMarkerPath", () => {
+  it("separates kind, session, and project, and stays out of the repo", () => {
+    const a = nudgeMarkerPath("/home/u", "s1", "/work/space", "write");
+    const b = nudgeMarkerPath("/home/u", "s1", "/work/space", "commit");
+    const c = nudgeMarkerPath("/home/u", "s2", "/work/space", "write");
+    const d = nudgeMarkerPath("/home/u", "s1", "/work/other", "write");
+
+    expect(new Set([a, b, c, d]).size).toBe(4);
+    expect(a.startsWith("/home/u/.ideaspaces/nudges/")).toBe(true);
+    // Same inputs, same path — that is what makes "once per session" hold.
+    expect(nudgeMarkerPath("/home/u", "s1", "/work/space", "write")).toBe(a);
   });
 });

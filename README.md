@@ -152,8 +152,10 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 | `is_navigate` | Re-derive orientation at a position — the fractal `_agent` contract (foundation + deepest guide/purpose/now), tree, git-state, and drift. Read-only. |
 | `is_pull` | Integrate remote changes into the local space; never pushes; refuses on a dirty/uncommitted tree. |
 | `is_push` | Send committed captures to the remote; never pulls; refuses when behind — pull first. |
+| `is_sync` | Where you stand: ahead/behind, uncommitted captures, and whether a fork's source has moved. Reads only; integrates nothing. |
 | `is_spaces` | List remote spaces available to the signed-in person. |
-| `is_clone` | Clone a selected remote space into a local folder. |
+| `is_clone` | Clone a selected remote space into a local folder — a linked working copy of a space you already have. |
+| `is_fork` | Take an independent copy of a space — current content, no shared history, no write access back. Creates a remote space and a local folder in one irreversible step; `location` fixes the namespace permanently. |
 | `is_auth` | Log in / out for optional remote hosting. |
 
 Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
@@ -188,7 +190,7 @@ Skills read their full protocols from `reference/` (the protocol's canonical ski
 
 It also **bridges the session id**: the MCP server can't read the Claude Code session id from the protocol, so this hook writes it (from its stdin `session_id`) to a user-level cache (`~/.ideaspaces/sessions/<hash of project dir>`, outside the project tree so no visited repo is touched), where `is_commit` reads it to stamp the `Conversation` trailer. Best-effort; absent → the trailer is simply omitted. The cache is keyed by project dir (the reader only knows `CLAUDE_PROJECT_DIR`, never the session), so distinct dirs and worktrees are isolated but two concurrent sessions in the *same* dir share one entry — last-writer-wins, an accepted v1 tradeoff.
 
-**PostToolUse capture-nudge** (`dist/capture-nudge-hook.js`) — when a knowledge file (`*.md` or under `_agent/`) is written with native Write/Edit inside an ideaspace, nudges toward the `is_write` → `is_commit` capture flow. Silent for source, configs, build artifacts, markdown outside an ideaspace, and markdown inside nested code repos unless that repo carries its own `_agent/` contract.
+**PreToolUse capture-nudge** (`dist/capture-nudge-hook.js`) — before a knowledge file (`*.md` or under `_agent/`) is written with native Write/Edit inside an ideaspace, or a `git commit` is run by hand inside one, nudges toward the `is_write` → `is_commit` capture flow. It informs and never blocks. At most once per kind per session. Silent for source, configs, build artifacts, ordinary shell commands, anything outside an ideaspace, and markdown inside nested code repos unless that repo carries its own `_agent/` contract.
 
 ### Repo-local agent context
 

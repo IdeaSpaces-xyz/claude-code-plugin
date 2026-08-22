@@ -3,7 +3,9 @@ import { createRequire as __isCreateRequire } from "node:module";
 const require = __isCreateRequire(import.meta.url);
 
 // src/capture-nudge-hook.ts
-import { resolve as resolve3 } from "node:path";
+import { mkdirSync, existsSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname as dirname3, resolve as resolve3 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/space.js
 import { promises as fs } from "node:fs";
@@ -74,7 +76,8 @@ function isIdeaspacePath(path) {
 }
 
 // src/capture-nudge.ts
-import { dirname as dirname2, resolve as resolve2 } from "node:path";
+import { createHash } from "node:crypto";
+import { dirname as dirname2, join as join2, resolve as resolve2 } from "node:path";
 async function shouldNudgeKnowledgePath(filePath) {
   const absPath = resolve2(filePath);
   if (!isIdeaspacePath(absPath)) return false;
@@ -83,6 +86,19 @@ async function shouldNudgeKnowledgePath(filePath) {
   const fileGitRoot = await resolveRepoRoot(dirname2(absPath));
   if (!fileGitRoot) return true;
   return await resolveRepoRoot(agent.root) === fileGitRoot;
+}
+async function shouldNudgeKnowledgeCommit(cwd) {
+  const agent = await findNearestAgent(resolve2(cwd));
+  return agent.source !== "none" && Boolean(agent.root);
+}
+function isGitCommit(command) {
+  return command.split(/&&|\|\||[;|\n]/).some(
+    (segment) => /(?:^|\s|\$\(|`)(?:\w+=\S*\s+)*git\s+(?:-[Cc]\s+\S+\s+)*commit(?:\s|$)/.test(segment)
+  );
+}
+function nudgeMarkerPath(homeDir, sessionId, projectDir, kind) {
+  const key = createHash("sha256").update(`${sessionId}\0${resolve2(projectDir)}\0${kind}`).digest("hex").slice(0, 16);
+  return join2(homeDir, ".ideaspaces", "nudges", key);
 }
 
 // src/stdin.ts
@@ -94,6 +110,17 @@ async function readStdin() {
 }
 
 // src/capture-nudge-hook.ts
+var NUDGE = {
+  write: (path) => `About to write a knowledge file with native Write/Edit: \`${path}\`. If this captures a decision, finding, or pattern worth keeping, prefer the plugin's capture flow \u2014 \`is_write\` (stages + tracks) \u2192 confirm \u2192 \`is_commit\`. If it's a draft edit or already captured, carry on; this won't be repeated.`,
+  commit: (command) => `About to commit by hand inside an ideaspace: \`${command}\`. \`is_commit\` commits only the paths you name and stamps attribution \u2014 a bare \`git commit\` can sweep another session's staged work into your commit. If you meant to commit code, or scoped this yourself, carry on; this won't be repeated.`
+};
+function markFired(marker) {
+  try {
+    mkdirSync(dirname3(marker), { recursive: true });
+    writeFileSync(marker, "");
+  } catch {
+  }
+}
 async function main() {
   const raw = await readStdin();
   if (!raw.trim()) return;
@@ -103,15 +130,32 @@ async function main() {
   } catch {
     return;
   }
-  const filePath = input?.tool_input?.file_path;
-  if (typeof filePath !== "string" || !filePath) return;
   const cwd = typeof input.cwd === "string" ? input.cwd : process.cwd();
-  const abs = resolve3(cwd, filePath);
-  if (!await shouldNudgeKnowledgePath(abs)) return;
-  const nudge = `Knowledge file written with native Write/Edit: \`${filePath}\`. If this captures a decision, finding, or pattern worth keeping, prefer the plugin's capture flow \u2014 \`is_write\` (stages + tracks) \u2192 confirm \u2192 \`is_commit\`. If it's already captured or just a draft edit, ignore this.`;
+  const sessionId = typeof input.session_id === "string" ? input.session_id : "";
+  let kind;
+  let subject;
+  const filePath = input.tool_input?.file_path;
+  const command = input.tool_input?.command;
+  if (typeof filePath === "string" && filePath) {
+    if (!await shouldNudgeKnowledgePath(resolve3(cwd, filePath))) return;
+    kind = "write";
+    subject = filePath;
+  } else if (typeof command === "string" && isGitCommit(command)) {
+    if (!await shouldNudgeKnowledgeCommit(cwd)) return;
+    kind = "commit";
+    subject = command.length > 120 ? `${command.slice(0, 117)}...` : command;
+  } else {
+    return;
+  }
+  const marker = nudgeMarkerPath(homedir(), sessionId, cwd, kind);
+  if (existsSync(marker)) return;
+  markFired(marker);
   process.stdout.write(
     JSON.stringify({
-      hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: nudge }
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        additionalContext: NUDGE[kind](subject)
+      }
     }) + "\n"
   );
 }
