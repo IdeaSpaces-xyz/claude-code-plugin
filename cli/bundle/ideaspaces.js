@@ -12153,7 +12153,7 @@ var OP_SET = {
 };
 var OPS2 = Object.keys(OP_SET);
 var CANONICAL_CO_AUTHOR = /^[^<>\r\n]+ <agent:[^<>\s]+@ideaspaces>$/;
-var LEGACY_AGENT_PRINCIPAL = /^agent:([^<>\s]+)$/;
+var LEGACY_AGENT_PRINCIPAL = /^agent:([^<>\s@]+)(?:@ideaspaces)?$/;
 function parseTrailerFlags(flags2) {
   const trailers = {};
   const op = typeof flags2.op === "string" ? flags2.op.trim() : "";
