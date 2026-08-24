@@ -28549,6 +28549,11 @@ function summarizeMarkdown(content) {
 
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
+
+// node_modules/@ideaspaces/protocol/dist/trailers.js
+var CHANGE_ID_PATTERN = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
+
+// node_modules/@ideaspaces/protocol/dist/git.js
 var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
@@ -28906,11 +28911,6 @@ async function exists(path) {
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join as join4, resolve as resolve4 } from "node:path";
-
-// node_modules/@ideaspaces/protocol/dist/trailers.js
-var CHANGE_ID_PATTERN = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
-
-// node_modules/@ideaspaces/protocol/dist/surface-state.js
 function projectCacheKey(projectDir) {
   return createHash("sha256").update(resolve4(projectDir)).digest("hex").slice(0, 16);
 }
