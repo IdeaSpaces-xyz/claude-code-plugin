@@ -7775,8 +7775,29 @@ import { resolve } from "node:path";
 var GitError = class extends Error {
 };
 var GIT_MISSING_HINT = "git not found \u2014 install it and retry (macOS: `brew install git`; Windows: `winget install Git.Git`; Linux: your package manager).";
-function gitAvailable() {
-  return spawnSync("git", ["--version"]).error === void 0;
+var GIT_UNUSABLE_HINT = "git is present but unusable \u2014 on macOS, run `xcode-select --install`; otherwise repair or reinstall Git, then retry.";
+function gitAvailability() {
+  const result = spawnSync("git", ["--version"], { encoding: "utf-8" });
+  if (result.error) {
+    const code = result.error.code;
+    if (code === "ENOENT")
+      return { state: "absent", hint: GIT_MISSING_HINT };
+    return {
+      state: "unusable",
+      hint: GIT_UNUSABLE_HINT,
+      detail: result.error.message,
+      exitCode: result.status
+    };
+  }
+  if (result.status !== 0) {
+    return {
+      state: "unusable",
+      hint: GIT_UNUSABLE_HINT,
+      detail: (result.stderr ?? "").trim() || (result.stdout ?? "").trim() || `git --version exited ${result.status ?? "without a status"}`,
+      exitCode: result.status
+    };
+  }
+  return { state: "usable", version: (result.stdout ?? "").trim() };
 }
 function git(args2, cwd) {
   const r = spawnSync("git", args2, { encoding: "utf-8", cwd });
@@ -10548,8 +10569,10 @@ async function applyPlan(opts) {
     await fs6.writeFile(gitignorePath, mergedIgnore, "utf-8");
     commitPaths3.push(".gitignore");
   }
-  if (!gitAvailable())
-    return { versioned: false, gitNote: GIT_MISSING_HINT, commitPaths: commitPaths3 };
+  const availability = gitAvailability();
+  if (availability.state !== "usable") {
+    return { versioned: false, gitNote: availability.hint, commitPaths: commitPaths3 };
+  }
   try {
     if (!inspection.isGitRepo) {
       runGit2(targetDir, ["init", "-q", "-b", "main"]);
