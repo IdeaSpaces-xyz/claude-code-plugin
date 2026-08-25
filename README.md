@@ -145,10 +145,10 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 
 | Tool | What |
 |---|---|
-| `is_write` | Create/update a Note (Layer 1 frontmatter); stages it and returns a content sha. `if_match` for safe updates. |
-| `is_commit` | The explicit save — commits only the paths you name, never the user's other staged work. Auto-stamps attribution trailers (agent, session, open Change). |
+| `is_write` | Create/update a Note in-process; stages and tracks its full revision, while retaining `sha` for safe-update compatibility. |
+| `is_commit` | The explicit save — commits named paths, or only this MCP session's captures with `all`; never adopts other staged work. Auto-stamps attribution trailers. |
 | `is_change_open` / `is_change_close` | Open/close a Change — a `Change-Id` stamped on every `is_commit` for one decision, across files and repos. |
-| `is_status` | Capture state: git position + tracked captures, or a single file's sha for `if_match`. |
+| `is_status` | Capture state: git position + session captures, or one path's full revision and `sha` compatibility token. |
 | `is_navigate` | Re-derive orientation at a position — the fractal `_agent` contract (foundation + deepest guide/purpose/now), tree, git-state, and drift. Read-only. |
 | `is_pull` | Integrate remote changes into the local space; never pushes; refuses on a dirty/uncommitted tree. |
 | `is_push` | Send committed captures to the remote; never pulls; refuses when behind — pull first. |
@@ -158,7 +158,7 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 
 Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
 
-MCP stays thin: portable local reads use the protocol in-process, while platform and write verbs shell the bundled CLI with `--json`. Shared shape stays in the protocol; harness lifecycle and presentation stay on the surface. Share is intentionally CLI-backed through `is-share` in this release; there is no native `is_share` tool.
+MCP stays thin: portable local reads, writes, commits, and Change minting use the protocol in-process; only platform and transport verbs shell the bundled CLI with `--json`. Shared shape stays in the protocol; the session capture ledger and presentation stay on the surface. Share is intentionally CLI-backed through `is-share` in this release; there is no native `is_share` tool.
 
 ### Skills
 

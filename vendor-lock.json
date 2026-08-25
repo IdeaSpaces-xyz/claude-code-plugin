@@ -14,10 +14,10 @@
   },
   "mcp-server": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
-    "commit": "25dbd946a9de1e16b4754d590bd59a6c38742cc0",
+    "commit": "47ca791b8179c738351aa847b52cd319fb5e65d9",
     "sourceArtifact": "bundle/index.js",
     "vendoredArtifact": "dist/index.js",
-    "sha256": "de12a57deab7e103f09847af44d8255508c1aacc7e7ea7920983fea81fe5e7e6",
+    "sha256": "8cbd99b3c5e1f77083e8ae832392936fa13268e4a306e3037a3e27abe506803a",
     "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#bfc8080c30edd74f3177356a4a40254562020e62",
     "rebuildInCi": false,
     "commands": [

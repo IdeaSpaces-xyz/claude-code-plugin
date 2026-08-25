@@ -89,7 +89,7 @@ Safe update flow:
 
 Use inside capture after user confirmation:
 
-- `is_commit message="Capture decision" all=true` — commit all reviewed staged knowledge (markdown + `_agent/`)
+- `is_commit message="Capture decision" all=true` — commit only paths captured by this MCP session's `is_write` calls
 - `is_commit message="Capture decision" paths=["notes/decision.md"]` — commit explicit paths
 
 It never sweeps unrelated staged user work into the capture commit.
