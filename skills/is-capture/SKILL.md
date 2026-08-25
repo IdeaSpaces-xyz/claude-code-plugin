@@ -57,7 +57,7 @@ If yes:
    - refinement of a file just written: use the previous `is_write` response's `sha`
    - `force: true` only after re-reading and reconciling divergent content
 4. Show what changed when useful. The user confirms the capture boundary.
-5. Commit with `is_commit({ message, all: true })` for staged knowledge, or explicit `paths` for native edits. Never sweep unrelated staged work.
+5. Commit with `is_commit({ message, all: true })` for paths captured by this session's `is_write` calls, or explicit `paths` for native edits. `all` never adopts other staged knowledge.
 6. Optionally use **is-push** / `is_push` to share it (or **is-pull** first to get the latest).
 
 If the user says no, drop it and don't re-ask.

@@ -2,8 +2,9 @@
  * Conformance e2e — proves the SHIPPED artifacts against the protocol.
  *
  * Drives is_write / is_commit / is_change_* / is_status through the real
- * vendored MCP server (dist/index.js, IS_CLI_PATH → cli/bundle/ideaspaces.js)
- * into a temp space scaffolded by `ideaspaces create`, then validates the
+ * vendored MCP server (`dist/index.js`) with `IS_CLI_PATH` pointing at a marker
+ * executable that always fails. A bundled CLI scaffolds the temp space before
+ * the server starts; local mutation must never invoke it. The suite validates the
  * result with @ideaspaces/protocol: validateSpace over the tree, parseTrailers
  * + CHANGE_ID_PATTERN over the commits it produced.
  *
@@ -41,6 +42,8 @@ const T = 30_000;
 
 let home: string;
 let space: string;
+let failingCli: string;
+let cliMarker: string;
 let client: Client;
 
 /** Run the vendored CLI directly (setup only — the tests go through MCP). */
@@ -111,8 +114,15 @@ beforeAll(async () => {
   });
 
   // Real scaffold path: `ideaspaces create` inits git and commits the seed
-  // contract itself.
+  // contract itself. This happens before the MCP local-effect proof begins.
   cli(["create", "--yes"], space);
+
+  cliMarker = join(home, "platform-cli-invoked");
+  failingCli = join(home, "failing-platform-cli.mjs");
+  writeFileSync(
+    failingCli,
+    `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(cliMarker)}, "invoked\\n");\nprocess.exit(73);\n`,
+  );
 
   client = new Client({ name: "conformance-e2e", version: "0.0.0" });
   await client.connect(
@@ -120,13 +130,14 @@ beforeAll(async () => {
       command: "node",
       args: [SERVER],
       cwd: space,
-      env: { ...baseEnv(), IS_CLI_PATH: CLI, CLAUDE_PROJECT_DIR: space },
+      env: { ...baseEnv(), IS_CLI_PATH: failingCli, CLAUDE_PROJECT_DIR: space },
     }),
   );
 }, T);
 
 afterAll(async () => {
   await client?.close();
+  expect(existsSync(cliMarker)).toBe(false);
   rmSync(home, { recursive: true, force: true });
   rmSync(space, { recursive: true, force: true });
 });
@@ -166,7 +177,7 @@ describe("write → commit conformance", () => {
     expect(trailers.changeId).toBeUndefined();
   });
 
-  test("is_commit never sweeps unrelated staged work", { timeout: T }, async () => {
+  test("is_commit all selects only this session and never sweeps unrelated staged work", { timeout: T }, async () => {
     writeFileSync(join(space, "unrelated.md"), "# Someone else's staged file\n");
     git(["add", "unrelated.md"]);
 
@@ -176,7 +187,7 @@ describe("write → commit conformance", () => {
       name: "Second",
       summary: "Second note.",
     });
-    await call("is_commit", { message: "Add second note", paths: ["notes/second.md"] });
+    await call("is_commit", { message: "Add second note", all: true });
 
     const committed = git(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"]);
     expect(committed).toBe("notes/second.md");
@@ -349,7 +360,7 @@ describe("Change persistence across server restarts (shipped artifacts)", () => 
         command: "node",
         args: [SERVER],
         cwd: pspace,
-        env: { ...penv(), IS_CLI_PATH: CLI, CLAUDE_PROJECT_DIR: pspace },
+        env: { ...penv(), IS_CLI_PATH: failingCli, CLAUDE_PROJECT_DIR: pspace },
       }),
     );
     clients.push(c);
@@ -371,7 +382,7 @@ describe("Change persistence across server restarts (shipped artifacts)", () => 
     const r = spawnSync("node", [HOOK], {
       cwd: pspace,
       encoding: "utf-8",
-      env: { ...penv(), IS_CLI_PATH: CLI, CLAUDE_PROJECT_DIR: pspace },
+      env: { ...penv(), IS_CLI_PATH: failingCli, CLAUDE_PROJECT_DIR: pspace },
       input: JSON.stringify({ session_id: sessionId, cwd: pspace }),
     });
     expect(r.status).toBe(0);

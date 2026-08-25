@@ -32,7 +32,7 @@ Preview, confirm, then write — the write gate in `${CLAUDE_PLUGIN_ROOT}/refere
 
 Shaping changes the agent agreement, so finish with the capture boundary:
 
-- For Note-style files written with `is_write`, commit staged knowledge with `is_commit` after confirmation.
+- For Note-style files written with `is_write`, commit that session capture with `is_commit` after confirmation.
 - For native `_agent/` edits, commit the explicit changed paths with `is_commit` after confirmation.
 - If the user only wanted a draft, say that it remains local and uncommitted.
 

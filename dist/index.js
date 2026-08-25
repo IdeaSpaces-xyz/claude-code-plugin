@@ -22,9 +22,9 @@ var __export = (target, all) => {
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    for (let key2 of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key2) && key2 !== except)
+        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc = __getOwnPropDesc(from, key2)) || desc.enumerable });
   }
   return to;
 };
@@ -165,23 +165,23 @@ var require_code = __commonJS({
     function interpolate(x) {
       return typeof x == "number" || typeof x == "boolean" || x === null ? x : safeStringify(Array.isArray(x) ? x.join(",") : x);
     }
-    function stringify(x) {
+    function stringify2(x) {
       return new _Code(safeStringify(x));
     }
-    exports.stringify = stringify;
+    exports.stringify = stringify2;
     function safeStringify(x) {
       return JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
     }
     exports.safeStringify = safeStringify;
-    function getProperty(key) {
-      return typeof key == "string" && exports.IDENTIFIER.test(key) ? new _Code(`.${key}`) : _`[${key}]`;
+    function getProperty(key2) {
+      return typeof key2 == "string" && exports.IDENTIFIER.test(key2) ? new _Code(`.${key2}`) : _`[${key2}]`;
     }
     exports.getProperty = getProperty;
-    function getEsmExportName(key) {
-      if (typeof key == "string" && exports.IDENTIFIER.test(key)) {
-        return new _Code(`${key}`);
+    function getEsmExportName(key2) {
+      if (typeof key2 == "string" && exports.IDENTIFIER.test(key2)) {
+        return new _Code(`${key2}`);
       }
-      throw new Error(`CodeGen: invalid export name: ${key}, use explicit $id name mapping`);
+      throw new Error(`CodeGen: invalid export name: ${key2}, use explicit $id name mapping`);
     }
     exports.getEsmExportName = getEsmExportName;
     function regexpCode(rx) {
@@ -808,11 +808,11 @@ var require_codegen = __commonJS({
       // returns code for object literal for the passed argument list of key-value pairs
       object(...keyValues) {
         const code = ["{"];
-        for (const [key, value] of keyValues) {
+        for (const [key2, value] of keyValues) {
           if (code.length > 1)
             code.push(",");
-          code.push(key);
-          if (key !== value || this.opts.es5) {
+          code.push(key2);
+          if (key2 !== value || this.opts.es5) {
             code.push(":");
             (0, code_1.addCodeArg)(code, value);
           }
@@ -1087,17 +1087,17 @@ var require_util = __commonJS({
       if (typeof schema === "boolean")
         return;
       const rules = self.RULES.keywords;
-      for (const key in schema) {
-        if (!rules[key])
-          checkStrictMode(it, `unknown keyword: "${key}"`);
+      for (const key2 in schema) {
+        if (!rules[key2])
+          checkStrictMode(it, `unknown keyword: "${key2}"`);
       }
     }
     exports.checkUnknownRules = checkUnknownRules;
     function schemaHasRules(schema, rules) {
       if (typeof schema == "boolean")
         return !schema;
-      for (const key in schema)
-        if (rules[key])
+      for (const key2 in schema)
+        if (rules[key2])
           return true;
       return false;
     }
@@ -1105,8 +1105,8 @@ var require_util = __commonJS({
     function schemaHasRulesButRef(schema, RULES) {
       if (typeof schema == "boolean")
         return !schema;
-      for (const key in schema)
-        if (key !== "$ref" && RULES.all[key])
+      for (const key2 in schema)
+        if (key2 !== "$ref" && RULES.all[key2])
           return true;
       return false;
     }
@@ -1684,8 +1684,8 @@ var require_defaults = __commonJS({
     function assignDefaults(it, ty) {
       const { properties, items } = it.schema;
       if (ty === "object" && properties) {
-        for (const key in properties) {
-          assignDefault(it, key, properties[key].default);
+        for (const key2 in properties) {
+          assignDefault(it, key2, properties[key2].default);
         }
       } else if (ty === "array" && Array.isArray(items)) {
         items.forEach((sch, i) => assignDefault(it, i, sch.default));
@@ -2069,8 +2069,8 @@ var require_fast_deep_equal = __commonJS({
         for (i = length; i-- !== 0; )
           if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false;
         for (i = length; i-- !== 0; ) {
-          var key = keys[i];
-          if (!equal(a[key], b[key])) return false;
+          var key2 = keys[i];
+          if (!equal(a[key2], b[key2])) return false;
         }
         return true;
       }
@@ -2142,20 +2142,20 @@ var require_json_schema_traverse = __commonJS({
     function _traverse(opts, pre, post, schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex) {
       if (schema && typeof schema == "object" && !Array.isArray(schema)) {
         pre(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
-        for (var key in schema) {
-          var sch = schema[key];
+        for (var key2 in schema) {
+          var sch = schema[key2];
           if (Array.isArray(sch)) {
-            if (key in traverse.arrayKeywords) {
+            if (key2 in traverse.arrayKeywords) {
               for (var i = 0; i < sch.length; i++)
-                _traverse(opts, pre, post, sch[i], jsonPtr + "/" + key + "/" + i, rootSchema, jsonPtr, key, schema, i);
+                _traverse(opts, pre, post, sch[i], jsonPtr + "/" + key2 + "/" + i, rootSchema, jsonPtr, key2, schema, i);
             }
-          } else if (key in traverse.propsKeywords) {
+          } else if (key2 in traverse.propsKeywords) {
             if (sch && typeof sch == "object") {
               for (var prop in sch)
-                _traverse(opts, pre, post, sch[prop], jsonPtr + "/" + key + "/" + escapeJsonPtr(prop), rootSchema, jsonPtr, key, schema, prop);
+                _traverse(opts, pre, post, sch[prop], jsonPtr + "/" + key2 + "/" + escapeJsonPtr(prop), rootSchema, jsonPtr, key2, schema, prop);
             }
-          } else if (key in traverse.keywords || opts.allKeys && !(key in traverse.skipKeywords)) {
-            _traverse(opts, pre, post, sch, jsonPtr + "/" + key, rootSchema, jsonPtr, key, schema);
+          } else if (key2 in traverse.keywords || opts.allKeys && !(key2 in traverse.skipKeywords)) {
+            _traverse(opts, pre, post, sch, jsonPtr + "/" + key2, rootSchema, jsonPtr, key2, schema);
           }
         }
         post(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
@@ -2212,10 +2212,10 @@ var require_resolve = __commonJS({
       "$dynamicAnchor"
     ]);
     function hasRef(schema) {
-      for (const key in schema) {
-        if (REF_KEYWORDS.has(key))
+      for (const key2 in schema) {
+        if (REF_KEYWORDS.has(key2))
           return true;
-        const sch = schema[key];
+        const sch = schema[key2];
         if (Array.isArray(sch) && sch.some(hasRef))
           return true;
         if (typeof sch == "object" && hasRef(sch))
@@ -2225,14 +2225,14 @@ var require_resolve = __commonJS({
     }
     function countKeys(schema) {
       let count = 0;
-      for (const key in schema) {
-        if (key === "$ref")
+      for (const key2 in schema) {
+        if (key2 === "$ref")
           return Infinity;
         count++;
-        if (SIMPLE_INLINED.has(key))
+        if (SIMPLE_INLINED.has(key2))
           continue;
-        if (typeof schema[key] == "object") {
-          (0, util_1.eachItem)(schema[key], (sch) => count += countKeys(sch));
+        if (typeof schema[key2] == "object") {
+          (0, util_1.eachItem)(schema[key2], (sch) => count += countKeys(sch));
         }
         if (count === Infinity)
           return Infinity;
@@ -2421,8 +2421,8 @@ var require_validate = __commonJS({
     function schemaCxtHasRules({ schema, self }) {
       if (typeof schema == "boolean")
         return !schema;
-      for (const key in schema)
-        if (self.RULES.all[key])
+      for (const key2 in schema)
+        if (self.RULES.all[key2])
           return true;
       return false;
     }
@@ -2988,7 +2988,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve7.call(this, root, ref);
+      let _sch = resolve10.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3015,7 +3015,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve7(root, ref) {
+    function resolve10(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3590,55 +3590,55 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve7(baseURI, relativeURI, options) {
+    function resolve10(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative4, options, skipNormalization) {
+    function resolveComponent(base, relative5, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative4 = parse3(serialize(relative4, options), options);
+        relative5 = parse3(serialize(relative5, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative4.scheme) {
-        target.scheme = relative4.scheme;
-        target.userinfo = relative4.userinfo;
-        target.host = relative4.host;
-        target.port = relative4.port;
-        target.path = removeDotSegments(relative4.path || "");
-        target.query = relative4.query;
+      if (!options.tolerant && relative5.scheme) {
+        target.scheme = relative5.scheme;
+        target.userinfo = relative5.userinfo;
+        target.host = relative5.host;
+        target.port = relative5.port;
+        target.path = removeDotSegments(relative5.path || "");
+        target.query = relative5.query;
       } else {
-        if (relative4.userinfo !== void 0 || relative4.host !== void 0 || relative4.port !== void 0) {
-          target.userinfo = relative4.userinfo;
-          target.host = relative4.host;
-          target.port = relative4.port;
-          target.path = removeDotSegments(relative4.path || "");
-          target.query = relative4.query;
+        if (relative5.userinfo !== void 0 || relative5.host !== void 0 || relative5.port !== void 0) {
+          target.userinfo = relative5.userinfo;
+          target.host = relative5.host;
+          target.port = relative5.port;
+          target.path = removeDotSegments(relative5.path || "");
+          target.query = relative5.query;
         } else {
-          if (!relative4.path) {
+          if (!relative5.path) {
             target.path = base.path;
-            if (relative4.query !== void 0) {
-              target.query = relative4.query;
+            if (relative5.query !== void 0) {
+              target.query = relative5.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative4.path[0] === "/") {
-              target.path = removeDotSegments(relative4.path);
+            if (relative5.path[0] === "/") {
+              target.path = removeDotSegments(relative5.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative4.path;
+                target.path = "/" + relative5.path;
               } else if (!base.path) {
-                target.path = relative4.path;
+                target.path = relative5.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative4.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative5.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative4.query;
+            target.query = relative5.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3646,7 +3646,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative4.fragment;
+      target.fragment = relative5.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -3817,7 +3817,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve7,
+      resolve: resolve10,
       resolveComponent,
       equal,
       serialize,
@@ -4064,7 +4064,7 @@ var require_core = __commonJS({
         }
       }
       // Adds schema to the instance
-      addSchema(schema, key, _meta, _validateSchema = this.opts.validateSchema) {
+      addSchema(schema, key2, _meta, _validateSchema = this.opts.validateSchema) {
         if (Array.isArray(schema)) {
           for (const sch of schema)
             this.addSchema(sch, void 0, _meta, _validateSchema);
@@ -4078,15 +4078,15 @@ var require_core = __commonJS({
             throw new Error(`schema ${schemaId} must be string`);
           }
         }
-        key = (0, resolve_1.normalizeId)(key || id);
-        this._checkUnique(key);
-        this.schemas[key] = this._addSchema(schema, _meta, key, _validateSchema, true);
+        key2 = (0, resolve_1.normalizeId)(key2 || id);
+        this._checkUnique(key2);
+        this.schemas[key2] = this._addSchema(schema, _meta, key2, _validateSchema, true);
         return this;
       }
       // Add schema that will be used to validate other schemas
       // options in META_IGNORE_OPTIONS are alway set to false
-      addMetaSchema(schema, key, _validateSchema = this.opts.validateSchema) {
-        this.addSchema(schema, key, true, _validateSchema);
+      addMetaSchema(schema, key2, _validateSchema = this.opts.validateSchema) {
+        this.addSchema(schema, key2, true, _validateSchema);
         return this;
       }
       //  Validate schema against its meta-schema
@@ -4242,14 +4242,14 @@ var require_core = __commonJS({
           let keywords = metaSchema;
           for (const seg of segments)
             keywords = keywords[seg];
-          for (const key in rules) {
-            const rule = rules[key];
+          for (const key2 in rules) {
+            const rule = rules[key2];
             if (typeof rule != "object")
               continue;
             const { $data } = rule.definition;
-            const schema = keywords[key];
+            const schema = keywords[key2];
             if ($data && schema)
-              keywords[key] = schemaOrData(schema);
+              keywords[key2] = schemaOrData(schema);
           }
         }
         return metaSchema;
@@ -4322,10 +4322,10 @@ var require_core = __commonJS({
     Ajv2.MissingRefError = ref_error_1.default;
     exports.default = Ajv2;
     function checkOptions(checkOpts, options, msg, log = "error") {
-      for (const key in checkOpts) {
-        const opt = key;
+      for (const key2 in checkOpts) {
+        const opt = key2;
         if (opt in options)
-          this.logger[log](`${msg}: option ${key}. ${checkOpts[opt]}`);
+          this.logger[log](`${msg}: option ${key2}. ${checkOpts[opt]}`);
       }
     }
     function getSchEnv(keyRef) {
@@ -4339,8 +4339,8 @@ var require_core = __commonJS({
       if (Array.isArray(optsSchemas))
         this.addSchema(optsSchemas);
       else
-        for (const key in optsSchemas)
-          this.addSchema(optsSchemas[key], key);
+        for (const key2 in optsSchemas)
+          this.addSchema(optsSchemas[key2], key2);
     }
     function addInitialFormats() {
       for (const name in this.opts.formats) {
@@ -5388,11 +5388,11 @@ var require_dependencies = __commonJS({
     function splitDependencies({ schema }) {
       const propertyDeps = {};
       const schemaDeps = {};
-      for (const key in schema) {
-        if (key === "__proto__")
+      for (const key2 in schema) {
+        if (key2 === "__proto__")
           continue;
-        const deps = Array.isArray(schema[key]) ? propertyDeps : schemaDeps;
-        deps[key] = schema[key];
+        const deps = Array.isArray(schema[key2]) ? propertyDeps : schemaDeps;
+        deps[key2] = schema[key2];
       }
       return [propertyDeps, schemaDeps];
     }
@@ -5469,13 +5469,13 @@ var require_propertyNames = __commonJS({
         if ((0, util_1.alwaysValidSchema)(it, schema))
           return;
         const valid = gen.name("valid");
-        gen.forIn("key", data, (key) => {
-          cxt.setParams({ propertyName: key });
+        gen.forIn("key", data, (key2) => {
+          cxt.setParams({ propertyName: key2 });
           cxt.subschema({
             keyword: "propertyNames",
-            data: key,
+            data: key2,
             dataTypes: ["string"],
-            propertyName: key,
+            propertyName: key2,
             compositeRule: true
           }, valid);
           gen.if((0, codegen_1.not)(valid), () => {
@@ -5524,38 +5524,38 @@ var require_additionalProperties = __commonJS({
         checkAdditionalProperties();
         cxt.ok((0, codegen_1._)`${errsCount} === ${names_1.default.errors}`);
         function checkAdditionalProperties() {
-          gen.forIn("key", data, (key) => {
+          gen.forIn("key", data, (key2) => {
             if (!props.length && !patProps.length)
-              additionalPropertyCode(key);
+              additionalPropertyCode(key2);
             else
-              gen.if(isAdditional(key), () => additionalPropertyCode(key));
+              gen.if(isAdditional(key2), () => additionalPropertyCode(key2));
           });
         }
-        function isAdditional(key) {
+        function isAdditional(key2) {
           let definedProp;
           if (props.length > 8) {
             const propsSchema = (0, util_1.schemaRefOrVal)(it, parentSchema.properties, "properties");
-            definedProp = (0, code_1.isOwnProperty)(gen, propsSchema, key);
+            definedProp = (0, code_1.isOwnProperty)(gen, propsSchema, key2);
           } else if (props.length) {
-            definedProp = (0, codegen_1.or)(...props.map((p) => (0, codegen_1._)`${key} === ${p}`));
+            definedProp = (0, codegen_1.or)(...props.map((p) => (0, codegen_1._)`${key2} === ${p}`));
           } else {
             definedProp = codegen_1.nil;
           }
           if (patProps.length) {
-            definedProp = (0, codegen_1.or)(definedProp, ...patProps.map((p) => (0, codegen_1._)`${(0, code_1.usePattern)(cxt, p)}.test(${key})`));
+            definedProp = (0, codegen_1.or)(definedProp, ...patProps.map((p) => (0, codegen_1._)`${(0, code_1.usePattern)(cxt, p)}.test(${key2})`));
           }
           return (0, codegen_1.not)(definedProp);
         }
-        function deleteAdditional(key) {
-          gen.code((0, codegen_1._)`delete ${data}[${key}]`);
+        function deleteAdditional(key2) {
+          gen.code((0, codegen_1._)`delete ${data}[${key2}]`);
         }
-        function additionalPropertyCode(key) {
+        function additionalPropertyCode(key2) {
           if (opts.removeAdditional === "all" || opts.removeAdditional && schema === false) {
-            deleteAdditional(key);
+            deleteAdditional(key2);
             return;
           }
           if (schema === false) {
-            cxt.setParams({ additionalProperty: key });
+            cxt.setParams({ additionalProperty: key2 });
             cxt.error();
             if (!allErrors)
               gen.break();
@@ -5564,22 +5564,22 @@ var require_additionalProperties = __commonJS({
           if (typeof schema == "object" && !(0, util_1.alwaysValidSchema)(it, schema)) {
             const valid = gen.name("valid");
             if (opts.removeAdditional === "failing") {
-              applyAdditionalSchema(key, valid, false);
+              applyAdditionalSchema(key2, valid, false);
               gen.if((0, codegen_1.not)(valid), () => {
                 cxt.reset();
-                deleteAdditional(key);
+                deleteAdditional(key2);
               });
             } else {
-              applyAdditionalSchema(key, valid);
+              applyAdditionalSchema(key2, valid);
               if (!allErrors)
                 gen.if((0, codegen_1.not)(valid), () => gen.break());
             }
           }
         }
-        function applyAdditionalSchema(key, valid, errors) {
+        function applyAdditionalSchema(key2, valid, errors) {
           const subschema = {
             keyword: "additionalProperties",
-            dataProp: key,
+            dataProp: key2,
             dataPropType: util_1.Type.Str
           };
           if (errors === false) {
@@ -5704,19 +5704,19 @@ var require_patternProperties = __commonJS({
           }
         }
         function validateProperties(pat) {
-          gen.forIn("key", data, (key) => {
-            gen.if((0, codegen_1._)`${(0, code_1.usePattern)(cxt, pat)}.test(${key})`, () => {
+          gen.forIn("key", data, (key2) => {
+            gen.if((0, codegen_1._)`${(0, code_1.usePattern)(cxt, pat)}.test(${key2})`, () => {
               const alwaysValid = alwaysValidPatterns.includes(pat);
               if (!alwaysValid) {
                 cxt.subschema({
                   keyword: "patternProperties",
                   schemaProp: pat,
-                  dataProp: key,
+                  dataProp: key2,
                   dataPropType: util_2.Type.Str
                 }, valid);
               }
               if (it.opts.unevaluated && props !== true) {
-                gen.assign((0, codegen_1._)`${props}[${key}]`, true);
+                gen.assign((0, codegen_1._)`${props}[${key2}]`, true);
               } else if (!alwaysValid && !it.allErrors) {
                 gen.if((0, codegen_1.not)(valid), () => gen.break());
               }
@@ -6883,11 +6883,11 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path) {
-      const ctrl = callVisitor(key, node, visitor, path);
+    function visit_(key2, node, visitor, path) {
+      const ctrl = callVisitor(key2, node, visitor, path);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path, ctrl);
-        return visit_(key, ctrl, visitor, path);
+        replaceNode(key2, path, ctrl);
+        return visit_(key2, ctrl, visitor, path);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
@@ -6931,11 +6931,11 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path) {
-      const ctrl = await callVisitor(key, node, visitor, path);
+    async function visitAsync_(key2, node, visitor, path) {
+      const ctrl = await callVisitor(key2, node, visitor, path);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path, ctrl);
-        return visitAsync_(key, ctrl, visitor, path);
+        replaceNode(key2, path, ctrl);
+        return visitAsync_(key2, ctrl, visitor, path);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
@@ -6985,27 +6985,27 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path) {
+    function callVisitor(key2, node, visitor, path) {
       if (typeof visitor === "function")
-        return visitor(key, node, path);
+        return visitor(key2, node, path);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path);
+        return visitor.Map?.(key2, node, path);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path);
+        return visitor.Seq?.(key2, node, path);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path);
+        return visitor.Pair?.(key2, node, path);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path);
+        return visitor.Scalar?.(key2, node, path);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path);
+        return visitor.Alias?.(key2, node, path);
       return void 0;
     }
-    function replaceNode(key, path, node) {
+    function replaceNode(key2, path, node) {
       const parent = path[path.length - 1];
       if (identity.isCollection(parent)) {
-        parent.items[key] = node;
+        parent.items[key2] = node;
       } else if (identity.isPair(parent)) {
-        if (key === "key")
+        if (key2 === "key")
           parent.key = node;
         else
           parent.value = node;
@@ -7266,7 +7266,7 @@ var require_anchors = __commonJS({
 var require_applyReviver = __commonJS({
   "node_modules/yaml/dist/doc/applyReviver.js"(exports) {
     "use strict";
-    function applyReviver(reviver, obj, key, val) {
+    function applyReviver(reviver, obj, key2, val) {
       if (val && typeof val === "object") {
         if (Array.isArray(val)) {
           for (let i = 0, len = val.length; i < len; ++i) {
@@ -7306,7 +7306,7 @@ var require_applyReviver = __commonJS({
           }
         }
       }
-      return reviver.call(obj, key, val);
+      return reviver.call(obj, key2, val);
     }
     exports.applyReviver = applyReviver;
   }
@@ -7667,14 +7667,14 @@ var require_Collection = __commonJS({
         if (isEmptyPath(path))
           this.add(value);
         else {
-          const [key, ...rest] = path;
-          const node = this.get(key, true);
+          const [key2, ...rest] = path;
+          const node = this.get(key2, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
           else if (node === void 0 && this.schema)
-            this.set(key, collectionFromPath(this.schema, rest, value));
+            this.set(key2, collectionFromPath(this.schema, rest, value));
           else
-            throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
+            throw new Error(`Expected YAML collection at ${key2}. Remaining path: ${rest}`);
         }
       }
       /**
@@ -7682,14 +7682,14 @@ var require_Collection = __commonJS({
        * @returns `true` if the item was found and removed.
        */
       deleteIn(path) {
-        const [key, ...rest] = path;
+        const [key2, ...rest] = path;
         if (rest.length === 0)
-          return this.delete(key);
-        const node = this.get(key, true);
+          return this.delete(key2);
+        const node = this.get(key2, true);
         if (identity.isCollection(node))
           return node.deleteIn(rest);
         else
-          throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
+          throw new Error(`Expected YAML collection at ${key2}. Remaining path: ${rest}`);
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -7697,8 +7697,8 @@ var require_Collection = __commonJS({
        * `true` (collections are always returned intact).
        */
       getIn(path, keepScalar) {
-        const [key, ...rest] = path;
-        const node = this.get(key, true);
+        const [key2, ...rest] = path;
+        const node = this.get(key2, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
         else
@@ -7716,10 +7716,10 @@ var require_Collection = __commonJS({
        * Checks if the collection includes a value with the key `key`.
        */
       hasIn(path) {
-        const [key, ...rest] = path;
+        const [key2, ...rest] = path;
         if (rest.length === 0)
-          return this.has(key);
-        const node = this.get(key, true);
+          return this.has(key2);
+        const node = this.get(key2, true);
         return identity.isCollection(node) ? node.hasIn(rest) : false;
       }
       /**
@@ -7727,17 +7727,17 @@ var require_Collection = __commonJS({
        * boolean to add/remove the item from the set.
        */
       setIn(path, value) {
-        const [key, ...rest] = path;
+        const [key2, ...rest] = path;
         if (rest.length === 0) {
-          this.set(key, value);
+          this.set(key2, value);
         } else {
-          const node = this.get(key, true);
+          const node = this.get(key2, true);
           if (identity.isCollection(node))
             node.setIn(rest, value);
           else if (node === void 0 && this.schema)
-            this.set(key, collectionFromPath(this.schema, rest, value));
+            this.set(key2, collectionFromPath(this.schema, rest, value));
           else
-            throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
+            throw new Error(`Expected YAML collection at ${key2}. Remaining path: ${rest}`);
         }
       }
     };
@@ -8274,7 +8274,7 @@ var require_stringify = __commonJS({
         props.push(doc.directives.tagString(tag));
       return props.join(" ");
     }
-    function stringify(item, ctx, onComment, onChompKeep) {
+    function stringify2(item, ctx, onComment, onChompKeep) {
       if (identity.isPair(item))
         return item.toString(ctx, onComment, onChompKeep);
       if (identity.isAlias(item)) {
@@ -8303,7 +8303,7 @@ var require_stringify = __commonJS({
 ${ctx.indent}${str}`;
     }
     exports.createStringifyContext = createStringifyContext;
-    exports.stringify = stringify;
+    exports.stringify = stringify2;
   }
 });
 
@@ -8313,21 +8313,21 @@ var require_stringifyPair = __commonJS({
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
-    function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
+    function stringifyPair({ key: key2, value }, ctx, onComment, onChompKeep) {
       const { allNullValues, doc, indent, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
-      let keyComment = identity.isNode(key) && key.comment || null;
+      let keyComment = identity.isNode(key2) && key2.comment || null;
       if (simpleKeys) {
         if (keyComment) {
           throw new Error("With simple keys, key nodes cannot have comments");
         }
-        if (identity.isCollection(key) || !identity.isNode(key) && typeof key === "object") {
+        if (identity.isCollection(key2) || !identity.isNode(key2) && typeof key2 === "object") {
           const msg = "With simple keys, collection cannot be used as a key value";
           throw new Error(msg);
         }
       }
-      let explicitKey = !simpleKeys && (!key || keyComment && value == null && !ctx.inFlow || identity.isCollection(key) || (identity.isScalar(key) ? key.type === Scalar.Scalar.BLOCK_FOLDED || key.type === Scalar.Scalar.BLOCK_LITERAL : typeof key === "object"));
+      let explicitKey = !simpleKeys && (!key2 || keyComment && value == null && !ctx.inFlow || identity.isCollection(key2) || (identity.isScalar(key2) ? key2.type === Scalar.Scalar.BLOCK_FOLDED || key2.type === Scalar.Scalar.BLOCK_LITERAL : typeof key2 === "object"));
       ctx = Object.assign({}, ctx, {
         allNullValues: false,
         implicitKey: !explicitKey && (simpleKeys || !allNullValues),
@@ -8335,7 +8335,7 @@ var require_stringifyPair = __commonJS({
       });
       let keyCommentDone = false;
       let chompKeep = false;
-      let str = stringify.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
+      let str = stringify2.stringify(key2, ctx, () => keyCommentDone = true, () => chompKeep = true);
       if (!explicitKey && !ctx.inFlow && str.length > 1024) {
         if (simpleKeys)
           throw new Error("With simple keys, single line scalar must not span more than 1024 characters");
@@ -8387,7 +8387,7 @@ ${indent}:`;
         ctx.indent = ctx.indent.substring(2);
       }
       let valueCommentDone = false;
-      const valueStr = stringify.stringify(value, ctx, () => valueCommentDone = true, () => chompKeep = true);
+      const valueStr = stringify2.stringify(value, ctx, () => valueCommentDone = true, () => chompKeep = true);
       let ws = " ";
       if (keyComment || vsb || vcb) {
         ws = vsb ? "\n" : "";
@@ -8479,7 +8479,7 @@ var require_merge = __commonJS({
       }),
       stringify: () => MERGE_KEY
     };
-    var isMergeKey = (ctx, key) => (merge2.identify(key) || identity.isScalar(key) && (!key.type || key.type === Scalar.Scalar.PLAIN) && merge2.identify(key.value)) && ctx?.doc.schema.tags.some((tag) => tag.tag === merge2.tag && tag.default);
+    var isMergeKey = (ctx, key2) => (merge2.identify(key2) || identity.isScalar(key2) && (!key2.type || key2.type === Scalar.Scalar.PLAIN) && merge2.identify(key2.value)) && ctx?.doc.schema.tags.some((tag) => tag.tag === merge2.tag && tag.default);
     function addMergeToJSMap(ctx, map, value) {
       const source = resolveAliasValue(ctx, value);
       if (identity.isSeq(source))
@@ -8496,14 +8496,14 @@ var require_merge = __commonJS({
       if (!identity.isMap(source))
         throw new Error("Merge sources must be maps or map aliases");
       const srcMap = source.toJSON(null, ctx, Map);
-      for (const [key, value2] of srcMap) {
+      for (const [key2, value2] of srcMap) {
         if (map instanceof Map) {
-          if (!map.has(key))
-            map.set(key, value2);
+          if (!map.has(key2))
+            map.set(key2, value2);
         } else if (map instanceof Set) {
-          map.add(key);
-        } else if (!Object.prototype.hasOwnProperty.call(map, key)) {
-          Object.defineProperty(map, key, {
+          map.add(key2);
+        } else if (!Object.prototype.hasOwnProperty.call(map, key2)) {
+          Object.defineProperty(map, key2, {
             value: value2,
             writable: true,
             enumerable: true,
@@ -8528,22 +8528,22 @@ var require_addPairToJSMap = __commonJS({
     "use strict";
     var log = require_log();
     var merge2 = require_merge();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var identity = require_identity();
     var toJS = require_toJS();
-    function addPairToJSMap(ctx, map, { key, value }) {
-      if (identity.isNode(key) && key.addToJSMap)
-        key.addToJSMap(ctx, map, value);
-      else if (merge2.isMergeKey(ctx, key))
+    function addPairToJSMap(ctx, map, { key: key2, value }) {
+      if (identity.isNode(key2) && key2.addToJSMap)
+        key2.addToJSMap(ctx, map, value);
+      else if (merge2.isMergeKey(ctx, key2))
         merge2.addMergeToJSMap(ctx, map, value);
       else {
-        const jsKey = toJS.toJS(key, "", ctx);
+        const jsKey = toJS.toJS(key2, "", ctx);
         if (map instanceof Map) {
           map.set(jsKey, toJS.toJS(value, jsKey, ctx));
         } else if (map instanceof Set) {
           map.add(jsKey);
         } else {
-          const stringKey = stringifyKey(key, jsKey, ctx);
+          const stringKey = stringifyKey(key2, jsKey, ctx);
           const jsValue = toJS.toJS(value, stringKey, ctx);
           if (stringKey in map)
             Object.defineProperty(map, stringKey, {
@@ -8558,19 +8558,19 @@ var require_addPairToJSMap = __commonJS({
       }
       return map;
     }
-    function stringifyKey(key, jsKey, ctx) {
+    function stringifyKey(key2, jsKey, ctx) {
       if (jsKey === null)
         return "";
       if (typeof jsKey !== "object")
         return String(jsKey);
-      if (identity.isNode(key) && ctx?.doc) {
-        const strCtx = stringify.createStringifyContext(ctx.doc, {});
+      if (identity.isNode(key2) && ctx?.doc) {
+        const strCtx = stringify2.createStringifyContext(ctx.doc, {});
         strCtx.anchors = /* @__PURE__ */ new Set();
         for (const node of ctx.anchors.keys())
           strCtx.anchors.add(node.anchor);
         strCtx.inFlow = true;
         strCtx.inStringifyKey = true;
-        const strKey = key.toString(strCtx);
+        const strKey = key2.toString(strCtx);
         if (!ctx.mapKeyWarned) {
           let jsonStr = JSON.stringify(strKey);
           if (jsonStr.length > 40)
@@ -8594,24 +8594,24 @@ var require_Pair = __commonJS({
     var stringifyPair = require_stringifyPair();
     var addPairToJSMap = require_addPairToJSMap();
     var identity = require_identity();
-    function createPair(key, value, ctx) {
-      const k = createNode.createNode(key, void 0, ctx);
+    function createPair(key2, value, ctx) {
+      const k = createNode.createNode(key2, void 0, ctx);
       const v = createNode.createNode(value, void 0, ctx);
       return new Pair(k, v);
     }
     var Pair = class _Pair {
-      constructor(key, value = null) {
+      constructor(key2, value = null) {
         Object.defineProperty(this, identity.NODE_TYPE, { value: identity.PAIR });
-        this.key = key;
+        this.key = key2;
         this.value = value;
       }
       clone(schema) {
-        let { key, value } = this;
-        if (identity.isNode(key))
-          key = key.clone(schema);
+        let { key: key2, value } = this;
+        if (identity.isNode(key2))
+          key2 = key2.clone(schema);
         if (identity.isNode(value))
           value = value.clone(schema);
-        return new _Pair(key, value);
+        return new _Pair(key2, value);
       }
       toJSON(_, ctx) {
         const pair = ctx?.mapAsMap ? /* @__PURE__ */ new Map() : {};
@@ -8631,12 +8631,12 @@ var require_stringifyCollection = __commonJS({
   "node_modules/yaml/dist/stringify/stringifyCollection.js"(exports) {
     "use strict";
     var identity = require_identity();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyCollection(collection, ctx, options) {
       const flow = ctx.inFlow ?? collection.flow;
-      const stringify2 = flow ? stringifyFlowCollection : stringifyBlockCollection;
-      return stringify2(collection, ctx, options);
+      const stringify3 = flow ? stringifyFlowCollection : stringifyBlockCollection;
+      return stringify3(collection, ctx, options);
     }
     function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, flowChars, itemIndent, onChompKeep, onComment }) {
       const { indent, options: { commentString } } = ctx;
@@ -8661,7 +8661,7 @@ var require_stringifyCollection = __commonJS({
           }
         }
         chompKeep = false;
-        let str2 = stringify.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
+        let str2 = stringify2.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
         if (comment2)
           str2 += stringifyComment.lineComment(str2, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
@@ -8728,7 +8728,7 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           reqNewline = true;
-        let str = stringify.stringify(item, itemCtx, () => comment = null);
+        let str = stringify2.stringify(item, itemCtx, () => comment = null);
         reqNewline || (reqNewline = lines.length > linesAtValue || str.includes("\n"));
         if (i < items.length - 1) {
           str += ",";
@@ -8787,11 +8787,11 @@ var require_YAMLMap = __commonJS({
     var identity = require_identity();
     var Pair = require_Pair();
     var Scalar = require_Scalar();
-    function findPair(items, key) {
-      const k = identity.isScalar(key) ? key.value : key;
+    function findPair(items, key2) {
+      const k = identity.isScalar(key2) ? key2.value : key2;
       for (const it of items) {
         if (identity.isPair(it)) {
-          if (it.key === key || it.key === k)
+          if (it.key === key2 || it.key === k)
             return it;
           if (identity.isScalar(it.key) && it.key.value === k)
             return it;
@@ -8814,20 +8814,20 @@ var require_YAMLMap = __commonJS({
       static from(schema, obj, ctx) {
         const { keepUndefined, replacer } = ctx;
         const map = new this(schema);
-        const add = (key, value) => {
+        const add = (key2, value) => {
           if (typeof replacer === "function")
-            value = replacer.call(obj, key, value);
-          else if (Array.isArray(replacer) && !replacer.includes(key))
+            value = replacer.call(obj, key2, value);
+          else if (Array.isArray(replacer) && !replacer.includes(key2))
             return;
           if (value !== void 0 || keepUndefined)
-            map.items.push(Pair.createPair(key, value, ctx));
+            map.items.push(Pair.createPair(key2, value, ctx));
         };
         if (obj instanceof Map) {
-          for (const [key, value] of obj)
-            add(key, value);
+          for (const [key2, value] of obj)
+            add(key2, value);
         } else if (obj && typeof obj === "object") {
-          for (const key of Object.keys(obj))
-            add(key, obj[key]);
+          for (const key2 of Object.keys(obj))
+            add(key2, obj[key2]);
         }
         if (typeof schema.sortMapEntries === "function") {
           map.items.sort(schema.sortMapEntries);
@@ -8867,23 +8867,23 @@ var require_YAMLMap = __commonJS({
           this.items.push(_pair);
         }
       }
-      delete(key) {
-        const it = findPair(this.items, key);
+      delete(key2) {
+        const it = findPair(this.items, key2);
         if (!it)
           return false;
         const del = this.items.splice(this.items.indexOf(it), 1);
         return del.length > 0;
       }
-      get(key, keepScalar) {
-        const it = findPair(this.items, key);
+      get(key2, keepScalar) {
+        const it = findPair(this.items, key2);
         const node = it?.value;
         return (!keepScalar && identity.isScalar(node) ? node.value : node) ?? void 0;
       }
-      has(key) {
-        return !!findPair(this.items, key);
+      has(key2) {
+        return !!findPair(this.items, key2);
       }
-      set(key, value) {
-        this.add(new Pair.Pair(key, value), true);
+      set(key2, value) {
+        this.add(new Pair.Pair(key2, value), true);
       }
       /**
        * @param ctx - Conversion context, originally set in Document#toJS()
@@ -8972,15 +8972,15 @@ var require_YAMLSeq = __commonJS({
        *
        * @returns `true` if the item was found and removed.
        */
-      delete(key) {
-        const idx = asItemIndex(key);
+      delete(key2) {
+        const idx = asItemIndex(key2);
         if (typeof idx !== "number")
           return false;
         const del = this.items.splice(idx, 1);
         return del.length > 0;
       }
-      get(key, keepScalar) {
-        const idx = asItemIndex(key);
+      get(key2, keepScalar) {
+        const idx = asItemIndex(key2);
         if (typeof idx !== "number")
           return void 0;
         const it = this.items[idx];
@@ -8992,8 +8992,8 @@ var require_YAMLSeq = __commonJS({
        * `key` must contain a representation of an integer for this to succeed.
        * It may be wrapped in a `Scalar`.
        */
-      has(key) {
-        const idx = asItemIndex(key);
+      has(key2) {
+        const idx = asItemIndex(key2);
         return typeof idx === "number" && idx < this.items.length;
       }
       /**
@@ -9003,10 +9003,10 @@ var require_YAMLSeq = __commonJS({
        * If `key` does not contain a representation of an integer, this will throw.
        * It may be wrapped in a `Scalar`.
        */
-      set(key, value) {
-        const idx = asItemIndex(key);
+      set(key2, value) {
+        const idx = asItemIndex(key2);
         if (typeof idx !== "number")
-          throw new Error(`Expected a valid index, not ${key}.`);
+          throw new Error(`Expected a valid index, not ${key2}.`);
         const prev = this.items[idx];
         if (identity.isScalar(prev) && Scalar.isScalarValue(value))
           prev.value = value;
@@ -9040,8 +9040,8 @@ var require_YAMLSeq = __commonJS({
           let i = 0;
           for (let it of obj) {
             if (typeof replacer === "function") {
-              const key = obj instanceof Set ? it : String(i++);
-              it = replacer.call(obj, key, it);
+              const key2 = obj instanceof Set ? it : String(i++);
+              it = replacer.call(obj, key2, it);
             }
             seq.items.push(createNode.createNode(it, void 0, ctx));
           }
@@ -9049,8 +9049,8 @@ var require_YAMLSeq = __commonJS({
         return seq;
       }
     };
-    function asItemIndex(key) {
-      let idx = identity.isScalar(key) ? key.value : key;
+    function asItemIndex(key2) {
+      let idx = identity.isScalar(key2) ? key2.value : key2;
       if (idx && typeof idx === "string")
         idx = Number(idx);
       return typeof idx === "number" && Number.isInteger(idx) && idx >= 0 ? idx : null;
@@ -9464,25 +9464,25 @@ ${cn.comment}` : item.comment;
         for (let it of iterable) {
           if (typeof replacer === "function")
             it = replacer.call(iterable, String(i++), it);
-          let key, value;
+          let key2, value;
           if (Array.isArray(it)) {
             if (it.length === 2) {
-              key = it[0];
+              key2 = it[0];
               value = it[1];
             } else
               throw new TypeError(`Expected [key, value] tuple: ${it}`);
           } else if (it && it instanceof Object) {
             const keys = Object.keys(it);
             if (keys.length === 1) {
-              key = keys[0];
-              value = it[key];
+              key2 = keys[0];
+              value = it[key2];
             } else {
               throw new TypeError(`Expected tuple with one key, not ${keys.length} keys`);
             }
           } else {
-            key = it;
+            key2 = it;
           }
-          pairs2.items.push(Pair.createPair(key, value, ctx));
+          pairs2.items.push(Pair.createPair(key2, value, ctx));
         }
       return pairs2;
     }
@@ -9529,16 +9529,16 @@ var require_omap = __commonJS({
         if (ctx?.onCreate)
           ctx.onCreate(map);
         for (const pair of this.items) {
-          let key, value;
+          let key2, value;
           if (identity.isPair(pair)) {
-            key = toJS.toJS(pair.key, "", ctx);
-            value = toJS.toJS(pair.value, key, ctx);
+            key2 = toJS.toJS(pair.key, "", ctx);
+            value = toJS.toJS(pair.value, key2, ctx);
           } else {
-            key = toJS.toJS(pair, "", ctx);
+            key2 = toJS.toJS(pair, "", ctx);
           }
-          if (map.has(key))
+          if (map.has(key2))
             throw new Error("Ordered maps must not include duplicate keys");
-          map.set(key, value);
+          map.set(key2, value);
         }
         return map;
       }
@@ -9559,12 +9559,12 @@ var require_omap = __commonJS({
       resolve(seq, onError) {
         const pairs$1 = pairs.resolvePairs(seq, onError);
         const seenKeys = [];
-        for (const { key } of pairs$1.items) {
-          if (identity.isScalar(key)) {
-            if (seenKeys.includes(key.value)) {
-              onError(`Ordered maps must not include duplicate keys: ${key.value}`);
+        for (const { key: key2 } of pairs$1.items) {
+          if (identity.isScalar(key2)) {
+            if (seenKeys.includes(key2.value)) {
+              onError(`Ordered maps must not include duplicate keys: ${key2.value}`);
             } else {
-              seenKeys.push(key.value);
+              seenKeys.push(key2.value);
             }
           }
         }
@@ -9749,14 +9749,14 @@ var require_set = __commonJS({
         super(schema);
         this.tag = _YAMLSet.tag;
       }
-      add(key) {
+      add(key2) {
         let pair;
-        if (identity.isPair(key))
-          pair = key;
-        else if (key && typeof key === "object" && "key" in key && "value" in key && key.value === null)
-          pair = new Pair.Pair(key.key, null);
+        if (identity.isPair(key2))
+          pair = key2;
+        else if (key2 && typeof key2 === "object" && "key" in key2 && "value" in key2 && key2.value === null)
+          pair = new Pair.Pair(key2.key, null);
         else
-          pair = new Pair.Pair(key, null);
+          pair = new Pair.Pair(key2, null);
         const prev = YAMLMap.findPair(this.items, pair.key);
         if (!prev)
           this.items.push(pair);
@@ -9765,18 +9765,18 @@ var require_set = __commonJS({
        * If `keepPair` is `true`, returns the Pair matching `key`.
        * Otherwise, returns the value of that Pair's key.
        */
-      get(key, keepPair) {
-        const pair = YAMLMap.findPair(this.items, key);
+      get(key2, keepPair) {
+        const pair = YAMLMap.findPair(this.items, key2);
         return !keepPair && identity.isPair(pair) ? identity.isScalar(pair.key) ? pair.key.value : pair.key : pair;
       }
-      set(key, value) {
+      set(key2, value) {
         if (typeof value !== "boolean")
           throw new Error(`Expected boolean value for set(key, value) in a YAML set, not ${typeof value}`);
-        const prev = YAMLMap.findPair(this.items, key);
+        const prev = YAMLMap.findPair(this.items, key2);
         if (prev && !value) {
           this.items.splice(this.items.indexOf(prev), 1);
         } else if (!prev && value) {
-          this.items.push(new Pair.Pair(key));
+          this.items.push(new Pair.Pair(key2));
         }
       }
       toJSON(_, ctx) {
@@ -10023,7 +10023,7 @@ var require_tags = __commonJS({
         if (Array.isArray(customTags))
           tags = [];
         else {
-          const keys = Array.from(schemas.keys()).filter((key) => key !== "yaml11").map((key) => JSON.stringify(key)).join(", ");
+          const keys = Array.from(schemas.keys()).filter((key2) => key2 !== "yaml11").map((key2) => JSON.stringify(key2)).join(", ");
           throw new Error(`Unknown schema "${schemaName}"; use one of ${keys} or define customTags array`);
         }
       }
@@ -10039,7 +10039,7 @@ var require_tags = __commonJS({
         const tagObj = typeof tag === "string" ? tagsByName[tag] : tag;
         if (!tagObj) {
           const tagName = JSON.stringify(tag);
-          const keys = Object.keys(tagsByName).map((key) => JSON.stringify(key)).join(", ");
+          const keys = Object.keys(tagsByName).map((key2) => JSON.stringify(key2)).join(", ");
           throw new Error(`Unknown custom tag ${tagName}; use one of ${keys}`);
         }
         if (!tags2.includes(tagObj))
@@ -10089,7 +10089,7 @@ var require_stringifyDocument = __commonJS({
   "node_modules/yaml/dist/stringify/stringifyDocument.js"(exports) {
     "use strict";
     var identity = require_identity();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyDocument(doc, options) {
       const lines = [];
@@ -10104,7 +10104,7 @@ var require_stringifyDocument = __commonJS({
       }
       if (hasDirectives)
         lines.push("---");
-      const ctx = stringify.createStringifyContext(doc, options);
+      const ctx = stringify2.createStringifyContext(doc, options);
       const { commentString } = ctx.options;
       if (doc.commentBefore) {
         if (lines.length !== 1)
@@ -10126,7 +10126,7 @@ var require_stringifyDocument = __commonJS({
           contentComment = doc.contents.comment;
         }
         const onChompKeep = contentComment ? void 0 : () => chompKeep = true;
-        let body = stringify.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
+        let body = stringify2.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
         if (contentComment)
           body += stringifyComment.lineComment(body, "", commentString(contentComment));
         if ((body[0] === "|" || body[0] === ">") && lines[lines.length - 1] === "---") {
@@ -10134,7 +10134,7 @@ var require_stringifyDocument = __commonJS({
         } else
           lines.push(body);
       } else {
-        lines.push(stringify.stringify(doc.contents, ctx));
+        lines.push(stringify2.stringify(doc.contents, ctx));
       }
       if (doc.directives?.docEnd) {
         if (doc.comment) {
@@ -10303,8 +10303,8 @@ var require_Document = __commonJS({
        * Convert a key and a value into a `Pair` using the current schema,
        * recursively wrapping all values as `Scalar` or `Collection` nodes.
        */
-      createPair(key, value, options = {}) {
-        const k = this.createNode(key, null, options);
+      createPair(key2, value, options = {}) {
+        const k = this.createNode(key2, null, options);
         const v = this.createNode(value, null, options);
         return new Pair.Pair(k, v);
       }
@@ -10312,8 +10312,8 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      delete(key) {
-        return assertCollection(this.contents) ? this.contents.delete(key) : false;
+      delete(key2) {
+        return assertCollection(this.contents) ? this.contents.delete(key2) : false;
       }
       /**
        * Removes a value from the document.
@@ -10333,8 +10333,8 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      get(key, keepScalar) {
-        return identity.isCollection(this.contents) ? this.contents.get(key, keepScalar) : void 0;
+      get(key2, keepScalar) {
+        return identity.isCollection(this.contents) ? this.contents.get(key2, keepScalar) : void 0;
       }
       /**
        * Returns item at `path`, or `undefined` if not found. By default unwraps
@@ -10349,8 +10349,8 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value with the key `key`.
        */
-      has(key) {
-        return identity.isCollection(this.contents) ? this.contents.has(key) : false;
+      has(key2) {
+        return identity.isCollection(this.contents) ? this.contents.has(key2) : false;
       }
       /**
        * Checks if the document includes a value at `path`.
@@ -10364,11 +10364,11 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      set(key, value) {
+      set(key2, value) {
         if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, [key], value);
+          this.contents = Collection.collectionFromPath(this.schema, [key2], value);
         } else if (assertCollection(this.contents)) {
-          this.contents.set(key, value);
+          this.contents.set(key2, value);
         }
       }
       /**
@@ -10676,24 +10676,24 @@ var require_resolve_props = __commonJS({
 var require_util_contains_newline = __commonJS({
   "node_modules/yaml/dist/compose/util-contains-newline.js"(exports) {
     "use strict";
-    function containsNewline(key) {
-      if (!key)
+    function containsNewline(key2) {
+      if (!key2)
         return null;
-      switch (key.type) {
+      switch (key2.type) {
         case "alias":
         case "scalar":
         case "double-quoted-scalar":
         case "single-quoted-scalar":
-          if (key.source.includes("\n"))
+          if (key2.source.includes("\n"))
             return true;
-          if (key.end) {
-            for (const st of key.end)
+          if (key2.end) {
+            for (const st of key2.end)
               if (st.type === "newline")
                 return true;
           }
           return false;
         case "flow-collection":
-          for (const it of key.items) {
+          for (const it of key2.items) {
             for (const st of it.start)
               if (st.type === "newline")
                 return true;
@@ -10767,10 +10767,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep2, value } = collItem;
+        const { start, key: key2, sep: sep3, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep2?.[0],
+          next: key2 ?? sep3?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -10778,13 +10778,13 @@ var require_resolve_block_map = __commonJS({
         });
         const implicitKey = !keyProps.found;
         if (implicitKey) {
-          if (key) {
-            if (key.type === "block-seq")
+          if (key2) {
+            if (key2.type === "block-seq")
               onError(offset, "BLOCK_AS_IMPLICIT_KEY", "A block sequence may not be used as an implicit map key");
-            else if ("indent" in key && key.indent !== bm.indent)
+            else if ("indent" in key2 && key2.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep2) {
+          if (!keyProps.anchor && !keyProps.tag && !sep3) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -10794,27 +10794,27 @@ var require_resolve_block_map = __commonJS({
             }
             continue;
           }
-          if (keyProps.newlineAfterProp || utilContainsNewline.containsNewline(key)) {
-            onError(key ?? start[start.length - 1], "MULTILINE_IMPLICIT_KEY", "Implicit keys need to be on a single line");
+          if (keyProps.newlineAfterProp || utilContainsNewline.containsNewline(key2)) {
+            onError(key2 ?? start[start.length - 1], "MULTILINE_IMPLICIT_KEY", "Implicit keys need to be on a single line");
           }
         } else if (keyProps.found?.indent !== bm.indent) {
           onError(offset, "BAD_INDENT", startColMsg);
         }
         ctx.atKey = true;
         const keyStart = keyProps.end;
-        const keyNode = key ? composeNode(ctx, key, keyProps, onError) : composeEmptyNode(ctx, keyStart, start, null, keyProps, onError);
+        const keyNode = key2 ? composeNode(ctx, key2, keyProps, onError) : composeEmptyNode(ctx, keyStart, start, null, keyProps, onError);
         if (ctx.schema.compat)
-          utilFlowIndentCheck.flowIndentCheck(bm.indent, key, onError);
+          utilFlowIndentCheck.flowIndentCheck(bm.indent, key2, onError);
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep2 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep3 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
           onError,
           parentIndent: bm.indent,
-          startOnNewline: !key || key.type === "block-scalar"
+          startOnNewline: !key2 || key2.type === "block-scalar"
         });
         offset = valueProps.end;
         if (valueProps.found) {
@@ -10824,7 +10824,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep2, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep3, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -10915,7 +10915,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep2 = "";
+        let sep3 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -10929,13 +10929,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep2 + cb;
-              sep2 = "";
+                comment += sep3 + cb;
+              sep3 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep2 += source;
+                sep3 += source;
               hasSpace = true;
               break;
             default:
@@ -10978,18 +10978,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep2, value } = collItem;
+        const { start, key: key2, sep: sep3, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep2?.[0],
+          next: key2 ?? sep3?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep2 && !value) {
+          if (!props.anchor && !props.tag && !sep3 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -11003,9 +11003,9 @@ var require_resolve_flow_collection = __commonJS({
             offset = props.end;
             continue;
           }
-          if (!isMap && ctx.options.strict && utilContainsNewline.containsNewline(key))
+          if (!isMap && ctx.options.strict && utilContainsNewline.containsNewline(key2))
             onError(
-              key,
+              key2,
               // checked by containsNewline()
               "MULTILINE_IMPLICIT_KEY",
               "Implicit keys of flow sequence pairs need to be on a single line"
@@ -11043,8 +11043,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep2 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep2, null, props, onError);
+        if (!isMap && !sep3 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep3, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -11052,11 +11052,11 @@ var require_resolve_flow_collection = __commonJS({
         } else {
           ctx.atKey = true;
           const keyStart = props.end;
-          const keyNode = key ? composeNode(ctx, key, props, onError) : composeEmptyNode(ctx, keyStart, start, null, props, onError);
-          if (isBlock(key))
+          const keyNode = key2 ? composeNode(ctx, key2, props, onError) : composeEmptyNode(ctx, keyStart, start, null, props, onError);
+          if (isBlock(key2))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep2 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep3 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -11067,8 +11067,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep2)
-                for (const st of sep2) {
+              if (sep3)
+                for (const st of sep3) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -11085,7 +11085,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep2, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep3, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -11265,7 +11265,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep2 = "";
+      let sep3 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -11282,24 +11282,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep2 + indent.slice(trimIndent) + content;
-          sep2 = "\n";
+          value += sep3 + indent.slice(trimIndent) + content;
+          sep3 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep2 === " ")
-            sep2 = "\n";
-          else if (!prevMoreIndented && sep2 === "\n")
-            sep2 = "\n\n";
-          value += sep2 + indent.slice(trimIndent) + content;
-          sep2 = "\n";
+          if (sep3 === " ")
+            sep3 = "\n";
+          else if (!prevMoreIndented && sep3 === "\n")
+            sep3 = "\n\n";
+          value += sep3 + indent.slice(trimIndent) + content;
+          sep3 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep2 === "\n")
+          if (sep3 === "\n")
             value += "\n";
           else
-            sep2 = "\n";
+            sep3 = "\n";
         } else {
-          value += sep2 + content;
-          sep2 = " ";
+          value += sep3 + content;
+          sep3 = " ";
           prevMoreIndented = false;
         }
       }
@@ -11481,25 +11481,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep2 = " ";
+      let sep3 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep2 === "\n")
-            res += sep2;
+          if (sep3 === "\n")
+            res += sep3;
           else
-            sep2 = "\n";
+            sep3 = "\n";
         } else {
-          res += sep2 + match[1];
-          sep2 = " ";
+          res += sep3 + match[1];
+          sep3 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep2 + (match?.[1] ?? "");
+      return res + sep3 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -12202,9 +12202,9 @@ var require_cst_scalar = __commonJS({
         ];
         if (!addEndtoBlockProps(props, "end" in token ? token.end : void 0))
           props.push({ type: "newline", offset: -1, indent, source: "\n" });
-        for (const key of Object.keys(token))
-          if (key !== "type" && key !== "offset")
-            delete token[key];
+        for (const key2 of Object.keys(token))
+          if (key2 !== "type" && key2 !== "offset")
+            delete token[key2];
         Object.assign(token, { type: "block-scalar", indent, props, source: body });
       }
     }
@@ -12252,9 +12252,9 @@ var require_cst_scalar = __commonJS({
         default: {
           const indent = "indent" in token ? token.indent : -1;
           const end = "end" in token && Array.isArray(token.end) ? token.end.filter((st) => st.type === "space" || st.type === "comment" || st.type === "newline") : [];
-          for (const key of Object.keys(token))
-            if (key !== "type" && key !== "offset")
-              delete token[key];
+          for (const key2 of Object.keys(token))
+            if (key2 !== "type" && key2 !== "offset")
+              delete token[key2];
           Object.assign(token, { type, indent, source, end });
         }
       }
@@ -12269,7 +12269,7 @@ var require_cst_scalar = __commonJS({
 var require_cst_stringify = __commonJS({
   "node_modules/yaml/dist/parse/cst-stringify.js"(exports) {
     "use strict";
-    var stringify = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
+    var stringify2 = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
     function stringifyToken(token) {
       switch (token.type) {
         case "block-scalar": {
@@ -12309,20 +12309,20 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep2, value }) {
+    function stringifyItem({ start, key: key2, sep: sep3, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
-      if (key)
-        res += stringifyToken(key);
-      if (sep2)
-        for (const st of sep2)
+      if (key2)
+        res += stringifyToken(key2);
+      if (sep3)
+        for (const st of sep3)
           res += st.source;
       if (value)
         res += stringifyToken(value);
       return res;
     }
-    exports.stringify = stringify;
+    exports.stringify = stringify2;
   }
 });
 
@@ -13483,18 +13483,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep2;
+          let sep3;
           if (scalar.end) {
-            sep2 = scalar.end;
-            sep2.push(this.sourceToken);
+            sep3 = scalar.end;
+            sep3.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep2 = [this.sourceToken];
+            sep3 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep2 }]
+            items: [{ start, key: scalar, sep: sep3 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -13646,16 +13646,16 @@ var require_parser = __commonJS({
                   });
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
-                  const key = it.key;
-                  const sep2 = it.sep;
-                  sep2.push(this.sourceToken);
+                  const key2 = it.key;
+                  const sep3 = it.sep;
+                  sep3.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep2 }]
+                    items: [{ start: start2, key: key2, sep: sep3 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -13849,13 +13849,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep2 = fc.end.splice(1, fc.end.length);
-            sep2.push(this.sourceToken);
+            const sep3 = fc.end.splice(1, fc.end.length);
+            sep3.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep2 }]
+              items: [{ start, key: fc, sep: sep3 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -14014,7 +14014,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument3(source, options = {}) {
+    function parseDocument4(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -14040,7 +14040,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver && typeof reviver === "object") {
         options = reviver;
       }
-      const doc = parseDocument3(src, options);
+      const doc = parseDocument4(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning) => log.warn(doc.options.logLevel, warning));
@@ -14052,7 +14052,7 @@ var require_public_api = __commonJS({
       }
       return doc.toJS(Object.assign({ reviver: _reviver }, options));
     }
-    function stringify(value, replacer, options) {
+    function stringify2(value, replacer, options) {
       let _replacer = null;
       if (typeof replacer === "function" || Array.isArray(replacer)) {
         _replacer = replacer;
@@ -14076,8 +14076,8 @@ var require_public_api = __commonJS({
     }
     exports.parse = parse3;
     exports.parseAllDocuments = parseAllDocuments;
-    exports.parseDocument = parseDocument3;
-    exports.stringify = stringify;
+    exports.parseDocument = parseDocument4;
+    exports.stringify = stringify2;
   }
 });
 
@@ -14279,9 +14279,9 @@ var util;
   };
   util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object3) => {
     const keys = [];
-    for (const key in object3) {
-      if (Object.prototype.hasOwnProperty.call(object3, key)) {
-        keys.push(key);
+    for (const key2 in object3) {
+      if (Object.prototype.hasOwnProperty.call(object3, key2)) {
+        keys.push(key2);
       }
     }
     return keys;
@@ -14425,31 +14425,31 @@ var ZodError = class _ZodError extends Error {
     this.issues = issues;
   }
   format(_mapper) {
-    const mapper = _mapper || function(issue2) {
-      return issue2.message;
+    const mapper = _mapper || function(issue3) {
+      return issue3.message;
     };
     const fieldErrors = { _errors: [] };
     const processError = (error2) => {
-      for (const issue2 of error2.issues) {
-        if (issue2.code === "invalid_union") {
-          issue2.unionErrors.map(processError);
-        } else if (issue2.code === "invalid_return_type") {
-          processError(issue2.returnTypeError);
-        } else if (issue2.code === "invalid_arguments") {
-          processError(issue2.argumentsError);
-        } else if (issue2.path.length === 0) {
-          fieldErrors._errors.push(mapper(issue2));
+      for (const issue3 of error2.issues) {
+        if (issue3.code === "invalid_union") {
+          issue3.unionErrors.map(processError);
+        } else if (issue3.code === "invalid_return_type") {
+          processError(issue3.returnTypeError);
+        } else if (issue3.code === "invalid_arguments") {
+          processError(issue3.argumentsError);
+        } else if (issue3.path.length === 0) {
+          fieldErrors._errors.push(mapper(issue3));
         } else {
           let curr = fieldErrors;
           let i = 0;
-          while (i < issue2.path.length) {
-            const el = issue2.path[i];
-            const terminal = i === issue2.path.length - 1;
+          while (i < issue3.path.length) {
+            const el = issue3.path[i];
+            const terminal = i === issue3.path.length - 1;
             if (!terminal) {
               curr[el] = curr[el] || { _errors: [] };
             } else {
               curr[el] = curr[el] || { _errors: [] };
-              curr[el]._errors.push(mapper(issue2));
+              curr[el]._errors.push(mapper(issue3));
             }
             curr = curr[el];
             i++;
@@ -14474,7 +14474,7 @@ var ZodError = class _ZodError extends Error {
   get isEmpty() {
     return this.issues.length === 0;
   }
-  flatten(mapper = (issue2) => issue2.message) {
+  flatten(mapper = (issue3) => issue3.message) {
     const fieldErrors = {};
     const formErrors = [];
     for (const sub of this.issues) {
@@ -14498,30 +14498,30 @@ ZodError.create = (issues) => {
 };
 
 // node_modules/zod/v3/locales/en.js
-var errorMap = (issue2, _ctx) => {
+var errorMap = (issue3, _ctx) => {
   let message;
-  switch (issue2.code) {
+  switch (issue3.code) {
     case ZodIssueCode.invalid_type:
-      if (issue2.received === ZodParsedType.undefined) {
+      if (issue3.received === ZodParsedType.undefined) {
         message = "Required";
       } else {
-        message = `Expected ${issue2.expected}, received ${issue2.received}`;
+        message = `Expected ${issue3.expected}, received ${issue3.received}`;
       }
       break;
     case ZodIssueCode.invalid_literal:
-      message = `Invalid literal value, expected ${JSON.stringify(issue2.expected, util.jsonStringifyReplacer)}`;
+      message = `Invalid literal value, expected ${JSON.stringify(issue3.expected, util.jsonStringifyReplacer)}`;
       break;
     case ZodIssueCode.unrecognized_keys:
-      message = `Unrecognized key(s) in object: ${util.joinValues(issue2.keys, ", ")}`;
+      message = `Unrecognized key(s) in object: ${util.joinValues(issue3.keys, ", ")}`;
       break;
     case ZodIssueCode.invalid_union:
       message = `Invalid input`;
       break;
     case ZodIssueCode.invalid_union_discriminator:
-      message = `Invalid discriminator value. Expected ${util.joinValues(issue2.options)}`;
+      message = `Invalid discriminator value. Expected ${util.joinValues(issue3.options)}`;
       break;
     case ZodIssueCode.invalid_enum_value:
-      message = `Invalid enum value. Expected ${util.joinValues(issue2.options)}, received '${issue2.received}'`;
+      message = `Invalid enum value. Expected ${util.joinValues(issue3.options)}, received '${issue3.received}'`;
       break;
     case ZodIssueCode.invalid_arguments:
       message = `Invalid function arguments`;
@@ -14533,50 +14533,50 @@ var errorMap = (issue2, _ctx) => {
       message = `Invalid date`;
       break;
     case ZodIssueCode.invalid_string:
-      if (typeof issue2.validation === "object") {
-        if ("includes" in issue2.validation) {
-          message = `Invalid input: must include "${issue2.validation.includes}"`;
-          if (typeof issue2.validation.position === "number") {
-            message = `${message} at one or more positions greater than or equal to ${issue2.validation.position}`;
+      if (typeof issue3.validation === "object") {
+        if ("includes" in issue3.validation) {
+          message = `Invalid input: must include "${issue3.validation.includes}"`;
+          if (typeof issue3.validation.position === "number") {
+            message = `${message} at one or more positions greater than or equal to ${issue3.validation.position}`;
           }
-        } else if ("startsWith" in issue2.validation) {
-          message = `Invalid input: must start with "${issue2.validation.startsWith}"`;
-        } else if ("endsWith" in issue2.validation) {
-          message = `Invalid input: must end with "${issue2.validation.endsWith}"`;
+        } else if ("startsWith" in issue3.validation) {
+          message = `Invalid input: must start with "${issue3.validation.startsWith}"`;
+        } else if ("endsWith" in issue3.validation) {
+          message = `Invalid input: must end with "${issue3.validation.endsWith}"`;
         } else {
-          util.assertNever(issue2.validation);
+          util.assertNever(issue3.validation);
         }
-      } else if (issue2.validation !== "regex") {
-        message = `Invalid ${issue2.validation}`;
+      } else if (issue3.validation !== "regex") {
+        message = `Invalid ${issue3.validation}`;
       } else {
         message = "Invalid";
       }
       break;
     case ZodIssueCode.too_small:
-      if (issue2.type === "array")
-        message = `Array must contain ${issue2.exact ? "exactly" : issue2.inclusive ? `at least` : `more than`} ${issue2.minimum} element(s)`;
-      else if (issue2.type === "string")
-        message = `String must contain ${issue2.exact ? "exactly" : issue2.inclusive ? `at least` : `over`} ${issue2.minimum} character(s)`;
-      else if (issue2.type === "number")
-        message = `Number must be ${issue2.exact ? `exactly equal to ` : issue2.inclusive ? `greater than or equal to ` : `greater than `}${issue2.minimum}`;
-      else if (issue2.type === "bigint")
-        message = `Number must be ${issue2.exact ? `exactly equal to ` : issue2.inclusive ? `greater than or equal to ` : `greater than `}${issue2.minimum}`;
-      else if (issue2.type === "date")
-        message = `Date must be ${issue2.exact ? `exactly equal to ` : issue2.inclusive ? `greater than or equal to ` : `greater than `}${new Date(Number(issue2.minimum))}`;
+      if (issue3.type === "array")
+        message = `Array must contain ${issue3.exact ? "exactly" : issue3.inclusive ? `at least` : `more than`} ${issue3.minimum} element(s)`;
+      else if (issue3.type === "string")
+        message = `String must contain ${issue3.exact ? "exactly" : issue3.inclusive ? `at least` : `over`} ${issue3.minimum} character(s)`;
+      else if (issue3.type === "number")
+        message = `Number must be ${issue3.exact ? `exactly equal to ` : issue3.inclusive ? `greater than or equal to ` : `greater than `}${issue3.minimum}`;
+      else if (issue3.type === "bigint")
+        message = `Number must be ${issue3.exact ? `exactly equal to ` : issue3.inclusive ? `greater than or equal to ` : `greater than `}${issue3.minimum}`;
+      else if (issue3.type === "date")
+        message = `Date must be ${issue3.exact ? `exactly equal to ` : issue3.inclusive ? `greater than or equal to ` : `greater than `}${new Date(Number(issue3.minimum))}`;
       else
         message = "Invalid input";
       break;
     case ZodIssueCode.too_big:
-      if (issue2.type === "array")
-        message = `Array must contain ${issue2.exact ? `exactly` : issue2.inclusive ? `at most` : `less than`} ${issue2.maximum} element(s)`;
-      else if (issue2.type === "string")
-        message = `String must contain ${issue2.exact ? `exactly` : issue2.inclusive ? `at most` : `under`} ${issue2.maximum} character(s)`;
-      else if (issue2.type === "number")
-        message = `Number must be ${issue2.exact ? `exactly` : issue2.inclusive ? `less than or equal to` : `less than`} ${issue2.maximum}`;
-      else if (issue2.type === "bigint")
-        message = `BigInt must be ${issue2.exact ? `exactly` : issue2.inclusive ? `less than or equal to` : `less than`} ${issue2.maximum}`;
-      else if (issue2.type === "date")
-        message = `Date must be ${issue2.exact ? `exactly` : issue2.inclusive ? `smaller than or equal to` : `smaller than`} ${new Date(Number(issue2.maximum))}`;
+      if (issue3.type === "array")
+        message = `Array must contain ${issue3.exact ? `exactly` : issue3.inclusive ? `at most` : `less than`} ${issue3.maximum} element(s)`;
+      else if (issue3.type === "string")
+        message = `String must contain ${issue3.exact ? `exactly` : issue3.inclusive ? `at most` : `under`} ${issue3.maximum} character(s)`;
+      else if (issue3.type === "number")
+        message = `Number must be ${issue3.exact ? `exactly` : issue3.inclusive ? `less than or equal to` : `less than`} ${issue3.maximum}`;
+      else if (issue3.type === "bigint")
+        message = `BigInt must be ${issue3.exact ? `exactly` : issue3.inclusive ? `less than or equal to` : `less than`} ${issue3.maximum}`;
+      else if (issue3.type === "date")
+        message = `Date must be ${issue3.exact ? `exactly` : issue3.inclusive ? `smaller than or equal to` : `smaller than`} ${new Date(Number(issue3.maximum))}`;
       else
         message = "Invalid input";
       break;
@@ -14587,14 +14587,14 @@ var errorMap = (issue2, _ctx) => {
       message = `Intersection results could not be merged`;
       break;
     case ZodIssueCode.not_multiple_of:
-      message = `Number must be a multiple of ${issue2.multipleOf}`;
+      message = `Number must be a multiple of ${issue3.multipleOf}`;
       break;
     case ZodIssueCode.not_finite:
       message = "Number must be finite";
       break;
     default:
       message = _ctx.defaultError;
-      util.assertNever(issue2);
+      util.assertNever(issue3);
   }
   return { message };
 };
@@ -14638,7 +14638,7 @@ var makeIssue = (params) => {
 var EMPTY_PATH = [];
 function addIssueToContext(ctx, issueData) {
   const overrideMap = getErrorMap();
-  const issue2 = makeIssue({
+  const issue3 = makeIssue({
     issueData,
     data: ctx.data,
     path: ctx.path,
@@ -14653,7 +14653,7 @@ function addIssueToContext(ctx, issueData) {
       // then global default map
     ].filter((x) => !!x)
   });
-  ctx.common.issues.push(issue2);
+  ctx.common.issues.push(issue3);
 }
 var ParseStatus = class _ParseStatus {
   constructor() {
@@ -14681,10 +14681,10 @@ var ParseStatus = class _ParseStatus {
   static async mergeObjectAsync(status, pairs) {
     const syncPairs = [];
     for (const pair of pairs) {
-      const key = await pair.key;
+      const key2 = await pair.key;
       const value = await pair.value;
       syncPairs.push({
-        key,
+        key: key2,
         value
       });
     }
@@ -14693,17 +14693,17 @@ var ParseStatus = class _ParseStatus {
   static mergeObjectSync(status, pairs) {
     const finalObject = {};
     for (const pair of pairs) {
-      const { key, value } = pair;
-      if (key.status === "aborted")
+      const { key: key2, value } = pair;
+      if (key2.status === "aborted")
         return INVALID;
       if (value.status === "aborted")
         return INVALID;
-      if (key.status === "dirty")
+      if (key2.status === "dirty")
         status.dirty();
       if (value.status === "dirty")
         status.dirty();
-      if (key.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
-        finalObject[key.value] = value.value;
+      if (key2.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
+        finalObject[key2.value] = value.value;
       }
     }
     return { status: status.value, value: finalObject };
@@ -14728,12 +14728,12 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path, key) {
+  constructor(parent, value, path, key2) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
     this._path = path;
-    this._key = key;
+    this._key = key2;
   }
   get path() {
     if (!this._cachedPath.length) {
@@ -16478,9 +16478,9 @@ ZodArray.create = (schema, params) => {
 function deepPartialify(schema) {
   if (schema instanceof ZodObject) {
     const newShape = {};
-    for (const key in schema.shape) {
-      const fieldSchema = schema.shape[key];
-      newShape[key] = ZodOptional.create(deepPartialify(fieldSchema));
+    for (const key2 in schema.shape) {
+      const fieldSchema = schema.shape[key2];
+      newShape[key2] = ZodOptional.create(deepPartialify(fieldSchema));
     }
     return new ZodObject({
       ...schema._def,
@@ -16531,29 +16531,29 @@ var ZodObject = class _ZodObject extends ZodType {
     const { shape, keys: shapeKeys } = this._getCached();
     const extraKeys = [];
     if (!(this._def.catchall instanceof ZodNever && this._def.unknownKeys === "strip")) {
-      for (const key in ctx.data) {
-        if (!shapeKeys.includes(key)) {
-          extraKeys.push(key);
+      for (const key2 in ctx.data) {
+        if (!shapeKeys.includes(key2)) {
+          extraKeys.push(key2);
         }
       }
     }
     const pairs = [];
-    for (const key of shapeKeys) {
-      const keyValidator = shape[key];
-      const value = ctx.data[key];
+    for (const key2 of shapeKeys) {
+      const keyValidator = shape[key2];
+      const value = ctx.data[key2];
       pairs.push({
-        key: { status: "valid", value: key },
-        value: keyValidator._parse(new ParseInputLazyPath(ctx, value, ctx.path, key)),
-        alwaysSet: key in ctx.data
+        key: { status: "valid", value: key2 },
+        value: keyValidator._parse(new ParseInputLazyPath(ctx, value, ctx.path, key2)),
+        alwaysSet: key2 in ctx.data
       });
     }
     if (this._def.catchall instanceof ZodNever) {
       const unknownKeys = this._def.unknownKeys;
       if (unknownKeys === "passthrough") {
-        for (const key of extraKeys) {
+        for (const key2 of extraKeys) {
           pairs.push({
-            key: { status: "valid", value: key },
-            value: { status: "valid", value: ctx.data[key] }
+            key: { status: "valid", value: key2 },
+            value: { status: "valid", value: ctx.data[key2] }
           });
         }
       } else if (unknownKeys === "strict") {
@@ -16570,15 +16570,15 @@ var ZodObject = class _ZodObject extends ZodType {
       }
     } else {
       const catchall = this._def.catchall;
-      for (const key of extraKeys) {
-        const value = ctx.data[key];
+      for (const key2 of extraKeys) {
+        const value = ctx.data[key2];
         pairs.push({
-          key: { status: "valid", value: key },
+          key: { status: "valid", value: key2 },
           value: catchall._parse(
-            new ParseInputLazyPath(ctx, value, ctx.path, key)
+            new ParseInputLazyPath(ctx, value, ctx.path, key2)
             //, ctx.child(key), value, getParsedType(value)
           ),
-          alwaysSet: key in ctx.data
+          alwaysSet: key2 in ctx.data
         });
       }
     }
@@ -16586,10 +16586,10 @@ var ZodObject = class _ZodObject extends ZodType {
       return Promise.resolve().then(async () => {
         const syncPairs = [];
         for (const pair of pairs) {
-          const key = await pair.key;
+          const key2 = await pair.key;
           const value = await pair.value;
           syncPairs.push({
-            key,
+            key: key2,
             value,
             alwaysSet: pair.alwaysSet
           });
@@ -16611,9 +16611,9 @@ var ZodObject = class _ZodObject extends ZodType {
       ...this._def,
       unknownKeys: "strict",
       ...message !== void 0 ? {
-        errorMap: (issue2, ctx) => {
-          const defaultError = this._def.errorMap?.(issue2, ctx).message ?? ctx.defaultError;
-          if (issue2.code === "unrecognized_keys")
+        errorMap: (issue3, ctx) => {
+          const defaultError = this._def.errorMap?.(issue3, ctx).message ?? ctx.defaultError;
+          if (issue3.code === "unrecognized_keys")
             return {
               message: errorUtil.errToObj(message).message ?? defaultError
             };
@@ -16714,8 +16714,8 @@ var ZodObject = class _ZodObject extends ZodType {
   //   }) as any;
   //   return merged;
   // }
-  setKey(key, schema) {
-    return this.augment({ [key]: schema });
+  setKey(key2, schema) {
+    return this.augment({ [key2]: schema });
   }
   // merge<Incoming extends AnyZodObject>(
   //   merging: Incoming
@@ -16746,9 +16746,9 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   pick(mask) {
     const shape = {};
-    for (const key of util.objectKeys(mask)) {
-      if (mask[key] && this.shape[key]) {
-        shape[key] = this.shape[key];
+    for (const key2 of util.objectKeys(mask)) {
+      if (mask[key2] && this.shape[key2]) {
+        shape[key2] = this.shape[key2];
       }
     }
     return new _ZodObject({
@@ -16758,9 +16758,9 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   omit(mask) {
     const shape = {};
-    for (const key of util.objectKeys(this.shape)) {
-      if (!mask[key]) {
-        shape[key] = this.shape[key];
+    for (const key2 of util.objectKeys(this.shape)) {
+      if (!mask[key2]) {
+        shape[key2] = this.shape[key2];
       }
     }
     return new _ZodObject({
@@ -16776,12 +16776,12 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   partial(mask) {
     const newShape = {};
-    for (const key of util.objectKeys(this.shape)) {
-      const fieldSchema = this.shape[key];
-      if (mask && !mask[key]) {
-        newShape[key] = fieldSchema;
+    for (const key2 of util.objectKeys(this.shape)) {
+      const fieldSchema = this.shape[key2];
+      if (mask && !mask[key2]) {
+        newShape[key2] = fieldSchema;
       } else {
-        newShape[key] = fieldSchema.optional();
+        newShape[key2] = fieldSchema.optional();
       }
     }
     return new _ZodObject({
@@ -16791,16 +16791,16 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   required(mask) {
     const newShape = {};
-    for (const key of util.objectKeys(this.shape)) {
-      if (mask && !mask[key]) {
-        newShape[key] = this.shape[key];
+    for (const key2 of util.objectKeys(this.shape)) {
+      if (mask && !mask[key2]) {
+        newShape[key2] = this.shape[key2];
       } else {
-        const fieldSchema = this.shape[key];
+        const fieldSchema = this.shape[key2];
         let newField = fieldSchema;
         while (newField instanceof ZodOptional) {
           newField = newField._def.innerType;
         }
-        newShape[key] = newField;
+        newShape[key2] = newField;
       }
     }
     return new _ZodObject({
@@ -17044,14 +17044,14 @@ function mergeValues(a, b) {
     return { valid: true, data: a };
   } else if (aType === ZodParsedType.object && bType === ZodParsedType.object) {
     const bKeys = util.objectKeys(b);
-    const sharedKeys = util.objectKeys(a).filter((key) => bKeys.indexOf(key) !== -1);
+    const sharedKeys = util.objectKeys(a).filter((key2) => bKeys.indexOf(key2) !== -1);
     const newObj = { ...a, ...b };
-    for (const key of sharedKeys) {
-      const sharedValue = mergeValues(a[key], b[key]);
+    for (const key2 of sharedKeys) {
+      const sharedValue = mergeValues(a[key2], b[key2]);
       if (!sharedValue.valid) {
         return { valid: false };
       }
-      newObj[key] = sharedValue.data;
+      newObj[key2] = sharedValue.data;
     }
     return { valid: true, data: newObj };
   } else if (aType === ZodParsedType.array && bType === ZodParsedType.array) {
@@ -17215,11 +17215,11 @@ var ZodRecord = class _ZodRecord extends ZodType {
     const pairs = [];
     const keyType = this._def.keyType;
     const valueType = this._def.valueType;
-    for (const key in ctx.data) {
+    for (const key2 in ctx.data) {
       pairs.push({
-        key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, key)),
-        value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key], ctx.path, key)),
-        alwaysSet: key in ctx.data
+        key: keyType._parse(new ParseInputLazyPath(ctx, key2, ctx.path, key2)),
+        value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key2], ctx.path, key2)),
+        alwaysSet: key2 in ctx.data
       });
     }
     if (ctx.common.async) {
@@ -17267,9 +17267,9 @@ var ZodMap = class extends ZodType {
     }
     const keyType = this._def.keyType;
     const valueType = this._def.valueType;
-    const pairs = [...ctx.data.entries()].map(([key, value], index) => {
+    const pairs = [...ctx.data.entries()].map(([key2, value], index) => {
       return {
-        key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, [index, "key"])),
+        key: keyType._parse(new ParseInputLazyPath(ctx, key2, ctx.path, [index, "key"])),
         value: valueType._parse(new ParseInputLazyPath(ctx, value, ctx.path, [index, "value"]))
       };
     });
@@ -17277,30 +17277,30 @@ var ZodMap = class extends ZodType {
       const finalMap = /* @__PURE__ */ new Map();
       return Promise.resolve().then(async () => {
         for (const pair of pairs) {
-          const key = await pair.key;
+          const key2 = await pair.key;
           const value = await pair.value;
-          if (key.status === "aborted" || value.status === "aborted") {
+          if (key2.status === "aborted" || value.status === "aborted") {
             return INVALID;
           }
-          if (key.status === "dirty" || value.status === "dirty") {
+          if (key2.status === "dirty" || value.status === "dirty") {
             status.dirty();
           }
-          finalMap.set(key.value, value.value);
+          finalMap.set(key2.value, value.value);
         }
         return { status: status.value, value: finalMap };
       });
     } else {
       const finalMap = /* @__PURE__ */ new Map();
       for (const pair of pairs) {
-        const key = pair.key;
+        const key2 = pair.key;
         const value = pair.value;
-        if (key.status === "aborted" || value.status === "aborted") {
+        if (key2.status === "aborted" || value.status === "aborted") {
           return INVALID;
         }
-        if (key.status === "dirty" || value.status === "dirty") {
+        if (key2.status === "dirty" || value.status === "dirty") {
           status.dirty();
         }
-        finalMap.set(key.value, value.value);
+        finalMap.set(key2.value, value.value);
       }
       return { status: status.value, value: finalMap };
     }
@@ -18341,19 +18341,19 @@ function floatSafeRemainder2(val, step) {
   const stepInt = Number.parseInt(step.toFixed(decCount).replace(".", ""));
   return valInt % stepInt / 10 ** decCount;
 }
-function defineLazy(object3, key, getter) {
+function defineLazy(object3, key2, getter) {
   const set = false;
-  Object.defineProperty(object3, key, {
+  Object.defineProperty(object3, key2, {
     get() {
       if (!set) {
         const value = getter();
-        object3[key] = value;
+        object3[key2] = value;
         return value;
       }
       throw new Error("cached value already set");
     },
     set(v) {
-      Object.defineProperty(object3, key, {
+      Object.defineProperty(object3, key2, {
         value: v
         // configurable: true,
       });
@@ -18372,11 +18372,11 @@ function assignProp(target, prop, value) {
 function getElementAtPath(obj, path) {
   if (!path)
     return obj;
-  return path.reduce((acc, key) => acc?.[key], obj);
+  return path.reduce((acc, key2) => acc?.[key2], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
-  const promises = keys.map((key) => promisesObj[key]);
+  const promises = keys.map((key2) => promisesObj[key2]);
   return Promise.all(promises).then((results) => {
     const resolvedObj = {};
     for (let i = 0; i < keys.length; i++) {
@@ -18429,8 +18429,8 @@ function isPlainObject(o) {
 }
 function numKeys(data) {
   let keyCount = 0;
-  for (const key in data) {
-    if (Object.prototype.hasOwnProperty.call(data, key)) {
+  for (const key2 in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key2)) {
       keyCount++;
     }
   }
@@ -18566,13 +18566,13 @@ var BIGINT_FORMAT_RANGES = {
 function pick(schema, mask) {
   const newShape = {};
   const currDef = schema._zod.def;
-  for (const key in mask) {
-    if (!(key in currDef.shape)) {
-      throw new Error(`Unrecognized key: "${key}"`);
+  for (const key2 in mask) {
+    if (!(key2 in currDef.shape)) {
+      throw new Error(`Unrecognized key: "${key2}"`);
     }
-    if (!mask[key])
+    if (!mask[key2])
       continue;
-    newShape[key] = currDef.shape[key];
+    newShape[key2] = currDef.shape[key2];
   }
   return clone(schema, {
     ...schema._zod.def,
@@ -18583,13 +18583,13 @@ function pick(schema, mask) {
 function omit(schema, mask) {
   const newShape = { ...schema._zod.def.shape };
   const currDef = schema._zod.def;
-  for (const key in mask) {
-    if (!(key in currDef.shape)) {
-      throw new Error(`Unrecognized key: "${key}"`);
+  for (const key2 in mask) {
+    if (!(key2 in currDef.shape)) {
+      throw new Error(`Unrecognized key: "${key2}"`);
     }
-    if (!mask[key])
+    if (!mask[key2])
       continue;
-    delete newShape[key];
+    delete newShape[key2];
   }
   return clone(schema, {
     ...schema._zod.def,
@@ -18630,23 +18630,23 @@ function partial(Class2, schema, mask) {
   const oldShape = schema._zod.def.shape;
   const shape = { ...oldShape };
   if (mask) {
-    for (const key in mask) {
-      if (!(key in oldShape)) {
-        throw new Error(`Unrecognized key: "${key}"`);
+    for (const key2 in mask) {
+      if (!(key2 in oldShape)) {
+        throw new Error(`Unrecognized key: "${key2}"`);
       }
-      if (!mask[key])
+      if (!mask[key2])
         continue;
-      shape[key] = Class2 ? new Class2({
+      shape[key2] = Class2 ? new Class2({
         type: "optional",
-        innerType: oldShape[key]
-      }) : oldShape[key];
+        innerType: oldShape[key2]
+      }) : oldShape[key2];
     }
   } else {
-    for (const key in oldShape) {
-      shape[key] = Class2 ? new Class2({
+    for (const key2 in oldShape) {
+      shape[key2] = Class2 ? new Class2({
         type: "optional",
-        innerType: oldShape[key]
-      }) : oldShape[key];
+        innerType: oldShape[key2]
+      }) : oldShape[key2];
     }
   }
   return clone(schema, {
@@ -18659,22 +18659,22 @@ function required(Class2, schema, mask) {
   const oldShape = schema._zod.def.shape;
   const shape = { ...oldShape };
   if (mask) {
-    for (const key in mask) {
-      if (!(key in shape)) {
-        throw new Error(`Unrecognized key: "${key}"`);
+    for (const key2 in mask) {
+      if (!(key2 in shape)) {
+        throw new Error(`Unrecognized key: "${key2}"`);
       }
-      if (!mask[key])
+      if (!mask[key2])
         continue;
-      shape[key] = new Class2({
+      shape[key2] = new Class2({
         type: "nonoptional",
-        innerType: oldShape[key]
+        innerType: oldShape[key2]
       });
     }
   } else {
-    for (const key in oldShape) {
-      shape[key] = new Class2({
+    for (const key2 in oldShape) {
+      shape[key2] = new Class2({
         type: "nonoptional",
-        innerType: oldShape[key]
+        innerType: oldShape[key2]
       });
     }
   }
@@ -18779,7 +18779,7 @@ var initializer = (inst, def) => {
 };
 var $ZodError = $constructor("$ZodError", initializer);
 var $ZodRealError = $constructor("$ZodError", initializer, { Parent: Error });
-function flattenError(error2, mapper = (issue2) => issue2.message) {
+function flattenError(error2, mapper = (issue3) => issue3.message) {
   const fieldErrors = {};
   const formErrors = [];
   for (const sub of error2.issues) {
@@ -18793,31 +18793,31 @@ function flattenError(error2, mapper = (issue2) => issue2.message) {
   return { formErrors, fieldErrors };
 }
 function formatError(error2, _mapper) {
-  const mapper = _mapper || function(issue2) {
-    return issue2.message;
+  const mapper = _mapper || function(issue3) {
+    return issue3.message;
   };
   const fieldErrors = { _errors: [] };
   const processError = (error3) => {
-    for (const issue2 of error3.issues) {
-      if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }));
-      } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues });
-      } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues });
-      } else if (issue2.path.length === 0) {
-        fieldErrors._errors.push(mapper(issue2));
+    for (const issue3 of error3.issues) {
+      if (issue3.code === "invalid_union" && issue3.errors.length) {
+        issue3.errors.map((issues) => processError({ issues }));
+      } else if (issue3.code === "invalid_key") {
+        processError({ issues: issue3.issues });
+      } else if (issue3.code === "invalid_element") {
+        processError({ issues: issue3.issues });
+      } else if (issue3.path.length === 0) {
+        fieldErrors._errors.push(mapper(issue3));
       } else {
         let curr = fieldErrors;
         let i = 0;
-        while (i < issue2.path.length) {
-          const el = issue2.path[i];
-          const terminal = i === issue2.path.length - 1;
+        while (i < issue3.path.length) {
+          const el = issue3.path[i];
+          const terminal = i === issue3.path.length - 1;
           if (!terminal) {
             curr[el] = curr[el] || { _errors: [] };
           } else {
             curr[el] = curr[el] || { _errors: [] };
-            curr[el]._errors.push(mapper(issue2));
+            curr[el]._errors.push(mapper(issue3));
           }
           curr = curr[el];
           i++;
@@ -19872,28 +19872,28 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
     return payload;
   };
 });
-function handleObjectResult(result, final, key) {
+function handleObjectResult(result, final, key2) {
   if (result.issues.length) {
-    final.issues.push(...prefixIssues(key, result.issues));
+    final.issues.push(...prefixIssues(key2, result.issues));
   }
-  final.value[key] = result.value;
+  final.value[key2] = result.value;
 }
-function handleOptionalObjectResult(result, final, key, input) {
+function handleOptionalObjectResult(result, final, key2, input) {
   if (result.issues.length) {
-    if (input[key] === void 0) {
-      if (key in input) {
-        final.value[key] = void 0;
+    if (input[key2] === void 0) {
+      if (key2 in input) {
+        final.value[key2] = void 0;
       } else {
-        final.value[key] = result.value;
+        final.value[key2] = result.value;
       }
     } else {
-      final.issues.push(...prefixIssues(key, result.issues));
+      final.issues.push(...prefixIssues(key2, result.issues));
     }
   } else if (result.value === void 0) {
-    if (key in input)
-      final.value[key] = void 0;
+    if (key2 in input)
+      final.value[key2] = void 0;
   } else {
-    final.value[key] = result.value;
+    final.value[key2] = result.value;
   }
 }
 var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
@@ -19917,12 +19917,12 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   defineLazy(inst._zod, "propValues", () => {
     const shape = def.shape;
     const propValues = {};
-    for (const key in shape) {
-      const field = shape[key]._zod;
+    for (const key2 in shape) {
+      const field = shape[key2]._zod;
       if (field.values) {
-        propValues[key] ?? (propValues[key] = /* @__PURE__ */ new Set());
+        propValues[key2] ?? (propValues[key2] = /* @__PURE__ */ new Set());
         for (const v of field.values)
-          propValues[key].add(v);
+          propValues[key2].add(v);
       }
     }
     return propValues;
@@ -19930,22 +19930,22 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   const generateFastpass = (shape) => {
     const doc = new Doc(["shape", "payload", "ctx"]);
     const normalized = _normalized.value;
-    const parseStr = (key) => {
-      const k = esc(key);
+    const parseStr = (key2) => {
+      const k = esc(key2);
       return `shape[${k}]._zod.run({ value: input[${k}], issues: [] }, ctx)`;
     };
     doc.write(`const input = payload.value;`);
     const ids = /* @__PURE__ */ Object.create(null);
     let counter = 0;
-    for (const key of normalized.keys) {
-      ids[key] = `key_${counter++}`;
+    for (const key2 of normalized.keys) {
+      ids[key2] = `key_${counter++}`;
     }
     doc.write(`const newResult = {}`);
-    for (const key of normalized.keys) {
-      if (normalized.optionalKeys.has(key)) {
-        const id = ids[key];
-        doc.write(`const ${id} = ${parseStr(key)};`);
-        const k = esc(key);
+    for (const key2 of normalized.keys) {
+      if (normalized.optionalKeys.has(key2)) {
+        const id = ids[key2];
+        doc.write(`const ${id} = ${parseStr(key2)};`);
+        const k = esc(key2);
         doc.write(`
         if (${id}.issues.length) {
           if (input[${k}] === undefined) {
@@ -19967,14 +19967,14 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
         }
         `);
       } else {
-        const id = ids[key];
-        doc.write(`const ${id} = ${parseStr(key)};`);
+        const id = ids[key2];
+        doc.write(`const ${id} = ${parseStr(key2)};`);
         doc.write(`
           if (${id}.issues.length) payload.issues = payload.issues.concat(${id}.issues.map(iss => ({
             ...iss,
-            path: iss.path ? [${esc(key)}, ...iss.path] : [${esc(key)}]
+            path: iss.path ? [${esc(key2)}, ...iss.path] : [${esc(key2)}]
           })));`);
-        doc.write(`newResult[${esc(key)}] = ${id}.value`);
+        doc.write(`newResult[${esc(key2)}] = ${id}.value`);
       }
     }
     doc.write(`payload.value = newResult;`);
@@ -20009,16 +20009,16 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     } else {
       payload.value = {};
       const shape = value.shape;
-      for (const key of value.keys) {
-        const el = shape[key];
-        const r = el._zod.run({ value: input[key], issues: [] }, ctx);
+      for (const key2 of value.keys) {
+        const el = shape[key2];
+        const r = el._zod.run({ value: input[key2], issues: [] }, ctx);
         const isOptional = el._zod.optin === "optional" && el._zod.optout === "optional";
         if (r instanceof Promise) {
-          proms.push(r.then((r2) => isOptional ? handleOptionalObjectResult(r2, payload, key, input) : handleObjectResult(r2, payload, key)));
+          proms.push(r.then((r2) => isOptional ? handleOptionalObjectResult(r2, payload, key2, input) : handleObjectResult(r2, payload, key2)));
         } else if (isOptional) {
-          handleOptionalObjectResult(r, payload, key, input);
+          handleOptionalObjectResult(r, payload, key2, input);
         } else {
-          handleObjectResult(r, payload, key);
+          handleObjectResult(r, payload, key2);
         }
       }
     }
@@ -20029,18 +20029,18 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     const keySet = value.keySet;
     const _catchall = catchall._zod;
     const t = _catchall.def.type;
-    for (const key of Object.keys(input)) {
-      if (keySet.has(key))
+    for (const key2 of Object.keys(input)) {
+      if (keySet.has(key2))
         continue;
       if (t === "never") {
-        unrecognized.push(key);
+        unrecognized.push(key2);
         continue;
       }
-      const r = _catchall.run({ value: input[key], issues: [] }, ctx);
+      const r = _catchall.run({ value: input[key2], issues: [] }, ctx);
       if (r instanceof Promise) {
-        proms.push(r.then((r2) => handleObjectResult(r2, payload, key)));
+        proms.push(r.then((r2) => handleObjectResult(r2, payload, key2)));
       } else {
-        handleObjectResult(r, payload, key);
+        handleObjectResult(r, payload, key2);
       }
     }
     if (unrecognized.length) {
@@ -20202,17 +20202,17 @@ function mergeValues2(a, b) {
   }
   if (isPlainObject(a) && isPlainObject(b)) {
     const bKeys = Object.keys(b);
-    const sharedKeys = Object.keys(a).filter((key) => bKeys.indexOf(key) !== -1);
+    const sharedKeys = Object.keys(a).filter((key2) => bKeys.indexOf(key2) !== -1);
     const newObj = { ...a, ...b };
-    for (const key of sharedKeys) {
-      const sharedValue = mergeValues2(a[key], b[key]);
+    for (const key2 of sharedKeys) {
+      const sharedValue = mergeValues2(a[key2], b[key2]);
       if (!sharedValue.valid) {
         return {
           valid: false,
-          mergeErrorPath: [key, ...sharedValue.mergeErrorPath]
+          mergeErrorPath: [key2, ...sharedValue.mergeErrorPath]
         };
       }
-      newObj[key] = sharedValue.data;
+      newObj[key2] = sharedValue.data;
     }
     return { valid: true, data: newObj };
   }
@@ -20270,29 +20270,29 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
     if (def.keyType._zod.values) {
       const values = def.keyType._zod.values;
       payload.value = {};
-      for (const key of values) {
-        if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
-          const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+      for (const key2 of values) {
+        if (typeof key2 === "string" || typeof key2 === "number" || typeof key2 === "symbol") {
+          const result = def.valueType._zod.run({ value: input[key2], issues: [] }, ctx);
           if (result instanceof Promise) {
             proms.push(result.then((result2) => {
               if (result2.issues.length) {
-                payload.issues.push(...prefixIssues(key, result2.issues));
+                payload.issues.push(...prefixIssues(key2, result2.issues));
               }
-              payload.value[key] = result2.value;
+              payload.value[key2] = result2.value;
             }));
           } else {
             if (result.issues.length) {
-              payload.issues.push(...prefixIssues(key, result.issues));
+              payload.issues.push(...prefixIssues(key2, result.issues));
             }
-            payload.value[key] = result.value;
+            payload.value[key2] = result.value;
           }
         }
       }
       let unrecognized;
-      for (const key in input) {
-        if (!values.has(key)) {
+      for (const key2 in input) {
+        if (!values.has(key2)) {
           unrecognized = unrecognized ?? [];
-          unrecognized.push(key);
+          unrecognized.push(key2);
         }
       }
       if (unrecognized && unrecognized.length > 0) {
@@ -20305,10 +20305,10 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
       }
     } else {
       payload.value = {};
-      for (const key of Reflect.ownKeys(input)) {
-        if (key === "__proto__")
+      for (const key2 of Reflect.ownKeys(input)) {
+        if (key2 === "__proto__")
           continue;
-        const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+        const keyResult = def.keyType._zod.run({ value: key2, issues: [] }, ctx);
         if (keyResult instanceof Promise) {
           throw new Error("Async schemas not supported in object keys currently");
         }
@@ -20317,24 +20317,24 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
             origin: "record",
             code: "invalid_key",
             issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-            input: key,
-            path: [key],
+            input: key2,
+            path: [key2],
             inst
           });
           payload.value[keyResult.value] = keyResult.value;
           continue;
         }
-        const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+        const result = def.valueType._zod.run({ value: input[key2], issues: [] }, ctx);
         if (result instanceof Promise) {
           proms.push(result.then((result2) => {
             if (result2.issues.length) {
-              payload.issues.push(...prefixIssues(key, result2.issues));
+              payload.issues.push(...prefixIssues(key2, result2.issues));
             }
             payload.value[keyResult.value] = result2.value;
           }));
         } else {
           if (result.issues.length) {
-            payload.issues.push(...prefixIssues(key, result.issues));
+            payload.issues.push(...prefixIssues(key2, result.issues));
           }
           payload.value[keyResult.value] = result.value;
         }
@@ -20666,31 +20666,31 @@ var error = () => {
     jwt: "JWT",
     template_literal: "input"
   };
-  return (issue2) => {
-    switch (issue2.code) {
+  return (issue3) => {
+    switch (issue3.code) {
       case "invalid_type":
-        return `Invalid input: expected ${issue2.expected}, received ${parsedType(issue2.input)}`;
+        return `Invalid input: expected ${issue3.expected}, received ${parsedType(issue3.input)}`;
       case "invalid_value":
-        if (issue2.values.length === 1)
-          return `Invalid input: expected ${stringifyPrimitive(issue2.values[0])}`;
-        return `Invalid option: expected one of ${joinValues(issue2.values, "|")}`;
+        if (issue3.values.length === 1)
+          return `Invalid input: expected ${stringifyPrimitive(issue3.values[0])}`;
+        return `Invalid option: expected one of ${joinValues(issue3.values, "|")}`;
       case "too_big": {
-        const adj = issue2.inclusive ? "<=" : "<";
-        const sizing = getSizing(issue2.origin);
+        const adj = issue3.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue3.origin);
         if (sizing)
-          return `Too big: expected ${issue2.origin ?? "value"} to have ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elements"}`;
-        return `Too big: expected ${issue2.origin ?? "value"} to be ${adj}${issue2.maximum.toString()}`;
+          return `Too big: expected ${issue3.origin ?? "value"} to have ${adj}${issue3.maximum.toString()} ${sizing.unit ?? "elements"}`;
+        return `Too big: expected ${issue3.origin ?? "value"} to be ${adj}${issue3.maximum.toString()}`;
       }
       case "too_small": {
-        const adj = issue2.inclusive ? ">=" : ">";
-        const sizing = getSizing(issue2.origin);
+        const adj = issue3.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue3.origin);
         if (sizing) {
-          return `Too small: expected ${issue2.origin} to have ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+          return `Too small: expected ${issue3.origin} to have ${adj}${issue3.minimum.toString()} ${sizing.unit}`;
         }
-        return `Too small: expected ${issue2.origin} to be ${adj}${issue2.minimum.toString()}`;
+        return `Too small: expected ${issue3.origin} to be ${adj}${issue3.minimum.toString()}`;
       }
       case "invalid_format": {
-        const _issue = issue2;
+        const _issue = issue3;
         if (_issue.format === "starts_with") {
           return `Invalid string: must start with "${_issue.prefix}"`;
         }
@@ -20700,18 +20700,18 @@ var error = () => {
           return `Invalid string: must include "${_issue.includes}"`;
         if (_issue.format === "regex")
           return `Invalid string: must match pattern ${_issue.pattern}`;
-        return `Invalid ${Nouns[_issue.format] ?? issue2.format}`;
+        return `Invalid ${Nouns[_issue.format] ?? issue3.format}`;
       }
       case "not_multiple_of":
-        return `Invalid number: must be a multiple of ${issue2.divisor}`;
+        return `Invalid number: must be a multiple of ${issue3.divisor}`;
       case "unrecognized_keys":
-        return `Unrecognized key${issue2.keys.length > 1 ? "s" : ""}: ${joinValues(issue2.keys, ", ")}`;
+        return `Unrecognized key${issue3.keys.length > 1 ? "s" : ""}: ${joinValues(issue3.keys, ", ")}`;
       case "invalid_key":
-        return `Invalid key in ${issue2.origin}`;
+        return `Invalid key in ${issue3.origin}`;
       case "invalid_union":
         return "Invalid input";
       case "invalid_element":
-        return `Invalid value in ${issue2.origin}`;
+        return `Invalid value in ${issue3.origin}`;
       default:
         return `Invalid input`;
     }
@@ -21389,15 +21389,15 @@ var JSONSchemaGenerator = class {
             json.type = "object";
             json.properties = {};
             const shape = def.shape;
-            for (const key in shape) {
-              json.properties[key] = this.process(shape[key], {
+            for (const key2 in shape) {
+              json.properties[key2] = this.process(shape[key2], {
                 ...params,
-                path: [...params.path, "properties", key]
+                path: [...params.path, "properties", key2]
               });
             }
             const allKeys = new Set(Object.keys(shape));
-            const requiredKeys = new Set([...allKeys].filter((key) => {
-              const v = def.shape[key]._zod;
+            const requiredKeys = new Set([...allKeys].filter((key2) => {
+              const v = def.shape[key2]._zod;
               if (this.io === "input") {
                 return v.optin === void 0;
               } else {
@@ -21731,8 +21731,8 @@ var JSONSchemaGenerator = class {
       if (defId)
         seen.defId = defId;
       const schema2 = seen.schema;
-      for (const key in schema2) {
-        delete schema2[key];
+      for (const key2 in schema2) {
+        delete schema2[key2];
       }
       schema2.$ref = ref;
     };
@@ -21859,8 +21859,8 @@ function toJSONSchema(input, _params) {
       defs
     };
     for (const entry of input._idmap.entries()) {
-      const [key, schema] = entry;
-      schemas[key] = gen2.emit(schema, {
+      const [key2, schema] = entry;
+      schemas[key2] = gen2.emit(schema, {
         ..._params,
         external
       });
@@ -21907,8 +21907,8 @@ function isTransforming(_schema, _ctx) {
       return isTransforming(def.element, ctx);
     }
     case "object": {
-      for (const key in def.shape) {
-        if (isTransforming(def.shape[key], ctx))
+      for (const key2 in def.shape) {
+        if (isTransforming(def.shape[key2], ctx))
           return true;
       }
       return false;
@@ -22222,7 +22222,7 @@ var initializer2 = (inst, issues) => {
       // enumerable: false,
     },
     addIssue: {
-      value: (issue2) => inst.issues.push(issue2)
+      value: (issue3) => inst.issues.push(issue3)
       // enumerable: false,
     },
     addIssues: {
@@ -22686,11 +22686,11 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   $ZodTransform.init(inst, def);
   ZodType2.init(inst, def);
   inst._zod.parse = (payload, _ctx) => {
-    payload.addIssue = (issue2) => {
-      if (typeof issue2 === "string") {
-        payload.issues.push(util_exports.issue(issue2, payload.value, def));
+    payload.addIssue = (issue3) => {
+      if (typeof issue3 === "string") {
+        payload.issues.push(util_exports.issue(issue3, payload.value, def));
       } else {
-        const _issue = issue2;
+        const _issue = issue3;
         if (_issue.fatal)
           _issue.continue = false;
         _issue.code ?? (_issue.code = "custom");
@@ -22837,11 +22837,11 @@ function refine(fn, _params = {}) {
 }
 function superRefine(fn) {
   const ch = check((payload) => {
-    payload.addIssue = (issue2) => {
-      if (typeof issue2 === "string") {
-        payload.issues.push(util_exports.issue(issue2, payload.value, ch._zod.def));
+    payload.addIssue = (issue3) => {
+      if (typeof issue3 === "string") {
+        payload.issues.push(util_exports.issue(issue3, payload.value, ch._zod.def));
       } else {
-        const _issue = issue2;
+        const _issue = issue3;
         if (_issue.fatal)
           _issue.continue = false;
         _issue.code ?? (_issue.code = "custom");
@@ -24454,19 +24454,19 @@ var getRefs = (options) => {
 };
 
 // node_modules/zod-to-json-schema/dist/esm/errorMessages.js
-function addErrorMessage(res, key, errorMessage, refs) {
+function addErrorMessage(res, key2, errorMessage, refs) {
   if (!refs?.errorMessages)
     return;
   if (errorMessage) {
     res.errorMessage = {
       ...res.errorMessage,
-      [key]: errorMessage
+      [key2]: errorMessage
     };
   }
 }
-function setResponseValueAndErrors(res, key, value, errorMessage, refs) {
-  res[key] = value;
-  addErrorMessage(res, key, errorMessage, refs);
+function setResponseValueAndErrors(res, key2, value, errorMessage, refs) {
+  res[key2] = value;
+  addErrorMessage(res, key2, errorMessage, refs);
 }
 
 // node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
@@ -25058,11 +25058,11 @@ function parseRecordDef(def, refs) {
     return {
       type: "object",
       required: def.keyType._def.values,
-      properties: def.keyType._def.values.reduce((acc, key) => ({
+      properties: def.keyType._def.values.reduce((acc, key2) => ({
         ...acc,
-        [key]: parseDef(def.valueType._def, {
+        [key2]: parseDef(def.valueType._def, {
           ...refs,
-          currentPath: [...refs.currentPath, "properties", key]
+          currentPath: [...refs.currentPath, "properties", key2]
         }) ?? parseAnyDef(refs)
       }), {}),
       additionalProperties: refs.rejectedAdditionalProperties
@@ -25129,10 +25129,10 @@ function parseMapDef(def, refs) {
 // node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
 function parseNativeEnumDef(def) {
   const object3 = def.values;
-  const actualKeys = Object.keys(def.values).filter((key) => {
-    return typeof object3[object3[key]] !== "number";
+  const actualKeys = Object.keys(def.values).filter((key2) => {
+    return typeof object3[object3[key2]] !== "number";
   });
-  const actualValues = actualKeys.map((key) => object3[key]);
+  const actualValues = actualKeys.map((key2) => object3[key2]);
   const parsedTypes = Array.from(new Set(actualValues.map((values) => typeof values)));
   return {
     type: parsedTypes.length === 1 ? parsedTypes[0] === "string" ? "string" : "number" : ["string", "number"],
@@ -26224,7 +26224,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve7) => setTimeout(resolve7, pollInterval));
+        await new Promise((resolve10) => setTimeout(resolve10, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -26241,7 +26241,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve10, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -26319,7 +26319,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve7(parseResult.data);
+            resolve10(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -26580,12 +26580,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve10, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve7, interval);
+      const timeoutId = setTimeout(resolve10, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -26663,8 +26663,8 @@ function isPlainObject2(value) {
 }
 function mergeCapabilities(base, additional) {
   const result = { ...base };
-  for (const key in additional) {
-    const k = key;
+  for (const key2 in additional) {
+    const k = key2;
     const addValue = additional[k];
     if (addValue === void 0)
       continue;
@@ -27685,7 +27685,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve7) => setTimeout(resolve7, pollInterval));
+      await new Promise((resolve10) => setTimeout(resolve10, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -28334,41 +28334,56 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve7) => {
+    return new Promise((resolve10) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve7();
+        resolve10();
       } else {
-        this._stdout.once("drain", resolve7);
+        this._stdout.once("drain", resolve10);
       }
     });
   }
 };
 
 // src/index.ts
-import { spawn as spawn2 } from "node:child_process";
+import { spawn as spawn3 } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname as dirname3, join as join6 } from "node:path";
+import { dirname as dirname4, join as join9 } from "node:path";
 import { existsSync as existsSync2, readFileSync } from "node:fs";
 import { userInfo, homedir } from "node:os";
 
 // src/trailers.ts
 var PRINCIPAL_PREFIX = /^(person|agent|node):/;
+var CANONICAL_CO_AUTHOR = /^[^<>\r\n]+ <agent:[^<>\s]+@ideaspaces>$/;
+var AGENT_PRINCIPAL = /^agent:([^<>\s@]+)(?:@ideaspaces)?$/;
+var TYPED_ACTOR_PRINCIPAL = /^(person|node):([^<>\s@]+)$/;
 function resolveAgentPrincipal(agentIdEnv, username) {
   const override = agentIdEnv?.trim();
   if (override) return PRINCIPAL_PREFIX.test(override) ? override : `agent:${override}`;
   const user = username.trim() || "user";
   return `agent:${user}-claude`;
 }
-function buildCommitArgs(input, ctx) {
-  const a = ["commit", "-m", input.message];
-  if (input.all) a.push("--all");
-  else if (input.paths?.length) a.push(...input.paths);
-  if (input.op) a.push("--op", input.op);
-  if (ctx.changeId) a.push("--change-id", ctx.changeId);
-  a.push("--co-author", ctx.principal);
-  if (ctx.sessionId) a.push("--conversation", ctx.sessionId);
-  return a;
+function canonicalCoAuthor(principal) {
+  if (CANONICAL_CO_AUTHOR.test(principal)) return principal;
+  const value = principal.trim();
+  const agent = AGENT_PRINCIPAL.exec(value);
+  if (agent) {
+    const id = agent[1];
+    return `${id} <agent:${id}@ideaspaces>`;
+  }
+  const actor = TYPED_ACTOR_PRINCIPAL.exec(value);
+  if (actor) return `${value} <agent:${value}@ideaspaces>`;
+  throw new Error(
+    `Invalid agent principal ${JSON.stringify(principal)}. Expected agent:<id>.`
+  );
+}
+function buildCommitTrailers(op, context) {
+  return {
+    ...op === void 0 ? {} : { op },
+    ...context.changeId === void 0 ? {} : { change_id: context.changeId },
+    ...context.sessionId === void 0 ? {} : { conversation: context.sessionId },
+    co_authored_by: [canonicalCoAuthor(context.principal)]
+  };
 }
 
 // node_modules/@ideaspaces/protocol/dist/space.js
@@ -28451,7 +28466,7 @@ async function composeContractAlongPath(position) {
 
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 import { promises as fs4 } from "node:fs";
-import { join as join5, relative as relative3, resolve as resolve5 } from "node:path";
+import { join as join6, relative as relative3, resolve as resolve6 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist2(), 1);
@@ -28549,23 +28564,485 @@ function summarizeMarkdown(content) {
 
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
+import { lstat as nodeLstat, realpath as nodeRealpath } from "node:fs/promises";
+import { isAbsolute as isAbsolute2, join as join2, resolve as resolve2 } from "node:path";
+
+// node_modules/@ideaspaces/protocol/dist/local-effects.js
+import { isAbsolute } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/trailers.js
 var CHANGE_ID_PATTERN = /^chg_[a-z0-9]+(-[a-z0-9]+)*$/;
+var CANONICAL_KEYS = {
+  op: "Op",
+  conversation: "Conversation",
+  turn: "Turn",
+  coAuthoredBy: "Co-authored-by",
+  changeId: "Change-Id"
+};
+var FIELD_BY_KEY = {
+  op: "op",
+  conversation: "conversation",
+  turn: "turn",
+  "co-authored-by": "coAuthoredBy",
+  "change-id": "changeId"
+};
+var TRAILER_LINE = /^([A-Za-z][A-Za-z0-9-]*):[ \t]*(.*)$/;
+var SUFFIX_LENGTH = 4;
+var BASE36 = "0123456789abcdefghijklmnopqrstuvwxyz";
+function isValidChangeId(id) {
+  return CHANGE_ID_PATTERN.test(id);
+}
+function slugify(text) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function formatChangeId(slug, suffix) {
+  const normSuffix = suffix.toLowerCase();
+  if (!/^[a-z0-9]+$/.test(normSuffix)) {
+    throw new Error(`invalid Change-Id suffix: ${JSON.stringify(suffix)}`);
+  }
+  const normSlug = slugify(slug);
+  const id = normSlug ? `chg_${normSlug}-${normSuffix}` : `chg_${normSuffix}`;
+  if (!isValidChangeId(id)) {
+    throw new Error(`could not format a valid Change-Id from ${JSON.stringify({ slug, suffix })}`);
+  }
+  return id;
+}
+function mintChangeId(text, rng = randomSuffix) {
+  return formatChangeId(text, rng());
+}
+function randomSuffix() {
+  const bytes = new Uint8Array(SUFFIX_LENGTH);
+  globalThis.crypto.getRandomValues(bytes);
+  let out = "";
+  for (const b of bytes)
+    out += BASE36[b % 36];
+  return out;
+}
+function parseTrailers(message) {
+  const block = findTrailerBlock(message.split("\n"));
+  const result = {};
+  if (!block)
+    return result;
+  for (const line of block.lines) {
+    const m = TRAILER_LINE.exec(line);
+    if (!m)
+      continue;
+    const field = FIELD_BY_KEY[m[1].toLowerCase()];
+    if (!field)
+      continue;
+    const value = m[2].trim();
+    if (field === "coAuthoredBy") {
+      (result.coAuthoredBy ??= []).push(value);
+    } else if (field === "turn") {
+      const n = Number.parseInt(value, 10);
+      if (Number.isInteger(n))
+        result.turn = n;
+    } else if (field === "op") {
+      result.op = value;
+    } else if (field === "conversation") {
+      result.conversation = value;
+    } else if (field === "changeId") {
+      result.changeId = value;
+    }
+  }
+  return result;
+}
+function appendTrailers(message, add) {
+  if (add.changeId !== void 0)
+    assertChangeId(add.changeId);
+  const lines = message.split("\n");
+  const block = findTrailerBlock(lines);
+  const existing = block ? parseTrailers(message) : {};
+  const additions = diffTrailers(existing, add);
+  if (additions.length === 0)
+    return message;
+  if (block) {
+    const before = lines.slice(0, block.end + 1);
+    const after = lines.slice(block.end + 1);
+    return [...before, ...additions, ...after].join("\n");
+  }
+  let end = lines.length - 1;
+  while (end >= 0 && lines[end].trim() === "")
+    end--;
+  const body = lines.slice(0, end + 1);
+  const sep3 = body.length > 0 ? [""] : [];
+  return [...body, ...sep3, ...additions].join("\n");
+}
+function findTrailerBlock(rawLines) {
+  let end = rawLines.length - 1;
+  while (end >= 0 && rawLines[end].trim() === "")
+    end--;
+  if (end < 0)
+    return null;
+  let above = end;
+  while (above >= 0 && TRAILER_LINE.test(rawLines[above]))
+    above--;
+  const start = above + 1;
+  if (start > end)
+    return null;
+  if (above >= 0 && rawLines[above].trim() !== "")
+    return null;
+  return { start, end, lines: rawLines.slice(start, end + 1) };
+}
+function diffTrailers(existing, add) {
+  const out = [];
+  if (add.op !== void 0)
+    pushSingle(out, CANONICAL_KEYS.op, existing.op, add.op);
+  if (add.conversation !== void 0) {
+    pushSingle(out, CANONICAL_KEYS.conversation, existing.conversation, add.conversation);
+  }
+  if (add.turn !== void 0) {
+    pushSingle(out, CANONICAL_KEYS.turn, existing.turn === void 0 ? void 0 : String(existing.turn), String(add.turn));
+  }
+  for (const ca of add.coAuthoredBy ?? []) {
+    if (!(existing.coAuthoredBy ?? []).includes(ca)) {
+      out.push(`${CANONICAL_KEYS.coAuthoredBy}: ${ca}`);
+    }
+  }
+  if (add.changeId !== void 0) {
+    pushSingle(out, CANONICAL_KEYS.changeId, existing.changeId, add.changeId);
+  }
+  return out;
+}
+function pushSingle(out, key2, existingVal, addVal) {
+  if (existingVal !== void 0) {
+    if (existingVal !== addVal) {
+      throw new Error(`trailer conflict on ${key2}: existing ${JSON.stringify(existingVal)} != ${JSON.stringify(addVal)}`);
+    }
+    return;
+  }
+  out.push(`${key2}: ${addVal}`);
+}
+function assertChangeId(id) {
+  if (!isValidChangeId(id)) {
+    throw new Error(`invalid Change-Id: ${JSON.stringify(id)} (must match ${CHANGE_ID_PATTERN})`);
+  }
+}
+
+// node_modules/@ideaspaces/protocol/dist/local-effects.js
+var OPS = /* @__PURE__ */ new Set([
+  "create",
+  "update",
+  "move",
+  "delete",
+  "restructure",
+  "capture"
+]);
+var CO_AUTHOR = /^[^<>\r\n]+ <agent:[^<>\s]+@ideaspaces>$/;
+var SIMPLE_EMAIL = /^[^<>\s@]+@[^<>\s@]+$/;
+function validateLocalEffectPath(value, markdownOnly = false) {
+  if (typeof value !== "string" || value.length === 0 || value.includes("\0")) {
+    return issue2("invalid_path", "path", "path must be a non-empty string without NUL");
+  }
+  if (value.includes("\\")) {
+    return issue2("invalid_path", "path", "path must use '/' separators");
+  }
+  if (value.startsWith("/")) {
+    return issue2("path_escape", "path", "absolute paths are outside the effect root");
+  }
+  const segments = value.split("/");
+  if (segments.some((segment) => segment === "" || segment === ".")) {
+    return issue2("invalid_path", "path", "path may not contain empty or '.' segments");
+  }
+  if (segments.includes("..")) {
+    return issue2("path_escape", "path", "path may not traverse with '..'");
+  }
+  if (segments.some((segment) => segment.toLowerCase() === ".git")) {
+    return issue2("reserved_git_path", "path", ".git is outside the local-effect boundary");
+  }
+  if (markdownOnly && !value.endsWith(".md")) {
+    return issue2("invalid_path", "path", "write_markdown accepts only '.md' paths");
+  }
+  return null;
+}
+function validateWriteMarkdownRequest(input) {
+  const issues = [];
+  if (!isRecord(input)) {
+    return invalidResult("request", "write_markdown request must be an object");
+  }
+  if (input.operation !== "write_markdown") {
+    issues.push(issue2("invalid_request", "operation", "operation must be write_markdown"));
+  }
+  validateRoot(input.root, issues);
+  const pathIssue = validateLocalEffectPath(input.path, true);
+  if (pathIssue)
+    issues.push(pathIssue);
+  validateWritePrecondition(input.expected_revision, issues);
+  validateFrontmatterUpdate(input.frontmatter, issues);
+  if (typeof input.body !== "string") {
+    issues.push(issue2("invalid_request", "body", "body must be a UTF-8 string"));
+  }
+  if (typeof input.stage !== "boolean") {
+    issues.push(issue2("invalid_request", "stage", "stage must be boolean"));
+  }
+  return finishValidation(input, issues);
+}
+function validateCommitPathsRequest(input) {
+  const issues = [];
+  if (!isRecord(input)) {
+    return invalidResult("request", "commit_paths request must be an object");
+  }
+  if (input.operation !== "commit_paths") {
+    issues.push(issue2("invalid_request", "operation", "operation must be commit_paths"));
+  }
+  validateRoot(input.root, issues);
+  if (!Array.isArray(input.paths) || input.paths.length === 0) {
+    issues.push(issue2("invalid_request", "paths", "paths must be a non-empty array"));
+  } else {
+    const seen = /* @__PURE__ */ new Set();
+    input.paths.forEach((entry, index) => {
+      const field = `paths[${index}]`;
+      if (!isRecord(entry)) {
+        issues.push(issue2("invalid_request", field, "path entry must be an object"));
+        return;
+      }
+      const pathIssue = validateLocalEffectPath(entry.path);
+      if (pathIssue)
+        issues.push({ ...pathIssue, field: `${field}.path` });
+      if (typeof entry.path === "string") {
+        if (seen.has(entry.path)) {
+          issues.push(issue2("invalid_request", `${field}.path`, "paths must not repeat"));
+        }
+        seen.add(entry.path);
+      }
+      validateRevision(entry.expected_revision, `${field}.expected_revision`, issues);
+    });
+  }
+  if (typeof input.message !== "string" || input.message.trim().length === 0) {
+    issues.push(issue2("invalid_message", "message", "message must contain non-whitespace text"));
+  } else if (input.message.includes("\0")) {
+    issues.push(issue2("invalid_message", "message", "message may not contain NUL"));
+  }
+  validateIdentity(input.author, "author", issues);
+  validateIdentity(input.committer, "committer", issues);
+  validateTrailers(input.trailers, input.message, issues);
+  return finishValidation(input, issues);
+}
+function validateRoot(value, issues) {
+  if (typeof value !== "string" || value.length === 0 || value.includes("\0") || value.includes("\n") || !isAbsolute(value)) {
+    issues.push(issue2("invalid_root", "root", "root must be an absolute host path"));
+  }
+}
+function validateWritePrecondition(value, issues) {
+  if (value === "any")
+    return;
+  validateRevision(value, "expected_revision", issues);
+}
+function validateRevision(value, field, issues) {
+  if (!isRecord(value)) {
+    issues.push(issue2("invalid_request", field, "path revision must be an object"));
+    return;
+  }
+  for (const place of ["worktree", "index", "head"]) {
+    const oid = value[place];
+    if (oid !== null && (typeof oid !== "string" || oid.length === 0 || /\s|\0/.test(oid))) {
+      issues.push(issue2("invalid_request", `${field}.${place}`, `${place} must be null or a non-empty opaque object id`));
+    }
+  }
+}
+function validateFrontmatterUpdate(value, issues) {
+  if (!isRecord(value)) {
+    issues.push(issue2("invalid_frontmatter_patch", "frontmatter", "frontmatter must be an object"));
+    return;
+  }
+  if (value.mode !== void 0 && value.mode !== "preserve" && value.mode !== "replace") {
+    issues.push(issue2("invalid_frontmatter_patch", "frontmatter.mode", "mode must be preserve or replace"));
+  }
+  if (!isRecord(value.set)) {
+    issues.push(issue2("invalid_frontmatter_patch", "frontmatter.set", "set must be an object"));
+  } else {
+    for (const [key2, item] of Object.entries(value.set)) {
+      if (key2.length === 0 || key2.includes("\0") || key2.includes("\n")) {
+        issues.push(issue2("invalid_frontmatter_patch", `frontmatter.set.${key2}`, "frontmatter keys must be non-empty single-line strings"));
+      }
+      if (!isLocalEffectValue(item, /* @__PURE__ */ new Set())) {
+        issues.push(issue2("invalid_frontmatter_patch", `frontmatter.set.${key2}`, "frontmatter values must use the finite JSON/YAML data model"));
+      }
+    }
+  }
+  if (!Array.isArray(value.remove)) {
+    issues.push(issue2("invalid_frontmatter_patch", "frontmatter.remove", "remove must be an array"));
+    return;
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const [index, key2] of value.remove.entries()) {
+    if (typeof key2 !== "string" || key2.length === 0 || key2.includes("\0") || key2.includes("\n")) {
+      issues.push(issue2("invalid_frontmatter_patch", `frontmatter.remove[${index}]`, "removed keys must be non-empty single-line strings"));
+      continue;
+    }
+    if (seen.has(key2)) {
+      issues.push(issue2("invalid_frontmatter_patch", `frontmatter.remove[${index}]`, "removed keys must not repeat"));
+    }
+    seen.add(key2);
+    if (isRecord(value.set) && Object.hasOwn(value.set, key2)) {
+      issues.push(issue2("invalid_frontmatter_patch", `frontmatter.remove[${index}]`, "a key may not appear in both set and remove"));
+    }
+  }
+}
+function validateIdentity(value, field, issues) {
+  if (!isRecord(value)) {
+    issues.push(issue2("invalid_identity", field, `${field} must be an object`));
+    return;
+  }
+  if (typeof value.name !== "string" || value.name.trim().length === 0 || /[\0\r\n<>]/.test(value.name)) {
+    issues.push(issue2("invalid_identity", `${field}.name`, `${field} name must be non-empty and single-line`));
+  }
+  if (typeof value.email !== "string" || !SIMPLE_EMAIL.test(value.email)) {
+    issues.push(issue2("invalid_identity", `${field}.email`, `${field} email must be explicit and valid`));
+  }
+}
+function validateTrailers(value, message, issues) {
+  if (!isRecord(value)) {
+    issues.push(issue2("invalid_trailers", "trailers", "trailers must be an object"));
+    return;
+  }
+  const trailers = toTrailers(value, issues);
+  if (typeof message !== "string" || !trailers)
+    return;
+  validateExistingTrailerBlock(message, issues);
+  try {
+    appendTrailers(message, trailers);
+  } catch (error2) {
+    issues.push(issue2("invalid_trailers", "trailers", error2 instanceof Error ? error2.message : "trailer values conflict"));
+  }
+}
+function toTrailers(value, issues) {
+  const out = {};
+  if (value.op !== void 0) {
+    if (typeof value.op !== "string" || !OPS.has(value.op)) {
+      issues.push(issue2("invalid_trailers", "trailers.op", "op is not in the protocol vocabulary"));
+    } else {
+      out.op = value.op;
+    }
+  }
+  if (value.conversation !== void 0) {
+    if (!singleLine(value.conversation)) {
+      issues.push(issue2("invalid_trailers", "trailers.conversation", "conversation must be non-empty and single-line"));
+    } else {
+      out.conversation = value.conversation;
+    }
+  }
+  if (value.turn !== void 0) {
+    if (!Number.isInteger(value.turn) || value.turn < 0) {
+      issues.push(issue2("invalid_trailers", "trailers.turn", "turn must be a non-negative integer"));
+    } else {
+      out.turn = value.turn;
+    }
+  }
+  if (value.co_authored_by !== void 0) {
+    if (!Array.isArray(value.co_authored_by) || value.co_authored_by.some((entry) => typeof entry !== "string" || !CO_AUTHOR.test(entry))) {
+      issues.push(issue2("invalid_trailers", "trailers.co_authored_by", "co-authored-by values must match '<Name> <agent:<id>@ideaspaces>'"));
+    } else if (new Set(value.co_authored_by).size !== value.co_authored_by.length) {
+      issues.push(issue2("invalid_trailers", "trailers.co_authored_by", "co-authored-by values must not repeat"));
+    } else {
+      out.coAuthoredBy = value.co_authored_by;
+    }
+  }
+  if (value.change_id !== void 0) {
+    if (typeof value.change_id !== "string" || !isValidChangeId(value.change_id)) {
+      issues.push(issue2("invalid_trailers", "trailers.change_id", "change_id is not a valid Change-Id"));
+    } else {
+      out.changeId = value.change_id;
+    }
+  }
+  return out;
+}
+function validateExistingTrailerBlock(message, issues) {
+  const lines = message.split("\n");
+  let end = lines.length - 1;
+  while (end >= 0 && lines[end].trim() === "")
+    end--;
+  if (end < 0)
+    return;
+  const trailerLine = /^([A-Za-z][A-Za-z0-9-]*):[ \t]*(.*)$/;
+  let above = end;
+  while (above >= 0 && trailerLine.test(lines[above]))
+    above--;
+  const start = above + 1;
+  if (start > end || above >= 0 && lines[above].trim() !== "")
+    return;
+  const seen = /* @__PURE__ */ new Set();
+  const coAuthors = /* @__PURE__ */ new Set();
+  for (const line of lines.slice(start, end + 1)) {
+    const match = trailerLine.exec(line);
+    const key2 = match[1].toLowerCase();
+    const value = match[2].trim();
+    if (!["op", "conversation", "turn", "co-authored-by", "change-id"].includes(key2)) {
+      continue;
+    }
+    if (key2 !== "co-authored-by" && seen.has(key2)) {
+      issues.push(issue2("invalid_trailers", "message", `base message repeats ${match[1]}`));
+      continue;
+    }
+    seen.add(key2);
+    if (key2 === "op" && !OPS.has(value)) {
+      issues.push(issue2("invalid_trailers", "message", "base message contains an invalid Op"));
+    } else if (key2 === "conversation" && !singleLine(value)) {
+      issues.push(issue2("invalid_trailers", "message", "base message contains an invalid Conversation"));
+    } else if (key2 === "turn" && !/^\d+$/.test(value)) {
+      issues.push(issue2("invalid_trailers", "message", "base message contains an invalid Turn"));
+    } else if (key2 === "co-authored-by") {
+      if (!CO_AUTHOR.test(value) || coAuthors.has(value)) {
+        issues.push(issue2("invalid_trailers", "message", "base message contains an invalid Co-authored-by"));
+      }
+      coAuthors.add(value);
+    } else if (key2 === "change-id" && !isValidChangeId(value)) {
+      issues.push(issue2("invalid_trailers", "message", "base message contains an invalid Change-Id"));
+    }
+  }
+}
+function singleLine(value) {
+  return typeof value === "string" && value.trim().length > 0 && !/[\0\r\n]/.test(value);
+}
+function isLocalEffectValue(value, seen) {
+  if (value === null || typeof value === "string" || typeof value === "boolean")
+    return true;
+  if (typeof value === "number")
+    return Number.isFinite(value);
+  if (Array.isArray(value)) {
+    if (seen.has(value))
+      return false;
+    seen.add(value);
+    const ok2 = value.every((entry) => isLocalEffectValue(entry, seen));
+    seen.delete(value);
+    return ok2;
+  }
+  if (isRecord(value)) {
+    if (seen.has(value))
+      return false;
+    seen.add(value);
+    const ok2 = Object.values(value).every((entry) => isLocalEffectValue(entry, seen));
+    seen.delete(value);
+    return ok2;
+  }
+  return false;
+}
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function issue2(code, field, message) {
+  return { code, field, message };
+}
+function invalidResult(field, message) {
+  return { ok: false, issues: [issue2("invalid_request", field, message)] };
+}
+function finishValidation(input, issues) {
+  return issues.length === 0 ? { ok: true, issues, value: input } : { ok: false, issues };
+}
 
 // node_modules/@ideaspaces/protocol/dist/git.js
 var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot, args) {
-  return new Promise((resolve7) => {
+  return new Promise((resolve10) => {
     const proc = spawn("git", ["-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve7({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve7({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve10({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve10({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -28588,6 +29065,188 @@ async function pathStatus(path, repoRoot) {
     modified: modified.code === 1,
     inTracked: tracked.ok
   };
+}
+var nodeReadFileSystem = {
+  realpath: (path) => nodeRealpath(path),
+  async lstat(path) {
+    try {
+      const stat2 = await nodeLstat(path);
+      return {
+        kind: stat2.isSymbolicLink() ? "symlink" : stat2.isFile() ? "file" : stat2.isDirectory() ? "directory" : "other",
+        mode: stat2.mode
+      };
+    } catch (error2) {
+      if (error2.code === "ENOENT")
+        return null;
+      throw error2;
+    }
+  }
+};
+async function pathRevision(root, path, runner, filesystem = nodeReadFileSystem) {
+  const pathIssue = validateLocalEffectPath(path);
+  if (pathIssue) {
+    return revisionError(pathIssue.code, "preflight", pathIssue.message, path);
+  }
+  if (typeof root !== "string" || root.length === 0 || !isAbsolute2(root)) {
+    return revisionError("invalid_root", "preflight", "root must be an absolute path", path);
+  }
+  let canonicalRoot;
+  try {
+    canonicalRoot = await filesystem.realpath(root);
+  } catch (error2) {
+    return revisionError("invalid_root", "preflight", "root does not resolve", path, detail(error2));
+  }
+  if (resolve2(root) !== canonicalRoot) {
+    return revisionError("invalid_root", "preflight", "root must be the canonical worktree path", path);
+  }
+  const top = await runLocalGit(runner, root, ["rev-parse", "--show-toplevel"]);
+  if (!top.ok) {
+    return revisionError(top.code === null ? "git_unavailable" : "not_git_repository", "preflight", "root is not a Git worktree", path, top.stderr?.trim() || void 0);
+  }
+  let gitRoot;
+  try {
+    gitRoot = await filesystem.realpath(top.stdout.trim());
+  } catch (error2) {
+    return revisionError("not_git_repository", "preflight", "Git did not return a valid worktree root", path, detail(error2));
+  }
+  if (gitRoot !== canonicalRoot) {
+    return revisionError("invalid_root", "preflight", "root is not the supplied repository's canonical worktree root", path);
+  }
+  const componentError = await inspectPathComponents(canonicalRoot, path, filesystem);
+  if (componentError)
+    return componentError;
+  const worktree = await worktreeObjectId(runner, root, path, filesystem);
+  if (isRevisionError(worktree))
+    return worktree;
+  const index = await indexObjectId(runner, root, path);
+  if (isRevisionError(index))
+    return index;
+  const head = await headObjectId(runner, root, path);
+  if (isRevisionError(head))
+    return head;
+  const revision = { worktree, index, head };
+  return { status: "ok", operation: "path_revision", path, revision };
+}
+async function inspectPathComponents(root, path, filesystem) {
+  const segments = path.split("/");
+  let current = root;
+  for (const [index, segment] of segments.entries()) {
+    current = join2(current, segment);
+    try {
+      const stat2 = await filesystem.lstat(current);
+      if (stat2 === null)
+        return null;
+      if (stat2.kind === "symlink") {
+        return revisionError("symlink_refused", "preflight", "selected path has a symlink target or ancestor", path);
+      }
+      if (index < segments.length - 1 && stat2.kind !== "directory") {
+        return revisionError("invalid_path", "preflight", "a path ancestor is not a directory", path);
+      }
+      if (index === segments.length - 1 && stat2.kind === "directory") {
+        return revisionError("uncommittable_path", "preflight", "selected path is a directory", path);
+      }
+    } catch (error2) {
+      return revisionError("invalid_path", "preflight", "selected path could not be inspected", path, detail(error2));
+    }
+  }
+  return null;
+}
+async function worktreeObjectId(runner, root, path, filesystem) {
+  try {
+    const stat2 = await filesystem.lstat(join2(root, ...path.split("/")));
+    if (stat2 === null)
+      return null;
+    if (stat2.kind !== "file") {
+      return revisionError("uncommittable_path", "revision_check", "worktree path is not a regular file", path);
+    }
+  } catch (error2) {
+    return revisionError("invalid_path", "revision_check", "worktree path could not be read", path, detail(error2));
+  }
+  const result = await runLocalGit(runner, root, ["hash-object", "--", path]);
+  if (!result.ok)
+    return gitReadError(result, "revision_check", path, "could not hash worktree path");
+  const oid = result.stdout.trim();
+  return oid || revisionError("git_executor_failed", "revision_check", "Git returned no worktree object id", path);
+}
+async function indexObjectId(runner, root, path) {
+  const result = await runLocalGit(runner, root, [
+    "ls-files",
+    "--stage",
+    "-z",
+    "--",
+    literalPathspec(path)
+  ]);
+  if (!result.ok)
+    return gitReadError(result, "revision_check", path, "could not read index path");
+  const entries = result.stdout.split("\0").filter(Boolean);
+  if (entries.length === 0)
+    return null;
+  if (entries.length !== 1) {
+    return revisionError("uncommittable_path", "revision_check", "index path has unresolved merge stages", path);
+  }
+  const match = /^(\d+) ([^ ]+) (\d+)\t/.exec(entries[0]);
+  if (!match || match[3] !== "0") {
+    return revisionError("uncommittable_path", "revision_check", "index path has no single stage-0 blob", path);
+  }
+  return match[2];
+}
+async function headObjectId(runner, root, path) {
+  const verify = await runLocalGit(runner, root, ["rev-parse", "--verify", "-q", "HEAD"]);
+  if (!verify.ok) {
+    if (verify.code === 1)
+      return null;
+    return gitReadError(verify, "revision_check", path, "could not resolve HEAD");
+  }
+  const result = await runLocalGit(runner, root, [
+    "ls-tree",
+    "-z",
+    "HEAD",
+    "--",
+    literalPathspec(path)
+  ]);
+  if (!result.ok)
+    return gitReadError(result, "revision_check", path, "could not read HEAD path");
+  const entries = result.stdout.split("\0").filter(Boolean);
+  if (entries.length === 0)
+    return null;
+  if (entries.length !== 1) {
+    return revisionError("uncommittable_path", "revision_check", "HEAD path is not one file", path);
+  }
+  const match = /^(\d+) blob ([^\t]+)\t/.exec(entries[0]);
+  if (!match) {
+    return revisionError("uncommittable_path", "revision_check", "HEAD path is not a blob", path);
+  }
+  return match[2];
+}
+async function runLocalGit(runner, root, args) {
+  try {
+    return await runner(root, args);
+  } catch (error2) {
+    return { ok: false, stdout: "", stderr: detail(error2), code: null };
+  }
+}
+function gitReadError(result, phase, path, message) {
+  return revisionError(result.code === null ? "git_unavailable" : "git_executor_failed", phase, message, path, result.stderr?.trim() || void 0);
+}
+function revisionError(code, phase, message, path, errorDetail) {
+  return {
+    status: "error",
+    operation: "path_revision",
+    code,
+    phase,
+    ...path === void 0 ? {} : { path },
+    message,
+    ...errorDetail === void 0 ? {} : { detail: errorDetail }
+  };
+}
+function isRevisionError(value) {
+  return typeof value === "object" && value !== null && "status" in value;
+}
+function literalPathspec(path) {
+  return `:(literal)${path}`;
+}
+function detail(error2) {
+  return error2 instanceof Error ? error2.message : String(error2);
 }
 function isIdeaspacePath(path) {
   const normalized = path.replace(/\\/g, "/");
@@ -28691,7 +29350,7 @@ async function recentActivity(repoRoot, sinceSha, limit = DEFAULT_COMMIT_LIMIT) 
 
 // node_modules/@ideaspaces/protocol/dist/path-context.js
 import { promises as fs2 } from "node:fs";
-import { isAbsolute, join as join2, relative, resolve as resolve2, sep } from "node:path";
+import { isAbsolute as isAbsolute3, join as join3, relative, resolve as resolve3, sep } from "node:path";
 function spaceRootLevel(ctx) {
   return ctx.levels.find((l) => l.foundation) ?? null;
 }
@@ -28717,9 +29376,9 @@ function renderPosition({ pos, base, repoRoot, ctx }) {
 }
 async function walkPathContext(repoRoot, currentPath, opts = {}) {
   const { includeContent = false } = opts;
-  const root = resolve2(repoRoot);
-  const rel = relative(root, resolve2(root, currentPath));
-  const segments = rel === "" || rel.startsWith("..") || isAbsolute(rel) ? [] : rel.split(sep).filter(Boolean);
+  const root = resolve3(repoRoot);
+  const rel = relative(root, resolve3(root, currentPath));
+  const segments = rel === "" || rel.startsWith("..") || isAbsolute3(rel) ? [] : rel.split(sep).filter(Boolean);
   const relPaths = [""];
   let acc = "";
   for (const segment of segments) {
@@ -28731,11 +29390,11 @@ async function walkPathContext(repoRoot, currentPath, opts = {}) {
   return { position, levels };
 }
 async function readLevel(root, relPath, includeContent) {
-  const absPath = relPath ? join2(root, relPath) : root;
-  const agentDir = join2(absPath, "_agent");
+  const absPath = relPath ? join3(root, relPath) : root;
+  const agentDir = join3(absPath, "_agent");
   const [hasAgent, readme] = await Promise.all([
     isDirectory2(agentDir),
-    readFileOrNull(join2(absPath, "README.md"))
+    readFileOrNull(join3(absPath, "README.md"))
   ]);
   let contract = {};
   if (hasAgent)
@@ -28789,11 +29448,11 @@ async function readFileOrNull(path) {
 // node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist2(), 1);
 import { promises as fs3 } from "node:fs";
-import { join as join3, relative as relative2, resolve as resolve3 } from "node:path";
+import { join as join4, relative as relative2, resolve as resolve4 } from "node:path";
 var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
 async function collectDocDependencies(repoRoot, docDir) {
-  const root = resolve3(repoRoot);
-  const start = resolve3(root, docDir);
+  const root = resolve4(repoRoot);
+  const start = resolve4(root, docDir);
   const out = [];
   async function walk(dir) {
     let entries;
@@ -28808,7 +29467,7 @@ async function collectDocDependencies(repoRoot, docDir) {
     for (const entry of entries) {
       if (entry.name.startsWith("."))
         continue;
-      const abs = join3(dir, entry.name);
+      const abs = join4(dir, entry.name);
       if (entry.isDir) {
         if (!SKIP_DIRS.has(entry.name))
           await walk(abs);
@@ -28827,12 +29486,12 @@ async function collectDocDependencies(repoRoot, docDir) {
   return out;
 }
 async function staleDocSignals(repoRoot, docs) {
-  const root = resolve3(repoRoot);
+  const root = resolve4(repoRoot);
   const signals = [];
   for (const { path, codePaths } of docs) {
     const missing = [];
     for (const code of codePaths) {
-      if (!await exists(join3(root, code)))
+      if (!await exists(join4(root, code)))
         missing.push(code);
     }
     if (missing.length)
@@ -28910,12 +29569,12 @@ async function exists(path) {
 // node_modules/@ideaspaces/protocol/dist/surface-state.js
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { join as join4, resolve as resolve4 } from "node:path";
+import { join as join5, resolve as resolve5 } from "node:path";
 function projectCacheKey(projectDir) {
-  return createHash("sha256").update(resolve4(projectDir)).digest("hex").slice(0, 16);
+  return createHash("sha256").update(resolve5(projectDir)).digest("hex").slice(0, 16);
 }
 function cachePath(homeDir, kind, projectDir) {
-  return join4(homeDir, ".ideaspaces", kind, projectCacheKey(projectDir));
+  return join5(homeDir, ".ideaspaces", kind, projectCacheKey(projectDir));
 }
 function sessionIdCachePath(homeDir, projectDir) {
   return cachePath(homeDir, "sessions", projectDir);
@@ -28989,7 +29648,7 @@ var SKIP_DIRS2 = /* @__PURE__ */ new Set(["_agent", ...DEFAULT_IGNORED_DIRECTORI
 var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 var DEFAULT_MAX_DRIFT = 10;
 async function assembleContentAwareness(opts) {
-  const requestedPosition = resolve5(opts.position);
+  const requestedPosition = resolve6(opts.position);
   const position = await fs4.realpath(requestedPosition).catch(() => requestedPosition);
   const [repoRoot, composed] = await Promise.all([
     resolveRepoRoot(position),
@@ -29151,7 +29810,7 @@ function buildStackedContractEntries(stack, max) {
 async function discoverSkillEntries(levels) {
   const byName = /* @__PURE__ */ new Map();
   for (const dir of levels) {
-    const skillsDir = join5(dir, "_agent", "skills");
+    const skillsDir = join6(dir, "_agent", "skills");
     let dirents;
     try {
       dirents = await fs4.readdir(skillsDir, { withFileTypes: true });
@@ -29161,11 +29820,11 @@ async function discoverSkillEntries(levels) {
     const flat = dirents.filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "README.md").map((e) => e.name).sort();
     for (const file of flat) {
       const name = file.replace(/\.md$/, "");
-      byName.set(name, { name, path: join5(skillsDir, file), level: dir });
+      byName.set(name, { name, path: join6(skillsDir, file), level: dir });
     }
     const skillDirs = dirents.filter((e) => e.isDirectory()).map((e) => e.name).sort();
     for (const name of skillDirs) {
-      const path = join5(skillsDir, name, "SKILL.md");
+      const path = join6(skillsDir, name, "SKILL.md");
       try {
         if ((await fs4.stat(path)).isFile()) {
           byName.set(name, { name, path, level: dir });
@@ -29232,7 +29891,7 @@ function truncate(value, max) {
 }
 async function childSummary(path, isDir, max) {
   try {
-    const source = isDir ? join5(path, "README.md") : path;
+    const source = isDir ? join6(path, "README.md") : path;
     return describeFile(await fs4.readFile(source, "utf-8"), max);
   } catch {
     return null;
@@ -29270,7 +29929,7 @@ async function listTreeLevel(dir, opts, levelsLeft) {
   const omitted = all.length - shown.length;
   const withSummaries = opts.summaries && atTop;
   const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
-    const path = join5(dir, name);
+    const path = join6(dir, name);
     const entry = isDir ? { name, kind: "directory", markdownFiles: await countMarkdown(path) } : { name, kind: "markdown" };
     if (withSummaries) {
       const summary = await childSummary(path, isDir, opts.summaryLength);
@@ -29303,7 +29962,7 @@ async function countMarkdown(dir) {
     if (entry.isDirectory()) {
       if (SKIP_DIRS2.has(entry.name))
         continue;
-      count += await countMarkdown(join5(dir, entry.name));
+      count += await countMarkdown(join6(dir, entry.name));
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       count += 1;
     }
@@ -29641,11 +30300,961 @@ async function readSkill(name) {
   return { name, description: extractDescription(content), content };
 }
 
+// src/capture-ledger.ts
+function key(root, path) {
+  return `${root}\0${path}`;
+}
+var SessionCaptureLedger = class {
+  captures = /* @__PURE__ */ new Map();
+  reviews = /* @__PURE__ */ new Map();
+  recordReview(root, path, revision) {
+    this.reviews.set(key(root, path), { root, path, revision });
+  }
+  recordCapture(root, path, revision) {
+    const entry = { root, path, revision };
+    this.captures.set(key(root, path), entry);
+    this.reviews.set(key(root, path), entry);
+  }
+  capturedRevision(root, path) {
+    return this.captures.get(key(root, path))?.revision;
+  }
+  /** Full reviewed revision corresponding to a legacy worktree object id. */
+  reviewedRevision(root, path, worktreeOid) {
+    const captured = this.captures.get(key(root, path))?.revision;
+    if (captured?.worktree === worktreeOid) return captured;
+    const reviewed = this.reviews.get(key(root, path))?.revision;
+    return reviewed?.worktree === worktreeOid ? reviewed : void 0;
+  }
+  capturedPaths(root) {
+    return [...this.captures.values()].filter((entry) => entry.root === root).map((entry) => entry.path).sort();
+  }
+  refreshCaptured(root, revisions) {
+    for (const { path, revision } of revisions) {
+      if (this.captures.has(key(root, path))) this.recordCapture(root, path, revision);
+    }
+  }
+  removeCaptured(root, paths) {
+    for (const path of paths) this.captures.delete(key(root, path));
+  }
+};
+
+// src/local-effects-adapter.ts
+import { spawn as spawn2 } from "node:child_process";
+import { realpath } from "node:fs/promises";
+import { isAbsolute as isAbsolute4, relative as relative4, resolve as resolve7, sep as sep2 } from "node:path";
+
+// node_modules/@ideaspaces/protocol/dist/local-effects-runtime.js
+var import_yaml3 = __toESM(require_dist2(), 1);
+import { randomUUID } from "node:crypto";
+import { lstat as nodeLstat2, mkdir, open, readFile as readFile2, realpath as nodeRealpath2, rename, rm } from "node:fs/promises";
+import { basename, dirname as dirname2, join as join7 } from "node:path";
+var nodeLocalEffectFileSystem = {
+  realpath: (path) => nodeRealpath2(path),
+  async lstat(path) {
+    try {
+      const stat2 = await nodeLstat2(path);
+      return {
+        kind: stat2.isSymbolicLink() ? "symlink" : stat2.isFile() ? "file" : stat2.isDirectory() ? "directory" : "other",
+        mode: stat2.mode
+      };
+    } catch (error2) {
+      if (error2.code === "ENOENT")
+        return null;
+      throw error2;
+    }
+  },
+  readUtf8: (path) => readFile2(path, "utf8"),
+  async atomicWriteUtf8(path, content) {
+    await mkdir(dirname2(path), { recursive: true });
+    let mode = 438;
+    try {
+      mode = (await nodeLstat2(path)).mode & 511;
+    } catch (error2) {
+      if (error2.code !== "ENOENT")
+        throw error2;
+    }
+    const temporary = join7(dirname2(path), `.${basename(path)}.${process.pid}.${randomUUID()}.tmp`);
+    let handle = null;
+    try {
+      handle = await open(temporary, "wx", mode);
+      await handle.writeFile(content, "utf8");
+      await handle.sync();
+      await handle.close();
+      handle = null;
+      await rename(temporary, path);
+    } finally {
+      await handle?.close().catch(() => void 0);
+      await rm(temporary, { force: true }).catch(() => void 0);
+    }
+  }
+};
+async function writeMarkdown(request, capabilities) {
+  const validation = validateWriteMarkdownRequest(request);
+  if (!validation.ok) {
+    const first = validation.issues[0];
+    return effectError("write_markdown", first?.code ?? "invalid_request", "preflight", first?.message ?? "The write request is invalid.", typeof request?.path === "string" ? request.path : void 0);
+  }
+  const capabilityError = validateCapabilities("write_markdown", capabilities);
+  if (capabilityError)
+    return capabilityError;
+  const reviewed = await readSelectedRevision("write_markdown", request.root, request.path, capabilities);
+  if (isEffectError(reviewed))
+    return reviewed;
+  const ignoreError = await ignoredLocalPath("write_markdown", request.root, request.path, reviewed, capabilities);
+  if (ignoreError)
+    return ignoreError;
+  if (request.expected_revision !== "any" && !sameRevision(reviewed, request.expected_revision)) {
+    return effectError("write_markdown", "revision_mismatch", "revision_check", "The reviewed path revision no longer matches.", request.path);
+  }
+  let rendered = await prepareMarkdown(request, reviewed, capabilities);
+  if (isEffectError(rendered))
+    return rendered;
+  const writeBoundary = await readSelectedRevision("write_markdown", request.root, request.path, capabilities);
+  if (isEffectError(writeBoundary))
+    return writeBoundary;
+  const boundaryIgnoreError = await ignoredLocalPath("write_markdown", request.root, request.path, writeBoundary, capabilities);
+  if (boundaryIgnoreError)
+    return boundaryIgnoreError;
+  if (request.expected_revision !== "any" && !sameRevision(writeBoundary, request.expected_revision)) {
+    return effectError("write_markdown", "revision_mismatch", "revision_check", "The reviewed path revision no longer matches.", request.path);
+  }
+  if (request.expected_revision === "any" && !sameRevision(writeBoundary, reviewed)) {
+    rendered = await prepareMarkdown(request, writeBoundary, capabilities);
+    if (isEffectError(rendered))
+      return rendered;
+  }
+  try {
+    await capabilities.filesystem.atomicWriteUtf8(hostPath(request.root, request.path), rendered);
+  } catch (error2) {
+    return effectError("write_markdown", "atomic_write_failed", "write", "The document could not be replaced atomically.", request.path, detail2(error2));
+  }
+  const afterWrite = await readSelectedRevision("write_markdown", request.root, request.path, capabilities);
+  if (isEffectError(afterWrite)) {
+    return effectPartial("write_markdown", ["revision_check", "write"], afterWrite.code, afterWrite.phase, request.path, afterWrite.message, [{ path: request.path, revision: reviewed }], "Review the current path revision before retrying.", afterWrite.detail);
+  }
+  if (!request.stage) {
+    return {
+      status: "ok",
+      operation: "write_markdown",
+      affected_paths: [request.path],
+      path_revisions: [{ path: request.path, revision: afterWrite }]
+    };
+  }
+  const staged = await runGit2(capabilities, request.root, [
+    "add",
+    "-A",
+    "--",
+    literalPathspec2(request.path)
+  ]);
+  if (!staged.ok) {
+    const current = await bestEffortRevisions(request.root, [request.path], capabilities, [{ path: request.path, revision: afterWrite }]);
+    return effectPartial("write_markdown", ["revision_check", "write"], "stage_failed", "stage", request.path, "The document was written but could not be staged.", current, "Review the current path revision before staging or retrying.", gitDetail(staged));
+  }
+  const finalRevision = await readSelectedRevision("write_markdown", request.root, request.path, capabilities);
+  if (isEffectError(finalRevision)) {
+    return effectPartial("write_markdown", ["revision_check", "write", "stage"], finalRevision.code, finalRevision.phase, request.path, finalRevision.message, [{ path: request.path, revision: afterWrite }], "Review the current path revision before retrying.", finalRevision.detail);
+  }
+  return {
+    status: "ok",
+    operation: "write_markdown",
+    affected_paths: [request.path],
+    path_revisions: [{ path: request.path, revision: finalRevision }]
+  };
+}
+async function commitPaths(request, capabilities) {
+  const validation = validateCommitPathsRequest(request);
+  if (!validation.ok) {
+    const first = validation.issues[0];
+    return effectError("commit_paths", first?.code ?? "invalid_request", "preflight", first?.message ?? "The commit request is invalid.", request?.paths?.[0]?.path);
+  }
+  const capabilityError = validateCapabilities("commit_paths", capabilities);
+  if (capabilityError)
+    return capabilityError;
+  const initial = [];
+  for (const selected of request.paths) {
+    const revision = await readSelectedRevision("commit_paths", request.root, selected.path, capabilities);
+    if (isEffectError(revision))
+      return revision;
+    const ignoreError = await ignoredLocalPath("commit_paths", request.root, selected.path, revision, capabilities);
+    if (ignoreError)
+      return ignoreError;
+    if (revision.worktree === null && revision.index === null && revision.head === null) {
+      return effectError("commit_paths", "uncommittable_path", "preflight", "The selected path has no committable state.", selected.path);
+    }
+    if (!sameRevision(revision, selected.expected_revision)) {
+      return effectError("commit_paths", "revision_mismatch", "revision_check", "The reviewed path revision no longer matches.", selected.path);
+    }
+    initial.push({ path: selected.path, revision });
+  }
+  if (initial.every(({ revision }) => revision.worktree === revision.head)) {
+    return effectError("commit_paths", "nothing_to_commit", "commit", "The selected paths produce no tree change.");
+  }
+  let message;
+  try {
+    message = appendTrailers(request.message, toTrailers2(request));
+  } catch (error2) {
+    return effectError("commit_paths", "invalid_trailers", "preflight", "The structured trailers conflict with the commit message.", void 0, detail2(error2));
+  }
+  const stageBoundary = await readAllSelected(request.root, request.paths.map(({ path }) => path), capabilities);
+  if (isEffectError(stageBoundary))
+    return stageBoundary;
+  for (const [index, current] of stageBoundary.entries()) {
+    const selected = request.paths[index];
+    const boundaryIgnoreError = await ignoredLocalPath("commit_paths", request.root, selected.path, current.revision, capabilities);
+    if (boundaryIgnoreError)
+      return boundaryIgnoreError;
+    if (!sameRevision(current.revision, selected.expected_revision)) {
+      return effectError("commit_paths", "revision_mismatch", "revision_check", "The reviewed path revision no longer matches.", selected.path);
+    }
+  }
+  const pathsToStage = stageBoundary.filter(({ revision }) => !(revision.worktree === null && revision.index === null)).map(({ path }) => path);
+  if (pathsToStage.length > 0) {
+    const stage = await runGit2(capabilities, request.root, [
+      "add",
+      "-A",
+      "--",
+      ...pathsToStage.map(literalPathspec2)
+    ]);
+    if (!stage.ok) {
+      const current = await bestEffortRevisions(request.root, request.paths.map(({ path }) => path), capabilities, initial);
+      const durable = current.some((entry, index) => entry.revision.index !== initial[index]?.revision.index);
+      if (durable) {
+        return effectPartial("commit_paths", ["revision_check", "stage"], "stage_failed", "stage", void 0, "Some selected index state changed before staging failed.", current, "Review every selected path revision before retrying.", gitDetail(stage));
+      }
+      return effectError("commit_paths", "stage_failed", "stage", "The selected paths could not be staged.", void 0, gitDetail(stage));
+    }
+  }
+  const stagedRevisions = await readAllSelected(request.root, request.paths.map(({ path }) => path), capabilities);
+  if (isEffectError(stagedRevisions)) {
+    return effectPartial("commit_paths", ["revision_check", "stage"], stagedRevisions.code, stagedRevisions.phase, stagedRevisions.path, stagedRevisions.message, initial, "Review every selected path revision before retrying.", stagedRevisions.detail);
+  }
+  for (const [index, current] of stagedRevisions.entries()) {
+    const before = initial[index].revision;
+    const expected = {
+      worktree: before.worktree,
+      index: before.worktree,
+      head: before.head
+    };
+    if (!sameRevision(current.revision, expected)) {
+      return effectPartial("commit_paths", ["revision_check", "stage"], "revision_mismatch", "revision_check", current.path, "A selected path changed at the commit boundary.", stagedRevisions, "Review every selected path revision before retrying.");
+    }
+  }
+  const commit = await runGit2(capabilities, request.root, [
+    "-c",
+    `user.name=${request.committer.name}`,
+    "-c",
+    `user.email=${request.committer.email}`,
+    "-c",
+    "commit.gpgSign=false",
+    "commit",
+    "--only",
+    "--cleanup=verbatim",
+    `--author=${request.author.name} <${request.author.email}>`,
+    "-m",
+    message,
+    "--",
+    ...request.paths.map(({ path }) => literalPathspec2(path))
+  ]);
+  if (!commit.ok) {
+    const current = await bestEffortRevisions(request.root, request.paths.map(({ path }) => path), capabilities, stagedRevisions);
+    return effectPartial("commit_paths", ["revision_check", "stage"], "commit_failed", "commit", void 0, "The selected paths were staged but the commit failed.", current, "Review the current index and selected path revisions before retrying.", gitDetail(commit));
+  }
+  const oidResult = await runGit2(capabilities, request.root, ["rev-parse", "--verify", "HEAD"]);
+  const membership = await runGit2(capabilities, request.root, [
+    "diff-tree",
+    "--root",
+    "--no-commit-id",
+    "--name-only",
+    "-r",
+    "-z",
+    "HEAD"
+  ]);
+  const finalRevisions = await readAllSelected(request.root, request.paths.map(({ path }) => path), capabilities);
+  if (!oidResult.ok || !membership.ok || isEffectError(finalRevisions)) {
+    const fallback = isEffectError(finalRevisions) ? stagedRevisions : finalRevisions;
+    return effectPartial("commit_paths", ["revision_check", "stage", "commit"], "git_executor_failed", "commit", void 0, "The commit completed but its resulting facts could not be verified.", fallback, "Inspect HEAD and the selected path revisions before continuing.", [gitDetail(oidResult), gitDetail(membership)].filter(Boolean).join("\n") || (isEffectError(finalRevisions) ? finalRevisions.detail : void 0));
+  }
+  const actualPaths = membership.stdout.split("\0").filter(Boolean);
+  const expectedPaths = request.paths.map(({ path }) => path);
+  if (!samePathSet(actualPaths, expectedPaths)) {
+    return effectPartial("commit_paths", ["revision_check", "stage", "commit"], "commit_failed", "commit", void 0, "The commit completed with unexpected path membership.", finalRevisions, "Inspect the new commit before continuing.", `expected ${JSON.stringify(expectedPaths)}, received ${JSON.stringify(actualPaths)}`);
+  }
+  const commitOid = oidResult.stdout.trim();
+  if (!commitOid) {
+    return effectPartial("commit_paths", ["revision_check", "stage", "commit"], "git_executor_failed", "commit", void 0, "The commit completed but Git returned no object id.", finalRevisions, "Inspect HEAD before continuing.");
+  }
+  return {
+    status: "ok",
+    operation: "commit_paths",
+    affected_paths: expectedPaths,
+    commit_oid: commitOid,
+    path_revisions: finalRevisions
+  };
+}
+function validateCapabilities(operation, capabilities) {
+  if (!capabilities || typeof capabilities.git !== "function" || !capabilities.filesystem || typeof capabilities.filesystem.realpath !== "function" || typeof capabilities.filesystem.lstat !== "function" || typeof capabilities.filesystem.readUtf8 !== "function" || typeof capabilities.filesystem.atomicWriteUtf8 !== "function") {
+    return effectError(operation, "invalid_request", "preflight", "Explicit Git and filesystem capabilities are required.");
+  }
+  return null;
+}
+async function readSelectedRevision(operation, root, path, capabilities) {
+  const result = await pathRevision(root, path, capabilities.git, capabilities.filesystem);
+  if (result.status === "error") {
+    return effectError(operation, result.code, result.phase, result.message, result.path, result.detail);
+  }
+  return result.revision;
+}
+async function readAllSelected(root, paths, capabilities) {
+  const revisions = [];
+  for (const path of paths) {
+    const result = await pathRevision(root, path, capabilities.git, capabilities.filesystem);
+    if (result.status === "error") {
+      return effectError("commit_paths", result.code, result.phase, result.message, result.path, result.detail);
+    }
+    revisions.push({ path, revision: result.revision });
+  }
+  return revisions;
+}
+async function bestEffortRevisions(root, paths, capabilities, fallback) {
+  const current = await readAllSelected(root, paths, capabilities);
+  return isEffectError(current) ? fallback : current;
+}
+async function ignoredLocalPath(operation, root, path, revision, capabilities) {
+  if (revision.index !== null || revision.head !== null)
+    return null;
+  const ignored = await runGit2(capabilities, root, [
+    "check-ignore",
+    "--quiet",
+    "--",
+    path
+  ]);
+  if (ignored.code === 0) {
+    return effectError(operation, "ignored_local_path", "preflight", "An untracked ignored path is local-only and cannot be selected.", path);
+  }
+  if (ignored.code === 1)
+    return null;
+  return effectError(operation, ignored.code === null ? "git_unavailable" : "git_executor_failed", "preflight", "Git could not determine whether the selected path is ignored.", path, gitDetail(ignored));
+}
+async function prepareMarkdown(request, revision, capabilities) {
+  try {
+    const existing = revision.worktree === null ? null : await capabilities.filesystem.readUtf8(hostPath(request.root, request.path));
+    return renderMarkdown(existing, request);
+  } catch (error2) {
+    if (error2 instanceof MalformedFrontmatterError) {
+      return effectError("write_markdown", "malformed_frontmatter", "preflight", "Existing frontmatter is malformed; use replace mode to repair it.", request.path, error2.message);
+    }
+    return effectError("write_markdown", "invalid_path", "preflight", "The selected Markdown path could not be read.", request.path, detail2(error2));
+  }
+}
+function renderMarkdown(existing, request) {
+  const mode = request.frontmatter.mode ?? "preserve";
+  const fields = mode === "preserve" ? parseExistingFrontmatter(existing) : {};
+  for (const key2 of request.frontmatter.remove)
+    delete fields[key2];
+  Object.assign(fields, request.frontmatter.set);
+  const yaml = (0, import_yaml3.stringify)(fields, { lineWidth: 0 }).trimEnd();
+  return `---
+${yaml}
+---
+${request.body}`;
+}
+function parseExistingFrontmatter(content) {
+  if (content === null || !content.startsWith("---\n") && !content.startsWith("---\r\n")) {
+    return {};
+  }
+  const lines = content.split(/\r?\n/);
+  const end = lines.findIndex((line, index) => index > 0 && line.trimEnd() === "---");
+  if (end < 0)
+    throw new MalformedFrontmatterError("missing closing ---");
+  const document = (0, import_yaml3.parseDocument)(lines.slice(1, end).join("\n"), { uniqueKeys: true });
+  if (document.errors.length > 0) {
+    throw new MalformedFrontmatterError(document.errors[0].message);
+  }
+  const value = document.toJS();
+  if (value === null)
+    return {};
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new MalformedFrontmatterError("frontmatter root must be a map");
+  }
+  return value;
+}
+var MalformedFrontmatterError = class extends Error {
+};
+function toTrailers2(request) {
+  return {
+    ...request.trailers.op === void 0 ? {} : { op: request.trailers.op },
+    ...request.trailers.conversation === void 0 ? {} : { conversation: request.trailers.conversation },
+    ...request.trailers.turn === void 0 ? {} : { turn: request.trailers.turn },
+    ...request.trailers.co_authored_by === void 0 ? {} : { coAuthoredBy: request.trailers.co_authored_by },
+    ...request.trailers.change_id === void 0 ? {} : { changeId: request.trailers.change_id }
+  };
+}
+async function runGit2(capabilities, root, args) {
+  try {
+    return await capabilities.git(root, args);
+  } catch (error2) {
+    return { ok: false, stdout: "", stderr: detail2(error2), code: null };
+  }
+}
+function hostPath(root, path) {
+  return join7(root, ...path.split("/"));
+}
+function literalPathspec2(path) {
+  return `:(literal)${path}`;
+}
+function sameRevision(left, right) {
+  return left.worktree === right.worktree && left.index === right.index && left.head === right.head;
+}
+function samePathSet(left, right) {
+  if (left.length !== right.length)
+    return false;
+  const sortedLeft = [...left].sort();
+  const sortedRight = [...right].sort();
+  return sortedLeft.every((path, index) => path === sortedRight[index]);
+}
+function effectError(operation, code, phase, message, path, errorDetail) {
+  return {
+    status: "error",
+    operation,
+    affected_paths: [],
+    code,
+    phase,
+    ...path === void 0 ? {} : { path },
+    message,
+    ...errorDetail === void 0 || errorDetail.length === 0 ? {} : { detail: errorDetail }
+  };
+}
+function effectPartial(operation, completedPhases, code, phase, path, message, revisions, recoveryHint, errorDetail) {
+  return {
+    status: "partial",
+    operation,
+    affected_paths: revisions.map(({ path: selectedPath }) => selectedPath),
+    completed_phases: completedPhases,
+    path_revisions: revisions,
+    code,
+    phase,
+    ...path === void 0 ? {} : { path },
+    message,
+    ...errorDetail === void 0 || errorDetail.length === 0 ? {} : { detail: errorDetail },
+    recovery_hint: recoveryHint
+  };
+}
+function isEffectError(value) {
+  return typeof value === "object" && value !== null && "status" in value && value.status === "error";
+}
+function gitDetail(result) {
+  return result.stderr?.trim() || (result.code === null ? "Git capability was unavailable." : void 0);
+}
+function detail2(error2) {
+  return error2 instanceof Error ? error2.message : String(error2);
+}
+
+// src/local-effects-adapter.ts
+var BLOCKED_GIT_ENV = [
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_COMMON_DIR",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_AUTHOR_NAME",
+  "GIT_AUTHOR_EMAIL",
+  "GIT_COMMITTER_NAME",
+  "GIT_COMMITTER_EMAIL"
+];
+function localEffectGitEnvironment(source = process.env) {
+  const env = { ...source };
+  for (const key2 of BLOCKED_GIT_ENV) delete env[key2];
+  return env;
+}
+var localEffectGitRunner = async (root, args) => new Promise((done) => {
+  const proc = spawn2("git", [...args], {
+    cwd: root,
+    env: localEffectGitEnvironment(),
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  let stdout = "";
+  let stderr = "";
+  proc.stdout.on("data", (chunk) => stdout += chunk);
+  proc.stderr.on("data", (chunk) => stderr += chunk);
+  proc.on("close", (code) => done({ ok: code === 0, stdout, stderr, code }));
+  proc.on(
+    "error",
+    (error2) => done({ ok: false, stdout: "", stderr: error2.message, code: null })
+  );
+});
+var localEffectCapabilities = {
+  git: localEffectGitRunner,
+  filesystem: nodeLocalEffectFileSystem
+};
+async function canonicalRepoRoot(cwd, git = localEffectGitRunner) {
+  const invocationDir = await realpath(resolve7(cwd));
+  const top = await git(invocationDir, ["rev-parse", "--show-toplevel"]);
+  if (!top.ok || !top.stdout.trim()) {
+    throw new Error(top.stderr?.trim() || "not inside a git repository");
+  }
+  return realpath(top.stdout.trim());
+}
+async function toPortableRepoPath(input, root, cwd) {
+  const invocationDir = await realpath(resolve7(cwd));
+  const absolute = isAbsolute4(input) ? resolve7(input) : resolve7(invocationDir, input);
+  const rel = relative4(root, absolute);
+  if (!rel || rel === ".." || rel.startsWith(`..${sep2}`) || isAbsolute4(rel)) return null;
+  return rel.split(sep2).join("/");
+}
+async function effectiveGitIdentity(root, git) {
+  const [nameResult, emailResult] = await Promise.all([
+    git(root, ["config", "--get", "user.name"]),
+    git(root, ["config", "--get", "user.email"])
+  ]);
+  const name = nameResult.ok ? nameResult.stdout.trim() : "";
+  const email2 = emailResult.ok ? emailResult.stdout.trim() : "";
+  if (!name || !email2) {
+    const detail3 = [nameResult.stderr, emailResult.stderr].map((value) => value?.trim()).filter(Boolean).join("\n");
+    throw new Error(
+      detail3 || "No complete Git identity. Configure user.name and user.email for this repository or user."
+    );
+  }
+  return { name, email: email2 };
+}
+function localEffectError(operation, code, phase, message, path, detail3) {
+  return {
+    status: "error",
+    operation,
+    affected_paths: [],
+    code,
+    phase,
+    ...path === void 0 ? {} : { path },
+    ...detail3 === void 0 || detail3.length === 0 ? {} : { detail: detail3 },
+    message
+  };
+}
+
+// src/local-tools.ts
+import { join as join8, resolve as resolve9 } from "node:path";
+
+// src/read-tools.ts
+import { stat } from "node:fs/promises";
+import { resolve as resolve8 } from "node:path";
+async function readStatus(opts = {}) {
+  const cwd = resolve8(opts.cwd || process.cwd());
+  const repoRoot = await resolveRepoRoot(cwd);
+  if (!repoRoot) return { ok: false, error: "not inside a git repository" };
+  if (opts.path) {
+    const status = await pathStatus(resolve8(cwd, opts.path), repoRoot);
+    return {
+      ok: true,
+      text: JSON.stringify(
+        {
+          path: opts.path,
+          exists: status.exists,
+          sha: status.sha,
+          in_index: status.inIndex,
+          modified: status.modified,
+          in_tracked: status.inTracked
+        },
+        null,
+        2
+      )
+    };
+  }
+  const [state, captures] = await Promise.all([
+    gitState(repoRoot),
+    stagedIdeaspacePaths(repoRoot)
+  ]);
+  return {
+    ok: true,
+    text: JSON.stringify(
+      {
+        repoRoot: state.repoRoot,
+        branch: state.branch,
+        ahead: state.ahead,
+        behind: state.behind,
+        dirty: state.dirty,
+        untracked_in_tracked_dirs: state.untrackedInTrackedDirs,
+        tracked_captures: captures
+      },
+      null,
+      2
+    )
+  };
+}
+async function readNavigate(opts = {}) {
+  const cwd = resolve8(opts.cwd || process.cwd());
+  const raw = (opts.path ?? ".").trim() || ".";
+  const target = resolve8(cwd, raw);
+  let targetStat;
+  try {
+    targetStat = await stat(target);
+  } catch {
+    return { ok: false, error: `No such path: ${target}` };
+  }
+  if (!targetStat.isDirectory()) {
+    return { ok: false, error: `Not a directory: ${target}` };
+  }
+  const manifest = await assembleContentAwareness({ position: target });
+  if (!manifest) {
+    return {
+      ok: true,
+      text: "No _agent/ contract resolves at this position."
+    };
+  }
+  return { ok: true, text: renderContentAwareness(manifest) };
+}
+
+// src/local-tools.ts
+function success(value) {
+  return { ok: true, text: JSON.stringify(value, null, 2) };
+}
+function failure(value) {
+  return { ok: false, text: JSON.stringify(value, null, 2) };
+}
+function effectiveCwd(cwd, deps) {
+  return resolve9(cwd || deps.processCwd || process.cwd());
+}
+function locationFailure(operation, code, message, path, detail3) {
+  if (operation === "path_revision") {
+    return failure({
+      status: "error",
+      operation,
+      code,
+      phase: "preflight",
+      path,
+      message,
+      ...detail3 === void 0 ? {} : { detail: detail3 }
+    });
+  }
+  return failure(localEffectError(operation, code, "preflight", message, path, detail3));
+}
+async function rootAndPath(operation, inputPath, cwd, deps) {
+  let root;
+  try {
+    root = await canonicalRepoRoot(cwd, deps.capabilities.git);
+  } catch (error2) {
+    return locationFailure(
+      operation,
+      "not_git_repository",
+      "The operation requires a canonical Git worktree.",
+      inputPath,
+      error2 instanceof Error ? error2.message : String(error2)
+    );
+  }
+  let portable;
+  try {
+    portable = await toPortableRepoPath(inputPath, root, cwd);
+  } catch (error2) {
+    return locationFailure(
+      operation,
+      "invalid_path",
+      "The selected path could not be resolved.",
+      inputPath,
+      error2 instanceof Error ? error2.message : String(error2)
+    );
+  }
+  if (!portable) {
+    return locationFailure(
+      operation,
+      "path_escape",
+      "The selected path is outside the repository root.",
+      inputPath
+    );
+  }
+  return { root, path: portable };
+}
+async function runLocalWrite(input, deps) {
+  const cwd = effectiveCwd(input.cwd, deps);
+  const location = await rootAndPath("write_markdown", input.path, cwd, deps);
+  if ("ok" in location) return location;
+  const reviewed = await pathRevision(
+    location.root,
+    location.path,
+    deps.capabilities.git,
+    deps.capabilities.filesystem
+  );
+  if (reviewed.status === "error") {
+    return failure(
+      localEffectError(
+        "write_markdown",
+        reviewed.code,
+        reviewed.phase,
+        reviewed.message,
+        reviewed.path,
+        reviewed.detail
+      )
+    );
+  }
+  let expected;
+  if (input.force) {
+    expected = "any";
+  } else if (input.if_match !== void 0) {
+    const fullReview = deps.ledger.reviewedRevision(
+      location.root,
+      location.path,
+      input.if_match
+    );
+    if (fullReview) {
+      expected = fullReview;
+    } else if (reviewed.revision.worktree === input.if_match) {
+      expected = reviewed.revision;
+    } else {
+      return failure(
+        localEffectError(
+          "write_markdown",
+          "revision_mismatch",
+          "revision_check",
+          `if_match mismatch: expected ${input.if_match}, current ${reviewed.revision.worktree ?? "(file absent)"}.`,
+          location.path
+        )
+      );
+    }
+  } else if (reviewed.revision.worktree !== null) {
+    return failure(
+      localEffectError(
+        "write_markdown",
+        "revision_mismatch",
+        "revision_check",
+        "File exists. Pass if_match for a safe update, or force after reconciling divergent content.",
+        location.path
+      )
+    );
+  } else {
+    expected = reviewed.revision;
+  }
+  const set = {};
+  if (input.name) set.name = input.name;
+  if (input.summary) set.summary = input.summary;
+  if (input.tags?.length) set.tags = input.tags;
+  if (input.attached_to) set.attached_to = input.attached_to;
+  const result = await writeMarkdown(
+    {
+      operation: "write_markdown",
+      root: location.root,
+      path: location.path,
+      expected_revision: expected,
+      frontmatter: { mode: "preserve", set, remove: [] },
+      body: stripFrontmatter(input.content),
+      stage: true
+    },
+    deps.capabilities
+  );
+  if (result.status === "ok" || result.status === "partial") {
+    const current = result.path_revisions.find(({ path }) => path === location.path);
+    if (current) deps.ledger.recordCapture(location.root, location.path, current.revision);
+  }
+  if (result.status !== "ok") return failure(result);
+  const revision = result.path_revisions[0]?.revision;
+  return success({
+    ...result,
+    path: join8(location.root, ...location.path.split("/")),
+    sha: revision?.worktree ?? null,
+    staged: revision?.worktree !== null && revision?.index === revision?.worktree
+  });
+}
+async function runLocalStatus(input, deps) {
+  const cwd = effectiveCwd(input.cwd, deps);
+  if (!input.path) {
+    const result = await readStatus({ cwd });
+    if (!result.ok) return { ok: false, text: result.error };
+    const parsed = JSON.parse(result.text);
+    if (typeof parsed.repoRoot !== "string") {
+      return { ok: false, text: "Git status returned no repository root." };
+    }
+    let root;
+    try {
+      root = await deps.capabilities.filesystem.realpath(parsed.repoRoot);
+    } catch (error2) {
+      return { ok: false, text: error2 instanceof Error ? error2.message : String(error2) };
+    }
+    return success({
+      ...parsed,
+      repoRoot: root,
+      session_captures: deps.ledger.capturedPaths(root)
+    });
+  }
+  const location = await rootAndPath("path_revision", input.path, cwd, deps);
+  if ("ok" in location) return location;
+  const current = await pathRevision(
+    location.root,
+    location.path,
+    deps.capabilities.git,
+    deps.capabilities.filesystem
+  );
+  if (current.status === "error") return failure(current);
+  deps.ledger.recordReview(location.root, location.path, current.revision);
+  const revision = current.revision;
+  return success({
+    path: input.path,
+    exists: revision.worktree !== null,
+    sha: revision.worktree,
+    in_index: revision.index !== revision.head,
+    modified: revision.worktree !== revision.index,
+    in_tracked: revision.index !== null,
+    revision,
+    session_owned: deps.ledger.capturedRevision(location.root, location.path) !== void 0
+  });
+}
+async function runLocalCommit(input, deps) {
+  const cwd = effectiveCwd(input.cwd, deps);
+  let root;
+  try {
+    root = await canonicalRepoRoot(cwd, deps.capabilities.git);
+  } catch (error2) {
+    return failure(
+      localEffectError(
+        "commit_paths",
+        "not_git_repository",
+        "preflight",
+        "Commit requires a canonical Git worktree.",
+        void 0,
+        error2 instanceof Error ? error2.message : String(error2)
+      )
+    );
+  }
+  if (input.all && input.paths?.length) {
+    return failure(
+      localEffectError(
+        "commit_paths",
+        "invalid_request",
+        "preflight",
+        "Use exactly one of explicit paths or all."
+      )
+    );
+  }
+  const usingAll = input.all === true;
+  let paths;
+  if (usingAll) {
+    paths = deps.ledger.capturedPaths(root);
+  } else {
+    const converted = [];
+    for (const inputPath of input.paths ?? []) {
+      let path;
+      try {
+        path = await toPortableRepoPath(inputPath, root, cwd);
+      } catch (error2) {
+        return failure(
+          localEffectError(
+            "commit_paths",
+            "invalid_path",
+            "preflight",
+            "The selected path could not be resolved.",
+            inputPath,
+            error2 instanceof Error ? error2.message : String(error2)
+          )
+        );
+      }
+      if (!path) {
+        return failure(
+          localEffectError(
+            "commit_paths",
+            "path_escape",
+            "preflight",
+            "The selected path is outside the repository root.",
+            inputPath
+          )
+        );
+      }
+      converted.push(path);
+    }
+    paths = converted;
+  }
+  paths = [...new Set(paths)];
+  if (paths.length === 0) {
+    return failure(
+      localEffectError(
+        "commit_paths",
+        usingAll ? "nothing_to_commit" : "invalid_request",
+        usingAll ? "commit" : "preflight",
+        usingAll ? "This MCP session has no captured paths to commit." : "Refusing to commit with no paths. Name paths or use all."
+      )
+    );
+  }
+  const selected = [];
+  for (const path of paths) {
+    const owned = deps.ledger.capturedRevision(root, path);
+    if (owned) {
+      selected.push({ path, expected_revision: owned });
+      continue;
+    }
+    const current = await pathRevision(
+      root,
+      path,
+      deps.capabilities.git,
+      deps.capabilities.filesystem
+    );
+    if (current.status === "error") {
+      return failure(
+        localEffectError(
+          "commit_paths",
+          current.code,
+          current.phase,
+          current.message,
+          current.path,
+          current.detail
+        )
+      );
+    }
+    selected.push({ path, expected_revision: current.revision });
+  }
+  let identity;
+  try {
+    identity = await effectiveGitIdentity(root, deps.capabilities.git);
+  } catch (error2) {
+    return failure(
+      localEffectError(
+        "commit_paths",
+        "invalid_identity",
+        "preflight",
+        error2 instanceof Error ? error2.message : String(error2)
+      )
+    );
+  }
+  let trailers;
+  try {
+    trailers = buildCommitTrailers(input.op, {
+      changeId: await deps.changeId(),
+      principal: deps.principal,
+      sessionId: deps.sessionId()
+    });
+  } catch (error2) {
+    return failure(
+      localEffectError(
+        "commit_paths",
+        "invalid_trailers",
+        "preflight",
+        error2 instanceof Error ? error2.message : String(error2)
+      )
+    );
+  }
+  const result = await commitPaths(
+    {
+      operation: "commit_paths",
+      root,
+      paths: selected,
+      message: input.message,
+      trailers,
+      author: identity,
+      committer: identity
+    },
+    deps.capabilities
+  );
+  if (result.status === "partial") {
+    deps.ledger.refreshCaptured(root, result.path_revisions);
+    return failure(result);
+  }
+  if (result.status === "error") return failure(result);
+  deps.ledger.removeCaptured(root, paths);
+  return success({
+    ...result,
+    commit_sha: result.commit_oid,
+    committed_paths: usingAll ? paths : paths.map((path) => join8(root, ...path.split("/")))
+  });
+}
+
 // src/change-state.ts
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname as dirname2 } from "node:path";
+import { dirname as dirname3 } from "node:path";
 function writePersistedChange(file, rec) {
-  mkdirSync(dirname2(file), { recursive: true });
+  mkdirSync(dirname3(file), { recursive: true });
   writeFileSync(file, JSON.stringify(rec) + "\n");
 }
 function clearPersistedChange(file) {
@@ -29707,75 +31316,6 @@ function planChangeClose(armed, persisted, hasCacheFile) {
   };
 }
 
-// src/read-tools.ts
-import { stat } from "node:fs/promises";
-import { resolve as resolve6 } from "node:path";
-async function readStatus(opts = {}) {
-  const cwd = resolve6(opts.cwd || process.cwd());
-  const repoRoot = await resolveRepoRoot(cwd);
-  if (!repoRoot) return { ok: false, error: "not inside a git repository" };
-  if (opts.path) {
-    const status = await pathStatus(resolve6(cwd, opts.path), repoRoot);
-    return {
-      ok: true,
-      text: JSON.stringify(
-        {
-          path: opts.path,
-          exists: status.exists,
-          sha: status.sha,
-          in_index: status.inIndex,
-          modified: status.modified,
-          in_tracked: status.inTracked
-        },
-        null,
-        2
-      )
-    };
-  }
-  const [state, captures] = await Promise.all([
-    gitState(repoRoot),
-    stagedIdeaspacePaths(repoRoot)
-  ]);
-  return {
-    ok: true,
-    text: JSON.stringify(
-      {
-        repoRoot: state.repoRoot,
-        branch: state.branch,
-        ahead: state.ahead,
-        behind: state.behind,
-        dirty: state.dirty,
-        untracked_in_tracked_dirs: state.untrackedInTrackedDirs,
-        tracked_captures: captures
-      },
-      null,
-      2
-    )
-  };
-}
-async function readNavigate(opts = {}) {
-  const cwd = resolve6(opts.cwd || process.cwd());
-  const raw = (opts.path ?? ".").trim() || ".";
-  const target = resolve6(cwd, raw);
-  let targetStat;
-  try {
-    targetStat = await stat(target);
-  } catch {
-    return { ok: false, error: `No such path: ${target}` };
-  }
-  if (!targetStat.isDirectory()) {
-    return { ok: false, error: `Not a directory: ${target}` };
-  }
-  const manifest = await assembleContentAwareness({ position: target });
-  if (!manifest) {
-    return {
-      ok: true,
-      text: "No _agent/ contract resolves at this position."
-    };
-  }
-  return { ok: true, text: renderContentAwareness(manifest) };
-}
-
 // src/tool-parameters.ts
 var cwdField = external_exports.string().optional().describe(
   "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
@@ -29792,21 +31332,21 @@ var MCP_TOOL_PARAMETERS = {
     tags: external_exports.array(external_exports.string()).optional(),
     attached_to: external_exports.string().optional().describe("Primary entity binding (e.g. 'hostname:acme.com')"),
     if_match: external_exports.string().optional().describe(
-      "Content sha from a prior is_write response or is_status \u2014 for a safe update. Refuses on mismatch unless force."
+      "Content sha from a prior is_write response or is_status. The session retains its full worktree/index/HEAD revision and refuses stale updates unless force."
     ),
     force: external_exports.boolean().optional().describe("Overwrite without if_match"),
     cwd: cwdField
   },
   is_status: {
     path: external_exports.string().optional().describe(
-      "Single file \u2014 returns { exists, sha, in_index, modified, in_tracked }. The sha is what you pass as is_write's if_match."
+      "Single file \u2014 returns its full revision plus { exists, sha, in_index, modified, in_tracked }. The sha remains the is_write if_match compatibility token."
     ),
     cwd: cwdField
   },
   is_commit: {
     message: external_exports.string().describe("Commit message (user-provided or user-confirmed)"),
     paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using all."),
-    all: external_exports.boolean().optional().describe("Commit all staged knowledge paths (markdown + _agent/) from git; staged code is left for the user."),
+    all: external_exports.boolean().optional().describe("Commit only paths captured by this MCP server session. Never adopts other staged knowledge from the shared index."),
     op: external_exports.enum(["create", "update", "move", "delete", "restructure", "capture"]).optional().describe("Optional Op trailer \u2014 the kind of change. The meaning lives in the message body."),
     cwd: cwdField
   },
@@ -29844,22 +31384,22 @@ var MCP_TOOL_REQUIRE_ANY = {
   is_change_open: ["handle", "id"]
 };
 function hasAnyNonEmptyString(keys, values) {
-  return keys.some((key) => typeof values[key] === "string" && values[key].trim() !== "");
+  return keys.some((key2) => typeof values[key2] === "string" && values[key2].trim() !== "");
 }
 
 // src/index.ts
 function resolveCli() {
   if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
-  const __dirname = dirname3(fileURLToPath(import.meta.url));
-  const relative4 = join6(__dirname, "../cli/bundle/ideaspaces.js");
-  if (existsSync2(relative4)) return relative4;
+  const __dirname = dirname4(fileURLToPath(import.meta.url));
+  const relative5 = join9(__dirname, "../cli/bundle/ideaspaces.js");
+  if (existsSync2(relative5)) return relative5;
   return "ideaspaces";
 }
 var CLI = resolveCli();
 function cli(args, stdin, cwd) {
-  return new Promise((resolve7) => {
+  return new Promise((resolve10) => {
     const isFile = CLI.includes("/") || CLI.includes("\\") || CLI.endsWith(".js");
-    const proc = spawn2(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
+    const proc = spawn3(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
       stdio: ["pipe", "pipe", "pipe"],
       // The MCP server starts in whatever cwd Claude Code launched it from
       // (the user's session-start dir). The agent may have `cd`-ed inside
@@ -29873,8 +31413,8 @@ function cli(args, stdin, cwd) {
     let err = "";
     proc.stdout.on("data", (d) => out += d);
     proc.stderr.on("data", (d) => err += d);
-    proc.on("close", (code) => resolve7({ out, err, code: code ?? 1 }));
-    proc.on("error", (e) => resolve7({ out: "", err: e.message, code: 1 }));
+    proc.on("close", (code) => resolve10({ out, err, code: code ?? 1 }));
+    proc.on("error", (e) => resolve10({ out: "", err: e.message, code: 1 }));
     if (stdin != null) proc.stdin.write(stdin);
     proc.stdin.end();
   });
@@ -29891,7 +31431,7 @@ async function run(args, stdin, cwd) {
   return ok(out.trim() || err.trim() || "Done");
 }
 var currentChangeId;
-var AGENT_PRINCIPAL = resolveAgentPrincipal(
+var AGENT_PRINCIPAL2 = resolveAgentPrincipal(
   process.env.IDEASPACES_AGENT_ID,
   (() => {
     try {
@@ -29901,6 +31441,7 @@ var AGENT_PRINCIPAL = resolveAgentPrincipal(
     }
   })()
 );
+var CAPTURE_LEDGER = new SessionCaptureLedger();
 function readSessionId() {
   const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
   if (!dir) return void 0;
@@ -29955,31 +31496,31 @@ server.tool(
     }
   }
 );
+function localToolDependencies() {
+  return {
+    capabilities: localEffectCapabilities,
+    ledger: CAPTURE_LEDGER,
+    principal: AGENT_PRINCIPAL2,
+    sessionId: readSessionId,
+    changeId: resolveChangeId
+  };
+}
 server.tool(
   "is_write",
-  "Create or update a Note with Layer 1 frontmatter (name, summary); stages the file and returns its content sha. Use for capture; native Write covers source code and config.",
+  "Create or update a Note in-process with Layer 1 frontmatter; stages and tracks the exact path and returns its full revision plus content sha. Use for capture; native Write covers source code and config.",
   MCP_TOOL_PARAMETERS.is_write,
-  async ({ path, content, name, summary, tags, attached_to, if_match, force, cwd }) => {
-    const a = ["write", path];
-    if (name) a.push("--name", name);
-    if (summary) a.push("--summary", summary);
-    if (tags?.length) a.push("--tags", tags.join(","));
-    if (attached_to) a.push("--attached-to", attached_to);
-    if (if_match) a.push("--if-match", if_match);
-    if (force) a.push("--force");
-    return run(a, content, cwd);
+  async (input) => {
+    const result = await runLocalWrite(input, localToolDependencies());
+    return result.ok ? ok(result.text) : fail(result.text);
   }
 );
 server.tool(
   "is_commit",
-  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name (or all staged knowledge via all), never the user's unrelated staged work. Auto-stamps attribution trailers: the assisting agent, the session (Conversation), and the open Change-Id when one is open (is_change_open). Confirm with the user before calling.",
+  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name, or this MCP session's captured paths with all; never adopts unrelated staged work. Auto-stamps the assisting agent, Conversation, and open Change-Id. Confirm with the user before calling.",
   MCP_TOOL_PARAMETERS.is_commit,
-  async ({ message, paths, all, op, cwd }) => {
-    const a = buildCommitArgs(
-      { message, paths, all, op },
-      { changeId: await resolveChangeId(), principal: AGENT_PRINCIPAL, sessionId: readSessionId() }
-    );
-    return run(a, void 0, cwd);
+  async (input) => {
+    const result = await runLocalCommit(input, localToolDependencies());
+    return result.ok ? ok(result.text) : fail(result.text);
   }
 );
 server.tool(
@@ -30000,17 +31541,7 @@ server.tool(
       return ok(`Change resumed: ${currentChangeId}. It stamps every is_commit until is_change_close.`);
     }
     const decisionHandle = handle.trim();
-    const r = await cli(["--json", "change", "new", "--handle", decisionHandle]);
-    if (r.code !== 0) return fail(r.err.trim() || r.out.trim() || "Failed to mint a Change-Id");
-    let minted;
-    try {
-      minted = JSON.parse(r.out).change_id;
-    } catch {
-      return fail(`Could not parse minted Change-Id from: ${r.out.trim()}`);
-    }
-    if (typeof minted !== "string" || !CHANGE_ID_PATTERN.test(minted)) {
-      return fail(`CLI returned an invalid Change-Id: ${r.out.trim()}`);
-    }
+    const minted = mintChangeId(decisionHandle);
     currentChangeId = minted;
     persistOpenChange(minted, decisionHandle);
     return ok(
@@ -30033,11 +31564,11 @@ server.tool(
 );
 server.tool(
   "is_status",
-  "Capture state: overall git position + staged knowledge awaiting commit, or single-file state. With a path, the returned sha is the if_match token for a first update. Also reports the open Change as a `change` field: armed and stamping commits, or persisted by a previous session and awaiting an explicit resume/close.",
+  "Capture state: overall git position plus this session's captures, or one path's full revision and legacy sha/status fields. Also reports the open Change as armed or persisted by another session.",
   MCP_TOOL_PARAMETERS.is_status,
-  async ({ path, cwd }) => {
-    const result = await readStatus({ path, cwd });
-    if (!result.ok) return fail(result.error);
+  async (input) => {
+    const result = await runLocalStatus(input, localToolDependencies());
+    if (!result.ok) return fail(result.text);
     const { armed, rec } = await openChangeState();
     const change = statusChange(armed, rec);
     if (!change) return ok(result.text);
