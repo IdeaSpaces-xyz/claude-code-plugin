@@ -7363,37 +7363,8 @@ var require_dist = __commonJS({
 // dist/main.js
 import { writeSync } from "node:fs";
 
-// dist/commands/create.js
-import { promises as fs6 } from "node:fs";
-import { existsSync as existsSync3, realpathSync } from "node:fs";
+// dist/commands/doctor.js
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { join as join8, resolve as resolve7, relative as relative4, basename } from "node:path";
-
-// dist/output.js
-function createOutput(flags2) {
-  return {
-    result(data, humanText) {
-      if (flags2.json) {
-        process.stdout.write(JSON.stringify(data, null, 2) + "\n");
-      } else {
-        process.stdout.write(humanText + "\n");
-      }
-    },
-    log(text) {
-      if (!flags2.quiet) {
-        process.stderr.write(text + "\n");
-      }
-    },
-    progress(text) {
-      if (!flags2.quiet && !flags2.json) {
-        process.stderr.write(text + "\n");
-      }
-    },
-    error(text) {
-      process.stderr.write(text + "\n");
-    }
-  };
-}
 
 // dist/auth/credentials.js
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
@@ -7463,6 +7434,466 @@ function loadConfig() {
 function getDefaultApiUrl() {
   return (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
 }
+
+// dist/git.js
+import { spawnSync } from "node:child_process";
+import { existsSync as existsSync2 } from "node:fs";
+import { resolve } from "node:path";
+var GitError = class extends Error {
+};
+var GIT_MISSING_HINT = "git not found \u2014 install it and retry (macOS: `brew install git`; Windows: `winget install Git.Git`; Linux: your package manager).";
+var GIT_UNUSABLE_HINT = "git is present but unusable \u2014 on macOS, run `xcode-select --install`; otherwise repair or reinstall Git, then retry.";
+function gitAvailability() {
+  const result = spawnSync("git", ["--version"], { encoding: "utf-8" });
+  if (result.error) {
+    const code = result.error.code;
+    if (code === "ENOENT")
+      return { state: "absent", hint: GIT_MISSING_HINT };
+    return {
+      state: "unusable",
+      hint: GIT_UNUSABLE_HINT,
+      detail: result.error.message,
+      exitCode: result.status
+    };
+  }
+  if (result.status !== 0) {
+    return {
+      state: "unusable",
+      hint: GIT_UNUSABLE_HINT,
+      detail: (result.stderr ?? "").trim() || (result.stdout ?? "").trim() || `git --version exited ${result.status ?? "without a status"}`,
+      exitCode: result.status
+    };
+  }
+  return { state: "usable", version: (result.stdout ?? "").trim() };
+}
+function git(args2, cwd) {
+  const r = spawnSync("git", args2, { encoding: "utf-8", cwd });
+  if (r.error) {
+    const code = r.error.code;
+    return { ok: false, out: "", err: code === "ENOENT" ? GIT_MISSING_HINT : `git could not run: ${r.error.message}` };
+  }
+  return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() };
+}
+function gitOrThrow(args2, cwd) {
+  const r = git(args2, cwd);
+  if (!r.ok)
+    throw new GitError(r.err || r.out || `git ${args2.join(" ")} failed`);
+  return r.out;
+}
+function cloneRepo(url, dir) {
+  gitOrThrow(["clone", url, dir]);
+}
+function isInsideWorkTree(cwd) {
+  const r = git(["rev-parse", "--is-inside-work-tree"], cwd);
+  return r.ok && r.out === "true";
+}
+function originUrl(cwd) {
+  const r = git(["remote", "get-url", "origin"], cwd);
+  return r.ok ? r.out || null : null;
+}
+function normalizeRepoUrl(raw) {
+  let s = raw.trim();
+  if (!s)
+    return null;
+  const scp = /^[^/@]+@([^:/]+):(.+)$/.exec(s);
+  if (scp)
+    s = `ssh://${scp[1]}/${scp[2]}`;
+  let host;
+  let path;
+  try {
+    const u = new URL(s);
+    host = u.hostname;
+    path = u.pathname;
+  } catch {
+    return null;
+  }
+  path = path.replace(/^\/+/, "").replace(/\.git$/i, "").replace(/\/+$/, "");
+  if (!host || !path)
+    return null;
+  return `${host.toLowerCase()}/${path}`;
+}
+function setLocalConfig(key, value, cwd) {
+  gitOrThrow(["config", "--local", key, value], cwd);
+}
+function repoRoot(cwd) {
+  const r = git(["rev-parse", "--show-toplevel"], cwd);
+  if (!r.ok)
+    throw new GitError("not inside a git repository");
+  return r.out;
+}
+function headSha(cwd) {
+  return gitOrThrow(["rev-parse", "HEAD"], cwd);
+}
+function stagePaths(paths, cwd) {
+  if (!paths.length)
+    return;
+  gitOrThrow(["add", "--", ...paths], cwd);
+}
+function commitPaths(message, paths, cwd) {
+  if (!paths.length)
+    throw new GitError("refusing to commit with no paths");
+  const base = cwd ?? process.cwd();
+  const present = paths.filter((p) => existsSync2(resolve(base, p)));
+  if (present.length)
+    gitOrThrow(["add", "--", ...present], cwd);
+  gitOrThrow(["commit", "-q", "-m", message, "--", ...paths], cwd);
+  return headSha(cwd);
+}
+function statusEntries(cwd) {
+  const out = gitOrThrow(["status", "--porcelain"], cwd);
+  if (!out)
+    return [];
+  return out.split("\n").map((line) => ({
+    status: line.slice(0, 2),
+    path: line.slice(3)
+  }));
+}
+function isDirty(cwd) {
+  return statusEntries(cwd).some((e) => !e.status.startsWith("??"));
+}
+function stagedPaths(cwd) {
+  const r = git(["diff", "--cached", "--name-only"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  return r.out.split("\n").filter(Boolean);
+}
+function isIdeaspacePath(path) {
+  return path.endsWith(".md") || path.split("/").includes("_agent");
+}
+function listFiles(cwd) {
+  const r = git(["ls-files", "--cached", "--others", "--exclude-standard"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  return r.out.split("\n").filter(Boolean);
+}
+function stagedIdeaspacePaths(cwd) {
+  return stagedPaths(cwd).filter(isIdeaspacePath);
+}
+function fileTimes(cwd) {
+  const r = git(["log", "--format=%ct", "--name-only", "--no-renames"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  const created = /* @__PURE__ */ new Map();
+  const updated = /* @__PURE__ */ new Map();
+  let ms = 0;
+  for (const line of r.out.split("\n")) {
+    if (/^\d+$/.test(line)) {
+      ms = Number(line) * 1e3;
+      continue;
+    }
+    const path = line.trim();
+    if (!path || !(path.endsWith(".md") || path.endsWith(".markdown")))
+      continue;
+    if (!updated.has(path))
+      updated.set(path, ms);
+    created.set(path, ms);
+  }
+  return [...updated.keys()].map((path) => ({
+    path,
+    created_at: created.get(path) ?? updated.get(path),
+    updated_at: updated.get(path)
+  }));
+}
+function mergeBaseWithUpstream(cwd) {
+  const r = git(["merge-base", "HEAD", "@{upstream}"], cwd);
+  return r.ok && r.out ? r.out : null;
+}
+function commitsAheadOfUpstream(cwd) {
+  const r = git(["log", "--format=%H%x00%s", "@{upstream}..HEAD"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  return r.out.split("\n").flatMap((line) => {
+    const [sha, subject] = line.split("\0");
+    return sha ? [{ sha, subject: subject ?? "" }] : [];
+  });
+}
+function pathsAheadOfUpstream(cwd) {
+  const r = git(["diff", "--name-only", "@{upstream}...HEAD"], cwd);
+  if (!r.ok || !r.out)
+    return [];
+  return [...new Set(r.out.split("\n").map((p) => p.trim()).filter(Boolean))];
+}
+function commitsNotInHistory(shas, cwd) {
+  if (!shas.length)
+    return /* @__PURE__ */ new Set();
+  if (!shas.every((sha) => /^[0-9a-f]{4,40}$/i.test(sha)))
+    return null;
+  const r = git(["rev-list", "--no-walk", ...shas, "--not", "HEAD"], cwd);
+  if (!r.ok)
+    return null;
+  const full = r.out.split("\n").map((s) => s.trim()).filter(Boolean);
+  return new Set(shas.filter((sha) => full.some((f) => f.startsWith(sha))));
+}
+function fetch2(cwd) {
+  gitOrThrow(["fetch"], cwd);
+}
+function remoteState(cwd) {
+  const up = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], cwd);
+  if (!up.ok || !up.out)
+    return { upstream: null, ahead: 0, behind: 0 };
+  const counts = git(["rev-list", "--left-right", "--count", "@{upstream}...HEAD"], cwd);
+  if (!counts.ok)
+    return { upstream: up.out, ahead: 0, behind: 0 };
+  const [behind, ahead] = counts.out.split(/\s+/).map((n) => parseInt(n, 10) || 0);
+  return { upstream: up.out, ahead, behind };
+}
+function rebaseOntoUpstream(cwd) {
+  gitOrThrow(["rebase", "@{upstream}"], cwd);
+}
+function mergeUpstream(cwd) {
+  gitOrThrow(["merge", "--no-edit", "@{upstream}"], cwd);
+}
+function push(cwd) {
+  gitOrThrow(["push"], cwd);
+}
+
+// dist/output.js
+function createOutput(flags2) {
+  return {
+    result(data, humanText) {
+      if (flags2.json) {
+        process.stdout.write(JSON.stringify(data, null, 2) + "\n");
+      } else {
+        process.stdout.write(humanText + "\n");
+      }
+    },
+    log(text) {
+      if (!flags2.quiet) {
+        process.stderr.write(text + "\n");
+      }
+    },
+    progress(text) {
+      if (!flags2.quiet && !flags2.json) {
+        process.stderr.write(text + "\n");
+      }
+    },
+    error(text) {
+      process.stderr.write(text + "\n");
+    }
+  };
+}
+
+// dist/commands/doctor.js
+var MINIMUM_NODE_MAJOR = 20;
+function nodeAvailability() {
+  const result = spawnSync2("node", ["--version"], { encoding: "utf-8" });
+  if (result.error) {
+    const code = result.error.code;
+    if (code === "ENOENT")
+      return { state: "absent" };
+    return {
+      state: "unusable",
+      detail: result.error.message,
+      exitCode: result.status
+    };
+  }
+  const version = (result.stdout ?? "").trim();
+  if (result.status !== 0) {
+    return {
+      state: "unusable",
+      detail: (result.stderr ?? "").trim() || version || `node --version exited ${result.status ?? "without a status"}`,
+      exitCode: result.status
+    };
+  }
+  const major = /^v?(\d+)(?:\.|$)/.exec(version);
+  if (!major) {
+    return {
+      state: "unusable",
+      detail: `node --version returned an unrecognized version: ${version || "<empty>"}`,
+      exitCode: result.status
+    };
+  }
+  const majorVersion = Number(major[1]);
+  if (majorVersion < MINIMUM_NODE_MAJOR) {
+    return { state: "unsupported", version, major: majorVersion };
+  }
+  return { state: "usable", version };
+}
+function nodeFix(platform2, state) {
+  const action = state === "unusable" ? "Repair or reinstall" : "Install";
+  if (platform2 === "darwin") {
+    return `${action} Node.js 20 or later, then reopen your terminal: \`brew install node\`.`;
+  }
+  if (platform2 === "win32") {
+    return `${action} Node.js 20 or later, then reopen your terminal: \`winget install OpenJS.NodeJS.LTS\`.`;
+  }
+  if (platform2 === "linux") {
+    return `${action} Node.js 20 or later with your package manager or nodejs.org, then reopen your terminal.`;
+  }
+  return `${action} Node.js 20 or later from https://nodejs.org, then reopen your terminal.`;
+}
+function gitFix(platform2, state) {
+  if (state === "unusable") {
+    return platform2 === "darwin" ? "Repair the macOS Command Line Tools, then retry: `xcode-select --install`." : "Repair or reinstall Git, then reopen your terminal and retry.";
+  }
+  if (platform2 === "darwin") {
+    return "Install Git, then retry: `brew install git`.";
+  }
+  if (platform2 === "win32") {
+    return "Install Git, then reopen your terminal: `winget install Git.Git`.";
+  }
+  if (platform2 === "linux") {
+    return "Install Git with your package manager, then reopen your terminal.";
+  }
+  return "Install Git from https://git-scm.com, then reopen your terminal.";
+}
+function buildDoctorReport(input) {
+  const node = (() => {
+    switch (input.node.state) {
+      case "usable":
+        return {
+          state: input.node.state,
+          required: true,
+          ok: true,
+          version: input.node.version,
+          detail: null,
+          exit_code: null,
+          fix: null
+        };
+      case "unsupported":
+        return {
+          state: input.node.state,
+          required: true,
+          ok: false,
+          version: input.node.version,
+          detail: `Node.js ${MINIMUM_NODE_MAJOR} or later is required; found major version ${input.node.major}.`,
+          exit_code: null,
+          fix: nodeFix(input.platform, input.node.state)
+        };
+      case "unusable":
+        return {
+          state: input.node.state,
+          required: true,
+          ok: false,
+          version: null,
+          detail: input.node.detail,
+          exit_code: input.node.exitCode,
+          fix: nodeFix(input.platform, input.node.state)
+        };
+      case "absent":
+        return {
+          state: input.node.state,
+          required: true,
+          ok: false,
+          version: null,
+          detail: "The `node` executable is not available on PATH.",
+          exit_code: null,
+          fix: nodeFix(input.platform, input.node.state)
+        };
+    }
+  })();
+  const git2 = (() => {
+    switch (input.git.state) {
+      case "usable":
+        return {
+          state: input.git.state,
+          required: true,
+          ok: true,
+          version: input.git.version,
+          detail: null,
+          exit_code: null,
+          fix: null
+        };
+      case "unusable":
+        return {
+          state: input.git.state,
+          required: true,
+          ok: false,
+          version: null,
+          detail: input.git.detail,
+          exit_code: input.git.exitCode,
+          fix: gitFix(input.platform, input.git.state)
+        };
+      case "absent":
+        return {
+          state: input.git.state,
+          required: true,
+          ok: false,
+          version: null,
+          detail: "The `git` executable is not available on PATH.",
+          exit_code: null,
+          fix: gitFix(input.platform, input.git.state)
+        };
+    }
+  })();
+  const remoteAuth = input.auth ? {
+    state: "configured",
+    required: false,
+    ok: true,
+    version: null,
+    detail: null,
+    exit_code: null,
+    fix: null,
+    api_url: input.auth.apiUrl
+  } : {
+    state: "not_configured",
+    required: false,
+    ok: false,
+    version: null,
+    detail: "Remote features are unavailable; local capture still works.",
+    exit_code: null,
+    fix: "Run `ideaspaces login` to enable publish, sync, and sharing.",
+    api_url: null
+  };
+  return {
+    schema_version: 1,
+    ok: node.ok && git2.ok,
+    platform: input.platform,
+    checks: { node, git: git2, remote_auth: remoteAuth }
+  };
+}
+function formatCheck(label, check) {
+  const symbol = check.ok ? "\u2713" : check.required ? "\u2717" : "\u25CB";
+  const value = check.version ?? check.state.replaceAll("_", " ");
+  const lines = [`${symbol} ${label}: ${value}`];
+  if (check.detail)
+    lines.push(`  ${check.detail}`);
+  if (check.fix)
+    lines.push(`  Fix: ${check.fix}`);
+  return lines;
+}
+function formatDoctorReport(report) {
+  const lines = [
+    "IdeaSpaces doctor",
+    ...formatCheck("Node", report.checks.node),
+    ...formatCheck("Git", report.checks.git),
+    ...formatCheck("Remote auth", report.checks.remote_auth),
+    "",
+    report.ok ? "Ready for local IdeaSpaces." : "Required dependencies need attention."
+  ];
+  return lines.join("\n");
+}
+var defaultRuntime = {
+  platform: process.platform,
+  node: nodeAvailability,
+  git: gitAvailability,
+  auth: loadConfig
+};
+function makeDoctorCommand(runtime = defaultRuntime) {
+  return {
+    name: "doctor",
+    description: "Check Node, Git, and remote-auth readiness",
+    usage: "ideaspaces doctor [--json]",
+    examples: ["ideaspaces doctor", "ideaspaces doctor --json"],
+    async run(_args, _flags, global2) {
+      const report = buildDoctorReport({
+        platform: runtime.platform,
+        node: runtime.node(),
+        git: runtime.git(),
+        auth: runtime.auth()
+      });
+      createOutput(global2).result(report, formatDoctorReport(report));
+      return report.ok ? 0 : 1;
+    }
+  };
+}
+var doctorCommand = makeDoctorCommand();
+
+// dist/commands/create.js
+import { promises as fs6 } from "node:fs";
+import { existsSync as existsSync3, realpathSync } from "node:fs";
+import { spawnSync as spawnSync3 } from "node:child_process";
+import { join as join8, resolve as resolve7, relative as relative4, basename } from "node:path";
 
 // dist/auth/api.js
 var API_V1 = "/api/v1";
@@ -7766,218 +8197,6 @@ function identityEmail(username) {
 }
 function identityName(me) {
   return me.name ?? me.username;
-}
-
-// dist/git.js
-import { spawnSync } from "node:child_process";
-import { existsSync as existsSync2 } from "node:fs";
-import { resolve } from "node:path";
-var GitError = class extends Error {
-};
-var GIT_MISSING_HINT = "git not found \u2014 install it and retry (macOS: `brew install git`; Windows: `winget install Git.Git`; Linux: your package manager).";
-var GIT_UNUSABLE_HINT = "git is present but unusable \u2014 on macOS, run `xcode-select --install`; otherwise repair or reinstall Git, then retry.";
-function gitAvailability() {
-  const result = spawnSync("git", ["--version"], { encoding: "utf-8" });
-  if (result.error) {
-    const code = result.error.code;
-    if (code === "ENOENT")
-      return { state: "absent", hint: GIT_MISSING_HINT };
-    return {
-      state: "unusable",
-      hint: GIT_UNUSABLE_HINT,
-      detail: result.error.message,
-      exitCode: result.status
-    };
-  }
-  if (result.status !== 0) {
-    return {
-      state: "unusable",
-      hint: GIT_UNUSABLE_HINT,
-      detail: (result.stderr ?? "").trim() || (result.stdout ?? "").trim() || `git --version exited ${result.status ?? "without a status"}`,
-      exitCode: result.status
-    };
-  }
-  return { state: "usable", version: (result.stdout ?? "").trim() };
-}
-function git(args2, cwd) {
-  const r = spawnSync("git", args2, { encoding: "utf-8", cwd });
-  if (r.error) {
-    const code = r.error.code;
-    return { ok: false, out: "", err: code === "ENOENT" ? GIT_MISSING_HINT : `git could not run: ${r.error.message}` };
-  }
-  return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() };
-}
-function gitOrThrow(args2, cwd) {
-  const r = git(args2, cwd);
-  if (!r.ok)
-    throw new GitError(r.err || r.out || `git ${args2.join(" ")} failed`);
-  return r.out;
-}
-function cloneRepo(url, dir) {
-  gitOrThrow(["clone", url, dir]);
-}
-function isInsideWorkTree(cwd) {
-  const r = git(["rev-parse", "--is-inside-work-tree"], cwd);
-  return r.ok && r.out === "true";
-}
-function originUrl(cwd) {
-  const r = git(["remote", "get-url", "origin"], cwd);
-  return r.ok ? r.out || null : null;
-}
-function normalizeRepoUrl(raw) {
-  let s = raw.trim();
-  if (!s)
-    return null;
-  const scp = /^[^/@]+@([^:/]+):(.+)$/.exec(s);
-  if (scp)
-    s = `ssh://${scp[1]}/${scp[2]}`;
-  let host;
-  let path;
-  try {
-    const u = new URL(s);
-    host = u.hostname;
-    path = u.pathname;
-  } catch {
-    return null;
-  }
-  path = path.replace(/^\/+/, "").replace(/\.git$/i, "").replace(/\/+$/, "");
-  if (!host || !path)
-    return null;
-  return `${host.toLowerCase()}/${path}`;
-}
-function setLocalConfig(key, value, cwd) {
-  gitOrThrow(["config", "--local", key, value], cwd);
-}
-function repoRoot(cwd) {
-  const r = git(["rev-parse", "--show-toplevel"], cwd);
-  if (!r.ok)
-    throw new GitError("not inside a git repository");
-  return r.out;
-}
-function headSha(cwd) {
-  return gitOrThrow(["rev-parse", "HEAD"], cwd);
-}
-function stagePaths(paths, cwd) {
-  if (!paths.length)
-    return;
-  gitOrThrow(["add", "--", ...paths], cwd);
-}
-function commitPaths(message, paths, cwd) {
-  if (!paths.length)
-    throw new GitError("refusing to commit with no paths");
-  const base = cwd ?? process.cwd();
-  const present = paths.filter((p) => existsSync2(resolve(base, p)));
-  if (present.length)
-    gitOrThrow(["add", "--", ...present], cwd);
-  gitOrThrow(["commit", "-q", "-m", message, "--", ...paths], cwd);
-  return headSha(cwd);
-}
-function statusEntries(cwd) {
-  const out = gitOrThrow(["status", "--porcelain"], cwd);
-  if (!out)
-    return [];
-  return out.split("\n").map((line) => ({
-    status: line.slice(0, 2),
-    path: line.slice(3)
-  }));
-}
-function isDirty(cwd) {
-  return statusEntries(cwd).some((e) => !e.status.startsWith("??"));
-}
-function stagedPaths(cwd) {
-  const r = git(["diff", "--cached", "--name-only"], cwd);
-  if (!r.ok || !r.out)
-    return [];
-  return r.out.split("\n").filter(Boolean);
-}
-function isIdeaspacePath(path) {
-  return path.endsWith(".md") || path.split("/").includes("_agent");
-}
-function listFiles(cwd) {
-  const r = git(["ls-files", "--cached", "--others", "--exclude-standard"], cwd);
-  if (!r.ok || !r.out)
-    return [];
-  return r.out.split("\n").filter(Boolean);
-}
-function stagedIdeaspacePaths(cwd) {
-  return stagedPaths(cwd).filter(isIdeaspacePath);
-}
-function fileTimes(cwd) {
-  const r = git(["log", "--format=%ct", "--name-only", "--no-renames"], cwd);
-  if (!r.ok || !r.out)
-    return [];
-  const created = /* @__PURE__ */ new Map();
-  const updated = /* @__PURE__ */ new Map();
-  let ms = 0;
-  for (const line of r.out.split("\n")) {
-    if (/^\d+$/.test(line)) {
-      ms = Number(line) * 1e3;
-      continue;
-    }
-    const path = line.trim();
-    if (!path || !(path.endsWith(".md") || path.endsWith(".markdown")))
-      continue;
-    if (!updated.has(path))
-      updated.set(path, ms);
-    created.set(path, ms);
-  }
-  return [...updated.keys()].map((path) => ({
-    path,
-    created_at: created.get(path) ?? updated.get(path),
-    updated_at: updated.get(path)
-  }));
-}
-function mergeBaseWithUpstream(cwd) {
-  const r = git(["merge-base", "HEAD", "@{upstream}"], cwd);
-  return r.ok && r.out ? r.out : null;
-}
-function commitsAheadOfUpstream(cwd) {
-  const r = git(["log", "--format=%H%x00%s", "@{upstream}..HEAD"], cwd);
-  if (!r.ok || !r.out)
-    return [];
-  return r.out.split("\n").flatMap((line) => {
-    const [sha, subject] = line.split("\0");
-    return sha ? [{ sha, subject: subject ?? "" }] : [];
-  });
-}
-function pathsAheadOfUpstream(cwd) {
-  const r = git(["diff", "--name-only", "@{upstream}...HEAD"], cwd);
-  if (!r.ok || !r.out)
-    return [];
-  return [...new Set(r.out.split("\n").map((p) => p.trim()).filter(Boolean))];
-}
-function commitsNotInHistory(shas, cwd) {
-  if (!shas.length)
-    return /* @__PURE__ */ new Set();
-  if (!shas.every((sha) => /^[0-9a-f]{4,40}$/i.test(sha)))
-    return null;
-  const r = git(["rev-list", "--no-walk", ...shas, "--not", "HEAD"], cwd);
-  if (!r.ok)
-    return null;
-  const full = r.out.split("\n").map((s) => s.trim()).filter(Boolean);
-  return new Set(shas.filter((sha) => full.some((f) => f.startsWith(sha))));
-}
-function fetch2(cwd) {
-  gitOrThrow(["fetch"], cwd);
-}
-function remoteState(cwd) {
-  const up = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], cwd);
-  if (!up.ok || !up.out)
-    return { upstream: null, ahead: 0, behind: 0 };
-  const counts = git(["rev-list", "--left-right", "--count", "@{upstream}...HEAD"], cwd);
-  if (!counts.ok)
-    return { upstream: up.out, ahead: 0, behind: 0 };
-  const [behind, ahead] = counts.out.split(/\s+/).map((n) => parseInt(n, 10) || 0);
-  return { upstream: up.out, ahead, behind };
-}
-function rebaseOntoUpstream(cwd) {
-  gitOrThrow(["rebase", "@{upstream}"], cwd);
-}
-function mergeUpstream(cwd) {
-  gitOrThrow(["merge", "--no-edit", "@{upstream}"], cwd);
-}
-function push(cwd) {
-  gitOrThrow(["push"], cwd);
 }
 
 // node_modules/@ideaspaces/protocol/dist/space.js
@@ -10610,7 +10829,7 @@ async function maybeSetIdentity(targetDir) {
   }
 }
 function runGit2(cwd, args2) {
-  const r = spawnSync2("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  const r = spawnSync3("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
   if (r.error) {
     throw new Error(`git ${args2.join(" ")}: ${r.error.message}`);
   }
@@ -10640,7 +10859,7 @@ function enclosingRepoRoot(targetDir) {
       return null;
     probe = parent;
   }
-  const r = spawnSync2("git", ["-C", probe, "rev-parse", "--show-toplevel"], { encoding: "utf-8" });
+  const r = spawnSync3("git", ["-C", probe, "rev-parse", "--show-toplevel"], { encoding: "utf-8" });
   if (r.status !== 0)
     return null;
   const root = r.stdout.trim();
@@ -10815,7 +11034,7 @@ ${authUrl}`);
 };
 
 // dist/commands/publish.js
-import { spawnSync as spawnSync3 } from "node:child_process";
+import { spawnSync as spawnSync4 } from "node:child_process";
 import { existsSync as existsSync5, statSync } from "node:fs";
 import { basename as basename2, join as join10 } from "node:path";
 
@@ -11031,7 +11250,7 @@ function renderFrontmatterSyntaxProblems(scan, opts = {}) {
 
 // dist/commands/publish.js
 function runGit3(cwd, args2) {
-  const r = spawnSync3("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  const r = spawnSync4("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
   if (r.error) {
     return { ok: false, stderr: `git not available: ${r.error.message}`, stdout: "" };
   }
@@ -11050,7 +11269,7 @@ function legacyWebUrl(apiUrl, namespace, slug) {
 var SIZE_CAP_BYTES = 2e5;
 var SIZE_CAP_MARKERS = ["size cap", "too large", "exceeds"];
 function preflightSize(cwd) {
-  const r = spawnSync3("git", ["-C", cwd, "ls-files", "-z"], { encoding: "utf-8" });
+  const r = spawnSync4("git", ["-C", cwd, "ls-files", "-z"], { encoding: "utf-8" });
   if (r.error)
     throw new Error(`git not available: ${r.error.message}`);
   if (r.status !== 0) {
@@ -11108,7 +11327,7 @@ async function checkMarkdownFrontmatterSyntax(cwd) {
   });
 }
 function trackedMarkdownFiles(cwd) {
-  const r = spawnSync3("git", ["-C", cwd, "ls-files", "-z", "--", "*.md"], { encoding: "utf-8" });
+  const r = spawnSync4("git", ["-C", cwd, "ls-files", "-z", "--", "*.md"], { encoding: "utf-8" });
   if (r.error)
     throw new Error(`git not available: ${r.error.message}`);
   if (r.status !== 0) {
@@ -11747,7 +11966,7 @@ function detail2(error) {
 }
 
 // dist/local-effects-adapter.js
-import { spawnSync as spawnSync4 } from "node:child_process";
+import { spawnSync as spawnSync5 } from "node:child_process";
 import { realpathSync as realpathSync3 } from "node:fs";
 import { isAbsolute as isAbsolute4, relative as relative6, resolve as resolve9, sep as sep2 } from "node:path";
 function localEffectGitEnvironment() {
@@ -11769,7 +11988,7 @@ function localEffectGitEnvironment() {
   return env;
 }
 var localEffectGitRunner = async (root, args2) => {
-  const result = spawnSync4("git", [...args2], {
+  const result = spawnSync5("git", [...args2], {
     cwd: root,
     encoding: "utf-8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -11812,7 +12031,7 @@ async function gitIdentityConfigForEffects(root, key) {
   return result.stdout.trim() || null;
 }
 function canonicalRepoRoot(cwd = process.cwd()) {
-  const result = spawnSync4("git", ["rev-parse", "--show-toplevel"], {
+  const result = spawnSync5("git", ["rev-parse", "--show-toplevel"], {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -12388,7 +12607,7 @@ var changeCommand = {
 // dist/commands/navigate.js
 import { relative as relative8, resolve as resolve11 } from "node:path";
 import { statSync as statSync3, existsSync as existsSync8 } from "node:fs";
-import { spawnSync as spawnSync5 } from "node:child_process";
+import { spawnSync as spawnSync6 } from "node:child_process";
 
 // dist/catalog.js
 import { existsSync as existsSync7 } from "node:fs";
@@ -12530,7 +12749,7 @@ var STABLE_SECTIONS = [
   "activity"
 ];
 function gitRef(cwd, args2) {
-  const r = spawnSync5("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
+  const r = spawnSync6("git", ["-C", cwd, ...args2], { encoding: "utf-8" });
   return r.status === 0 ? r.stdout.trim() || null : null;
 }
 function parsePullable(raw) {
@@ -13484,7 +13703,7 @@ The repo may be mid-${useRebase ? "rebase" : "merge"}. Run \`${reset}\` to reset
 var import_yaml4 = __toESM(require_dist(), 1);
 import { promises as fs8 } from "node:fs";
 import { existsSync as existsSync9 } from "node:fs";
-import { spawnSync as spawnSync6 } from "node:child_process";
+import { spawnSync as spawnSync7 } from "node:child_process";
 import { dirname as dirname3, join as join15, relative as relative9 } from "node:path";
 var GENERATED_MARKER = "ideaspaces:generated skill pointer";
 var MARKER_LINE = `<!-- ${GENERATED_MARKER} \u2014 edit the canonical skill, then re-run \`ideaspaces skills sync\` -->`;
@@ -13612,7 +13831,7 @@ async function renderPointer(name, canonicalPath, pointerDir) {
   ].join("\n");
 }
 function agentIsGitignored(level) {
-  const r = spawnSync6("git", ["-C", level, "check-ignore", "-q", join15(level, "_agent", "skills")], {
+  const r = spawnSync7("git", ["-C", level, "check-ignore", "-q", join15(level, "_agent", "skills")], {
     encoding: "utf-8"
   });
   return r.status === 0;
@@ -14294,13 +14513,13 @@ var forkCommand = {
 
 // dist/fork-update.js
 var import_yaml5 = __toESM(require_dist(), 1);
-import { spawnSync as spawnSync7 } from "node:child_process";
+import { spawnSync as spawnSync8 } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync as existsSync11, mkdirSync as mkdirSync3, mkdtempSync, readFileSync as readFileSync4, renameSync, rmSync, writeFileSync as writeFileSync4 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname as dirname4, join as join17, resolve as resolve15, sep as sep3 } from "node:path";
 function runGit5(args2, cwd) {
-  const result = spawnSync7("git", args2, { cwd, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+  const result = spawnSync8("git", args2, { cwd, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
   if (result.error)
     throw result.error;
   if (result.status !== 0) {
@@ -14458,14 +14677,14 @@ function applyForkUpdate(plan, root) {
     }
     writeTree(beforeDir, before);
     writeTree(afterDir, after);
-    const diff = spawnSync7("git", ["diff", "--no-index", "--binary", "--no-renames", "--", "before", "after"], { cwd: temp, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+    const diff = spawnSync8("git", ["diff", "--no-index", "--binary", "--no-renames", "--", "before", "after"], { cwd: temp, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
     if (diff.error)
       throw diff.error;
     if (diff.status !== 0 && diff.status !== 1) {
       throw new Error((diff.stderr || "Could not prepare update patch").trim());
     }
     const patch = diff.stdout.replaceAll("a/before/", "a/").replaceAll("b/after/", "b/");
-    const applied = spawnSync7("git", ["apply", "--whitespace=nowarn", "-"], {
+    const applied = spawnSync8("git", ["apply", "--whitespace=nowarn", "-"], {
       cwd: root,
       input: patch,
       encoding: "utf-8",
@@ -16169,7 +16388,7 @@ var logoutCommand = {
 };
 
 // dist/pi/pi-status.js
-import { spawnSync as spawnSync8 } from "node:child_process";
+import { spawnSync as spawnSync9 } from "node:child_process";
 import { existsSync as existsSync15, readFileSync as readFileSync7 } from "node:fs";
 import { basename as basename5, join as join22 } from "node:path";
 
@@ -16259,7 +16478,7 @@ function resolveExtension(path) {
 }
 function probeBinary(piBin) {
   try {
-    const res = spawnSync8(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
+    const res = spawnSync9(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
     if (res.error || res.status !== 0)
       return { present: false, path: piBin, version: null };
     const m = /\d+\.\d+\.\d+[\w.-]*/.exec(res.stdout ?? "");
@@ -17039,6 +17258,7 @@ var localConversationOps = { send, createNew, get, list };
 var conversationCommand = makeConversationCommand(localConversationOps);
 var conversationsCommand = makeConversationsCommand(localConversationOps);
 var topLevel = [
+  doctorCommand,
   createCommand,
   loginCommand,
   whoamiCommand,
