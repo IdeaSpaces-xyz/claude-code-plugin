@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -69,6 +69,9 @@ describe("truthful Git detection in the vendored CLI", () => {
 
       expect(result.status).toBe(0);
       expect(existsSync(join(target, "_agent", "foundation.md"))).toBe(true);
+      expect(readFileSync(join(target, "_agent", "foundation.md"), "utf-8")).toMatch(
+        /^root_node_id: n_[0-9a-f]{24}$/m,
+      );
       expect(existsSync(join(target, ".git"))).toBe(false);
       expect(output).toContain("git is present but unusable");
       expect(output).toContain("xcode-select --install");
