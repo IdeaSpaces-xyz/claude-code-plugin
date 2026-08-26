@@ -37,7 +37,9 @@ describe("truthful Git detection in the vendored CLI", () => {
         detail: "xcrun: error: active developer path is missing",
         exit_code: 69,
       });
-      expect(report.checks.git.fix).toContain("xcode-select --install");
+      expect(report.checks.git.fix).toContain(
+        process.platform === "darwin" ? "xcode-select --install" : "Repair or reinstall Git",
+      );
       expect(report.checks.remote_auth.state).toBe("not_configured");
     } finally {
       rmSync(root, { recursive: true, force: true });
