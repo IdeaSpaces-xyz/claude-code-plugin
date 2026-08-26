@@ -106,7 +106,7 @@ For a code repo where the user wants shared (committed) `_agent/`, add `--shared
 node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create --yes --shared
 ```
 
-The CLI writes the files (`_agent/foundation.md`, `_agent/guide.md`, `CLAUDE.md` or `CLAUDE.local.md`, `.gitattributes`, `.gitignore` defaults) first, then git (init + initial commit) as a **best-effort finalize**. If git is missing or its identity isn't configured, the space is still created — just **unversioned** — and the CLI says so and prints the exact `git init …` commands to add history later. **Relay the CLI's own stdout; don't assume a commit happened.**
+The CLI writes `_agent/foundation.md`, `_agent/guide.md`, `CLAUDE.md` (or `CLAUDE.local.md`), `.gitattributes`, and `.gitignore` defaults first. A shared scaffold mints portable `root_node_id` into the foundation before login; a code repo's private gitignored `_agent/` remains unstamped. Git init + the exact-path initial commit are a **best-effort finalize**. If Git is unavailable, the Space still exists with local identity but no version history, and the CLI prints the recovery commands. **Relay the CLI's own stdout; don't assume a commit happened.**
 
 **Why seed-only:** the scaffolded foundation explains its own shape — the seed names the emergent files, and the drift rule fires from the files themselves. Nothing to restate here.
 

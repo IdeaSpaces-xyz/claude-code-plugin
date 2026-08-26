@@ -7542,6 +7542,9 @@ function summarizeMarkdown(content) {
   return null;
 }
 
+// node_modules/@ideaspaces/protocol/dist/assets.js
+var ASSET_DIRECTORY = "_assets";
+
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 var FS = "";
@@ -7900,7 +7903,11 @@ var CONTENT_AWARENESS_SECTIONS = [
   "stale-docs",
   "direction-drift"
 ];
-var SKIP_DIRS2 = /* @__PURE__ */ new Set(["_agent", ...DEFAULT_IGNORED_DIRECTORIES]);
+var SKIP_DIRS2 = /* @__PURE__ */ new Set([
+  "_agent",
+  ASSET_DIRECTORY,
+  ...DEFAULT_IGNORED_DIRECTORIES
+]);
 var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 var DEFAULT_MAX_DRIFT = 10;
 async function assembleContentAwareness(opts) {

@@ -51,6 +51,9 @@ async function readContract(agentDir) {
   return entries;
 }
 
+// node_modules/@ideaspaces/protocol/dist/assets.js
+var ASSET_DIRECTORY = "_assets";
+
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 function runGit(repoRoot, args) {
@@ -70,7 +73,12 @@ async function resolveRepoRoot(cwd) {
 }
 function isIdeaspacePath(path) {
   const normalized = path.replace(/\\/g, "/");
-  return normalized.endsWith(".md") || normalized.split("/").includes("_agent");
+  const segments = normalized.split("/");
+  if (normalized.endsWith(".md") || segments.includes("_agent"))
+    return true;
+  const directorySegments = segments.slice(0, -1);
+  const firstInfrastructure = directorySegments.find((segment) => segment.startsWith("_") || segment.toLowerCase() === ".git");
+  return firstInfrastructure === ASSET_DIRECTORY;
 }
 
 // src/capture-nudge.ts

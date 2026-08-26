@@ -114,7 +114,7 @@ The default is the MCP server's launch directory.
 
 Sync is opt-in. The plugin works locally without auth.
 
-To host a space remotely after login, use `/is-publish` or run `ideaspaces publish` from inside the space directory. It creates a server-side bare repo, sets the local `user.email` to the OAuth-resolved identity, and pushes. Folder ↔ repo mapping persists at `~/.ideaspaces/spaces.json` so re-publishing from the same dir reuses the existing remote.
+A shared Space created by the current CLI already carries portable `root_node_id` before login; private gitignored code-repo context remains unstamped. To host it remotely, use `/is-publish` or run `ideaspaces publish` from the Space root. First publish asks Keeper to adopt the committed declaration exactly, sets repo-local Git attribution, and pushes. Later publication reuses the same verified binding; drift refuses, and `--force` never forks or rekeys.
 
 ## Native tools for the rest
 

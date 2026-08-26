@@ -125,19 +125,19 @@ The skills invoke this CLI; no global npm install is required.
 
 | Command | What |
 |---|---|
-| `ideaspaces create [name]` | Scaffold the seed `_agent/` contract, `CLAUDE.md`, git defaults, and initial commit. |
+| `ideaspaces create [name]` | Scaffold the seed contract and mint portable root identity before login (except private gitignored code-repo context). |
 | `ideaspaces write <path>` | Create/update a Note with Layer 1 frontmatter; stages it and returns a content sha (`--if-match` for safe updates). |
 | `ideaspaces commit -m <msg> <path>…` | The explicit save — commits only the paths you name (`--all`), never unrelated staged work. Optional `--op` / `--change-id` / `--co-author` / `--conversation` trailers. |
 | `ideaspaces change new [<handle>]` | Mint a `Change-Id` for a decision spanning multiple commits/repos. |
 | `ideaspaces navigate [<path>] [--mark-seen]` | Re-derive orientation at a position (fractal contract + tree + drift); `--json` for the structured block. |
-| `ideaspaces status [--path FILE]` | Git position + plugin-tracked captures awaiting commit; single-file sha for `--if-match`. |
+| `ideaspaces status [--path FILE]` | Git/capture position plus offline root-identity evidence; single-file sha for `--if-match`. |
 | `ideaspaces pull` / `push` | Integrate remote changes / send committed captures (`--dry-run`). |
 | `ideaspaces skills [<name>]` | List the skill catalog, or print one skill's markdown. |
 | `ideaspaces login` | Save optional remote credentials. |
-| `ideaspaces publish` | Create/reuse a remote IdeaSpaces repo and push the current branch. |
+| `ideaspaces publish` | Adopt the committed local identity on first publish, or reuse the verified hosted binding. |
 | `ideaspaces share person|team|list|remove|visibility` | Manage recipients, Explore/Fork/Collaborate grades, and public/private visibility. |
 
-`publish` preflights tracked markdown frontmatter before pushing.
+`publish` evaluates foundation/origin/registry identity before network mutation, refuses uncommitted declaration drift, and preflights tracked Markdown before pushing. `--force` never forks or rekeys a Space.
 
 ### MCP tools
 
