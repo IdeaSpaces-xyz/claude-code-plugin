@@ -45,6 +45,7 @@ describe("recipient-shaped Share distribution", () => {
 
   it("routes recipient access through is-share rather than is-push", () => {
     const share = read("skills/is-share/SKILL.md");
+    const fork = read("skills/is-fork/SKILL.md");
     const push = read("skills/is-push/SKILL.md");
 
     expect(share).toContain("share person");
@@ -53,6 +54,8 @@ describe("recipient-shaped Share distribution", () => {
     expect(share).toContain("${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js");
     expect(share).toContain("there is no\nnative `is_share` tool");
     expect(share).toContain("Never ask for internal user, organization, Grant, userset, or repository");
+    expect(fork).toContain('"${CLI[@]}" fork "<space-url>" "<destination>"');
+    expect(fork).toContain("Publishing is the account boundary;\nFork itself is not");
     expect(push).toContain("Push is not access sharing");
     expect(push).toContain("belong to **is-share**");
   });

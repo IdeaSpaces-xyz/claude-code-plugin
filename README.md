@@ -104,7 +104,7 @@ Once installed, just start working — the plugin orients your agent at the star
 - **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device. Optional; everything works fully offline without it.
 - **Choose who can use it** — say *"share this with alice@example.com for Explore"*, *"share with team acme.com for Collaborate"*, or *"make this public"* (`/is-share`).
 
-Eight skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-shape`, `is-space`, `is-publish`, `is-share`, `is-push`, `is-pull`.
+Nine skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-push`, `is-pull`.
 
 Three more run on the agent's initiative rather than yours, so they won't appear in that menu: `is-capture` offers to write a Note when something crystallizes, `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how Notes get written. You reach them by saying what you want — *"capture this"*, *"has our direction changed?"* — not by typing a command.
 
@@ -170,6 +170,7 @@ User-invocable (they appear when you type `/`):
 - **is-orient** — orient inside a space: where are we, what's active, what changed
 - **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
+- **is-fork** — conversational layer over account-free `ideaspaces fork`
 - **is-publish** — conversational layer over `ideaspaces publish`
 - **is-share** — manage people, teams, Explore/Fork/Collaborate grades, and public/private visibility
 - **is-push** — send committed captures to the remote
