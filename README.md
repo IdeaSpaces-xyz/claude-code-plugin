@@ -100,6 +100,7 @@ Once installed, just start working — the plugin orients your agent at the star
   node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create my-space --yes
   ```
 - **Capture as you go** — when a decision or insight lands, the agent proposes writing it down. You confirm.
+- **Take a public Space home** — `ideaspaces fork <space-url> [dir]` materializes a copy-enabled Space locally without an account, source history, or hosted destination.
 - **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device. Optional; everything works fully offline without it.
 - **Choose who can use it** — say *"share this with alice@example.com for Explore"*, *"share with team acme.com for Collaborate"*, or *"make this public"* (`/is-share`).
 
@@ -126,6 +127,7 @@ The skills invoke this CLI; no global npm install is required.
 | Command | What |
 |---|---|
 | `ideaspaces create [name]` | Scaffold the seed contract and mint portable root identity before login (except private gitignored code-repo context). |
+| `ideaspaces fork <space-url> [dir]` | Materialize a copy-enabled Space as one independent unpublished local commit, without an account or source history. |
 | `ideaspaces write <path>` | Create/update a Note with Layer 1 frontmatter; stages it and returns a content sha (`--if-match` for safe updates). |
 | `ideaspaces commit -m <msg> <path>…` | The explicit save — commits only the paths you name (`--all`), never unrelated staged work. Optional `--op` / `--change-id` / `--co-author` / `--conversation` trailers. |
 | `ideaspaces change new [<handle>]` | Mint a `Change-Id` for a decision spanning multiple commits/repos. |
@@ -137,7 +139,7 @@ The skills invoke this CLI; no global npm install is required.
 | `ideaspaces publish` | Adopt the committed local identity on first publish, or reuse the verified hosted binding. |
 | `ideaspaces share person|team|list|remove|visibility` | Manage recipients, Explore/Fork/Collaborate grades, and public/private visibility. |
 
-`publish` evaluates foundation/origin/registry identity before network mutation, refuses uncommitted declaration drift, and preflights tracked Markdown before pushing. `--force` never forks or rekeys a Space.
+`fork` validates the complete bounded snapshot before touching its destination and creates no remote or hosted metadata. `publish` later evaluates foundation/origin/registry identity before network mutation, refuses uncommitted declaration drift, and preflights tracked Markdown before pushing. `--force` never forks or rekeys a Space.
 
 ### MCP tools
 
@@ -158,7 +160,7 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 
 Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
 
-MCP stays thin: portable local reads, writes, commits, and Change minting use the protocol in-process; only platform and transport verbs shell the bundled CLI with `--json`. Shared shape stays in the protocol; the session capture ledger and presentation stay on the surface. Share is intentionally CLI-backed through `is-share` in this release; there is no native `is_share` tool.
+MCP stays thin: portable local reads, writes, commits, and Change minting use the protocol in-process; platform and transport flows use the bundled CLI. Shared shape stays in the protocol; the session capture ledger and presentation stay on the surface. Fork and Share remain CLI-backed rather than becoming duplicate native tools.
 
 ### Skills
 
