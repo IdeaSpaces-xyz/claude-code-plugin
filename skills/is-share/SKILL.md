@@ -30,8 +30,8 @@ Use only these user-facing choices:
 - **Fork** — Explore plus an independent current-version copy. It does not expose source history.
 - **Collaborate** — Explore plus clone/fetch/push on the same Space, including source history. Bytes
   already fetched cannot be revoked later.
-- **Public** — anonymous view plus authenticated independent Fork/Copy. Source history, clone, and
-  push remain private.
+- **Public** — anyone may View and materialize a local Fork without an account. Publishing that
+  independent Space still requires sign-in. Source history, clone, and push remain private.
 - **Private** — disable public view and public Fork/Copy without changing named people or team access.
 
 Hosted history for a person is an optional, separately revocable trail; do not describe it as clone
@@ -88,6 +88,7 @@ access.
 - Say who or which team changed, at which grade, and whether hosted history was included.
 - After removal, preserve the CLI's distinction between removed direct access and access surviving
   through another person, team, owner, or policy path.
-- After visibility changes, repeat that named grants are unchanged.
+- After visibility changes, repeat that named grants are unchanged. For Public, distinguish the
+  account-free local `ideaspaces fork <space-url> [dir]` path from authenticated later publication.
 - If the CLI refuses because the folder is unpublished or unmapped, offer **is-publish** or ask for a
   canonical Space URL. Surface other refusals without translating them into guessed authority.

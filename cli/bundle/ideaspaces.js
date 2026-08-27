@@ -7434,13 +7434,38 @@ function loadConfig() {
 function getDefaultApiUrl() {
   return (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
 }
+function loadOptionalAuthConfig() {
+  return loadConfig() ?? { apiUrl: getDefaultApiUrl() };
+}
 
 // dist/git.js
 import { spawnSync } from "node:child_process";
 import { existsSync as existsSync2, realpathSync } from "node:fs";
-import { resolve } from "node:path";
 var GitError = class extends Error {
 };
+function sanitizedGitEnvironment(overrides = {}) {
+  const env = { ...process.env };
+  for (const key of [
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_AUTHOR_NAME",
+    "GIT_AUTHOR_EMAIL",
+    "GIT_COMMITTER_NAME",
+    "GIT_COMMITTER_EMAIL",
+    "GIT_CONFIG_COUNT"
+  ]) {
+    delete env[key];
+  }
+  for (const key of Object.keys(env)) {
+    if (/^GIT_CONFIG_(?:KEY|VALUE)_\d+$/.test(key))
+      delete env[key];
+  }
+  return { ...env, ...overrides };
+}
 var GIT_MISSING_HINT = "git not found \u2014 install it and retry (macOS: `brew install git`; Windows: `winget install Git.Git`; Linux: your package manager).";
 var GIT_UNUSABLE_HINT = "git is present but unusable \u2014 on macOS, run `xcode-select --install`; otherwise repair or reinstall Git, then retry.";
 function gitAvailability() {
@@ -7528,16 +7553,6 @@ function stagePaths(paths, cwd) {
   if (!paths.length)
     return;
   gitOrThrow(["add", "--", ...paths], cwd);
-}
-function commitPaths(message, paths, cwd) {
-  if (!paths.length)
-    throw new GitError("refusing to commit with no paths");
-  const base = cwd ?? process.cwd();
-  const present = paths.filter((p) => existsSync2(resolve(base, p)));
-  if (present.length)
-    gitOrThrow(["add", "--", ...present], cwd);
-  gitOrThrow(["commit", "-q", "-m", message, "--", ...paths], cwd);
-  return headSha(cwd);
 }
 function statusEntries(cwd) {
   const out = gitOrThrow(["status", "--porcelain"], cwd);
@@ -7893,7 +7908,7 @@ var doctorCommand = makeDoctorCommand();
 import { promises as fs6 } from "node:fs";
 import { existsSync as existsSync5, realpathSync as realpathSync3 } from "node:fs";
 import { spawnSync as spawnSync4 } from "node:child_process";
-import { join as join10, resolve as resolve8, relative as relative4, basename, sep as sep2 } from "node:path";
+import { join as join10, resolve as resolve7, relative as relative4, basename, sep as sep2 } from "node:path";
 
 // dist/auth/api.js
 var API_V1 = "/api/v1";
@@ -7951,9 +7966,10 @@ function unreachableMessage(apiUrl, timedOut) {
   return `${lead} If you're in Cowork, its sandbox blocks remote access \u2014 switch to Claude Code view to browse and sync (local capture still works).`;
 }
 function authHeaders(config, extra) {
+  const apiKey = config.apiKey?.trim();
   return {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${config.apiKey}`,
+    ...apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
     ...extra
   };
 }
@@ -8005,9 +8021,6 @@ async function createRepo(config, body, opts) {
 }
 async function getSpace(config, rootNodeId, opts) {
   return request(config, "GET", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}`, void 0, opts);
-}
-async function copySpace(config, rootNodeId, body, opts) {
-  return request(config, "POST", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/copy`, body, opts);
 }
 async function getSpaceCopySnapshot(config, rootNodeId, opts) {
   return request(config, "GET", `${API_V1}/spaces/${encodeURIComponent(rootNodeId)}/copy-snapshot`, void 0, opts);
@@ -8201,7 +8214,7 @@ function identityName(me) {
 
 // node_modules/@ideaspaces/protocol/dist/space.js
 import { promises as fs } from "node:fs";
-import { dirname, join as join3, resolve as resolve2 } from "node:path";
+import { dirname, join as join3, resolve } from "node:path";
 var CONTRACT_FILES = [
   "foundation",
   "guide",
@@ -8230,7 +8243,7 @@ async function readContract(agentDir) {
   return entries;
 }
 async function composeContractAlongPath(position) {
-  const start = resolve2(position);
+  const start = resolve(position);
   const found = [];
   let spaceRoot = null;
   let dir = start;
@@ -8279,7 +8292,7 @@ async function composeContractAlongPath(position) {
 
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 import { promises as fs5 } from "node:fs";
-import { join as join7, relative as relative3, resolve as resolve6 } from "node:path";
+import { join as join7, relative as relative3, resolve as resolve5 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
@@ -8553,7 +8566,7 @@ var ASSET_DIRECTORY = "_assets";
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 import { lstat as nodeLstat, realpath as nodeRealpath } from "node:fs/promises";
-import { isAbsolute as isAbsolute2, join as join4, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute2, join as join4, resolve as resolve2 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/local-effects.js
 import { isAbsolute } from "node:path";
@@ -9023,14 +9036,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot2, args2) {
-  return new Promise((resolve19) => {
+  return new Promise((resolve18) => {
     const proc = spawn("git", ["-C", repoRoot2, ...args2], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve19({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve19({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve18({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve18({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -9067,7 +9080,7 @@ async function pathRevision(root, path, runner, filesystem = nodeReadFileSystem)
   } catch (error) {
     return revisionError("invalid_root", "preflight", "root does not resolve", path, detail(error));
   }
-  if (resolve3(root) !== canonicalRoot) {
+  if (resolve2(root) !== canonicalRoot) {
     return revisionError("invalid_root", "preflight", "root must be the canonical worktree path", path);
   }
   const top = await runLocalGit(runner, root, ["rev-parse", "--show-toplevel"]);
@@ -9320,7 +9333,7 @@ async function recentActivity(repoRoot2, sinceSha, limit = DEFAULT_COMMIT_LIMIT)
 
 // node_modules/@ideaspaces/protocol/dist/path-context.js
 import { promises as fs3 } from "node:fs";
-import { isAbsolute as isAbsolute3, join as join5, relative, resolve as resolve4, sep } from "node:path";
+import { isAbsolute as isAbsolute3, join as join5, relative, resolve as resolve3, sep } from "node:path";
 function spaceRootLevel(ctx) {
   return ctx.levels.find((l) => l.foundation) ?? null;
 }
@@ -9346,8 +9359,8 @@ function renderPosition({ pos, base, repoRoot: repoRoot2, ctx }) {
 }
 async function walkPathContext(repoRoot2, currentPath, opts = {}) {
   const { includeContent = false } = opts;
-  const root = resolve4(repoRoot2);
-  const rel = relative(root, resolve4(root, currentPath));
+  const root = resolve3(repoRoot2);
+  const rel = relative(root, resolve3(root, currentPath));
   const segments = rel === "" || rel.startsWith("..") || isAbsolute3(rel) ? [] : rel.split(sep).filter(Boolean);
   const relPaths = [""];
   let acc = "";
@@ -9418,11 +9431,11 @@ async function readFileOrNull(path) {
 // node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
 import { promises as fs4 } from "node:fs";
-import { join as join6, relative as relative2, resolve as resolve5 } from "node:path";
+import { join as join6, relative as relative2, resolve as resolve4 } from "node:path";
 var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
 async function collectDocDependencies(repoRoot2, docDir) {
-  const root = resolve5(repoRoot2);
-  const start = resolve5(root, docDir);
+  const root = resolve4(repoRoot2);
+  const start = resolve4(root, docDir);
   const out = [];
   async function walk(dir) {
     let entries;
@@ -9456,7 +9469,7 @@ async function collectDocDependencies(repoRoot2, docDir) {
   return out;
 }
 async function staleDocSignals(repoRoot2, docs) {
-  const root = resolve5(repoRoot2);
+  const root = resolve4(repoRoot2);
   const signals = [];
   for (const { path, codePaths } of docs) {
     const missing = [];
@@ -9574,7 +9587,7 @@ var SKIP_DIRS2 = /* @__PURE__ */ new Set([
 var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 var DEFAULT_MAX_DRIFT = 10;
 async function assembleContentAwareness(opts) {
-  const requestedPosition = resolve6(opts.position);
+  const requestedPosition = resolve5(opts.position);
   const position = await fs5.realpath(requestedPosition).catch(() => requestedPosition);
   const [repoRoot2, composed] = await Promise.all([
     resolveRepoRoot(position),
@@ -10316,13 +10329,14 @@ import { existsSync as existsSync4, readFileSync as readFileSync3 } from "node:f
 import { join as join9 } from "node:path";
 
 // dist/auth/spaces.js
-import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync2, realpathSync as realpathSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join8, resolve as resolve7 } from "node:path";
+import { randomUUID } from "node:crypto";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync2, realpathSync as realpathSync2, renameSync, rmSync, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join8, resolve as resolve6 } from "node:path";
 function spacesFile() {
   return join8(configDir(), "spaces.json");
 }
 function folderKey(path) {
-  const absolute = resolve7(path);
+  const absolute = resolve6(path);
   try {
     return realpathSync2.native(absolute);
   } catch {
@@ -10391,6 +10405,19 @@ function loadSpaces() {
     return {};
   }
 }
+function writeSpaces(map) {
+  const dir = configDir();
+  if (!existsSync3(dir))
+    mkdirSync2(dir, { recursive: true, mode: 448 });
+  const destination = spacesFile();
+  const temp = `${destination}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    writeFileSync2(temp, JSON.stringify(map, null, 2) + "\n", { mode: 384 });
+    renameSync(temp, destination);
+  } finally {
+    rmSync(temp, { force: true });
+  }
+}
 function saveSpace(absolutePath, record) {
   const parsed = parseSpaceRecord(record);
   if (!parsed) {
@@ -10403,15 +10430,11 @@ function saveSpace(absolutePath, record) {
       delete map[existing];
   }
   map[key] = parsed;
-  const dir = configDir();
-  if (!existsSync3(dir)) {
-    mkdirSync2(dir, { recursive: true, mode: 448 });
-  }
-  writeFileSync2(spacesFile(), JSON.stringify(map, null, 2) + "\n", { mode: 384 });
+  writeSpaces(map);
 }
 function findSpaceFor(absolutePath) {
   const map = loadSpaces();
-  const lexical = resolve7(absolutePath);
+  const lexical = resolve6(absolutePath);
   if (map[lexical])
     return map[lexical];
   const canonical = folderKey(absolutePath);
@@ -10431,11 +10454,7 @@ function removeSpace(absolutePath) {
     return false;
   for (const key of keys)
     delete map[key];
-  const dir = configDir();
-  if (!existsSync3(dir)) {
-    mkdirSync2(dir, { recursive: true, mode: 448 });
-  }
-  writeFileSync2(spacesFile(), JSON.stringify(map, null, 2) + "\n", { mode: 384 });
+  writeSpaces(map);
   return true;
 }
 function withForkLineage(bound, previous) {
@@ -10978,7 +10997,7 @@ var createCommand = {
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const name = args2[0];
-    const targetDir = name ? resolve8(process.cwd(), name) : process.cwd();
+    const targetDir = name ? resolve7(process.cwd(), name) : process.cwd();
     const apply = global2.yes === true;
     const sharedFlag = Boolean(flags2.shared);
     const inspection = await inspect(targetDir);
@@ -11182,7 +11201,7 @@ async function applyPlan(opts) {
     rootNodeId = declared.rootNodeId;
     materializedContract = { ...contract, foundation: declared.content };
   }
-  const commitPaths3 = [];
+  const commitPaths2 = [];
   const trackAgent = !privateAgent;
   await fs6.mkdir(targetDir, { recursive: true });
   await fs6.mkdir(join10(targetDir, "_agent"), { recursive: true });
@@ -11190,7 +11209,7 @@ async function applyPlan(opts) {
     const rel = join10("_agent", `${name}.md`);
     await fs6.writeFile(join10(targetDir, rel), content, "utf-8");
     if (trackAgent)
-      commitPaths3.push(rel);
+      commitPaths2.push(rel);
   }
   for (const [dim, content] of Object.entries(CONVENTION_READMES)) {
     const rel = join10("_agent", dim, "README.md");
@@ -11200,45 +11219,45 @@ async function applyPlan(opts) {
       await fs6.writeFile(abs, content, "utf-8");
     }
     if (trackAgent)
-      commitPaths3.push(rel);
+      commitPaths2.push(rel);
   }
   const claudeFile = privateAgent ? "CLAUDE.local.md" : "CLAUDE.md";
   if (!inspection.hasClaude) {
     await fs6.writeFile(join10(targetDir, claudeFile), claudeMd, "utf-8");
     if (!privateAgent)
-      commitPaths3.push(claudeFile);
+      commitPaths2.push(claudeFile);
   }
   const gitattributesPath = join10(targetDir, ".gitattributes");
   if (!existsSync5(gitattributesPath)) {
     await fs6.writeFile(gitattributesPath, GITATTRIBUTES, "utf-8");
-    commitPaths3.push(".gitattributes");
+    commitPaths2.push(".gitattributes");
   }
   const gitignorePath = join10(targetDir, ".gitignore");
   const existingIgnore = inspection.hasGitignore ? await fs6.readFile(gitignorePath, "utf-8") : null;
   const mergedIgnore = gitignoreWithDefaults(existingIgnore, { privateAgent });
   if (mergedIgnore !== null) {
     await fs6.writeFile(gitignorePath, mergedIgnore, "utf-8");
-    commitPaths3.push(".gitignore");
+    commitPaths2.push(".gitignore");
   }
   const availability = gitAvailability();
   if (availability.state !== "usable") {
-    return { versioned: false, gitNote: availability.hint, commitPaths: commitPaths3, rootNodeId };
+    return { versioned: false, gitNote: availability.hint, commitPaths: commitPaths2, rootNodeId };
   }
   try {
     if (!inspection.isGitRepo) {
       runGit3(targetDir, ["init", "-q", "-b", "main"]);
     }
     await maybeSetIdentity(targetDir);
-    if (commitPaths3.length) {
-      runGit3(targetDir, ["add", "--", ...commitPaths3]);
-      runGit3(targetDir, ["commit", "-q", "-m", "Initial ideaspace scaffold", "--", ...commitPaths3]);
+    if (commitPaths2.length) {
+      runGit3(targetDir, ["add", "--", ...commitPaths2]);
+      runGit3(targetDir, ["commit", "-q", "-m", "Initial ideaspace scaffold", "--", ...commitPaths2]);
     }
-    return { versioned: true, commitPaths: commitPaths3, rootNodeId };
+    return { versioned: true, commitPaths: commitPaths2, rootNodeId };
   } catch (err) {
     return {
       versioned: false,
       gitNote: err instanceof Error ? err.message : String(err),
-      commitPaths: commitPaths3,
+      commitPaths: commitPaths2,
       rootNodeId
     };
   }
@@ -11275,7 +11294,7 @@ function effectiveRealPath(target) {
   let probe = target;
   const suffix = [];
   while (!existsSync5(probe)) {
-    const parent = resolve8(probe, "..");
+    const parent = resolve7(probe, "..");
     if (parent === probe)
       return target;
     suffix.unshift(basename(probe));
@@ -11287,7 +11306,7 @@ function effectiveRealPath(target) {
 function enclosingRepoRoot(targetDir) {
   let probe = targetDir;
   while (!existsSync5(probe)) {
-    const parent = resolve8(probe, "..");
+    const parent = resolve7(probe, "..");
     if (parent === probe)
       return null;
     probe = parent;
@@ -11335,7 +11354,7 @@ var ERROR_HTML = `<!DOCTYPE html>
 </div>
 </body></html>`;
 function startCallbackServer() {
-  return new Promise((resolve19, reject) => {
+  return new Promise((resolve18, reject) => {
     let tokenResolve = null;
     let tokenReject = null;
     const server = createServer((req, res) => {
@@ -11362,7 +11381,7 @@ function startCallbackServer() {
         reject(new Error("Failed to get server address"));
         return;
       }
-      resolve19({
+      resolve18({
         port: addr.port,
         waitForCallback(timeoutMs = 12e4) {
           return new Promise((res, rej) => {
@@ -11650,23 +11669,23 @@ var publishCommand = {
     const existing = findSpaceFor(cwd);
     const hosted = existing && isHostedSpaceRecord(existing) ? existing : null;
     const unpublished = existing && isUnpublishedForkRecord(existing) ? existing : null;
-    let rootIdentity;
+    let rootIdentity2;
     try {
-      rootIdentity = inspectLocalRootIdentity(cwd, loadConfig()?.apiUrl);
+      rootIdentity2 = inspectLocalRootIdentity(cwd, loadConfig()?.apiUrl);
     } catch (err) {
       output.error(`Could not inspect Space identity: ${err instanceof Error ? err.message : String(err)}`);
       return 1;
     }
-    const identityProblem = rootIdentityProblem(rootIdentity);
+    const identityProblem = rootIdentityProblem(rootIdentity2);
     if (identityProblem) {
       output.error(identityProblem);
       return 1;
     }
     if (hosted && flags2.force) {
-      output.error(`This folder is already bound to Space ${rootIdentity.root_node_id ?? hosted.root_node_id ?? hosted.repo_id}. \`publish --force\` cannot fork or rekey it. Create a local Fork in a separate destination and publish that checkout instead.`);
+      output.error(`This folder is already bound to Space ${rootIdentity2.root_node_id ?? hosted.root_node_id ?? hosted.repo_id}. \`publish --force\` cannot fork or rekey it. Create a local Fork in a separate destination and publish that checkout instead.`);
       return 1;
     }
-    const currentOrigin = rootIdentity.origin_url;
+    const currentOrigin = rootIdentity2.origin_url;
     if (unpublished && currentOrigin) {
       output.error(`This registry entry is unpublished, but git already has origin ${currentOrigin}. Refusing to infer or replace a destination. If the remote is accidental, remove it with \`git remote remove origin\`; if this folder is already hosted, run \`ideaspaces forget .\` then \`ideaspaces link . <space>\`.`);
       return 1;
@@ -11674,7 +11693,7 @@ var publishCommand = {
     if (hosted && currentOrigin) {
       const apiUrl = loadConfig()?.apiUrl ?? getDefaultApiUrl();
       const compatibleRemotes = [
-        rootIdentity.root_node_id ? canonicalGitUrl(apiUrl, rootIdentity.root_node_id) : null,
+        rootIdentity2.root_node_id ? canonicalGitUrl(apiUrl, rootIdentity2.root_node_id) : null,
         legacyGitUrl(apiUrl, hosted.namespace, hosted.slug)
       ].filter((value) => value !== null);
       if (!compatibleRemotes.some((candidate) => sameRemote(currentOrigin, candidate))) {
@@ -11683,7 +11702,7 @@ var publishCommand = {
       }
     }
     if (!hosted && !unpublished && currentOrigin) {
-      output.error(rootIdentity.canonical_origin ? `This checkout already has canonical origin ${currentOrigin}. Link it to that hosted Space instead of publishing a second destination.` : `This checkout already has origin ${currentOrigin}. Refusing to replace an unrelated remote during publish.`);
+      output.error(rootIdentity2.canonical_origin ? `This checkout already has canonical origin ${currentOrigin}. Link it to that hosted Space instead of publishing a second destination.` : `This checkout already has origin ${currentOrigin}. Refusing to replace an unrelated remote during publish.`);
       return 1;
     }
     let sizeOffenders;
@@ -11714,7 +11733,7 @@ var publishCommand = {
       return 1;
     }
     const config = { apiUrl: stored.api_url, apiKey: stored.api_key };
-    if (unpublished && rootIdentity.declaration.head !== unpublished.root_node_id) {
+    if (unpublished && rootIdentity2.declaration.head !== unpublished.root_node_id) {
       output.error(`The unpublished registry identity (${unpublished.root_node_id}) requires the same committed root _agent/foundation.md declaration before publishing.`);
       return 1;
     }
@@ -11769,7 +11788,7 @@ var publishCommand = {
       }
       const hostname = flags2.hostname?.toString() ?? null;
       namespace = hostname ?? me.username;
-      const prescribedRootNodeId = typeof rootIdentity.declaration.head === "string" ? rootIdentity.declaration.head : void 0;
+      const prescribedRootNodeId = typeof rootIdentity2.declaration.head === "string" ? rootIdentity2.declaration.head : void 0;
       try {
         repo = await createRepo(config, {
           name,
@@ -11882,7 +11901,7 @@ ${push2.stderr}${hint}`);
       space_url: webUrl,
       web_url: webUrl,
       identity_email: identityEmail2,
-      identity_state: repo.root_node_id ? "aligned" : rootIdentity.state
+      identity_state: repo.root_node_id ? "aligned" : rootIdentity2.state
     }, [
       `Published ${repo.name}.`,
       `Space: ${webUrl}`,
@@ -11895,11 +11914,11 @@ ${push2.stderr}${hint}`);
 // dist/commands/write.js
 import { promises as fs7 } from "node:fs";
 import { existsSync as existsSync7, statSync as statSync2 } from "node:fs";
-import { join as join13, relative as relative7, resolve as resolve10 } from "node:path";
+import { join as join13, relative as relative7, resolve as resolve9 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/local-effects-runtime.js
 var import_yaml3 = __toESM(require_dist(), 1);
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 import { lstat as nodeLstat2, mkdir, open, readFile as readFile2, realpath as nodeRealpath2, rename, rm } from "node:fs/promises";
 import { basename as basename3, dirname as dirname2, join as join12 } from "node:path";
 var nodeLocalEffectFileSystem = {
@@ -11927,7 +11946,7 @@ var nodeLocalEffectFileSystem = {
       if (error.code !== "ENOENT")
         throw error;
     }
-    const temporary = join12(dirname2(path), `.${basename3(path)}.${process.pid}.${randomUUID()}.tmp`);
+    const temporary = join12(dirname2(path), `.${basename3(path)}.${process.pid}.${randomUUID2()}.tmp`);
     let handle = null;
     try {
       handle = await open(temporary, "wx", mode);
@@ -12015,7 +12034,7 @@ async function writeMarkdown(request2, capabilities) {
     path_revisions: [{ path: request2.path, revision: finalRevision }]
   };
 }
-async function commitPaths2(request2, capabilities) {
+async function commitPaths(request2, capabilities) {
   const validation = validateCommitPathsRequest(request2);
   if (!validation.ok) {
     const first = validation.issues[0];
@@ -12306,24 +12325,9 @@ function detail2(error) {
 // dist/local-effects-adapter.js
 import { spawnSync as spawnSync6 } from "node:child_process";
 import { realpathSync as realpathSync4 } from "node:fs";
-import { isAbsolute as isAbsolute4, relative as relative6, resolve as resolve9, sep as sep3 } from "node:path";
+import { isAbsolute as isAbsolute4, relative as relative6, resolve as resolve8, sep as sep3 } from "node:path";
 function localEffectGitEnvironment() {
-  const env = { ...process.env };
-  for (const key of [
-    "GIT_DIR",
-    "GIT_WORK_TREE",
-    "GIT_COMMON_DIR",
-    "GIT_INDEX_FILE",
-    "GIT_OBJECT_DIRECTORY",
-    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-    "GIT_AUTHOR_NAME",
-    "GIT_AUTHOR_EMAIL",
-    "GIT_COMMITTER_NAME",
-    "GIT_COMMITTER_EMAIL"
-  ]) {
-    delete env[key];
-  }
-  return env;
+  return sanitizedGitEnvironment();
 }
 var localEffectGitRunner = async (root, args2) => {
   const result = spawnSync6("git", [...args2], {
@@ -12386,7 +12390,7 @@ function canonicalRepoRoot(cwd = process.cwd()) {
 }
 function toPortableRepoPath(input, root, cwd = process.cwd()) {
   const invocationRoot = realpathSync4.native(cwd);
-  const absolute = isAbsolute4(input) ? resolve9(input) : resolve9(invocationRoot, input);
+  const absolute = isAbsolute4(input) ? resolve8(input) : resolve8(invocationRoot, input);
   const rel = relative6(root, absolute);
   if (!rel || rel === ".." || rel.startsWith(`..${sep3}`) || isAbsolute4(rel))
     return null;
@@ -12636,7 +12640,7 @@ function parseOptionalString(value) {
 function isBatchTarget(targets) {
   if (targets.length > 1)
     return true;
-  const abs = resolve10(targets[0]);
+  const abs = resolve9(targets[0]);
   return existsSync7(abs) && statSync2(abs).isDirectory();
 }
 async function runBatchStage(targets, flags2, output) {
@@ -12680,7 +12684,7 @@ async function collectMarkdown(targets) {
   const missing = [];
   const skipped = [];
   for (const t of targets) {
-    const abs = resolve10(t);
+    const abs = resolve9(t);
     if (!existsSync7(abs)) {
       missing.push(t);
     } else if (statSync2(abs).isDirectory()) {
@@ -12887,7 +12891,7 @@ var commitCommand = {
       }
       selected.push({ path, expected_revision: read.revision });
     }
-    const result = await commitPaths2({
+    const result = await commitPaths({
       operation: "commit_paths",
       root,
       paths: selected,
@@ -12943,7 +12947,7 @@ var changeCommand = {
 };
 
 // dist/commands/navigate.js
-import { relative as relative8, resolve as resolve11 } from "node:path";
+import { relative as relative8, resolve as resolve10 } from "node:path";
 import { statSync as statSync3, existsSync as existsSync9 } from "node:fs";
 import { spawnSync as spawnSync7 } from "node:child_process";
 
@@ -13101,7 +13105,7 @@ function parsePullable(raw) {
 var BARE_FOLDER_HINT = "You're at a workspace folder (no `_agent/` contract here). Navigate into a repo below (`ideaspaces navigate <repo>`), or pull one that's behind.";
 var EMPTY_FOLDER_HINT = "You're at a workspace folder with no repos yet. Clone one to get started (`ideaspaces clone`).";
 function planCatalog(flags2, povRepoRoot) {
-  const workspace = typeof flags2.workspace === "string" ? resolve11(flags2.workspace) : null;
+  const workspace = typeof flags2.workspace === "string" ? resolve10(flags2.workspace) : null;
   if (!workspace)
     return { kind: "none" };
   if (!existsSync9(workspace) || !statSync3(workspace).isDirectory()) {
@@ -13125,7 +13129,7 @@ var navigateCommand = {
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const raw = (args2[0] ?? ".").trim();
-    const target = resolve11(raw === "" ? "." : raw);
+    const target = resolve10(raw === "" ? "." : raw);
     if (!existsSync9(target)) {
       output.error(`No such path: ${target}`);
       return 1;
@@ -13196,7 +13200,7 @@ var navigateCommand = {
 
 // dist/commands/inspect.js
 import { stat } from "node:fs/promises";
-import { resolve as resolve12 } from "node:path";
+import { resolve as resolve11 } from "node:path";
 var USAGE2 = "ideaspaces inspect <path> [--mode summary|outline|section] [--heading <text>] [--occurrence <n>] [--max-bytes <n>] [--json]";
 var DEFAULT_MAX_BYTES = 50 * 1024;
 var MAX_MAX_BYTES = 1024 * 1024;
@@ -13387,7 +13391,7 @@ var inspectCommand = {
       }
       maxBytes = parsed;
     }
-    const path = resolve12(rawPath);
+    const path = resolve11(rawPath);
     try {
       const info = await stat(path);
       if (!info.isFile()) {
@@ -13472,9 +13476,9 @@ var statusCommand = {
     }
     const gs = await gitState(root);
     const tracked = stagedIdeaspacePaths(root);
-    let rootIdentity;
+    let rootIdentity2;
     try {
-      rootIdentity = inspectLocalRootIdentity(root);
+      rootIdentity2 = inspectLocalRootIdentity(root);
     } catch (err) {
       output.error(`Could not inspect Space identity: ${err instanceof Error ? err.message : String(err)}`);
       return 1;
@@ -13487,7 +13491,7 @@ var statusCommand = {
       dirty: gs.dirty,
       untracked_in_tracked_dirs: gs.untrackedInTrackedDirs,
       tracked_captures: tracked,
-      root_identity: rootIdentity
+      root_identity: rootIdentity2
     };
     const lines = [];
     lines.push(`branch:  ${gs.branch ?? "(detached)"}`);
@@ -13497,8 +13501,8 @@ var statusCommand = {
       lines.push("remote:  no upstream");
     }
     lines.push(`tree:    ${gs.dirty ? "dirty" : "clean"}`);
-    lines.push(`identity: ${rootIdentity.state}${rootIdentity.root_node_id ? ` (${rootIdentity.root_node_id})` : ""}`);
-    if (rootIdentity.declaration.dirty) {
+    lines.push(`identity: ${rootIdentity2.state}${rootIdentity2.root_node_id ? ` (${rootIdentity2.root_node_id})` : ""}`);
+    if (rootIdentity2.declaration.dirty) {
       lines.push("identity declaration: uncommitted change (publish will refuse)");
     }
     if (tracked.length) {
@@ -14626,7 +14630,7 @@ var catalogCommand = {
 };
 
 // dist/commands/clone.js
-import { resolve as resolve13 } from "node:path";
+import { resolve as resolve12 } from "node:path";
 var cloneCommand = {
   name: "clone",
   description: "Clone an authorized Space into a local folder",
@@ -14692,7 +14696,7 @@ var cloneCommand = {
       return 1;
     }
     const url = stableRoot ? canonicalGitUrl(config.apiUrl, stableRoot) : `${deriveGitBase(config.apiUrl)}/${namespace}/${slug}.git`;
-    const dir = resolve13(args2[1] ?? slug);
+    const dir = resolve12(args2[1] ?? slug);
     await registerGitCredentialHelper();
     output.progress(`Cloning ${stableRoot ? canonicalSpaceUrl(config.apiUrl, stableRoot) : `${namespace}/${slug}`}\u2026`);
     try {
@@ -14701,19 +14705,19 @@ var cloneCommand = {
       output.error(err instanceof Error ? err.message : String(err));
       return 1;
     }
-    let rootIdentity;
+    let rootIdentity2;
     try {
-      rootIdentity = inspectLocalRootIdentity(dir, config.apiUrl);
+      rootIdentity2 = inspectLocalRootIdentity(dir, config.apiUrl);
     } catch (err) {
       output.error(`Clone succeeded, but Space identity could not be inspected: ${err instanceof Error ? err.message : String(err)}`);
       return 1;
     }
-    if (["invalid", "drift", "ambiguous"].includes(rootIdentity.state)) {
-      output.error(`Clone succeeded, but its root identity is ${rootIdentity.state}. The folder was not bound locally; inspect _agent/foundation.md and origin before using it.`);
+    if (["invalid", "drift", "ambiguous"].includes(rootIdentity2.state)) {
+      output.error(`Clone succeeded, but its root identity is ${rootIdentity2.state}. The folder was not bound locally; inspect _agent/foundation.md and origin before using it.`);
       return 1;
     }
-    if (stableRoot && rootIdentity.root_node_id !== stableRoot) {
-      output.error(`Clone succeeded, but the checkout reports ${rootIdentity.root_node_id ?? "no root identity"} instead of ${stableRoot}. The folder was not bound locally.`);
+    if (stableRoot && rootIdentity2.root_node_id !== stableRoot) {
+      output.error(`Clone succeeded, but the checkout reports ${rootIdentity2.root_node_id ?? "no root identity"} instead of ${stableRoot}. The folder was not bound locally.`);
       return 1;
     }
     try {
@@ -14737,7 +14741,7 @@ var cloneCommand = {
       space_url: spaceUrl,
       remote_url: url,
       path: dir,
-      identity_state: rootIdentity.state
+      identity_state: rootIdentity2.state
     }, `Cloned ${spaceUrl ?? `${namespace}/${slug}`} \u2192 ${dir}`);
     return 0;
   }
@@ -14776,197 +14780,17 @@ var clonesCommand = {
 };
 
 // dist/commands/fork.js
-import { existsSync as existsSync11, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join17, resolve as resolve14 } from "node:path";
-function stringFlag(flags2, name) {
-  const value = flags2[name];
-  return typeof value === "string" && value.trim() ? value.trim() : void 0;
-}
-function fallbackRecord(result, namespace) {
-  return {
-    repo_id: result.repo_id,
-    root_node_id: result.root_node_id,
-    slug: result.slug,
-    namespace,
-    route_status: "unavailable",
-    route_namespace: null,
-    route_slug: null,
-    canonical_path: `/spaces/${result.root_node_id}`
-  };
-}
-function scaffoldIgnoreRules(dir, output) {
-  const path = join17(dir, ".gitignore");
-  let written = false;
-  try {
-    const existing = existsSync11(path) ? readFileSync4(path, "utf-8") : null;
-    const merged = gitignoreWithDefaults(existing, { privateAgent: false });
-    if (merged === null)
-      return true;
-    writeFileSync3(path, merged);
-    written = true;
-    commitPaths("Ignore local-only files", [".gitignore"], dir);
-    return true;
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    if (written) {
-      output.log(`Fork succeeded and its .gitignore is in force, but committing it failed: ${reason}. Local-only files are ignored here; commit \`.gitignore\` to keep it that way.`);
-    } else {
-      output.error(`Fork succeeded, but its ignore rules could not be written: ${reason}. Local-only files are unprotected in this clone.`);
-    }
-    return written;
-  }
-}
-var forkCommand = {
-  name: "fork",
-  description: "Create and clone an independent, history-free Space copy",
-  usage: "ideaspaces fork <space-url> [dir] [--location personal|<team-hostname>] [--name <name>] [--slug <slug>]",
-  examples: [
-    "ideaspaces fork https://ideaspaces.xyz/spaces/n_0123456789abcdef01234567",
-    "ideaspaces fork https://ideaspaces.xyz/spaces/n_0123456789abcdef01234567 ./manual --location acme.com"
-  ],
-  async run(args2, flags2, global2) {
-    const output = createOutput(global2);
-    const target = args2[0];
-    if (!target) {
-      output.error("Usage: ideaspaces fork <space-url> [dir] [--location personal|<team-hostname>]");
-      return 1;
-    }
-    const config = loadConfig();
-    if (!config) {
-      output.error("Not logged in. Run `ideaspaces login`.");
-      return 1;
-    }
-    let sourceRoot;
-    try {
-      sourceRoot = parseSpaceLocator(target, config.apiUrl).rootNodeId;
-    } catch (err) {
-      output.error(err instanceof Error ? err.message : String(err));
-      return 1;
-    }
-    const location = stringFlag(flags2, "location") ?? "personal";
-    const hostname = location === "personal" ? null : location;
-    if (flags2.location === true || flags2.name === true || flags2.slug === true) {
-      output.error("--location, --name, and --slug require values when provided.");
-      return 1;
-    }
-    const requestedDir = args2[1] ? resolve14(args2[1]) : void 0;
-    if (requestedDir && existsSync11(requestedDir)) {
-      output.error(`${requestedDir} already exists. Choose another destination folder.`);
-      return 1;
-    }
-    let me;
-    try {
-      me = await fetchAuthMe(config);
-    } catch (err) {
-      if (err instanceof UnauthorizedError) {
-        output.error("Session expired. Run `ideaspaces login`.");
-        return 1;
-      }
-      output.error(err instanceof Error ? err.message : String(err));
-      return 1;
-    }
-    let source;
-    try {
-      source = await getSpace(config, sourceRoot);
-    } catch (err) {
-      output.error(err instanceof Error ? err.message : String(err));
-      return 1;
-    }
-    if (!source.copy_enabled) {
-      output.error("This Space does not allow an independent copy for your account.");
-      return 1;
-    }
-    const name = stringFlag(flags2, "name") ?? source.name;
-    const slug = stringFlag(flags2, "slug");
-    output.progress(`Creating an independent copy of ${canonicalSpaceUrl(config.apiUrl, sourceRoot)}\u2026`);
-    let copied;
-    try {
-      copied = await copySpace(config, sourceRoot, {
-        name,
-        ...slug ? { slug } : {},
-        hostname
-      }, { timeoutMs: 12e4 });
-    } catch (err) {
-      output.error(err instanceof Error ? err.message : String(err));
-      return 1;
-    }
-    const pinnedHead = typeof copied.source_head === "string" && copied.source_head.trim() ? copied.source_head.trim() : null;
-    const destinationUrl = canonicalSpaceUrl(config.apiUrl, copied.root_node_id);
-    const remoteUrl = canonicalGitUrl(config.apiUrl, copied.root_node_id);
-    const dir = requestedDir ?? resolve14(copied.slug);
-    if (existsSync11(dir)) {
-      output.error(`Fork created at ${destinationUrl}, but ${dir} already exists. Clone the new Space into another folder with \`ideaspaces clone ${destinationUrl} <dir>\`.`);
-      return 1;
-    }
-    await registerGitCredentialHelper();
-    output.progress(`Cloning new Space into ${dir}\u2026`);
-    try {
-      cloneRepo(remoteUrl, dir);
-    } catch (err) {
-      output.error(`Fork created at ${destinationUrl}, but cloning failed: ${err instanceof Error ? err.message : String(err)}. Retry with \`ideaspaces clone ${destinationUrl} <dir>\`; do not repeat fork.`);
-      return 1;
-    }
-    let destinationRepo;
-    try {
-      const refreshed = await fetchAuthMe(config);
-      destinationRepo = refreshed.repos.find((repo) => repo.repo_id === copied.repo_id);
-    } catch {
-      output.log("Fork succeeded, but current route metadata could not be refreshed; stable Space identity was saved.");
-    }
-    const namespace = hostname ?? me.username ?? "";
-    const record = {
-      ...destinationRepo ? spaceRecordForRepo(destinationRepo, me.username) : fallbackRecord(copied, namespace),
-      source_root_node_id: sourceRoot,
-      ...pinnedHead ? { source_head: pinnedHead } : {}
-    };
-    try {
-      saveSpace(dir, record);
-    } catch {
-      output.error(`Fork and clone succeeded at ${destinationUrl}, but the local registry could not be updated. Run \`ideaspaces link .\` from this clone to repair the binding.`);
-      return 1;
-    }
-    if (me.username) {
-      try {
-        setLocalConfig("user.email", identityEmail(me.username), dir);
-        setLocalConfig("user.name", identityName({ name: me.name, username: me.username }), dir);
-      } catch {
-      }
-    }
-    const ignoreRulesActive = scaffoldIgnoreRules(dir, output);
-    output.result({
-      source_root_node_id: sourceRoot,
-      source_head: pinnedHead,
-      ignore_rules_active: ignoreRulesActive,
-      repo_id: copied.repo_id,
-      root_node_id: copied.root_node_id,
-      slug: copied.slug,
-      route_status: record.route_status ?? null,
-      route_namespace: record.route_namespace ?? null,
-      route_slug: record.route_slug ?? null,
-      space_url: destinationUrl,
-      remote_url: remoteUrl,
-      source_history_copied: false,
-      index_status: copied.index_status,
-      path: dir
-    }, [
-      `Forked current content without source history \u2192 ${dir}`,
-      `Space: ${destinationUrl}`,
-      copied.index_status === "unindexed" ? "Content is cloned; hosted indexing needs recovery." : "Hosted index is fresh.",
-      // A degraded safety state belongs in the summary, not only in a log
-      // line — the human-readable path is where most people will see it.
-      ...ignoreRulesActive ? [] : ["Local-only files are NOT ignored in this clone \u2014 see the warning above."]
-    ].join("\n"));
-    return 0;
-  }
-};
+import { spawnSync as spawnSync10 } from "node:child_process";
+import { existsSync as existsSync12, mkdirSync as mkdirSync4, mkdtempSync as mkdtempSync2, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { basename as basename5, dirname as dirname5, join as join18, resolve as resolve14 } from "node:path";
 
 // dist/fork-update.js
 var import_yaml5 = __toESM(require_dist(), 1);
 import { spawnSync as spawnSync9 } from "node:child_process";
-import { createHash } from "node:crypto";
-import { existsSync as existsSync12, mkdirSync as mkdirSync3, mkdtempSync, readFileSync as readFileSync5, renameSync, rmSync, writeFileSync as writeFileSync4 } from "node:fs";
+import { createHash, randomUUID as randomUUID3 } from "node:crypto";
+import { existsSync as existsSync11, mkdirSync as mkdirSync3, mkdtempSync, readFileSync as readFileSync4, renameSync as renameSync2, rmSync as rmSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync3 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname as dirname4, isAbsolute as isAbsolute5, join as join18, relative as relative10, resolve as resolve15, sep as sep5 } from "node:path";
+import { dirname as dirname4, isAbsolute as isAbsolute5, join as join17, relative as relative10, resolve as resolve13, sep as sep5 } from "node:path";
 function runGit6(args2, cwd) {
   const result = spawnSync9("git", args2, { cwd, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
   if (result.error)
@@ -14977,11 +14801,10 @@ function runGit6(args2, cwd) {
   return result.stdout;
 }
 function safePath(path) {
-  const normalized = path.replaceAll("\\", "/");
-  if (!normalized || normalized.startsWith("/") || normalized.split("/").includes("..") || /[\0\r\n]/.test(normalized) || !normalized.endsWith(".md")) {
+  if (!path || path.startsWith("/") || path.endsWith("/") || path.includes("\\") || path.includes("//") || path.split("/").some((segment) => segment === "." || segment === "..") || /[\0\r\n]/.test(path) || !path.endsWith(".md")) {
     throw new Error(`Unsafe Markdown path in source snapshot: ${path}`);
   }
-  return normalized;
+  return path;
 }
 function isLocalOnly(path) {
   return path.endsWith(".local.md");
@@ -15012,6 +14835,19 @@ function replaceNodeId(content, replacement) {
   const next = header.replace(nodeIdLine, `node_id: ${replacement}`);
   return `---
 ${next}${content.slice(end)}`;
+}
+function rootIdentity(content) {
+  if (!content?.startsWith("---\n"))
+    return null;
+  const end = content.indexOf("\n---\n", 4);
+  if (end < 0)
+    return null;
+  try {
+    const value = (0, import_yaml5.parse)(content.slice(4, end))?.root_node_id;
+    return isValidRootNodeId(value) ? value : null;
+  } catch {
+    return null;
+  }
 }
 function normalizeSnapshot(files, baseline) {
   const incoming = /* @__PURE__ */ new Map();
@@ -15047,17 +14883,26 @@ function normalizeSnapshot(files, baseline) {
       content = content.replaceAll(`node:${from}`, `node:${to}`);
       content = content.replaceAll(`/n/${from}`, `/n/${to}`);
     }
+    if (path === "_agent/foundation.md") {
+      const retainedRoot = rootIdentity(baseline[path]);
+      const incomingRoot = rootIdentity(content);
+      if (retainedRoot && incomingRoot && retainedRoot !== incomingRoot) {
+        throw new Error("Projected foundation conflicts with the fork root identity");
+      }
+      if (retainedRoot && !incomingRoot)
+        content = declareRootIdentity(content, retainedRoot);
+    }
     normalized[path] = content;
   }
   return normalized;
 }
 function readLocal(path, root) {
-  const absolute = resolve15(root, path);
+  const absolute = resolve13(root, path);
   const rel = relative10(root, absolute);
   if (!rel || rel === ".." || rel.startsWith(`..${sep5}`) || isAbsolute5(rel)) {
     throw new Error(`Path escapes Space: ${path}`);
   }
-  return existsSync12(absolute) ? readFileSync5(absolute, "utf-8") : null;
+  return existsSync11(absolute) ? readFileSync4(absolute, "utf-8") : null;
 }
 function planForkUpdate(baseline, incoming, root) {
   const writes = {};
@@ -15101,18 +14946,18 @@ function planForkUpdate(baseline, incoming, root) {
 }
 function writeTree(root, files) {
   for (const [path, content] of Object.entries(files)) {
-    const absolute = join18(root, path);
+    const absolute = join17(root, path);
     mkdirSync3(dirname4(absolute), { recursive: true });
-    writeFileSync4(absolute, content, "utf-8");
+    writeFileSync3(absolute, content, "utf-8");
   }
 }
 function applyForkUpdate(plan, root) {
   const changed = [...Object.keys(plan.writes), ...plan.deletes];
   if (!changed.length)
     return;
-  const temp = mkdtempSync(join18(tmpdir(), "ideaspaces-update-"));
-  const beforeDir = join18(temp, "before");
-  const afterDir = join18(temp, "after");
+  const temp = mkdtempSync(join17(tmpdir(), "ideaspaces-update-"));
+  const beforeDir = join17(temp, "before");
+  const afterDir = join17(temp, "after");
   mkdirSync3(beforeDir);
   mkdirSync3(afterDir);
   try {
@@ -15146,19 +14991,19 @@ function applyForkUpdate(plan, root) {
       throw new Error((applied.stderr || applied.stdout || "Could not apply update").trim());
     }
   } finally {
-    rmSync(temp, { recursive: true, force: true });
+    rmSync2(temp, { recursive: true, force: true });
   }
 }
 function baselinePath(root) {
-  const key = createHash("sha256").update(resolve15(root)).digest("hex");
-  return join18(configDir(), "fork-baselines", `${key}.json`);
+  const key = createHash("sha256").update(resolve13(root)).digest("hex");
+  return join17(configDir(), "fork-baselines", `${key}.json`);
 }
 function loadForkBaseline(root) {
   const path = baselinePath(root);
-  if (!existsSync12(path))
+  if (!existsSync11(path))
     return null;
   try {
-    return JSON.parse(readFileSync5(path, "utf-8"));
+    return JSON.parse(readFileSync4(path, "utf-8"));
   } catch {
     throw new Error("The local fork update baseline is corrupt; no files were changed.");
   }
@@ -15166,9 +15011,22 @@ function loadForkBaseline(root) {
 function saveForkBaseline(root, baseline) {
   const path = baselinePath(root);
   mkdirSync3(dirname4(path), { recursive: true, mode: 448 });
-  const temp = `${path}.${process.pid}.tmp`;
-  writeFileSync4(temp, JSON.stringify(baseline) + "\n", { mode: 384 });
-  renameSync(temp, path);
+  const temp = `${path}.${process.pid}.${randomUUID3()}.tmp`;
+  try {
+    writeFileSync3(temp, JSON.stringify(baseline) + "\n", { mode: 384 });
+    renameSync2(temp, path);
+  } finally {
+    rmSync2(temp, { force: true });
+  }
+}
+function removeForkBaseline(root) {
+  const path = baselinePath(root);
+  try {
+    unlinkSync2(path);
+  } catch (err) {
+    if (err.code !== "ENOENT")
+      throw err;
+  }
 }
 function initialForkBaseline(root, sourceRootNodeId, sourceHead) {
   const roots = runGit6(["rev-list", "--max-parents=0", "HEAD"], root).trim().split("\n").filter(Boolean);
@@ -15194,6 +15052,431 @@ function describeChanges(plan) {
     ...plan.conflicts.map((item) => `conflict ${item.path} (${item.kind})`)
   ];
 }
+
+// dist/fork-snapshot.js
+var MAX_MARKDOWN_FILES = 1e3;
+var MAX_MARKDOWN_BYTES = 2e7;
+var MAX_ASSET_FILES = 1e3;
+var MAX_ASSET_BYTES = 2e7;
+var WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
+var WINDOWS_FORBIDDEN = /[<>:"|?*]/;
+function isRecord2(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+function boundedInteger(value, max) {
+  return Number.isInteger(value) && value >= 0 && value <= max;
+}
+function isAssetPayload(parts) {
+  for (const part of parts.slice(0, -1)) {
+    if (part.startsWith("_") || part.toLowerCase() === ".git")
+      return part === "_assets";
+  }
+  return false;
+}
+function validatePath(value, role) {
+  if (typeof value !== "string" || !value || value.startsWith("/") || value.endsWith("/") || value.includes("\\") || value.includes("//") || /[\0-\x1f\x7f]/.test(value) || Buffer.byteLength(value, "utf-8") > 4096) {
+    throw new Error(`Unsafe ${role} path in source snapshot: ${String(value)}`);
+  }
+  const parts = value.split("/");
+  if (parts.some((part) => part === "." || part === ".." || part.toLowerCase() === ".git" || part.endsWith(".") || part.endsWith(" ") || WINDOWS_FORBIDDEN.test(part) || WINDOWS_RESERVED_NAME.test(part) || Buffer.byteLength(part, "utf-8") > 255)) {
+    throw new Error(`Unsafe ${role} path in source snapshot: ${value}`);
+  }
+  const assetPayload = isAssetPayload(parts);
+  if (role === "markdown" && (!value.endsWith(".md") || assetPayload)) {
+    throw new Error(`Invalid Markdown path in source snapshot: ${value}`);
+  }
+  if (role === "asset" && !assetPayload) {
+    throw new Error(`Supporting payload is outside exact _assets/: ${value}`);
+  }
+  return value;
+}
+function collisionKey(path) {
+  return path.split("/").map((segment) => segment.normalize("NFC").toLowerCase()).join("/");
+}
+function assertNoPathCollisions(paths) {
+  const keyed = paths.map((path) => ({ path, key: collisionKey(path) }));
+  const seen = /* @__PURE__ */ new Map();
+  for (const { path, key } of keyed) {
+    const prior = seen.get(key);
+    if (prior)
+      throw new Error(`Snapshot paths collide on a portable filesystem: ${prior}, ${path}`);
+    seen.set(key, path);
+  }
+  keyed.sort((left, right) => left.key.localeCompare(right.key));
+  for (let index = 0; index < keyed.length - 1; index++) {
+    const parent = keyed[index];
+    const child = keyed[index + 1];
+    if (child.key.startsWith(`${parent.key}/`)) {
+      throw new Error(`Snapshot file/directory paths collide: ${parent.path}, ${child.path}`);
+    }
+  }
+}
+function decodeBase64(value, path) {
+  if (typeof value !== "string" || value.length % 4 !== 0 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+    throw new Error(`Invalid base64 supporting payload: ${path}`);
+  }
+  const content = Buffer.from(value, "base64");
+  if (content.toString("base64") !== value) {
+    throw new Error(`Non-canonical base64 supporting payload: ${path}`);
+  }
+  return content;
+}
+function prepareForkSnapshot(value) {
+  if (!isRecord2(value))
+    throw new Error("The source returned an invalid snapshot envelope");
+  const snapshot = value;
+  if (typeof snapshot.source_head !== "string" || !/^[0-9a-f]{40}$/.test(snapshot.source_head) || !boundedInteger(snapshot.markdown_file_count, MAX_MARKDOWN_FILES) || !boundedInteger(snapshot.markdown_bytes, MAX_MARKDOWN_BYTES) || !Array.isArray(snapshot.files) || snapshot.files.length !== snapshot.markdown_file_count) {
+    throw new Error("The source returned an invalid snapshot envelope");
+  }
+  const files = [];
+  let receivedMarkdownBytes = 0;
+  for (const item of snapshot.files) {
+    if (!isRecord2(item) || typeof item.content !== "string") {
+      throw new Error("The source returned an invalid snapshot file");
+    }
+    const path = validatePath(item.path, "markdown");
+    receivedMarkdownBytes += Buffer.byteLength(item.content, "utf-8");
+    if (receivedMarkdownBytes > MAX_MARKDOWN_BYTES) {
+      throw new Error("The source snapshot exceeds the local Markdown limit");
+    }
+    files.push({ path, content: item.content });
+  }
+  const rawAssets = snapshot.assets ?? [];
+  const assetFileCount = snapshot.asset_file_count ?? 0;
+  const assetBytes = snapshot.asset_bytes ?? 0;
+  if (!boundedInteger(assetFileCount, MAX_ASSET_FILES) || !boundedInteger(assetBytes, MAX_ASSET_BYTES) || !Array.isArray(rawAssets) || rawAssets.length !== assetFileCount) {
+    throw new Error("The source returned an invalid supporting-payload envelope");
+  }
+  const assets = [];
+  let receivedAssetBytes = 0;
+  for (const item of rawAssets) {
+    if (!isRecord2(item))
+      throw new Error("The source returned an invalid supporting payload");
+    const path = validatePath(item.path, "asset");
+    const content = decodeBase64(item.content_base64, path);
+    receivedAssetBytes += content.length;
+    if (receivedAssetBytes > MAX_ASSET_BYTES) {
+      throw new Error("The source snapshot exceeds the local supporting-payload limit");
+    }
+    assets.push({ path, content });
+  }
+  if (receivedAssetBytes !== assetBytes) {
+    throw new Error("The source supporting-payload byte count does not match its envelope");
+  }
+  assertNoPathCollisions([...files.map((file) => file.path), ...assets.map((asset) => asset.path)]);
+  const markdown = normalizeSnapshot(files, {});
+  return {
+    sourceHead: snapshot.source_head,
+    markdown,
+    assets,
+    markdownFileCount: files.length,
+    assetFileCount: assets.length
+  };
+}
+
+// dist/commands/fork.js
+var FOUNDATION_PATH2 = "_agent/foundation.md";
+var IMPORT_NAME = "IdeaSpaces Import";
+var IMPORT_EMAIL = "import@ideaspaces";
+var IMPORT_COMMIT = "Import Space fork";
+function stringFlag(flags2, name) {
+  const value = flags2[name];
+  return typeof value === "string" && value.trim() ? value.trim() : void 0;
+}
+function validateSource(value, rootNodeId) {
+  if (!value || typeof value !== "object" || value.kind !== "space" || value.node_id !== rootNodeId || value.container_node_id !== rootNodeId || typeof value.name !== "string" || !value.name.trim() || typeof value.copy_enabled !== "boolean") {
+    throw new Error("The source returned an invalid Space description");
+  }
+  return value;
+}
+async function optionalAuthRead(config, read) {
+  try {
+    return { value: await read(config), config };
+  } catch (err) {
+    if (err instanceof UnauthorizedError && config.apiKey) {
+      const anonymous = { apiUrl: config.apiUrl };
+      return { value: await read(anonymous), config: anonymous };
+    }
+    throw err;
+  }
+}
+function sourceReadError(err) {
+  const detail3 = err instanceof Error ? err.message : String(err);
+  if (/→ (?:401|403|404):/.test(detail3)) {
+    return "This Space is unavailable for local Fork. It may be private or not copyable.";
+  }
+  return `The Space could not be read: ${detail3}`;
+}
+function runGit7(cwd, args2, importIdentity = false) {
+  const env = sanitizedGitEnvironment({
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+    ...importIdentity ? {
+      GIT_AUTHOR_NAME: IMPORT_NAME,
+      GIT_AUTHOR_EMAIL: IMPORT_EMAIL,
+      GIT_COMMITTER_NAME: IMPORT_NAME,
+      GIT_COMMITTER_EMAIL: IMPORT_EMAIL
+    } : {}
+  });
+  const result = spawnSync10("git", ["-C", cwd, ...args2], {
+    encoding: "utf-8",
+    maxBuffer: 64 * 1024 * 1024,
+    env
+  });
+  if (result.error)
+    throw result.error;
+  if (result.status !== 0) {
+    throw new Error((result.stderr || result.stdout || `git ${args2.join(" ")} failed`).trim());
+  }
+  return (result.stdout ?? "").trim();
+}
+function destinationRootIdentity(markdown, sourceRootNodeId) {
+  const foundation = markdown[FOUNDATION_PATH2];
+  if (!foundation) {
+    throw new Error("The projected Space has no root _agent/foundation.md to carry identity");
+  }
+  for (let attempt = 0; attempt < 10; attempt++) {
+    let declared;
+    try {
+      declared = mintDeclaredRootIdentity(foundation);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("replace an existing root_node_id")) {
+        throw new Error("The source snapshot unexpectedly carries root_node_id; clean-copy projections must omit source identity");
+      }
+      throw err;
+    }
+    if (declared.rootNodeId !== sourceRootNodeId) {
+      return {
+        markdown: { ...markdown, [FOUNDATION_PATH2]: declared.content },
+        rootNodeId: declared.rootNodeId
+      };
+    }
+  }
+  throw new Error("Could not mint a destination identity distinct from the source");
+}
+function writeTree2(root, markdown, assets) {
+  for (const [path, content] of Object.entries(markdown)) {
+    const absolute = join18(root, path);
+    mkdirSync4(dirname5(absolute), { recursive: true });
+    writeFileSync4(absolute, content, { encoding: "utf-8", flag: "wx" });
+  }
+  for (const asset of assets) {
+    const absolute = join18(root, asset.path);
+    mkdirSync4(dirname5(absolute), { recursive: true });
+    writeFileSync4(absolute, asset.content, { flag: "wx" });
+  }
+  const ignore = gitignoreWithDefaults(null, { privateAgent: false });
+  if (ignore === null)
+    throw new Error("Could not prepare local-only ignore rules");
+  writeFileSync4(join18(root, ".gitignore"), ignore, { encoding: "utf-8", flag: "wx" });
+}
+function initializeImport(root) {
+  runGit7(root, ["init", "-q", "-b", "main"]);
+  runGit7(root, ["-c", "core.autocrlf=false", "add", "-A", "--", "."]);
+  runGit7(root, ["-c", "commit.gpgsign=false", "commit", "-q", "-m", IMPORT_COMMIT], true);
+  if (runGit7(root, ["status", "--porcelain"])) {
+    throw new Error("The imported repository is not clean after its initial commit");
+  }
+  if (runGit7(root, ["rev-list", "--count", "HEAD"]) !== "1") {
+    throw new Error("The imported repository does not have exactly one commit");
+  }
+  if (runGit7(root, ["symbolic-ref", "--short", "HEAD"]) !== "main") {
+    throw new Error("The imported repository did not initialize on main");
+  }
+  if (runGit7(root, ["remote"])) {
+    throw new Error("The imported repository unexpectedly has a remote");
+  }
+}
+function preflightDestination(path) {
+  if (existsSync12(path))
+    return `${path} already exists. Choose another destination folder.`;
+  if (findSpaceFor(path)) {
+    return `${path} still has a local Space registry record. Forget or repair that state before reusing the path.`;
+  }
+  try {
+    if (loadForkBaseline(path)) {
+      return `${path} still has a fork update baseline. Choose another destination or remove the stale local state.`;
+    }
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  const parent = dirname5(path);
+  try {
+    if (!statSync4(parent).isDirectory())
+      return `${parent} is not a directory.`;
+  } catch {
+    return `Parent directory does not exist: ${parent}`;
+  }
+  return null;
+}
+function installLocalFork(opts) {
+  const { destination, name, sourceRootNodeId, sourceHead, rootNodeId, markdown, assets } = opts;
+  const parent = dirname5(destination);
+  let temporary = null;
+  let installed = false;
+  let baselineSaved = false;
+  try {
+    temporary = mkdtempSync2(join18(parent, `.${basename5(destination)}.ideaspaces-fork-`));
+    writeTree2(temporary, markdown, assets);
+    initializeImport(temporary);
+    if (existsSync12(destination))
+      throw new Error(`${destination} appeared while the fork was being prepared`);
+    renameSync3(temporary, destination);
+    temporary = null;
+    installed = true;
+    const baseline = {
+      source_root_node_id: sourceRootNodeId,
+      source_head: sourceHead,
+      files: markdown,
+      conflicts: []
+    };
+    saveForkBaseline(destination, baseline);
+    baselineSaved = true;
+    const record = {
+      kind: "unpublished_fork",
+      root_node_id: rootNodeId,
+      name,
+      source_root_node_id: sourceRootNodeId,
+      source_head: sourceHead,
+      source_baseline_initialized: true
+    };
+    saveSpace(destination, record);
+  } catch (err) {
+    if (baselineSaved) {
+      try {
+        removeForkBaseline(destination);
+      } catch {
+      }
+    }
+    if (installed)
+      rmSync3(destination, { recursive: true, force: true });
+    throw err;
+  } finally {
+    if (temporary)
+      rmSync3(temporary, { recursive: true, force: true });
+  }
+}
+var forkCommand = {
+  name: "fork",
+  description: "Materialize an independent local Space without source history or an account",
+  usage: "ideaspaces fork <space-url> [dir] [--name <local-name>]",
+  examples: [
+    "ideaspaces fork https://ideaspaces.xyz/spaces/n_0123456789abcdef01234567",
+    "ideaspaces fork https://ideaspaces.xyz/spaces/n_0123456789abcdef01234567 ./manual",
+    'ideaspaces fork https://ideaspaces.xyz/spaces/n_0123456789abcdef01234567 ./manual --name "My manual"'
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const target = args2[0];
+    if (!target || args2.length > 2) {
+      output.error("Usage: ideaspaces fork <space-url> [dir] [--name <local-name>]");
+      return 1;
+    }
+    if (flags2.location !== void 0 || flags2.slug !== void 0) {
+      output.error("`fork` is local-only. --location and --slug are no longer accepted; choose hosting later with `ideaspaces publish --hostname/--slug`.");
+      return 1;
+    }
+    if (flags2.name === true || typeof flags2.name === "string" && !flags2.name.trim()) {
+      output.error("--name requires a non-empty local display name.");
+      return 1;
+    }
+    const availability = gitAvailability();
+    if (availability.state !== "usable") {
+      output.error(availability.hint);
+      return 1;
+    }
+    const initialConfig = loadOptionalAuthConfig();
+    let sourceRootNodeId;
+    try {
+      sourceRootNodeId = parseSpaceLocator(target, initialConfig.apiUrl).rootNodeId;
+    } catch (err) {
+      output.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    }
+    const explicitDestination = args2[1] ? resolve14(args2[1]) : null;
+    if (explicitDestination) {
+      const problem = preflightDestination(explicitDestination);
+      if (problem) {
+        output.error(problem);
+        return 1;
+      }
+    }
+    output.progress(`Reading ${canonicalSpaceUrl(initialConfig.apiUrl, sourceRootNodeId)}\u2026`);
+    let source;
+    let readConfig;
+    try {
+      const read = await optionalAuthRead(initialConfig, (config) => getSpace(config, sourceRootNodeId, { timeoutMs: 12e4 }));
+      source = validateSource(read.value, sourceRootNodeId);
+      readConfig = read.config;
+    } catch (err) {
+      output.error(sourceReadError(err));
+      return 1;
+    }
+    if (!source.copy_enabled) {
+      output.error("This Space is unavailable for local Fork. It may be private or not copyable.");
+      return 1;
+    }
+    const name = stringFlag(flags2, "name") ?? source.name.trim();
+    const destination = explicitDestination ?? resolve14(slugify2(name));
+    if (!explicitDestination) {
+      const problem = preflightDestination(destination);
+      if (problem) {
+        output.error(problem);
+        return 1;
+      }
+    }
+    output.progress("Reading the complete history-free snapshot\u2026");
+    let snapshot;
+    try {
+      const read = await optionalAuthRead(readConfig, (config) => getSpaceCopySnapshot(config, sourceRootNodeId, { timeoutMs: 12e4 }));
+      snapshot = read.value;
+    } catch (err) {
+      output.error(sourceReadError(err));
+      return 1;
+    }
+    let prepared;
+    let destinationIdentity;
+    try {
+      prepared = prepareForkSnapshot(snapshot);
+      destinationIdentity = destinationRootIdentity(prepared.markdown, sourceRootNodeId);
+    } catch (err) {
+      output.error(`The source projection could not be validated; no local files were changed. ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    try {
+      installLocalFork({
+        destination,
+        name,
+        sourceRootNodeId,
+        sourceHead: prepared.sourceHead,
+        rootNodeId: destinationIdentity.rootNodeId,
+        markdown: destinationIdentity.markdown,
+        assets: prepared.assets
+      });
+    } catch (err) {
+      output.error(`The local Fork could not be installed; no destination was kept. ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    output.result({
+      kind: "unpublished_fork",
+      path: destination,
+      name,
+      root_node_id: destinationIdentity.rootNodeId,
+      source_root_node_id: sourceRootNodeId,
+      source_head: prepared.sourceHead,
+      markdown_file_count: prepared.markdownFileCount,
+      asset_file_count: prepared.assetFileCount,
+      source_history_copied: false,
+      published: false
+    }, [
+      `Forked current content without source history \u2192 ${destination}`,
+      `Local Space identity: ${destinationIdentity.rootNodeId}`,
+      `Source: ${canonicalSpaceUrl(initialConfig.apiUrl, sourceRootNodeId)} @ ${prepared.sourceHead.slice(0, 12)}`,
+      "This Space is local and unpublished. Sign in and run `ideaspaces publish` when you want to host it."
+    ].join("\n"));
+    return 0;
+  }
+};
 
 // dist/commands/update.js
 var updateCommand = {
@@ -15325,7 +15608,7 @@ var updateCommand = {
 };
 
 // dist/commands/link.js
-import { resolve as resolve16 } from "node:path";
+import { resolve as resolve15 } from "node:path";
 var linkCommand = {
   name: "link",
   description: "Bind an existing local clone to one of your spaces",
@@ -15341,7 +15624,7 @@ var linkCommand = {
       output.error("Usage: ideaspaces link <dir> [space]");
       return 1;
     }
-    const dir = resolve16(dirArg);
+    const dir = resolve15(dirArg);
     if (!isInsideWorkTree(dir)) {
       output.error(`${dir} is not a git repository. Use \`clone\` to make one, or point at an existing clone.`);
       return 1;
@@ -15439,9 +15722,9 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
 };
 
 // dist/commands/forget.js
-import { rmSync as rmSync2 } from "node:fs";
+import { rmSync as rmSync4 } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { dirname as dirname5, resolve as resolve17 } from "node:path";
+import { dirname as dirname6, resolve as resolve16 } from "node:path";
 var forgetCommand = {
   name: "forget",
   description: "Stop tracking a local clone (optionally delete its folder)",
@@ -15457,9 +15740,9 @@ var forgetCommand = {
       output.error("Usage: ideaspaces forget <dir> [--delete]");
       return 1;
     }
-    const dir = resolve17(dirArg);
+    const dir = resolve16(dirArg);
     const del = Boolean(flags2["delete"]);
-    if (del && (dir === resolve17(homedir2()) || dirname5(dir) === dir)) {
+    if (del && (dir === resolve16(homedir2()) || dirname6(dir) === dir)) {
       output.error(`Refusing to delete ${dir} \u2014 that's a home or root directory.`);
       return 1;
     }
@@ -15471,7 +15754,7 @@ var forgetCommand = {
     let deleted = false;
     if (del) {
       try {
-        rmSync2(dir, { recursive: true, force: true });
+        rmSync4(dir, { recursive: true, force: true });
         deleted = true;
       } catch (err) {
         output.error(`Removed the binding, but couldn't delete ${dir}: ${err instanceof Error ? err.message : String(err)}`);
@@ -15905,7 +16188,7 @@ var nodeCommand = {
 };
 
 // dist/commands/search.js
-import { readFileSync as readFileSync6 } from "node:fs";
+import { readFileSync as readFileSync5 } from "node:fs";
 import { join as join19 } from "node:path";
 
 // dist/search.js
@@ -15997,7 +16280,7 @@ var DEFAULT_LIMIT2 = 20;
 function* readDocs(root, paths) {
   for (const path of paths) {
     try {
-      yield { path, content: readFileSync6(join19(root, path), "utf-8") };
+      yield { path, content: readFileSync5(join19(root, path), "utf-8") };
     } catch {
       continue;
     }
@@ -16047,8 +16330,8 @@ var searchCommand = {
 };
 
 // dist/commands/ls.js
-import { statSync as statSync4 } from "node:fs";
-import { resolve as resolve18 } from "node:path";
+import { statSync as statSync5 } from "node:fs";
+import { resolve as resolve17 } from "node:path";
 
 // dist/file-listing.js
 import { existsSync as existsSync13, readdirSync } from "node:fs";
@@ -16143,9 +16426,9 @@ var lsCommand = {
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
-    const root = resolve18(args2[0] ?? ".");
+    const root = resolve17(args2[0] ?? ".");
     try {
-      if (!statSync4(root).isDirectory()) {
+      if (!statSync5(root).isDirectory()) {
         output.error(`Not a directory: ${root}`);
         return 1;
       }
@@ -16435,7 +16718,7 @@ async function listProductAccess(rest, flags2, output) {
   if (!visibility) {
     lines.push("  unavailable");
   } else if (visibility.read_public && visibility.copy_access === "public") {
-    lines.push("  public \u2014 anyone can view; signed-in people can fork");
+    lines.push("  public \u2014 anyone can view and fork locally; publishing requires sign-in");
   } else if (!visibility.read_public && visibility.copy_access === "owner") {
     lines.push("  private");
   } else {
@@ -16556,7 +16839,7 @@ async function setVisibility(rest, flags2, output) {
     read_public: requested === "public",
     copy_access: requested === "public" ? "public" : "owner"
   });
-  output.result({ ...result, visibility: requested }, requested === "public" ? "Public \u2014 anyone can view; signed-in people can fork. Git history, clone, and push remain private." : "Private \u2014 public view and fork are off. Named people and team access are unchanged.");
+  output.result({ ...result, visibility: requested }, requested === "public" ? "Public \u2014 anyone can view and fork locally without an account. Publishing requires sign-in; Git history, clone, and push remain private." : "Private \u2014 public view and fork are off. Named people and team access are unchanged.");
   return 0;
 }
 async function run(sub, rest, flags2, output) {
@@ -16815,14 +17098,14 @@ var shareCommand = {
 };
 
 // dist/auth/session-state.js
-import { existsSync as existsSync14, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync14, unlinkSync as unlinkSync3 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
 import { join as join21 } from "node:path";
 var SESSION_FILE = join21(homedir3(), ".ideaspaces", "session.json");
 function clearSessionState() {
   try {
     if (existsSync14(SESSION_FILE))
-      unlinkSync2(SESSION_FILE);
+      unlinkSync3(SESSION_FILE);
   } catch {
   }
 }
@@ -16842,14 +17125,14 @@ var logoutCommand = {
 };
 
 // dist/pi/pi-status.js
-import { spawnSync as spawnSync10 } from "node:child_process";
-import { existsSync as existsSync16, readFileSync as readFileSync8 } from "node:fs";
-import { basename as basename5, join as join23 } from "node:path";
+import { spawnSync as spawnSync11 } from "node:child_process";
+import { existsSync as existsSync16, readFileSync as readFileSync7 } from "node:fs";
+import { basename as basename6, join as join23 } from "node:path";
 
 // dist/pi/pi-auth.js
-import { chmodSync, existsSync as existsSync15, mkdirSync as mkdirSync4, readFileSync as readFileSync7, writeFileSync as writeFileSync5 } from "node:fs";
+import { chmodSync, existsSync as existsSync15, mkdirSync as mkdirSync5, readFileSync as readFileSync6, writeFileSync as writeFileSync5 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
-import { dirname as dirname6, join as join22 } from "node:path";
+import { dirname as dirname7, join as join22 } from "node:path";
 function resolvePiAgentDir(env = process.env) {
   const override = env.PI_CODING_AGENT_DIR?.trim();
   if (override)
@@ -16882,12 +17165,12 @@ function removeProvider(current, provider) {
 function readAuthFile(path) {
   if (!existsSync15(path))
     return {};
-  return parseAuth(readFileSync7(path, "utf8"));
+  return parseAuth(readFileSync6(path, "utf8"));
 }
 function writeAuthFile(path, auth) {
-  const dir = dirname6(path);
+  const dir = dirname7(path);
   if (!existsSync15(dir))
-    mkdirSync4(dir, { recursive: true, mode: 448 });
+    mkdirSync5(dir, { recursive: true, mode: 448 });
   writeFileSync5(path, `${JSON.stringify(auth, null, 2)}
 `, { encoding: "utf8", mode: 384 });
   chmodSync(path, 384);
@@ -16912,7 +17195,7 @@ function derivePiStatus(input) {
   };
 }
 function resolveExtension(path) {
-  const name = basename5(path.replace(/[/\\]+$/, "")) || path;
+  const name = basename6(path.replace(/[/\\]+$/, "")) || path;
   const check = (resolvable) => ({ name, path, resolvable });
   if (!existsSync16(path))
     return check(false);
@@ -16921,7 +17204,7 @@ function resolveExtension(path) {
   const pkgPath = join23(path, "package.json");
   if (existsSync16(pkgPath)) {
     try {
-      const pkg = JSON.parse(readFileSync8(pkgPath, "utf8"));
+      const pkg = JSON.parse(readFileSync7(pkgPath, "utf8"));
       const exts = pkg.pi?.extensions;
       if (Array.isArray(exts) && exts.length > 0)
         return check(true);
@@ -16932,7 +17215,7 @@ function resolveExtension(path) {
 }
 function probeBinary(piBin) {
   try {
-    const res = spawnSync10(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
+    const res = spawnSync11(piBin, ["--version"], { encoding: "utf8", timeout: 5e3 });
     if (res.error || res.status !== 0)
       return { present: false, path: piBin, version: null };
     const m = /\d+\.\d+\.\d+[\w.-]*/.exec(res.stdout ?? "");
@@ -17065,7 +17348,7 @@ function trimModel(m) {
 var QUERY_ID = "__models";
 var TIMEOUT_MS = 2e4;
 function queryPiModels(piBin) {
-  return new Promise((resolve19, reject) => {
+  return new Promise((resolve18, reject) => {
     const pi = spawn2(piBin, ["--mode", "rpc", "--no-extensions"], {
       cwd: process.cwd(),
       stdio: ["pipe", "pipe", "pipe"]
@@ -17111,7 +17394,7 @@ function queryPiModels(piBin) {
         }
         const data = msg.data;
         const models = (data?.models ?? []).map(trimModel);
-        finish(() => resolve19({ models }));
+        finish(() => resolve18({ models }));
       }
     });
     try {
@@ -17154,7 +17437,7 @@ import { join as join26 } from "node:path";
 
 // dist/pi/local-agent.js
 import { spawn as spawn3 } from "node:child_process";
-import { existsSync as existsSync17, mkdirSync as mkdirSync5, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync17, mkdirSync as mkdirSync6, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join24 } from "node:path";
 import readline from "node:readline";
 
@@ -17347,7 +17630,7 @@ function deriveConversationName(message) {
   return clean.length > 60 ? `${clean.slice(0, 57)}\u2026` : clean;
 }
 function ensureSessionDir(dir) {
-  mkdirSync5(dir, { recursive: true });
+  mkdirSync6(dir, { recursive: true });
   const ignore = join24(dir, ".gitignore");
   if (!existsSync17(ignore))
     writeFileSync6(ignore, "*\n");
@@ -17470,14 +17753,14 @@ async function* runLocalTurn(opts) {
 }
 
 // dist/pi/local-conversations.js
-import { existsSync as existsSync18, readdirSync as readdirSync2, readFileSync as readFileSync9, statSync as statSync5 } from "node:fs";
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { existsSync as existsSync18, readdirSync as readdirSync2, readFileSync as readFileSync8, statSync as statSync6 } from "node:fs";
+import { randomUUID as randomUUID4 } from "node:crypto";
 import { join as join25 } from "node:path";
 function localSessionDir(contextRoot) {
   return join25(contextRoot, ".pi", "sessions");
 }
 function mintConversationId() {
-  return `local-${randomUUID2()}`;
+  return `local-${randomUUID4()}`;
 }
 function textOf(content) {
   if (typeof content === "string")
@@ -17559,7 +17842,7 @@ function findSessionFile(dir, convId) {
     return join25(dir, bySuffix);
   for (const f of files) {
     try {
-      const first = readFileSync9(join25(dir, f), "utf8").split("\n", 1)[0];
+      const first = readFileSync8(join25(dir, f), "utf8").split("\n", 1)[0];
       if (JSON.parse(first).id === convId)
         return join25(dir, f);
     } catch {
@@ -17572,8 +17855,8 @@ function getLocalConversation(contextRoot, convId) {
   if (!file) {
     return { conversation_id: convId, repo_id: contextRoot, name: "", history: [], active_turn: null };
   }
-  const mtime = statSync5(file).mtime.toISOString();
-  const s = parseSessionJsonl(readFileSync9(file, "utf8"), mtime);
+  const mtime = statSync6(file).mtime.toISOString();
+  const s = parseSessionJsonl(readFileSync8(file, "utf8"), mtime);
   return {
     conversation_id: convId,
     repo_id: contextRoot,
@@ -17593,11 +17876,11 @@ function listLocalConversations(contextRoot) {
     const path = join25(dir, f);
     let text;
     try {
-      text = readFileSync9(path, "utf8");
+      text = readFileSync8(path, "utf8");
     } catch {
       continue;
     }
-    const mtime = statSync5(path).mtime.toISOString();
+    const mtime = statSync6(path).mtime.toISOString();
     const s = parseSessionJsonl(text, mtime);
     if (!s.id)
       continue;

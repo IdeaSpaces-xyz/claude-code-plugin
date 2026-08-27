@@ -16,9 +16,9 @@ describe("recipient-shaped Share distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.3.18");
-    expect(plugin.version).toBe("0.3.18");
-    expect(vendor.cli.commit).toBe("65a6204d15fa99562af2af45337720a1221764c9");
+    expect(pkg.version).toBe("0.3.19");
+    expect(plugin.version).toBe("0.3.19");
+    expect(vendor.cli.commit).toBe("ce8d9454f6c6c34902f69ef37a1970d6a40c58e2");
     expect(vendor["mcp-server"].commit).toBe("f659899a9979b7809907fb2eaa9d837ee4fafeea");
     expect(vendor.cli.protocolPin).toBe(
       "github:IdeaSpaces-xyz/ideaspace-protocol#e9b13e8d79da5fbd4c3cdd535e818ed9781258b2",
@@ -36,12 +36,16 @@ describe("recipient-shaped Share distribution", () => {
     expect(help).toContain("--grade collaborate");
     expect(help).toContain("share visibility public");
     expect(help).toContain("share visibility private");
+    expect(read("skills/is-share/SKILL.md")).toContain(
+      "anyone may View and materialize a local Fork without an account",
+    );
     expect(help).not.toContain("share <invite|");
     expect(help).not.toContain("set-access");
   });
 
   it("routes recipient access through is-share rather than is-push", () => {
     const share = read("skills/is-share/SKILL.md");
+    const fork = read("skills/is-fork/SKILL.md");
     const push = read("skills/is-push/SKILL.md");
 
     expect(share).toContain("share person");
@@ -50,6 +54,8 @@ describe("recipient-shaped Share distribution", () => {
     expect(share).toContain("${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js");
     expect(share).toContain("there is no\nnative `is_share` tool");
     expect(share).toContain("Never ask for internal user, organization, Grant, userset, or repository");
+    expect(fork).toContain('"${CLI[@]}" fork "<space-url>" "<destination>"');
+    expect(fork).toContain("Publishing is the account boundary;\nFork itself is not");
     expect(push).toContain("Push is not access sharing");
     expect(push).toContain("belong to **is-share**");
   });
