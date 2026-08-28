@@ -1,5 +1,12 @@
 import { execFile, execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,8 +17,10 @@ const run = promisify(execFile);
 const CLI = join(process.cwd(), "cli/bundle/ideaspaces.js");
 const SOURCE_ROOT = "n_0123456789abcdef01234567";
 const SOURCE_HEAD = "a".repeat(40);
+const NEXT_SOURCE_HEAD = "b".repeat(40);
 const FOUNDATION = "---\nnode_id: n_111111111111111111111111\nname: Foundation\n---\n# Foundation\n";
 const README = "---\nnode_id: n_222222222222222222222222\n---\n# Public guide\n";
+const ADDED = "---\nnode_id: n_333333333333333333333333\n---\n# Added upstream\n";
 
 let root: string | null = null;
 afterEach(() => {
@@ -23,9 +32,23 @@ function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf-8" }).trim();
 }
 
+function baselineBytes(home: string): Buffer {
+  const directory = join(home, ".ideaspaces", "fork-baselines");
+  return readFileSync(join(directory, readdirSync(directory)[0]));
+}
+
 describe("vendored account-free Fork", () => {
-  it("materializes the real packaged CLI with no credentials or hosted destination", async () => {
+  it("materializes and maintains the real vendored CLI without credentials", async () => {
     const authorization: Array<string | undefined> = [];
+    let sourceHead = SOURCE_HEAD;
+    let foundation = FOUNDATION;
+    let readme = README;
+    let files = [
+      { path: "_agent/foundation.md", content: foundation },
+      { path: "README.md", content: readme },
+    ];
+    let asset = Buffer.from("payload");
+    let denied = false;
     const server = createServer((request, response) => {
       authorization.push(request.headers.authorization);
       response.setHeader("content-type", "application/json");
@@ -46,18 +69,23 @@ describe("vendored account-free Fork", () => {
         return;
       }
       if (request.url === `/api/v1/spaces/${SOURCE_ROOT}/copy-snapshot`) {
+        if (denied) {
+          response.statusCode = 404;
+          response.end(JSON.stringify({ detail: "Space not found" }));
+          return;
+        }
         response.end(
           JSON.stringify({
-            source_head: SOURCE_HEAD,
-            markdown_file_count: 2,
-            markdown_bytes: Buffer.byteLength(FOUNDATION) + Buffer.byteLength(README),
-            files: [
-              { path: "_agent/foundation.md", content: FOUNDATION },
-              { path: "README.md", content: README },
-            ],
+            source_head: sourceHead,
+            markdown_file_count: files.length,
+            markdown_bytes: files.reduce(
+              (total, file) => total + Buffer.byteLength(file.content),
+              0,
+            ),
+            files,
             asset_file_count: 1,
-            asset_bytes: 7,
-            assets: [{ path: "_assets/picture.png", content_base64: "cGF5bG9hZA==" }],
+            asset_bytes: asset.length,
+            assets: [{ path: "_assets/picture.png", content_base64: asset.toString("base64") }],
           }),
         );
         return;
@@ -78,12 +106,12 @@ describe("vendored account-free Fork", () => {
       const env: NodeJS.ProcessEnv = { ...process.env, HOME: home, IS_API_URL: apiUrl };
       delete env.IS_API_KEY;
 
-      const result = await run(
+      const forked = await run(
         process.execPath,
         [CLI, "fork", `${apiUrl}/spaces/${SOURCE_ROOT}`, destination, "--json"],
         { env, timeout: 30_000, maxBuffer: 8 * 1024 * 1024 },
       );
-      const output = JSON.parse(result.stdout);
+      const output = JSON.parse(forked.stdout);
 
       expect(output).toMatchObject({
         kind: "unpublished_fork",
@@ -94,7 +122,6 @@ describe("vendored account-free Fork", () => {
       });
       expect(output).not.toHaveProperty("repo_id");
       expect(output).not.toHaveProperty("remote_url");
-      expect(authorization).toEqual([undefined, undefined]);
       expect(git(destination, "symbolic-ref", "--short", "HEAD")).toBe("main");
       expect(git(destination, "rev-list", "--count", "HEAD")).toBe("1");
       expect(git(destination, "status", "--porcelain")).toBe("");
@@ -115,6 +142,104 @@ describe("vendored account-free Fork", () => {
         source_root_node_id: SOURCE_ROOT,
       });
       expect(record).not.toHaveProperty("repo_id");
+
+      const localReadme = `${README}Local work stays.\n`;
+      writeFileSync(join(destination, "README.md"), localReadme);
+      writeFileSync(join(destination, "local.md"), "ordinary local addition\n");
+      writeFileSync(join(destination, "progress.local.md"), "private progress\n");
+      writeFileSync(join(destination, "bystander.txt"), "staged bystander\n");
+      execFileSync("git", ["-C", destination, "add", "bystander.txt"]);
+      const stagedBefore = git(destination, "diff", "--cached", "--binary");
+
+      sourceHead = NEXT_SOURCE_HEAD;
+      foundation = FOUNDATION.replace("# Foundation", "# Updated foundation");
+      readme = README.replace("# Public guide", "# Updated upstream guide");
+      files = [
+        { path: "_agent/foundation.md", content: foundation },
+        { path: "README.md", content: readme },
+        { path: "added.md", content: ADDED },
+      ];
+      asset = Buffer.from([0, 255, 10, 13]);
+
+      const preview = JSON.parse(
+        (
+          await run(process.execPath, [CLI, "update", "--json"], {
+            cwd: destination,
+            env,
+            timeout: 30_000,
+            maxBuffer: 8 * 1024 * 1024,
+          })
+        ).stdout,
+      );
+      expect(preview).toMatchObject({
+        apply: false,
+        changed: true,
+        writes: ["_agent/foundation.md", "added.md"],
+        asset_writes: ["_assets/picture.png"],
+        conflicts: [{ path: "README.md", kind: "content" }],
+      });
+
+      const applied = JSON.parse(
+        (
+          await run(process.execPath, [CLI, "update", "--yes", "--json"], {
+            cwd: destination,
+            env,
+            timeout: 30_000,
+            maxBuffer: 8 * 1024 * 1024,
+          })
+        ).stdout,
+      );
+      expect(applied).toMatchObject({ apply: true, changed: true, source_head: NEXT_SOURCE_HEAD });
+      expect(readFileSync(join(destination, "README.md"), "utf-8")).toBe(localReadme);
+      expect(readFileSync(join(destination, "added.md"), "utf-8")).toContain("# Added upstream");
+      expect(readFileSync(join(destination, "local.md"), "utf-8")).toBe(
+        "ordinary local addition\n",
+      );
+      expect(readFileSync(join(destination, "progress.local.md"), "utf-8")).toBe(
+        "private progress\n",
+      );
+      expect(readFileSync(join(destination, "_assets", "picture.png"))).toEqual(asset);
+      expect(readFileSync(join(destination, "_agent", "foundation.md"), "utf-8")).toContain(
+        `root_node_id: ${output.root_node_id}`,
+      );
+      expect(git(destination, "diff", "--cached", "--binary")).toBe(stagedBefore);
+
+      const second = JSON.parse(
+        (
+          await run(process.execPath, [CLI, "update", "--yes", "--json"], {
+            cwd: destination,
+            env,
+            timeout: 30_000,
+            maxBuffer: 8 * 1024 * 1024,
+          })
+        ).stdout,
+      );
+      expect(second).toMatchObject({ apply: true, changed: false, worktree_changed: false });
+
+      const registryPath = join(home, ".ideaspaces", "spaces.json");
+      const registryBefore = readFileSync(registryPath);
+      const baselineBefore = baselineBytes(home);
+      const statusBefore = git(destination, "status", "--porcelain=v1");
+      const foundationBefore = readFileSync(join(destination, "_agent", "foundation.md"));
+      denied = true;
+      for (const revoked of ["public View", "public Fork"]) {
+        await expect(
+          run(process.execPath, [CLI, "update", "--yes", "--json"], {
+            cwd: destination,
+            env,
+            timeout: 30_000,
+            maxBuffer: 8 * 1024 * 1024,
+          }),
+          revoked,
+        ).rejects.toMatchObject({ code: 1 });
+        expect(readFileSync(registryPath)).toEqual(registryBefore);
+        expect(baselineBytes(home)).toEqual(baselineBefore);
+        expect(git(destination, "status", "--porcelain=v1")).toBe(statusBefore);
+        expect(readFileSync(join(destination, "_agent", "foundation.md"))).toEqual(
+          foundationBefore,
+        );
+      }
+      expect(authorization.every((value) => value === undefined)).toBe(true);
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),

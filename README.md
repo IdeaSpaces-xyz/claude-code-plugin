@@ -170,7 +170,7 @@ User-invocable (they appear when you type `/`):
 - **is-orient** — orient inside a space: where are we, what's active, what changed
 - **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
-- **is-fork** — conversational layer over account-free `ideaspaces fork`
+- **is-fork** — conversational layer over account-free local Fork and maintained source updates
 - **is-publish** — conversational layer over `ideaspaces publish`
 - **is-share** — manage people, teams, Explore/Fork/Collaborate grades, and public/private visibility
 - **is-push** — send committed captures to the remote

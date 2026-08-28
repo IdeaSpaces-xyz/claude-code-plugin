@@ -3,8 +3,9 @@ name: is-fork
 description: >
   Materialize an independent local Space from a canonical Space URL. Use when
   the user says fork this Space, take this public Space home, make a local
-  independent copy, or wants to work from a copy without an account. Fork is
-  history-free and unpublished; use is-publish later to host it.
+  independent copy, update or refresh a maintained fork, or wants to work from
+  a copy without an account. Fork is history-free and unpublished; use
+  is-publish later to host it.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_auth Read Bash"
 ---
 
@@ -47,6 +48,27 @@ an empty token. If a private source is neutrally refused and the user expects di
 The CLI validates the complete bounded snapshot before touching the destination and removes its
 temporary sibling on failure. Do not reproduce the snapshot with `curl`, raw file writes, or Git
 plumbing.
+
+## Maintain from the source
+
+Run update from inside a fork. Preview first unless the user already explicitly asked to apply:
+
+```bash
+"${CLI[@]}" update
+```
+
+Report the proposed Markdown and asset writes, deletes, and conflicts. Apply only after confirmation:
+
+```bash
+"${CLI[@]}" update --yes
+```
+
+A public source remains account-free while both public View and Fork are enabled. Do not log in
+preemptively. If a directly shared private source is neutrally refused and the user expects access,
+offer `is_auth action="login"`, then retry the same update. Never reproduce the three-way update with
+raw writes: the CLI preserves local additions, `*.local.md`, staged bystanders, destination identity,
+and conflicting local files. Report conflicts as preserved local work and an unchanged second run as
+a no-op.
 
 ## Report the result
 
