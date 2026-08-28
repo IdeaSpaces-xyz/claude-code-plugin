@@ -7953,6 +7953,17 @@ var NetworkError = class extends Error {
     this.name = "NetworkError";
   }
 };
+async function optionalAuthRead(config, read) {
+  try {
+    return { value: await read(config), config };
+  } catch (err) {
+    if (err instanceof UnauthorizedError && config.apiKey) {
+      const anonymous = { apiUrl: config.apiUrl };
+      return { value: await read(anonymous), config: anonymous };
+    }
+    throw err;
+  }
+}
 function isConnectionFailure(err) {
   return err instanceof TypeError && /fetch failed/i.test(err.message);
 }
@@ -14788,23 +14799,64 @@ import { basename as basename5, dirname as dirname5, join as join18, resolve as 
 var import_yaml5 = __toESM(require_dist(), 1);
 import { spawnSync as spawnSync9 } from "node:child_process";
 import { createHash, randomUUID as randomUUID3 } from "node:crypto";
-import { existsSync as existsSync11, mkdirSync as mkdirSync3, mkdtempSync, readFileSync as readFileSync4, renameSync as renameSync2, rmSync as rmSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { existsSync as existsSync11, lstatSync, mkdirSync as mkdirSync3, mkdtempSync, readFileSync as readFileSync4, realpathSync as realpathSync5, renameSync as renameSync2, rmSync as rmSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync3 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname as dirname4, isAbsolute as isAbsolute5, join as join17, relative as relative10, resolve as resolve13, sep as sep5 } from "node:path";
+
+// dist/fork-paths.js
+function isExactAssetPayloadParts(parts) {
+  for (const part of parts.slice(0, -1)) {
+    if (part.startsWith("_") || part.toLowerCase() === ".git")
+      return part === "_assets";
+  }
+  return false;
+}
+function isExactAssetPayloadPath(path) {
+  return isExactAssetPayloadParts(path.split("/"));
+}
+
+// dist/fork-update.js
 function runGit6(args2, cwd) {
-  const result = spawnSync9("git", args2, { cwd, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+  const result = spawnSync9("git", args2, {
+    cwd,
+    encoding: "utf-8",
+    maxBuffer: 64 * 1024 * 1024,
+    env: sanitizedGitEnvironment()
+  });
   if (result.error)
     throw result.error;
   if (result.status !== 0) {
     throw new Error((result.stderr || result.stdout || `git ${args2.join(" ")} failed`).trim());
   }
-  return result.stdout;
+  return result.stdout ?? "";
+}
+function runGitBuffer(args2, cwd) {
+  const result = spawnSync9("git", args2, {
+    cwd,
+    maxBuffer: 64 * 1024 * 1024,
+    env: sanitizedGitEnvironment()
+  });
+  if (result.error)
+    throw result.error;
+  if (result.status !== 0) {
+    throw new Error((result.stderr?.toString("utf-8") || result.stdout?.toString("utf-8") || `git ${args2.join(" ")} failed`).trim());
+  }
+  return Buffer.from(result.stdout ?? []);
 }
 function safePath(path) {
   if (!path || path.startsWith("/") || path.endsWith("/") || path.includes("\\") || path.includes("//") || path.split("/").some((segment) => segment === "." || segment === "..") || /[\0\r\n]/.test(path) || !path.endsWith(".md")) {
     throw new Error(`Unsafe Markdown path in source snapshot: ${path}`);
   }
   return path;
+}
+function isAssetPayloadPath(path) {
+  if (!path || path.startsWith("/") || path.endsWith("/") || path.includes("\\") || path.includes("//") || /[\0\r\n]/.test(path)) {
+    return false;
+  }
+  const parts = path.split("/");
+  if (parts.some((part) => part === "." || part === ".."))
+    return false;
+  return isExactAssetPayloadPath(path);
 }
 function isLocalOnly(path) {
   return path.endsWith(".local.md");
@@ -14896,27 +14948,81 @@ function normalizeSnapshot(files, baseline) {
   }
   return normalized;
 }
-function readLocal(path, root) {
+function readLocalBuffer(path, root) {
   const absolute = resolve13(root, path);
   const rel = relative10(root, absolute);
   if (!rel || rel === ".." || rel.startsWith(`..${sep5}`) || isAbsolute5(rel)) {
     throw new Error(`Path escapes Space: ${path}`);
   }
-  return existsSync11(absolute) ? readFileSync4(absolute, "utf-8") : null;
+  let cursor = root;
+  for (const part of rel.split(sep5)) {
+    cursor = join17(cursor, part);
+    if (!existsSync11(cursor))
+      break;
+    if (lstatSync(cursor).isSymbolicLink()) {
+      throw new Error(`Refusing to follow a symbolic link in update path: ${path}`);
+    }
+  }
+  return existsSync11(absolute) ? readFileSync4(absolute) : null;
 }
-function planForkUpdate(baseline, incoming, root) {
+function assetRevision(content) {
+  return createHash("sha256").update(content).digest("hex");
+}
+function assetRevisions(assets) {
+  return Object.fromEntries([...assets].sort((left, right) => left.path.localeCompare(right.path)).map((asset) => [asset.path, assetRevision(asset.content)]));
+}
+function conflictKind(before, after) {
+  return before === null ? "add_add" : after === null ? "delete_change" : "content";
+}
+function planForkUpdate(baseline, incoming, root, incomingAssets = []) {
   const writes = {};
-  const deletes = [];
+  const assetWrites = {};
+  const deletes = /* @__PURE__ */ new Set();
+  const expectedRevisions = {};
   const conflicts = new Map(baseline.conflicts.map((item) => [item.path, item]));
-  const paths = /* @__PURE__ */ new Set([
+  const markdownPaths = /* @__PURE__ */ new Set([
     ...Object.keys(baseline.files),
     ...Object.keys(incoming),
-    ...baseline.conflicts.map((item) => item.path)
+    ...baseline.conflicts.map((item) => item.path).filter((path) => path.endsWith(".md") && !isAssetPayloadPath(path))
   ]);
-  for (const path of [...paths].sort()) {
+  for (const path of [...markdownPaths].sort()) {
     const before = baseline.files[path] ?? null;
     const after = incoming[path] ?? null;
-    const local = readLocal(path, root);
+    const beforeRevision = before === null ? null : assetRevision(Buffer.from(before, "utf-8"));
+    const afterRevision = after === null ? null : assetRevision(Buffer.from(after, "utf-8"));
+    const localContent = readLocalBuffer(path, root);
+    const localRevision = localContent === null ? null : assetRevision(localContent);
+    if (after === before) {
+      if (conflicts.has(path) && localRevision === afterRevision)
+        conflicts.delete(path);
+      continue;
+    }
+    if (localRevision === beforeRevision || localRevision === afterRevision) {
+      conflicts.delete(path);
+      if (localRevision !== afterRevision) {
+        expectedRevisions[path] = localRevision;
+        if (after === null)
+          deletes.add(path);
+        else
+          writes[path] = after;
+      }
+      continue;
+    }
+    conflicts.set(path, { path, kind: conflictKind(before, after) });
+  }
+  const incomingAssetBuffers = new Map(incomingAssets.map((asset) => [asset.path, asset.content]));
+  const incomingAssetRevisions = assetRevisions(incomingAssets);
+  const baselineAssets = baseline.assets ?? {};
+  const assetPaths = /* @__PURE__ */ new Set([
+    ...Object.keys(baselineAssets),
+    ...Object.keys(incomingAssetRevisions),
+    ...baseline.conflicts.map((item) => item.path).filter(isAssetPayloadPath)
+  ]);
+  for (const path of [...assetPaths].sort()) {
+    const before = baselineAssets[path] ?? null;
+    const after = incomingAssetRevisions[path] ?? null;
+    const localContent = readLocalBuffer(path, root);
+    const local = localContent === null ? null : assetRevision(localContent);
     if (after === before) {
       if (conflicts.has(path) && local === after)
         conflicts.delete(path);
@@ -14925,22 +15031,23 @@ function planForkUpdate(baseline, incoming, root) {
     if (local === before || local === after) {
       conflicts.delete(path);
       if (local !== after) {
+        expectedRevisions[path] = local;
         if (after === null)
-          deletes.push(path);
+          deletes.add(path);
         else
-          writes[path] = after;
+          assetWrites[path] = incomingAssetBuffers.get(path);
       }
       continue;
     }
-    conflicts.set(path, {
-      path,
-      kind: before === null ? "add_add" : after === null ? "delete_change" : "content"
-    });
+    conflicts.set(path, { path, kind: conflictKind(before, after) });
   }
   return {
     incoming,
+    incoming_assets: incomingAssetRevisions,
     writes,
-    deletes,
+    asset_writes: assetWrites,
+    deletes: [...deletes].sort(),
+    expected_revisions: expectedRevisions,
     conflicts: [...conflicts.values()].sort((a, b) => a.path.localeCompare(b.path))
   };
 }
@@ -14948,11 +15055,11 @@ function writeTree(root, files) {
   for (const [path, content] of Object.entries(files)) {
     const absolute = join17(root, path);
     mkdirSync3(dirname4(absolute), { recursive: true });
-    writeFileSync3(absolute, content, "utf-8");
+    writeFileSync3(absolute, content);
   }
 }
 function applyForkUpdate(plan, root) {
-  const changed = [...Object.keys(plan.writes), ...plan.deletes];
+  const changed = [...Object.keys(plan.writes), ...Object.keys(plan.asset_writes), ...plan.deletes];
   if (!changed.length)
     return;
   const temp = mkdtempSync(join17(tmpdir(), "ideaspaces-update-"));
@@ -14964,26 +15071,39 @@ function applyForkUpdate(plan, root) {
     const before = {};
     const after = {};
     for (const path of changed) {
-      const local = readLocal(path, root);
+      const local = readLocalBuffer(path, root);
+      const currentRevision = local === null ? null : assetRevision(local);
+      if (currentRevision !== plan.expected_revisions[path]) {
+        throw new Error(`Local path changed while the source update was being planned: ${path}`);
+      }
       if (local !== null)
         before[path] = local;
-      if (path in plan.writes)
-        after[path] = plan.writes[path];
+      if (Object.prototype.hasOwnProperty.call(plan.writes, path)) {
+        after[path] = Buffer.from(plan.writes[path], "utf-8");
+      } else if (Object.prototype.hasOwnProperty.call(plan.asset_writes, path)) {
+        after[path] = plan.asset_writes[path];
+      }
     }
     writeTree(beforeDir, before);
     writeTree(afterDir, after);
-    const diff = spawnSync9("git", ["-c", "core.autocrlf=false", "diff", "--no-index", "--binary", "--no-renames", "--", "before", "after"], { cwd: temp, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+    const diff = spawnSync9("git", ["-c", "core.autocrlf=false", "diff", "--no-index", "--binary", "--no-renames", "--", "before", "after"], {
+      cwd: temp,
+      encoding: "utf-8",
+      maxBuffer: 64 * 1024 * 1024,
+      env: sanitizedGitEnvironment()
+    });
     if (diff.error)
       throw diff.error;
     if (diff.status !== 0 && diff.status !== 1) {
       throw new Error((diff.stderr || "Could not prepare update patch").trim());
     }
-    const patch = diff.stdout.replaceAll("a/before/", "a/").replaceAll("b/after/", "b/");
+    const patch = (diff.stdout ?? "").replaceAll("a/before/", "a/").replaceAll("b/after/", "b/");
     const applied = spawnSync9("git", ["-c", "core.autocrlf=false", "apply", "--whitespace=nowarn", "-"], {
       cwd: root,
       input: patch,
       encoding: "utf-8",
-      maxBuffer: 64 * 1024 * 1024
+      maxBuffer: 64 * 1024 * 1024,
+      env: sanitizedGitEnvironment()
     });
     if (applied.error)
       throw applied.error;
@@ -14994,13 +15114,25 @@ function applyForkUpdate(plan, root) {
     rmSync2(temp, { recursive: true, force: true });
   }
 }
-function baselinePath(root) {
-  const key = createHash("sha256").update(resolve13(root)).digest("hex");
-  return join17(configDir(), "fork-baselines", `${key}.json`);
+function baselinePaths(root) {
+  const lexical = resolve13(root);
+  let canonical = lexical;
+  try {
+    canonical = realpathSync5.native(lexical);
+  } catch {
+  }
+  const roots = /* @__PURE__ */ new Set([canonical, lexical]);
+  if (process.platform === "darwin" && canonical.startsWith("/private/")) {
+    roots.add(canonical.slice("/private".length));
+  }
+  return [...roots].map((candidate) => {
+    const key = createHash("sha256").update(candidate).digest("hex");
+    return join17(configDir(), "fork-baselines", `${key}.json`);
+  });
 }
 function loadForkBaseline(root) {
-  const path = baselinePath(root);
-  if (!existsSync11(path))
+  const path = baselinePaths(root).find(existsSync11);
+  if (!path)
     return null;
   try {
     return JSON.parse(readFileSync4(path, "utf-8"));
@@ -15009,7 +15141,7 @@ function loadForkBaseline(root) {
   }
 }
 function saveForkBaseline(root, baseline) {
-  const path = baselinePath(root);
+  const path = baselinePaths(root)[0];
   mkdirSync3(dirname4(path), { recursive: true, mode: 448 });
   const temp = `${path}.${process.pid}.${randomUUID3()}.tmp`;
   try {
@@ -15020,34 +15152,67 @@ function saveForkBaseline(root, baseline) {
   }
 }
 function removeForkBaseline(root) {
-  const path = baselinePath(root);
-  try {
-    unlinkSync2(path);
-  } catch (err) {
-    if (err.code !== "ENOENT")
-      throw err;
+  for (const path of baselinePaths(root)) {
+    try {
+      unlinkSync2(path);
+    } catch (err) {
+      if (err.code !== "ENOENT")
+        throw err;
+    }
   }
 }
-function initialForkBaseline(root, sourceRootNodeId, sourceHead) {
+function initialForkCommit(root) {
   const roots = runGit6(["rev-list", "--max-parents=0", "HEAD"], root).trim().split("\n").filter(Boolean);
   if (roots.length !== 1) {
     throw new Error("The fork's initial copy commit is ambiguous; no files were changed.");
   }
-  const commit = roots[0];
-  const paths = runGit6(["ls-tree", "-r", "--name-only", commit], root).trim().split("\n").filter((path) => path.endsWith(".md")).map(safePath).filter((path) => !isLocalOnly(path));
+  return roots[0];
+}
+function initialCommitPaths(root, commit) {
+  return runGit6(["ls-tree", "-r", "--name-only", "-z", commit], root).split("\0").filter(Boolean);
+}
+function initialForkAssetRevisions(root) {
+  const commit = initialForkCommit(root);
+  return Object.fromEntries(initialCommitPaths(root, commit).filter(isAssetPayloadPath).sort().map((path) => [path, assetRevision(runGitBuffer(["show", `${commit}:${path}`], root))]));
+}
+function withForkAssetBaseline(root, baseline) {
+  if (baseline.assets === void 0) {
+    return {
+      baseline: { ...baseline, assets: initialForkAssetRevisions(root) },
+      migrated: true
+    };
+  }
+  for (const [path, revision] of Object.entries(baseline.assets)) {
+    if (!isAssetPayloadPath(path) || !/^[0-9a-f]{64}$/.test(revision)) {
+      throw new Error("The local fork asset baseline is corrupt; no files were changed.");
+    }
+  }
+  return { baseline, migrated: false };
+}
+function initialForkBaseline(root, sourceRootNodeId, sourceHead) {
+  const commit = initialForkCommit(root);
+  const paths = initialCommitPaths(root, commit);
   const files = {};
-  for (const path of paths)
-    files[path] = runGit6(["show", `${commit}:${path}`], root);
+  const assets = {};
+  for (const path of paths) {
+    if (isAssetPayloadPath(path)) {
+      assets[path] = assetRevision(runGitBuffer(["show", `${commit}:${path}`], root));
+    } else if (path.endsWith(".md") && !isLocalOnly(path)) {
+      files[safePath(path)] = runGit6(["show", `${commit}:${path}`], root);
+    }
+  }
   return {
     source_root_node_id: sourceRootNodeId,
     source_head: sourceHead,
     files,
+    assets,
     conflicts: []
   };
 }
 function describeChanges(plan) {
   return [
     ...Object.keys(plan.writes).map((path) => `update ${path}`),
+    ...Object.keys(plan.asset_writes).map((path) => `update ${path}`),
     ...plan.deletes.map((path) => `delete ${path}`),
     ...plan.conflicts.map((item) => `conflict ${item.path} (${item.kind})`)
   ];
@@ -15066,13 +15231,6 @@ function isRecord2(value) {
 function boundedInteger(value, max) {
   return Number.isInteger(value) && value >= 0 && value <= max;
 }
-function isAssetPayload(parts) {
-  for (const part of parts.slice(0, -1)) {
-    if (part.startsWith("_") || part.toLowerCase() === ".git")
-      return part === "_assets";
-  }
-  return false;
-}
 function validatePath(value, role) {
   if (typeof value !== "string" || !value || value.startsWith("/") || value.endsWith("/") || value.includes("\\") || value.includes("//") || /[\0-\x1f\x7f]/.test(value) || Buffer.byteLength(value, "utf-8") > 4096) {
     throw new Error(`Unsafe ${role} path in source snapshot: ${String(value)}`);
@@ -15081,7 +15239,7 @@ function validatePath(value, role) {
   if (parts.some((part) => part === "." || part === ".." || part.toLowerCase() === ".git" || part.endsWith(".") || part.endsWith(" ") || WINDOWS_FORBIDDEN.test(part) || WINDOWS_RESERVED_NAME.test(part) || Buffer.byteLength(part, "utf-8") > 255)) {
     throw new Error(`Unsafe ${role} path in source snapshot: ${value}`);
   }
-  const assetPayload = isAssetPayload(parts);
+  const assetPayload = isExactAssetPayloadParts(parts);
   if (role === "markdown" && (!value.endsWith(".md") || assetPayload)) {
     throw new Error(`Invalid Markdown path in source snapshot: ${value}`);
   }
@@ -15121,7 +15279,7 @@ function decodeBase64(value, path) {
   }
   return content;
 }
-function prepareForkSnapshot(value) {
+function prepareForkSnapshot(value, markdownBaseline = {}) {
   if (!isRecord2(value))
     throw new Error("The source returned an invalid snapshot envelope");
   const snapshot = value;
@@ -15164,7 +15322,7 @@ function prepareForkSnapshot(value) {
     throw new Error("The source supporting-payload byte count does not match its envelope");
   }
   assertNoPathCollisions([...files.map((file) => file.path), ...assets.map((asset) => asset.path)]);
-  const markdown = normalizeSnapshot(files, {});
+  const markdown = normalizeSnapshot(files, markdownBaseline);
   return {
     sourceHead: snapshot.source_head,
     markdown,
@@ -15188,17 +15346,6 @@ function validateSource(value, rootNodeId) {
     throw new Error("The source returned an invalid Space description");
   }
   return value;
-}
-async function optionalAuthRead(config, read) {
-  try {
-    return { value: await read(config), config };
-  } catch (err) {
-    if (err instanceof UnauthorizedError && config.apiKey) {
-      const anonymous = { apiUrl: config.apiUrl };
-      return { value: await read(anonymous), config: anonymous };
-    }
-    throw err;
-  }
 }
 function sourceReadError(err) {
   const detail3 = err instanceof Error ? err.message : String(err);
@@ -15328,6 +15475,7 @@ function installLocalFork(opts) {
       source_root_node_id: sourceRootNodeId,
       source_head: sourceHead,
       files: markdown,
+      assets: assetRevisions(assets),
       conflicts: []
     };
     saveForkBaseline(destination, baseline);
@@ -15479,9 +15627,24 @@ var forkCommand = {
 };
 
 // dist/commands/update.js
+function recordsEqual(left, right) {
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && left[key] === right[key]);
+}
+function conflictsEqual(left, right) {
+  return left.length === right.length && left.every((item, index) => item.path === right[index]?.path && item.kind === right[index]?.kind);
+}
+function sourceUpdateError(err) {
+  const detail3 = err instanceof Error ? err.message : String(err);
+  if (/→ (?:401|403|404):/.test(detail3)) {
+    return "The maintained source is unavailable. It may no longer be shared or allow Fork; no local state was changed.";
+  }
+  return `The maintained source update channel is unavailable; no local state was changed. ${detail3}`;
+}
 var updateCommand = {
   name: "update",
-  description: "Apply maintained source updates to a fork without displacing local work",
+  description: "Preview or apply account-optional three-way source updates without displacing local work",
   usage: "ideaspaces update [--yes]",
   examples: [
     "ideaspaces update       # preview source changes and conflicts",
@@ -15501,18 +15664,15 @@ var updateCommand = {
       output.error("This Space is not recorded as a fork with a maintained source.");
       return 1;
     }
-    const config = loadConfig();
-    if (!config) {
-      output.error("Not logged in. Run `ideaspaces login`.");
-      return 1;
-    }
     let baseline;
+    let baselineCreated = false;
+    let baselineMigrated = false;
     try {
-      baseline = loadForkBaseline(root);
-      if (baseline && baseline.source_root_node_id !== record.source_root_node_id) {
+      const loaded = loadForkBaseline(root);
+      if (loaded && loaded.source_root_node_id !== record.source_root_node_id) {
         throw new Error("The local fork baseline names a different source; no files were changed.");
       }
-      if (!baseline) {
+      if (!loaded) {
         if (record.source_baseline_initialized) {
           throw new Error("The local fork update baseline is missing; no files were changed.");
         }
@@ -15520,6 +15680,11 @@ var updateCommand = {
           throw new Error("This fork has no pinned source head; no files were changed.");
         }
         baseline = initialForkBaseline(root, record.source_root_node_id, record.source_head);
+        baselineCreated = true;
+      } else {
+        const hydrated = withForkAssetBaseline(root, loaded);
+        baseline = hydrated.baseline;
+        baselineMigrated = hydrated.migrated;
       }
     } catch (err) {
       output.error(err instanceof Error ? err.message : String(err));
@@ -15528,78 +15693,85 @@ var updateCommand = {
     output.progress("Reading the maintained source projection\u2026");
     let snapshot;
     try {
-      snapshot = await getSpaceCopySnapshot(config, record.source_root_node_id, {
-        timeoutMs: 12e4
-      });
+      const read = await optionalAuthRead(loadOptionalAuthConfig(), (config) => getSpaceCopySnapshot(config, record.source_root_node_id, { timeoutMs: 12e4 }));
+      snapshot = read.value;
     } catch (err) {
-      if (err instanceof UnauthorizedError) {
-        output.error("Session expired. Run `ideaspaces login`.");
-      } else {
-        output.error("The maintained source update channel is unavailable; no local files were changed. " + (err instanceof Error ? err.message : String(err)));
-      }
+      output.error(sourceUpdateError(err));
       return 1;
     }
+    let prepared;
     let plan;
     try {
-      if (!snapshot || typeof snapshot.source_head !== "string" || !/^[0-9a-f]{40}$/.test(snapshot.source_head) || !Number.isInteger(snapshot.markdown_file_count) || snapshot.markdown_file_count < 0 || !Number.isInteger(snapshot.markdown_bytes) || snapshot.markdown_bytes < 0 || !Array.isArray(snapshot.files) || snapshot.files.length !== snapshot.markdown_file_count) {
-        throw new Error("The source returned an invalid snapshot envelope");
+      prepared = prepareForkSnapshot(snapshot, baseline.files);
+      plan = planForkUpdate(baseline, prepared.markdown, root, prepared.assets);
+      if (baseline.source_head === prepared.sourceHead && (!recordsEqual(baseline.files, plan.incoming) || !baselineMigrated && !recordsEqual(baseline.assets ?? {}, plan.incoming_assets))) {
+        throw new Error("The source projection changed without changing its source head");
       }
-      let receivedBytes = 0;
-      for (const file of snapshot.files) {
-        if (!file || typeof file.path !== "string" || typeof file.content !== "string") {
-          throw new Error("The source returned an invalid snapshot file");
-        }
-        receivedBytes += Buffer.byteLength(file.content, "utf-8");
-      }
-      if (receivedBytes > 2e7) {
-        throw new Error("The source snapshot exceeds the local update limit");
-      }
-      const incoming = normalizeSnapshot(snapshot.files, baseline.files);
-      plan = planForkUpdate(baseline, incoming, root);
     } catch (err) {
-      output.error(`The source projection could not be validated; no local files were changed. ${err instanceof Error ? err.message : String(err)}`);
+      output.error(`The source projection could not be validated; no local state was changed. ${err instanceof Error ? err.message : String(err)}`);
       return 1;
     }
+    const writes = Object.keys(plan.writes).sort();
+    const assetWrites = Object.keys(plan.asset_writes).sort();
     const changes = describeChanges(plan);
-    if (!global2.yes) {
-      output.result({
-        apply: false,
-        source_head: snapshot.source_head,
-        writes: Object.keys(plan.writes),
-        deletes: plan.deletes,
-        conflicts: plan.conflicts
-      }, changes.length ? [
-        `Source update ${snapshot.source_head.slice(0, 12)} is ready:`,
-        ...changes.map((change) => `  ${change}`),
-        "Run `ideaspaces update --yes` to apply non-conflicting changes."
-      ].join("\n") : "Already up to date \u2014 no source changes to apply.");
-      return 0;
-    }
-    try {
-      applyForkUpdate(plan, root);
-      saveForkBaseline(root, {
-        source_root_node_id: record.source_root_node_id,
-        source_head: snapshot.source_head,
-        files: plan.incoming,
-        conflicts: plan.conflicts
-      });
-      saveSpace(root, {
-        ...record,
-        source_head: snapshot.source_head,
-        source_baseline_initialized: true
-      });
-    } catch (err) {
-      output.error(`The update could not be finalized: ${err instanceof Error ? err.message : String(err)}`);
-      return 1;
-    }
-    output.result({
-      apply: true,
-      source_head: snapshot.source_head,
-      writes: Object.keys(plan.writes),
+    const worktreeNeeded = writes.length > 0 || assetWrites.length > 0 || plan.deletes.length > 0;
+    const baselineNeeded = baselineCreated || baselineMigrated || baseline.source_head !== prepared.sourceHead || !recordsEqual(baseline.files, plan.incoming) || !recordsEqual(baseline.assets ?? {}, plan.incoming_assets) || !conflictsEqual(baseline.conflicts, plan.conflicts);
+    const registryNeeded = record.source_head !== prepared.sourceHead || !record.source_baseline_initialized;
+    const changed = worktreeNeeded || baselineNeeded || registryNeeded;
+    const result = {
+      apply: global2.yes,
+      changed,
+      worktree_changed: worktreeNeeded,
+      source_head: prepared.sourceHead,
+      writes,
+      asset_writes: assetWrites,
       deletes: plan.deletes,
       conflicts: plan.conflicts
-    }, changes.length ? [
-      `Updated from source ${snapshot.source_head.slice(0, 12)}.`,
+    };
+    if (!global2.yes) {
+      output.result(result, !changed ? plan.conflicts.length ? `Already up to date \u2014 ${plan.conflicts.length} unresolved conflict(s) remain.` : "Already up to date \u2014 no source changes to apply." : changes.length ? [
+        `Source update ${prepared.sourceHead.slice(0, 12)} is ready:`,
+        ...changes.map((change) => `  ${change}`),
+        "Run `ideaspaces update --yes` to apply non-conflicting changes."
+      ].join("\n") : "Source content is current; run `ideaspaces update --yes` to finish local baseline recovery.");
+      return 0;
+    }
+    if (worktreeNeeded) {
+      try {
+        applyForkUpdate(plan, root);
+      } catch (err) {
+        output.error(`The source update could not be applied; baseline and registry were not advanced. ${err instanceof Error ? err.message : String(err)}`);
+        return 1;
+      }
+    }
+    if (baselineNeeded) {
+      try {
+        saveForkBaseline(root, {
+          source_root_node_id: record.source_root_node_id,
+          source_head: prepared.sourceHead,
+          files: plan.incoming,
+          assets: plan.incoming_assets,
+          conflicts: plan.conflicts
+        });
+      } catch (err) {
+        output.error(`${worktreeNeeded ? "Source changes reached the worktree, but" : "The worktree was unchanged and"} the durable baseline could not be advanced. Rerun the identical update to recover safely. ${err instanceof Error ? err.message : String(err)}`);
+        return 1;
+      }
+    }
+    if (registryNeeded) {
+      try {
+        saveSpace(root, {
+          ...record,
+          source_head: prepared.sourceHead,
+          source_baseline_initialized: true
+        });
+      } catch (err) {
+        output.error(`The source baseline is current, but the local registry pin could not be advanced. Rerun the identical update to repair it. ${err instanceof Error ? err.message : String(err)}`);
+        return 1;
+      }
+    }
+    output.result(result, !changed ? plan.conflicts.length ? `Already up to date \u2014 ${plan.conflicts.length} unresolved conflict(s) remain.` : "Already up to date \u2014 no source changes to apply." : changes.length ? [
+      `Updated from source ${prepared.sourceHead.slice(0, 12)}.`,
       ...changes.map((change) => `  ${change}`),
       ...plan.conflicts.length ? ["Conflicting local files were preserved; resolve them before the next update."] : []
     ].join("\n") : "Already up to date \u2014 the source baseline is current.");

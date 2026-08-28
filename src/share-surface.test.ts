@@ -16,9 +16,9 @@ describe("recipient-shaped Share distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.3.19");
-    expect(plugin.version).toBe("0.3.19");
-    expect(vendor.cli.commit).toBe("ce8d9454f6c6c34902f69ef37a1970d6a40c58e2");
+    expect(pkg.version).toBe("0.3.20");
+    expect(plugin.version).toBe("0.3.20");
+    expect(vendor.cli.commit).toBe("4518c4dbc90c68e9e42c52642ab598899378edc6");
     expect(vendor["mcp-server"].commit).toBe("f659899a9979b7809907fb2eaa9d837ee4fafeea");
     expect(vendor.cli.protocolPin).toBe(
       "github:IdeaSpaces-xyz/ideaspace-protocol#e9b13e8d79da5fbd4c3cdd535e818ed9781258b2",
@@ -55,6 +55,8 @@ describe("recipient-shaped Share distribution", () => {
     expect(share).toContain("there is no\nnative `is_share` tool");
     expect(share).toContain("Never ask for internal user, organization, Grant, userset, or repository");
     expect(fork).toContain('"${CLI[@]}" fork "<space-url>" "<destination>"');
+    expect(fork).toContain('"${CLI[@]}" update --yes');
+    expect(fork).toContain("A public source remains account-free");
     expect(fork).toContain("Publishing is the account boundary;\nFork itself is not");
     expect(push).toContain("Push is not access sharing");
     expect(push).toContain("belong to **is-share**");

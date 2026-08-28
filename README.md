@@ -128,6 +128,7 @@ The skills invoke this CLI; no global npm install is required.
 |---|---|
 | `ideaspaces create [name]` | Scaffold the seed contract and mint portable root identity before login (except private gitignored code-repo context). |
 | `ideaspaces fork <space-url> [dir]` | Materialize a copy-enabled Space as one independent unpublished local commit, without an account or source history. |
+| `ideaspaces update [--yes]` | Preview or apply account-optional source updates without displacing local work. |
 | `ideaspaces write <path>` | Create/update a Note with Layer 1 frontmatter; stages it and returns a content sha (`--if-match` for safe updates). |
 | `ideaspaces commit -m <msg> <path>…` | The explicit save — commits only the paths you name (`--all`), never unrelated staged work. Optional `--op` / `--change-id` / `--co-author` / `--conversation` trailers. |
 | `ideaspaces change new [<handle>]` | Mint a `Change-Id` for a decision spanning multiple commits/repos. |
@@ -139,7 +140,7 @@ The skills invoke this CLI; no global npm install is required.
 | `ideaspaces publish` | Adopt the committed local identity on first publish, or reuse the verified hosted binding. |
 | `ideaspaces share person|team|list|remove|visibility` | Manage recipients, Explore/Fork/Collaborate grades, and public/private visibility. |
 
-`fork` validates the complete bounded snapshot before touching its destination and creates no remote or hosted metadata. `publish` later evaluates foundation/origin/registry identity before network mutation, refuses uncommitted declaration drift, and preflights tracked Markdown before pushing. `--force` never forks or rekeys a Space.
+`fork` validates the complete bounded snapshot before touching its destination and creates no remote or hosted metadata. `update` uses the same credential-optional snapshot boundary, preserves local work through a three-way plan, and requires `--yes` to apply. `publish` later evaluates foundation/origin/registry identity before network mutation, refuses uncommitted declaration drift, and preflights tracked Markdown before pushing. `--force` never forks or rekeys a Space.
 
 ### MCP tools
 
@@ -170,7 +171,7 @@ User-invocable (they appear when you type `/`):
 - **is-orient** — orient inside a space: where are we, what's active, what changed
 - **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
-- **is-fork** — conversational layer over account-free `ideaspaces fork`
+- **is-fork** — conversational layer over account-free local Fork and maintained source updates
 - **is-publish** — conversational layer over `ideaspaces publish`
 - **is-share** — manage people, teams, Explore/Fork/Collaborate grades, and public/private visibility
 - **is-push** — send committed captures to the remote
