@@ -103,8 +103,9 @@ Once installed, just start working — the plugin orients your agent at the star
 - **Take a public Space home** — `ideaspaces fork <space-url> [dir]` materializes a copy-enabled Space locally without an account, source history, or hosted destination.
 - **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device. Optional; everything works fully offline without it.
 - **Choose who can use it** — say *"share this with alice@example.com for Explore"*, *"share with team acme.com for Collaborate"*, or *"make this public"* (`/is-share`).
+- **Ask and reply from your local agent** — say *"check my Inbox"* or *"ask @alice about this Space"* (`/is-inbox`).
 
-Nine skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-push`, `is-pull`.
+Ten skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-inbox`, `is-push`, `is-pull`.
 
 Three more run on the agent's initiative rather than yours, so they won't appear in that menu: `is-capture` offers to write a Note when something crystallizes, `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how Notes get written. You reach them by saying what you want — *"capture this"*, *"has our direction changed?"* — not by typing a command.
 
@@ -139,6 +140,7 @@ The skills invoke this CLI; no global npm install is required.
 | `ideaspaces login` | Save optional remote credentials. |
 | `ideaspaces publish` | Adopt the committed local identity on first publish, or reuse the verified hosted binding. |
 | `ideaspaces share person|team|list|remove|visibility` | Manage recipients, Explore/Fork/Collaborate grades, and public/private visibility. |
+| `ideaspaces inbox list|read|send|reply` | Exchange person-accountable questions and replies about exact shared Content. |
 
 `fork` validates the complete bounded snapshot before touching its destination and creates no remote or hosted metadata. `update` uses the same credential-optional snapshot boundary, preserves local work through a three-way plan, and requires `--yes` to apply. `publish` later evaluates foundation/origin/registry identity before network mutation, refuses uncommitted declaration drift, and preflights tracked Markdown before pushing. `--force` never forks or rekeys a Space.
 
@@ -174,6 +176,7 @@ User-invocable (they appear when you type `/`):
 - **is-fork** — conversational layer over account-free local Fork and maintained source updates
 - **is-publish** — conversational layer over `ideaspaces publish`
 - **is-share** — manage people, teams, Explore/Fork/Collaborate grades, and public/private visibility
+- **is-inbox** — ask, read, and reply through person-accountable exchanges about shared Content
 - **is-push** — send committed captures to the remote
 - **is-pull** — integrate remote changes into the local space
 

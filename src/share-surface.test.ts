@@ -16,9 +16,9 @@ describe("recipient-shaped Share distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.3.20");
-    expect(plugin.version).toBe("0.3.20");
-    expect(vendor.cli.commit).toBe("4518c4dbc90c68e9e42c52642ab598899378edc6");
+    expect(pkg.version).toBe("0.3.21");
+    expect(plugin.version).toBe("0.3.21");
+    expect(vendor.cli.commit).toBe("aabc9f2af43045c40cf2a425a9bbc3ac918dc2b3");
     expect(vendor["mcp-server"].commit).toBe("f659899a9979b7809907fb2eaa9d837ee4fafeea");
     expect(vendor.cli.protocolPin).toBe(
       "github:IdeaSpaces-xyz/ideaspace-protocol#e9b13e8d79da5fbd4c3cdd535e818ed9781258b2",

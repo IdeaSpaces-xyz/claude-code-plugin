@@ -6344,15 +6344,15 @@ var require_parser = __commonJS({
     var node_process = __require("process");
     var cst = require_cst();
     var lexer = require_lexer();
-    function includesToken(list2, type) {
-      for (let i = 0; i < list2.length; ++i)
-        if (list2[i].type === type)
+    function includesToken(list3, type) {
+      for (let i = 0; i < list3.length; ++i)
+        if (list3[i].type === type)
           return true;
       return false;
     }
-    function findNonEmptyIndex(list2) {
-      for (let i = 0; i < list2.length; ++i) {
-        switch (list2[i].type) {
+    function findNonEmptyIndex(list3) {
+      for (let i = 0; i < list3.length; ++i) {
+        switch (list3[i].type) {
           case "space":
           case "comment":
           case "newline":
@@ -7953,13 +7953,13 @@ var NetworkError = class extends Error {
     this.name = "NetworkError";
   }
 };
-async function optionalAuthRead(config, read) {
+async function optionalAuthRead(config, read2) {
   try {
-    return { value: await read(config), config };
+    return { value: await read2(config), config };
   } catch (err) {
     if (err instanceof UnauthorizedError && config.apiKey) {
       const anonymous = { apiUrl: config.apiUrl };
-      return { value: await read(anonymous), config: anonymous };
+      return { value: await read2(anonymous), config: anonymous };
     }
     throw err;
   }
@@ -8065,6 +8065,18 @@ async function fetchAgents(config, owner, opts) {
   const qs = owner ? `?owner=${encodeURIComponent(owner)}` : "";
   const res = await request(config, "GET", `${API_V1}/agents${qs}`, void 0, opts);
   return res.agents;
+}
+async function fetchInbox(config, opts) {
+  return request(config, "GET", `${API_V1}/inbox`, void 0, opts);
+}
+async function fetchExchange(config, exchangeId, opts) {
+  return request(config, "GET", `${API_V1}/exchanges/${encodeURIComponent(exchangeId)}`, void 0, opts);
+}
+async function sendInquiry(config, body, opts) {
+  return request(config, "POST", `${API_V1}/inquiries`, body, opts);
+}
+async function replyToExchange(config, exchangeId, body, opts) {
+  return request(config, "POST", `${API_V1}/exchanges/${encodeURIComponent(exchangeId)}/replies`, body, opts);
 }
 async function fetchNode(config, repoId, nodeId2, opts) {
   return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/nodes/${encodeURIComponent(nodeId2)}`, void 0, opts);
@@ -12894,13 +12906,13 @@ var commitCommand = {
     }
     const selected = [];
     for (const path of paths) {
-      const read = await pathRevision(root, path, localEffectCapabilities.git, localEffectCapabilities.filesystem);
-      if (read.status === "error") {
-        const failure = localEffectError("commit_paths", read.code, read.phase, read.message, read.path, read.detail);
+      const read2 = await pathRevision(root, path, localEffectCapabilities.git, localEffectCapabilities.filesystem);
+      if (read2.status === "error") {
+        const failure = localEffectError("commit_paths", read2.code, read2.phase, read2.message, read2.path, read2.detail);
         emitEffectFailure(output, global2, failure);
         return 1;
       }
-      selected.push({ path, expected_revision: read.revision });
+      selected.push({ path, expected_revision: read2.revision });
     }
     const result = await commitPaths({
       operation: "commit_paths",
@@ -13453,15 +13465,15 @@ var statusCommand = {
         output.error(`Path is outside the repository root: ${pathArg}`);
         return 1;
       }
-      const read = await pathRevision(root, portablePath, localEffectCapabilities.git, localEffectCapabilities.filesystem);
-      if (read.status === "error") {
+      const read2 = await pathRevision(root, portablePath, localEffectCapabilities.git, localEffectCapabilities.filesystem);
+      if (read2.status === "error") {
         if (global2.json)
-          output.result(read, "");
+          output.result(read2, "");
         else
-          output.error(`${read.message}${read.path ? ` (${read.path})` : ""}`);
+          output.error(`${read2.message}${read2.path ? ` (${read2.path})` : ""}`);
         return 1;
       }
-      const revision = read.revision;
+      const revision = read2.revision;
       const exists2 = revision.worktree !== null;
       const inIndex = revision.index !== revision.head;
       const modified = revision.worktree !== revision.index;
@@ -14339,13 +14351,13 @@ async function handleGet() {
     return 0;
   }
   const username = params.username && params.username.length > 0 ? params.username : "token";
-  const reply = [
+  const reply2 = [
     `username=${username}`,
     `password=${config.apiKey}`,
     "",
     ""
   ].join("\n");
-  process.stdout.write(reply);
+  process.stdout.write(reply2);
   return 0;
 }
 function isIdeaspacesHost(host) {
@@ -14489,9 +14501,9 @@ function deriveCatalog(me, clones, statusByPath) {
   for (const clone of clones) {
     if (!isHostedSpaceRecord(clone.record))
       continue;
-    const list2 = clonesByRepo.get(clone.record.repo_id) ?? [];
-    list2.push(clone);
-    clonesByRepo.set(clone.record.repo_id, list2);
+    const list3 = clonesByRepo.get(clone.record.repo_id) ?? [];
+    list3.push(clone);
+    clonesByRepo.set(clone.record.repo_id, list3);
   }
   const entries = [];
   const used = /* @__PURE__ */ new Set();
@@ -15553,9 +15565,9 @@ var forkCommand = {
     let source;
     let readConfig;
     try {
-      const read = await optionalAuthRead(initialConfig, (config) => getSpace(config, sourceRootNodeId, { timeoutMs: 12e4 }));
-      source = validateSource(read.value, sourceRootNodeId);
-      readConfig = read.config;
+      const read2 = await optionalAuthRead(initialConfig, (config) => getSpace(config, sourceRootNodeId, { timeoutMs: 12e4 }));
+      source = validateSource(read2.value, sourceRootNodeId);
+      readConfig = read2.config;
     } catch (err) {
       output.error(sourceReadError(err));
       return 1;
@@ -15576,8 +15588,8 @@ var forkCommand = {
     output.progress("Reading the complete history-free snapshot\u2026");
     let snapshot;
     try {
-      const read = await optionalAuthRead(readConfig, (config) => getSpaceCopySnapshot(config, sourceRootNodeId, { timeoutMs: 12e4 }));
-      snapshot = read.value;
+      const read2 = await optionalAuthRead(readConfig, (config) => getSpaceCopySnapshot(config, sourceRootNodeId, { timeoutMs: 12e4 }));
+      snapshot = read2.value;
     } catch (err) {
       output.error(sourceReadError(err));
       return 1;
@@ -15693,8 +15705,8 @@ var updateCommand = {
     output.progress("Reading the maintained source projection\u2026");
     let snapshot;
     try {
-      const read = await optionalAuthRead(loadOptionalAuthConfig(), (config) => getSpaceCopySnapshot(config, record.source_root_node_id, { timeoutMs: 12e4 }));
-      snapshot = read.value;
+      const read2 = await optionalAuthRead(loadOptionalAuthConfig(), (config) => getSpaceCopySnapshot(config, record.source_root_node_id, { timeoutMs: 12e4 }));
+      snapshot = read2.value;
     } catch (err) {
       output.error(sourceUpdateError(err));
       return 1;
@@ -17269,6 +17281,186 @@ var shareCommand = {
   }
 };
 
+// dist/commands/inbox.js
+import { randomUUID as randomUUID4 } from "node:crypto";
+var USAGE8 = "ideaspaces inbox <list|read|send|reply> ...";
+var SEND_USAGE = "ideaspaces inbox send <email|@handle> --about <node_id> --name <title> --summary <summary> [--message <markdown>] [--send-id <id>]";
+var REPLY_USAGE = "ideaspaces inbox reply <exchange_id> --name <title> --summary <summary> [--message <markdown>] [--send-id <id>]";
+function flagString(flags2, name) {
+  return typeof flags2[name] === "string" ? flags2[name] : void 0;
+}
+async function readStdin4() {
+  if (process.stdin.isTTY)
+    return "";
+  const chunks = [];
+  for await (const chunk of process.stdin)
+    chunks.push(chunk);
+  return Buffer.concat(chunks).toString("utf-8");
+}
+function recipientSelector(value) {
+  if (value.startsWith("@") && value.length > 1 && !value.slice(1).includes("@")) {
+    return { username: value.slice(1) };
+  }
+  if (!value.startsWith("@") && value.includes("@")) {
+    return { email: value };
+  }
+  return null;
+}
+async function writeBody(flags2, output) {
+  const name = flagString(flags2, "name")?.trim();
+  const summary = flagString(flags2, "summary")?.trim();
+  if (!name) {
+    output.error("--name <title> is required.");
+    return null;
+  }
+  if (!summary) {
+    output.error("--summary <summary> is required.");
+    return null;
+  }
+  const markdown = flagString(flags2, "message") ?? await readStdin4();
+  if (!markdown.trim()) {
+    output.error("A message is required through --message or stdin.");
+    return null;
+  }
+  return {
+    send_id: flagString(flags2, "send-id")?.trim() || `cli_${randomUUID4()}`,
+    name,
+    summary,
+    markdown
+  };
+}
+function participantLabel(participant) {
+  return participant.name ?? participant.username ?? participant.participant;
+}
+function participantsText(participants) {
+  return participants.map(participantLabel).join(", ");
+}
+function inboxItemText(item) {
+  const count = `${item.message_count} ${item.message_count === 1 ? "message" : "messages"}`;
+  return [
+    `${item.exchange_id}  ${item.latest_message.name}`,
+    `  ${item.latest_message.summary}`,
+    `  about ${item.target_node_id} \xB7 ${count} \xB7 ${participantsText(item.participants)}`
+  ].join("\n");
+}
+function exchangeText(exchange) {
+  const lines = [
+    `Exchange ${exchange.exchange_id}`,
+    `About ${exchange.target_node_id}`,
+    `Participants: ${participantsText(exchange.participants)}`
+  ];
+  for (const message of exchange.messages) {
+    const author = exchange.participants.find((participant) => participant.participant === message.author_ref);
+    const actor = message.actor_ref === message.author_ref ? "" : ` via ${message.actor_ref}`;
+    lines.push("", `[${message.position}] ${author ? participantLabel(author) : message.author_ref}${actor} \u2014 ${message.name}`, message.summary, message.markdown);
+  }
+  return lines.join("\n");
+}
+async function runAuthenticated(output, operation) {
+  const config = loadConfig();
+  if (!config) {
+    output.error("Not logged in. Run `ideaspaces login`.");
+    return 1;
+  }
+  try {
+    return await operation(config);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      output.error("Session expired. Run `ideaspaces login`.");
+      return 1;
+    }
+    output.error(err instanceof Error ? err.message : String(err));
+    return 1;
+  }
+}
+async function list(rest, output) {
+  if (rest.length) {
+    output.error("Usage: ideaspaces inbox list");
+    return 1;
+  }
+  return runAuthenticated(output, async (config) => {
+    const inbox = await fetchInbox(config);
+    output.result(inbox, inbox.items.length ? inbox.items.map(inboxItemText).join("\n\n") : "Inbox is empty.");
+    return 0;
+  });
+}
+async function read(rest, output) {
+  const [exchangeId] = rest;
+  if (!exchangeId || rest.length !== 1) {
+    output.error("Usage: ideaspaces inbox read <exchange_id>");
+    return 1;
+  }
+  return runAuthenticated(output, async (config) => {
+    const exchange = await fetchExchange(config, exchangeId);
+    output.result(exchange, exchangeText(exchange));
+    return 0;
+  });
+}
+async function send(rest, flags2, output) {
+  const [recipientValue] = rest;
+  const recipient = recipientValue ? recipientSelector(recipientValue) : null;
+  const target = flagString(flags2, "about")?.trim();
+  if (!recipientValue || rest.length !== 1 || !recipient || !target) {
+    output.error(`Usage: ${SEND_USAGE}`);
+    return 1;
+  }
+  const note = await writeBody(flags2, output);
+  if (!note)
+    return 1;
+  return runAuthenticated(output, async (config) => {
+    const result = await sendInquiry(config, {
+      ...note,
+      target_node_id: target,
+      recipient
+    });
+    output.result(result, `Sent inquiry ${result.exchange_id} about ${result.target_node_id}.`);
+    return 0;
+  });
+}
+async function reply(rest, flags2, output) {
+  const [exchangeId] = rest;
+  if (!exchangeId || rest.length !== 1) {
+    output.error(`Usage: ${REPLY_USAGE}`);
+    return 1;
+  }
+  const note = await writeBody(flags2, output);
+  if (!note)
+    return 1;
+  return runAuthenticated(output, async (config) => {
+    const result = await replyToExchange(config, exchangeId, note);
+    output.result(result, `Replied in ${result.exchange_id}.`);
+    return 0;
+  });
+}
+var inboxCommand = {
+  name: "inbox",
+  description: "Ask, read, and reply through direct exchanges about shared Content",
+  usage: USAGE8,
+  examples: [
+    "ideaspaces inbox list",
+    "ideaspaces inbox read x_example",
+    "ideaspaces inbox send @owner --about n_0123456789abcdef01234567 --name 'Question' --summary 'One decision' --message 'What should happen next?'",
+    "printf '# Reply\\n\\nKeep it narrow.' | ideaspaces inbox reply x_example --name 'Answer' --summary 'A bounded answer'"
+  ],
+  async run(args2, flags2, global2) {
+    const output = createOutput(global2);
+    const [sub, ...rest] = args2;
+    switch (sub) {
+      case "list":
+        return list(rest, output);
+      case "read":
+        return read(rest, output);
+      case "send":
+        return send(rest, flags2, output);
+      case "reply":
+        return reply(rest, flags2, output);
+      default:
+        output.error(`Usage: ${USAGE8}`);
+        return 1;
+    }
+  }
+};
+
 // dist/auth/session-state.js
 import { existsSync as existsSync14, unlinkSync as unlinkSync3 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
@@ -17400,14 +17592,14 @@ function formatHuman3(s) {
   const out = [];
   out.push(s.binary.present ? `Pi: present${s.binary.version ? ` (${s.binary.version})` : ""} \u2014 ${s.binary.path}` : `Pi: not found (${s.binary.path}). Install pi to enable the local agent.`);
   if (s.providers.length) {
-    const list2 = s.providers.map((p) => `${p.name}${!p.hasCreds ? " (no creds)" : p.expired ? " (expired)" : ""}`).join(", ");
-    out.push(`Configured: ${s.configured ? "yes" : "no"} \u2014 providers: ${list2}`);
+    const list3 = s.providers.map((p) => `${p.name}${!p.hasCreds ? " (no creds)" : p.expired ? " (expired)" : ""}`).join(", ");
+    out.push(`Configured: ${s.configured ? "yes" : "no"} \u2014 providers: ${list3}`);
   } else {
     out.push("Configured: no \u2014 no providers in ~/.pi/agent/auth.json");
   }
   if (s.extensions.length) {
-    const list2 = s.extensions.map((e) => `${e.name} (${e.resolvable ? "ok" : "missing"})`).join(", ");
-    out.push(`Extensions: ${list2}`);
+    const list3 = s.extensions.map((e) => `${e.name} (${e.resolvable ? "ok" : "missing"})`).join(", ");
+    out.push(`Extensions: ${list3}`);
   } else {
     out.push("Extensions: none checked \u2014 pass --ext or set IDEASPACES_PI_EXTENSIONS");
   }
@@ -17862,15 +18054,15 @@ async function* runLocalTurn(opts) {
       opts.signal.addEventListener("abort", onAbort, { once: true });
   }
   let sessionName;
-  const send2 = (obj) => {
+  const send3 = (obj) => {
     try {
       pi.stdin.write(`${JSON.stringify(obj)}
 `);
     } catch {
     }
   };
-  send2({ type: "get_state", id: "__state" });
-  send2({ type: "prompt", message: opts.message, id: "p1" });
+  send3({ type: "get_state", id: "__state" });
+  send3({ type: "prompt", message: opts.message, id: "p1" });
   const rl = readline.createInterface({ input: pi.stdout, terminal: false });
   try {
     for await (const line of rl) {
@@ -17902,7 +18094,7 @@ async function* runLocalTurn(opts) {
       }
       if (type === "agent_end") {
         if (!sessionName || !sessionName.trim()) {
-          send2({ type: "set_session_name", name: deriveConversationName(opts.message), id: "__name" });
+          send3({ type: "set_session_name", name: deriveConversationName(opts.message), id: "__name" });
           await new Promise((r) => setTimeout(r, 250));
         }
         return;
@@ -17926,13 +18118,13 @@ async function* runLocalTurn(opts) {
 
 // dist/pi/local-conversations.js
 import { existsSync as existsSync18, readdirSync as readdirSync2, readFileSync as readFileSync8, statSync as statSync6 } from "node:fs";
-import { randomUUID as randomUUID4 } from "node:crypto";
+import { randomUUID as randomUUID5 } from "node:crypto";
 import { join as join25 } from "node:path";
 function localSessionDir(contextRoot) {
   return join25(contextRoot, ".pi", "sessions");
 }
 function mintConversationId() {
-  return `local-${randomUUID4()}`;
+  return `local-${randomUUID5()}`;
 }
 function textOf(content) {
   if (typeof content === "string")
@@ -18078,7 +18270,7 @@ function reportLocalError(err, output) {
   output.error(err instanceof Error ? err.message : String(err));
   return 1;
 }
-async function send(flags2, output) {
+async function send2(flags2, output) {
   const message = typeof flags2.message === "string" ? flags2.message : void 0;
   if (!message) {
     output.error("A message is required: --message <text>");
@@ -18155,13 +18347,13 @@ function get(flags2, output) {
   }).join("\n") : "No messages yet.");
   return 0;
 }
-function list(flags2, output) {
+function list2(flags2, output) {
   const contextRoot = typeof flags2.context === "string" ? flags2.context : process.cwd();
   const { conversations, total } = listLocalConversations(contextRoot);
   output.result({ context: contextRoot, conversations, total, has_more: false }, conversations.length ? conversations.map((c) => `${c.name || "(untitled)"} \u2014 ${c.message_count} message${c.message_count === 1 ? "" : "s"}`).join("\n") : "No local conversations.");
   return 0;
 }
-var localConversationOps = { send, createNew, get, list };
+var localConversationOps = { send: send2, createNew, get, list: list2 };
 
 // dist/router.js
 var conversationCommand = makeConversationCommand(localConversationOps);
@@ -18198,6 +18390,7 @@ var topLevel = [
   statusCommand,
   timesCommand,
   shareCommand,
+  inboxCommand,
   pullCommand,
   pushCommand,
   syncCommand,
