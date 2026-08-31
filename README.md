@@ -16,6 +16,7 @@ The [protocol](https://github.com/IdeaSpaces-xyz/ideaspace-protocol) defines the
 - **Awareness on arrival** — Claude reads the active `_agent/` agreement, current direction, tree, and recent movement.
 - **Deliberate capture** — when understanding crystallizes, Claude proposes preserving it, stages the agreed draft, and commits only after explicit confirmation.
 - **Knowledge that compounds** — decisions and context become ordinary Markdown rather than remaining trapped in transcripts.
+- **Portable map-notes** — capture a curated, pinned navigation frame that another local agent can launch over without fetching its roots.
 - **Explicit history** — commits preserve authorship, agent contribution, conversation provenance, and multi-commit Changes.
 - **Optional collaboration** — work fully offline, then publish, push, or pull when you want remote access.
 
@@ -150,7 +151,7 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 
 | Tool | What |
 |---|---|
-| `is_write` | Create/update a Note in-process; stages and tracks its full revision, while retaining `sha` for safe-update compatibility. |
+| `is_write` | Create/update a Note in-process, optionally with a validated protocol `map` block; stages and tracks its full revision while retaining `sha` for safe-update compatibility. |
 | `is_commit` | The explicit save — commits named paths, or only this MCP session's captures with `all`; never adopts other staged work. Auto-stamps attribution trailers. |
 | `is_change_open` / `is_change_close` | Open/close a Change — a `Change-Id` stamped on every `is_commit` for one decision, across files and repos. |
 | `is_status` | Capture state: git position + session captures, or one path's full revision and `sha` compatibility token. |
