@@ -10767,10 +10767,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key: key2, sep: sep3, value } = collItem;
+        const { start, key: key2, sep: sep4, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key2 ?? sep3?.[0],
+          next: key2 ?? sep4?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -10784,7 +10784,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key2 && key2.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep3) {
+          if (!keyProps.anchor && !keyProps.tag && !sep4) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -10808,7 +10808,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep3 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep4 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -10824,7 +10824,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep3, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep4, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -10915,7 +10915,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep3 = "";
+        let sep4 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -10929,13 +10929,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep3 + cb;
-              sep3 = "";
+                comment += sep4 + cb;
+              sep4 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep3 += source;
+                sep4 += source;
               hasSpace = true;
               break;
             default:
@@ -10978,18 +10978,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key: key2, sep: sep3, value } = collItem;
+        const { start, key: key2, sep: sep4, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key2 ?? sep3?.[0],
+          next: key2 ?? sep4?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep3 && !value) {
+          if (!props.anchor && !props.tag && !sep4 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -11043,8 +11043,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep3 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep3, null, props, onError);
+        if (!isMap && !sep4 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep4, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -11056,7 +11056,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key2))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep3 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep4 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -11067,8 +11067,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep3)
-                for (const st of sep3) {
+              if (sep4)
+                for (const st of sep4) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -11085,7 +11085,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep3, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep4, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -11265,7 +11265,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep3 = "";
+      let sep4 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -11282,24 +11282,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep3 + indent.slice(trimIndent) + content;
-          sep3 = "\n";
+          value += sep4 + indent.slice(trimIndent) + content;
+          sep4 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep3 === " ")
-            sep3 = "\n";
-          else if (!prevMoreIndented && sep3 === "\n")
-            sep3 = "\n\n";
-          value += sep3 + indent.slice(trimIndent) + content;
-          sep3 = "\n";
+          if (sep4 === " ")
+            sep4 = "\n";
+          else if (!prevMoreIndented && sep4 === "\n")
+            sep4 = "\n\n";
+          value += sep4 + indent.slice(trimIndent) + content;
+          sep4 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep3 === "\n")
+          if (sep4 === "\n")
             value += "\n";
           else
-            sep3 = "\n";
+            sep4 = "\n";
         } else {
-          value += sep3 + content;
-          sep3 = " ";
+          value += sep4 + content;
+          sep4 = " ";
           prevMoreIndented = false;
         }
       }
@@ -11481,25 +11481,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep3 = " ";
+      let sep4 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep3 === "\n")
-            res += sep3;
+          if (sep4 === "\n")
+            res += sep4;
           else
-            sep3 = "\n";
+            sep4 = "\n";
         } else {
-          res += sep3 + match[1];
-          sep3 = " ";
+          res += sep4 + match[1];
+          sep4 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep3 + (match?.[1] ?? "");
+      return res + sep4 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -12309,14 +12309,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key: key2, sep: sep3, value }) {
+    function stringifyItem({ start, key: key2, sep: sep4, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key2)
         res += stringifyToken(key2);
-      if (sep3)
-        for (const st of sep3)
+      if (sep4)
+        for (const st of sep4)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -13483,18 +13483,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep3;
+          let sep4;
           if (scalar.end) {
-            sep3 = scalar.end;
-            sep3.push(this.sourceToken);
+            sep4 = scalar.end;
+            sep4.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep3 = [this.sourceToken];
+            sep4 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep3 }]
+            items: [{ start, key: scalar, sep: sep4 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -13647,15 +13647,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key2 = it.key;
-                  const sep3 = it.sep;
-                  sep3.push(this.sourceToken);
+                  const sep4 = it.sep;
+                  sep4.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key: key2, sep: sep3 }]
+                    items: [{ start: start2, key: key2, sep: sep4 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -13849,13 +13849,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep3 = fc.end.splice(1, fc.end.length);
-            sep3.push(this.sourceToken);
+            const sep4 = fc.end.splice(1, fc.end.length);
+            sep4.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep3 }]
+              items: [{ start, key: fc, sep: sep4 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -28466,7 +28466,7 @@ async function composeContractAlongPath(position) {
 
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 import { promises as fs4 } from "node:fs";
-import { join as join6, relative as relative3, resolve as resolve6 } from "node:path";
+import { join as join6, relative as relative3, resolve as resolve6, sep as sep2 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist2(), 1);
@@ -28562,8 +28562,36 @@ function summarizeMarkdown(content) {
   return null;
 }
 
-// node_modules/@ideaspaces/protocol/dist/assets.js
-var ASSET_DIRECTORY = "_assets";
+// node_modules/@ideaspaces/protocol/dist/repository-path.js
+var AGENT_DIRECTORY = "_agent";
+function classifyRepositoryPath(path, kind) {
+  if (kind !== "file" && kind !== "directory") {
+    return { status: "invalid", code: "invalid_kind" };
+  }
+  if (typeof path !== "string" || path.length === 0 || path.startsWith("/") || path.endsWith("/") || path.includes("//") || path.includes("\\") || path.includes("\0")) {
+    return { status: "invalid", code: "invalid_path" };
+  }
+  const segments = path.split("/");
+  if (segments.some((segment) => segment === "." || segment === "..")) {
+    return { status: "invalid", code: "invalid_path" };
+  }
+  const directorySegments = kind === "directory" ? segments : segments.slice(0, -1);
+  for (const segment of directorySegments) {
+    if (segment.toLowerCase() === ".git") {
+      return { status: "ok", role: "reserved" };
+    }
+    if (segment.startsWith("_")) {
+      if (segment === AGENT_DIRECTORY) {
+        return { status: "ok", role: "agent-context" };
+      }
+      return { status: "ok", role: "extension", extension: segment };
+    }
+  }
+  if (kind === "file" && segments.at(-1).endsWith(".md")) {
+    return { status: "ok", role: "knowledge" };
+  }
+  return { status: "ok", role: "ordinary" };
+}
 
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
@@ -28668,8 +28696,8 @@ function appendTrailers(message, add) {
   while (end >= 0 && lines[end].trim() === "")
     end--;
   const body = lines.slice(0, end + 1);
-  const sep3 = body.length > 0 ? [""] : [];
-  return [...body, ...sep3, ...additions].join("\n");
+  const sep4 = body.length > 0 ? [""] : [];
+  return [...body, ...sep4, ...additions].join("\n");
 }
 function findTrailerBlock(rawLines) {
   let end = rawLines.length - 1;
@@ -29252,13 +29280,8 @@ function detail(error2) {
   return error2 instanceof Error ? error2.message : String(error2);
 }
 function isIdeaspacePath(path) {
-  const normalized = path.replace(/\\/g, "/");
-  const segments = normalized.split("/");
-  if (normalized.endsWith(".md") || segments.includes("_agent"))
-    return true;
-  const directorySegments = segments.slice(0, -1);
-  const firstInfrastructure = directorySegments.find((segment) => segment.startsWith("_") || segment.toLowerCase() === ".git");
-  return firstInfrastructure === ASSET_DIRECTORY;
+  const classification = classifyRepositoryPath(path.replace(/\\/g, "/"), "file");
+  return classification.status === "ok" && (classification.role === "knowledge" || classification.role === "agent-context" || classification.role === "extension");
 }
 async function stagedIdeaspacePaths(repoRoot) {
   const result = await runGit(repoRoot, ["diff", "--cached", "--name-only"]);
@@ -29462,6 +29485,12 @@ async function collectDocDependencies(repoRoot, docDir) {
   const root = resolve4(repoRoot);
   const start = resolve4(root, docDir);
   const out = [];
+  const startPath = relative2(root, start).replace(/\\/g, "/");
+  if (startPath) {
+    const classification = classifyRepositoryPath(startPath, "directory");
+    if (classification.status !== "ok" || classification.role !== "ordinary")
+      return out;
+  }
   async function walk(dir) {
     let entries;
     try {
@@ -29476,10 +29505,18 @@ async function collectDocDependencies(repoRoot, docDir) {
       if (entry.name.startsWith("."))
         continue;
       const abs = join4(dir, entry.name);
+      const path = relative2(root, abs).replace(/\\/g, "/");
       if (entry.isDir) {
-        if (!SKIP_DIRS.has(entry.name))
+        if (SKIP_DIRS.has(entry.name))
+          continue;
+        const classification = classifyRepositoryPath(path, "directory");
+        if (classification.status === "ok" && classification.role === "ordinary") {
           await walk(abs);
-      } else if (entry.name.endsWith(".md")) {
+        }
+      } else {
+        const classification = classifyRepositoryPath(path, "file");
+        if (classification.status !== "ok" || classification.role !== "knowledge")
+          continue;
         const content = await readFileOrNull2(abs);
         if (!content)
           continue;
@@ -29652,22 +29689,38 @@ var CONTENT_AWARENESS_SECTIONS = [
   "stale-docs",
   "direction-drift"
 ];
-var SKIP_DIRS2 = /* @__PURE__ */ new Set([
-  "_agent",
-  ASSET_DIRECTORY,
-  ...DEFAULT_IGNORED_DIRECTORIES
-]);
+var SKIP_DIRS2 = new Set(DEFAULT_IGNORED_DIRECTORIES);
+function isContentDirectoryName(name) {
+  if (SKIP_DIRS2.has(name))
+    return false;
+  const classification = classifyRepositoryPath(name, "directory");
+  return classification.status === "ok" && classification.role === "ordinary";
+}
 var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 var DEFAULT_MAX_DRIFT = 10;
 async function assembleContentAwareness(opts) {
   const requestedPosition = resolve6(opts.position);
   const position = await fs4.realpath(requestedPosition).catch(() => requestedPosition);
-  const [repoRoot, composed] = await Promise.all([
-    resolveRepoRoot(position),
-    composeContractAlongPath(position)
-  ]);
+  const repoRoot = await resolveRepoRoot(position);
+  if (repoRoot) {
+    const repositoryPath = relative3(repoRoot, position).split(sep2).join("/");
+    if (repositoryPath) {
+      const classification = classifyRepositoryPath(repositoryPath, "directory");
+      if (classification.status !== "ok" || classification.role !== "ordinary")
+        return null;
+    }
+  }
+  const composed = await composeContractAlongPath(position);
   if (!composed.spaceRoot)
     return null;
+  if (!repoRoot) {
+    const spacePath = relative3(composed.spaceRoot, position).split(sep2).join("/");
+    if (spacePath) {
+      const classification = classifyRepositoryPath(spacePath, "directory");
+      if (classification.status !== "ok" || classification.role !== "ordinary")
+        return null;
+    }
+  }
   const base = repoRoot ?? composed.spaceRoot;
   const lastShaPromise = opts.lastSha === void 0 ? repoRoot ? readSeenRef(repoRoot) : Promise.resolve(void 0) : Promise.resolve(opts.lastSha ?? void 0);
   const pathContextPromise = walkPathContext(base, position);
@@ -29928,7 +29981,7 @@ async function listTreeLevel(dir, opts, levelsLeft) {
   } catch {
     return null;
   }
-  const dirs = raw.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
+  const dirs = raw.filter((entry) => entry.isDir && isContentDirectoryName(entry.name)).map((entry) => entry.name).sort();
   const atTop = levelsLeft === opts.depth;
   const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => atTop || entry.name !== "README.md").map((entry) => entry.name).sort();
   if (!dirs.length && !files.length)
@@ -29972,7 +30025,7 @@ async function countMarkdown(dir) {
     if (entry.name.startsWith("."))
       continue;
     if (entry.isDirectory()) {
-      if (SKIP_DIRS2.has(entry.name))
+      if (!isContentDirectoryName(entry.name))
         continue;
       count += await countMarkdown(join6(dir, entry.name));
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
@@ -30312,6 +30365,219 @@ async function readSkill(name) {
   return { name, description: extractDescription(content), content };
 }
 
+// node_modules/@ideaspaces/protocol/dist/root-identity.js
+var CURRENT_ROOT_NODE_ID_PATTERN = /^n_[0-9a-f]{24}$/;
+var ROOT_NODE_ID_PATTERN = /^n_(?:[0-9a-f]{12}|[0-9a-f]{24})$/;
+function parseRootNodeId(value) {
+  if (value === void 0)
+    return { status: "absent" };
+  if (typeof value !== "string")
+    return { status: "invalid", code: "invalid_type" };
+  if (!ROOT_NODE_ID_PATTERN.test(value)) {
+    return { status: "invalid", code: "invalid_format" };
+  }
+  return {
+    status: "valid",
+    rootNodeId: value,
+    format: CURRENT_ROOT_NODE_ID_PATTERN.test(value) ? "current" : "legacy"
+  };
+}
+
+// node_modules/@ideaspaces/protocol/dist/maps.js
+var MAP_DEPTHS = ["name", "summary", "surface", "children", "full"];
+var DEPTHS = new Set(MAP_DEPTHS);
+var ADDRESS_PATTERN = /^[a-z][a-z0-9_]*:.+$/;
+var PIN_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+var HOST_PATTERN = /^(?:\[[0-9a-f:.]+\]|[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)(?::[0-9]+)?$/;
+var URL_PROTOCOLS = /* @__PURE__ */ new Set(["http:", "https:", "ssh:", "git:"]);
+function canonicalizeMapSpace(value) {
+  if (typeof value !== "string" || value.length === 0 || value.trim() !== value) {
+    return invalidSpace();
+  }
+  let host = "";
+  let path = "";
+  if (value.includes("://")) {
+    let url;
+    try {
+      url = new URL(value);
+    } catch {
+      return invalidSpace();
+    }
+    if (!URL_PROTOCOLS.has(url.protocol) || url.search || url.hash || !url.hostname) {
+      return invalidSpace();
+    }
+    const port = normalizedPort(url.protocol, url.port);
+    host = `${url.hostname.toLowerCase()}${port ? `:${port}` : ""}`;
+    path = url.pathname.replace(/^\/+/, "");
+  } else {
+    const canonical = value.match(/^([^/@:\s]+(?::[0-9]+)?)\/(.+)$/);
+    if (canonical) {
+      host = canonical[1].toLowerCase();
+      path = canonical[2];
+    } else {
+      const scp = value.match(/^(?:[^@/:\s]+@)?([^/:\s]+):(.+)$/);
+      if (!scp)
+        return invalidSpace();
+      host = scp[1].toLowerCase();
+      path = scp[2];
+    }
+  }
+  if (!HOST_PATTERN.test(host))
+    return invalidSpace();
+  const normalizedPath = normalizeRemotePath(path);
+  if (normalizedPath === null)
+    return invalidSpace();
+  return { status: "valid", space: `${host}/${normalizedPath}` };
+}
+function parseMap(value) {
+  if (value === void 0)
+    return { status: "absent" };
+  if (!isRecord2(value)) {
+    return { status: "invalid", issues: [{ path: "map", code: "invalid_map_type" }] };
+  }
+  const issues = [];
+  const roots = parseRoots(value.roots, issues);
+  const members = parseMembers(value.members, roots.length, issues);
+  if (issues.length > 0)
+    return { status: "invalid", issues };
+  return { status: "valid", map: { ...value, roots, members } };
+}
+function parseRoots(value, issues) {
+  if (value === void 0)
+    return [];
+  if (!Array.isArray(value)) {
+    issues.push({ path: "map.roots", code: "invalid_roots_type" });
+    return [];
+  }
+  const roots = [];
+  for (let index = 0; index < value.length; index++) {
+    const input = value[index];
+    const base = `map.roots[${index}]`;
+    if (!isRecord2(input)) {
+      issues.push({ path: base, code: "invalid_root_type" });
+      continue;
+    }
+    let space;
+    if ("space" in input) {
+      const normalized = canonicalizeMapSpace(input.space);
+      if (normalized.status === "invalid") {
+        issues.push({ path: `${base}.space`, code: "invalid_space" });
+      } else {
+        space = normalized.space;
+      }
+    }
+    let rootNodeId;
+    if ("root_node_id" in input) {
+      const parsed = parseRootNodeId(input.root_node_id);
+      if (parsed.status !== "valid") {
+        issues.push({ path: `${base}.root_node_id`, code: "invalid_root_node_id" });
+      } else {
+        rootNodeId = parsed.rootNodeId;
+      }
+    }
+    if (!("space" in input) && !("root_node_id" in input)) {
+      issues.push({ path: base, code: "missing_root_identity" });
+    }
+    if (typeof input.sha !== "string" || !PIN_PATTERN.test(input.sha)) {
+      issues.push({ path: `${base}.sha`, code: "invalid_pin" });
+    }
+    roots.push({
+      ...input,
+      ...space === void 0 ? {} : { space },
+      ...rootNodeId === void 0 ? {} : { root_node_id: rootNodeId },
+      sha: typeof input.sha === "string" ? input.sha : ""
+    });
+  }
+  return roots;
+}
+function parseMembers(value, rootCount, issues) {
+  if (value === void 0)
+    return [];
+  if (!Array.isArray(value)) {
+    issues.push({ path: "map.members", code: "invalid_members_type" });
+    return [];
+  }
+  const members = [];
+  for (let index = 0; index < value.length; index++) {
+    const input = value[index];
+    const base = `map.members[${index}]`;
+    if (!isRecord2(input)) {
+      issues.push({ path: base, code: "invalid_member_type" });
+      continue;
+    }
+    const isAddress = "address" in input;
+    const isPosition = "space" in input || "position" in input;
+    if (isAddress === isPosition) {
+      issues.push({ path: base, code: "invalid_member_shape" });
+      continue;
+    }
+    if (isAddress) {
+      if (typeof input.address !== "string" || !ADDRESS_PATTERN.test(input.address)) {
+        issues.push({ path: `${base}.address`, code: "invalid_address" });
+      }
+      if ("name" in input && typeof input.name !== "string") {
+        issues.push({ path: `${base}.name`, code: "invalid_name" });
+      }
+      if ("summary" in input && typeof input.summary !== "string") {
+        issues.push({ path: `${base}.summary`, code: "invalid_summary" });
+      }
+      if ("depth" in input && input.depth !== "name" && input.depth !== "summary") {
+        issues.push({ path: `${base}.depth`, code: "invalid_depth" });
+      }
+      members.push(input);
+      continue;
+    }
+    if (!Number.isInteger(input.space) || input.space < 0 || input.space >= rootCount) {
+      issues.push({ path: `${base}.space`, code: "invalid_root_index" });
+    }
+    if (!isMapPosition(input.position)) {
+      issues.push({ path: `${base}.position`, code: "invalid_position" });
+    }
+    if (typeof input.depth !== "string" || !DEPTHS.has(input.depth)) {
+      issues.push({ path: `${base}.depth`, code: "invalid_depth" });
+    }
+    members.push(input);
+  }
+  return members;
+}
+function isMapPosition(value) {
+  if (value === ".")
+    return true;
+  if (typeof value !== "string" || value.length === 0 || value.startsWith("/") || value.endsWith("/") || value.includes("//") || value.includes("\\") || value.includes("\0")) {
+    return false;
+  }
+  const segments = value.split("/");
+  return !segments.some((segment) => segment === "." || segment === ".." || segment.startsWith("_") || segment.toLowerCase() === ".git");
+}
+function normalizeRemotePath(value) {
+  if (value.length === 0 || /[\s\\?#\0]/.test(value) || value.includes("//")) {
+    return null;
+  }
+  let path = value.replace(/^\/+|\/+$/g, "");
+  if (path.endsWith(".git"))
+    path = path.slice(0, -4);
+  if (!path)
+    return null;
+  const segments = path.split("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === ".."))
+    return null;
+  return segments.join("/");
+}
+function normalizedPort(protocol, port) {
+  if (!port)
+    return "";
+  if (protocol === "http:" && port === "80" || protocol === "https:" && port === "443" || protocol === "ssh:" && port === "22" || protocol === "git:" && port === "9418") {
+    return "";
+  }
+  return port;
+}
+function invalidSpace() {
+  return { status: "invalid", code: "invalid_space" };
+}
+function isRecord2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 // src/capture-ledger.ts
 function key(root, path) {
   return `${root}\0${path}`;
@@ -30353,7 +30619,7 @@ var SessionCaptureLedger = class {
 // src/local-effects-adapter.ts
 import { spawn as spawn2 } from "node:child_process";
 import { realpath } from "node:fs/promises";
-import { isAbsolute as isAbsolute4, relative as relative4, resolve as resolve7, sep as sep2 } from "node:path";
+import { isAbsolute as isAbsolute4, relative as relative4, resolve as resolve7, sep as sep3 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/local-effects-runtime.js
 var import_yaml3 = __toESM(require_dist2(), 1);
@@ -30811,8 +31077,8 @@ async function toPortableRepoPath(input, root, cwd) {
   const invocationDir = await realpath(resolve7(cwd));
   const absolute = isAbsolute4(input) ? resolve7(input) : resolve7(invocationDir, input);
   const rel = relative4(root, absolute);
-  if (!rel || rel === ".." || rel.startsWith(`..${sep2}`) || isAbsolute4(rel)) return null;
-  return rel.split(sep2).join("/");
+  if (!rel || rel === ".." || rel.startsWith(`..${sep3}`) || isAbsolute4(rel)) return null;
+  return rel.split(sep3).join("/");
 }
 async function effectiveGitIdentity(root, git) {
   const [nameResult, emailResult] = await Promise.all([
@@ -30974,6 +31240,18 @@ async function rootAndPath(operation, inputPath, cwd, deps) {
   return { root, path: portable };
 }
 async function runLocalWrite(input, deps) {
+  const parsedMap = parseMap(input.map);
+  if (parsedMap.status === "invalid") {
+    return failure({
+      status: "error",
+      operation: "write_markdown",
+      code: "invalid_map",
+      phase: "preflight",
+      path: input.path,
+      message: "The supplied Map block is invalid.",
+      issues: parsedMap.issues
+    });
+  }
   const cwd = effectiveCwd(input.cwd, deps);
   const location = await rootAndPath("write_markdown", input.path, cwd, deps);
   if ("ok" in location) return location;
@@ -31037,6 +31315,9 @@ async function runLocalWrite(input, deps) {
   if (input.summary) set.summary = input.summary;
   if (input.tags?.length) set.tags = input.tags;
   if (input.attached_to) set.attached_to = input.attached_to;
+  if (parsedMap.status === "valid") {
+    set.map = parsedMap.map;
+  }
   const result = await writeMarkdown(
     {
       operation: "write_markdown",
@@ -31329,6 +31610,26 @@ function planChangeClose(armed, persisted, hasCacheFile) {
 }
 
 // src/tool-parameters.ts
+var mapRoot = external_exports.object({
+  space: external_exports.string().optional().describe("Canonical or normalizable Git remote locator"),
+  root_node_id: external_exports.string().optional().describe("Portable root Node identity"),
+  sha: external_exports.string().describe("Full resolved Git commit object id")
+}).passthrough();
+var mapPositionMember = external_exports.object({
+  space: external_exports.number().int().describe("Zero-based index into map.roots"),
+  position: external_exports.string().describe("Portable repository-relative protocol position, or ."),
+  depth: external_exports.enum(["name", "summary", "surface", "children", "full"])
+}).passthrough();
+var mapAddressMember = external_exports.object({
+  address: external_exports.string().describe("Open type:id address"),
+  name: external_exports.string().optional(),
+  summary: external_exports.string().optional(),
+  depth: external_exports.enum(["name", "summary"]).optional()
+}).passthrough();
+var mapBlock = external_exports.object({
+  roots: external_exports.array(mapRoot),
+  members: external_exports.array(external_exports.union([mapPositionMember, mapAddressMember]))
+}).passthrough();
 var cwdField = external_exports.string().optional().describe(
   "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
 );
@@ -31343,6 +31644,7 @@ var MCP_TOOL_PARAMETERS = {
     summary: external_exports.string().optional().describe("Dense summary for search (Layer 1 frontmatter)"),
     tags: external_exports.array(external_exports.string()).optional(),
     attached_to: external_exports.string().optional().describe("Primary entity binding (e.g. 'hostname:acme.com')"),
+    map: mapBlock.optional().describe("Portable Map block for deliberately capturing this Note as a map-note"),
     if_match: external_exports.string().optional().describe(
       "Content sha from a prior is_write response or is_status. The session retains its full worktree/index/HEAD revision and refuses stale updates unless force."
     ),
@@ -31519,7 +31821,7 @@ function localToolDependencies() {
 }
 server.tool(
   "is_write",
-  "Create or update a Note in-process with Layer 1 frontmatter; stages and tracks the exact path and returns its full revision plus content sha. Use for capture; native Write covers source code and config.",
+  "Create or update a Note in-process with Layer 1 frontmatter and an optional protocol-valid Map block; stages and tracks the exact path and returns its full revision plus content sha. Use for capture; native Write covers source code and config.",
   MCP_TOOL_PARAMETERS.is_write,
   async (input) => {
     const result = await runLocalWrite(input, localToolDependencies());

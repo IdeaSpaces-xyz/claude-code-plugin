@@ -3,7 +3,8 @@ import {
   isIdeaspacePath,
   resolveRepoRoot,
 } from "@ideaspaces/protocol";
-import { dirname, resolve } from "node:path";
+import { realpath } from "node:fs/promises";
+import { basename, dirname, join, relative, resolve } from "node:path";
 
 /**
  * Whether a native write should get an IdeaSpaces capture nudge.
@@ -13,16 +14,29 @@ import { dirname, resolve } from "node:path";
  * deeper fractal `_agent/` inside the same repo still nudges. A nested repo with
  * its own `_agent/` also nudges because both roots resolve to that nested repo.
  */
+async function canonicalExistingPath(path: string): Promise<string> {
+  try {
+    return await realpath(path);
+  } catch {
+    return resolve(path);
+  }
+}
+
 export async function shouldNudgeKnowledgePath(
   filePath: string,
 ): Promise<boolean> {
   const absPath = resolve(filePath);
-  if (!isIdeaspacePath(absPath)) return false;
-
   const agent = await findNearestAgent(dirname(absPath));
   if (agent.source === "none" || !agent.root) return false;
 
   const fileGitRoot = await resolveRepoRoot(dirname(absPath));
+  const classificationRoot = fileGitRoot ?? await canonicalExistingPath(agent.root);
+  const canonicalParent = await canonicalExistingPath(dirname(absPath));
+  const canonicalPath = join(canonicalParent, basename(absPath));
+  const portablePath = relative(classificationRoot, canonicalPath).replace(/\\/g, "/");
+  if (portablePath === ".." || portablePath.startsWith("../") || !isIdeaspacePath(portablePath)) {
+    return false;
+  }
   if (!fileGitRoot) return true;
 
   return (await resolveRepoRoot(agent.root)) === fileGitRoot;

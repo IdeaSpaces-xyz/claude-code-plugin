@@ -24,11 +24,21 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import {
   CHANGE_ID_PATTERN,
   isValidChangeId,
+  parseFrontmatter,
+  parseMap,
   parseTrailers,
   validateSpace,
 } from "@ideaspaces/protocol";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -94,6 +104,39 @@ function lastCommit(): { author: string; message: string } {
   };
 }
 
+function fakePi(): string {
+  const path = join(home, "fake-pi.mjs");
+  writeFileSync(path, `#!/usr/bin/env node
+const args = process.argv.slice(2);
+const index = args.indexOf("--append-system-prompt");
+const orientation = index === -1 ? "" : (args[index + 1] ?? "");
+let buffered = "";
+process.stdin.on("data", (chunk) => {
+  buffered += String(chunk);
+  while (buffered.includes("\\n")) {
+    const split = buffered.indexOf("\\n");
+    const line = buffered.slice(0, split);
+    buffered = buffered.slice(split + 1);
+    if (!line) continue;
+    const command = JSON.parse(line);
+    if (command.type === "get_state") {
+      console.log(JSON.stringify({ type: "response", command: "get_state", success: true, data: { sessionName: "Plugin Map test" } }));
+    }
+    if (command.type === "prompt") {
+      const complete = orientation.includes('kind=position root=0 position="findings/map.md" depth=full');
+      console.log(JSON.stringify({ type: "response", command: "prompt", success: true }));
+      console.log(JSON.stringify({ type: "agent_start" }));
+      console.log(JSON.stringify({ type: "turn_start" }));
+      console.log(JSON.stringify({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: complete ? "captured map available" : "map missing" } }));
+      console.log(JSON.stringify({ type: "agent_end" }));
+    }
+  }
+});
+`);
+  chmodSync(path, 0o755);
+  return path;
+}
+
 beforeAll(async () => {
   home = mkdtempSync(join(tmpdir(), "is-conformance-home-"));
   space = mkdtempSync(join(tmpdir(), "is-conformance-space-"));
@@ -157,6 +200,67 @@ describe("write → commit conformance", () => {
     const raw = readFileSync(join(space, "notes/first-finding.md"), "utf-8");
     expect(raw.startsWith("---\n")).toBe(true);
     expect(raw).toContain("name: First finding");
+  });
+
+  test("bundled MCP capture feeds the same map-note to bundled CLI launch", { timeout: T }, async () => {
+    const path = "notes/territory.md";
+    await call("is_write", {
+      path,
+      content: "# Territory\n\nA durable navigation legend.\n",
+      name: "Territory",
+      summary: "A bounded territory captured from this conversation.",
+      map: {
+        roots: [
+          {
+            space: "https://GitHub.com/Acme/Research.git",
+            sha: "a".repeat(40),
+          },
+        ],
+        members: [{ space: 0, position: "findings/map.md", depth: "full" }],
+      },
+    });
+
+    expect(
+      parseMap(parseFrontmatter(readFileSync(join(space, path), "utf8"))?.map),
+    ).toMatchObject({
+      status: "valid",
+      map: { roots: [{ space: "github.com/Acme/Research" }] },
+    });
+
+    const launched = spawnSync(
+      "node",
+      [
+        CLI,
+        "conversation",
+        "send",
+        "--local",
+        "--context",
+        space,
+        "--conversation",
+        "plugin-map-test",
+        "--message",
+        "What territory is available?",
+        "--map",
+        path,
+        "--ext",
+        "/fake/pi-is-space,/fake/pi-local-context",
+        "--pi-bin",
+        fakePi(),
+      ],
+      { cwd: space, encoding: "utf8", env: baseEnv() },
+    );
+
+    expect(launched.status, launched.stderr || launched.stdout).toBe(0);
+    const events = launched.stdout
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+    expect(events).toContainEqual({ type: "text_delta", delta: "captured map available" });
+    expect(events.some((event) => event.type === "turn_complete")).toBe(true);
+    expect(existsSync(join(space, "Acme"))).toBe(false);
+
+    await call("is_commit", { message: "Capture territory Map", paths: [path], op: "capture" });
   });
 
   test("is_commit commits path-scoped, authored by the person, with agent trailers; Conversation omitted when no session cache", { timeout: T }, async () => {

@@ -32,12 +32,23 @@ Canonical protocols: read `${CLAUDE_PLUGIN_ROOT}/reference/capture.md` and `${CL
 | Situation | Use |
 |---|---|
 | New or updated knowledge Note | `is_write` — creates frontmatter, stages, tracks, and returns `sha` |
+| Durable navigation frame over selected territory | `is_write` with a deliberate protocol `map` block |
 | Purpose / Now / Note-style markdown refinement | `is_write` with a safe-update `sha` |
 | Existing spec/doc/README/agent contract edit | native `Edit` / `Write`, then `is_commit` with explicit paths |
 | File move/delete | native `Bash` (`git mv`, `rm`), then `is_commit` with explicit paths |
 | User asks to share/push after capture | **is-push** / `is_push` |
 
-`is_write` is a capture primitive, not the outer intent. Use it when the target is a Note that should carry Layer 1 frontmatter (`name`, `summary`) and optional Layer 2 fields (`tags`, `attached_to`). Use native edits for README/spec/docs and `_agent/` primitives that are not Note-style files; still end at the same capture boundary with `is_commit` unless the user explicitly wants local draft state.
+`is_write` is a capture primitive, not the outer intent. Use it when the target is a Note that should carry Layer 1 frontmatter (`name`, `summary`), optional Layer 2 fields (`tags`, `attached_to`), and—only for a map-note—an optional protocol `map` block. Use native edits for README/spec/docs and `_agent/` primitives that are not Note-style files; still end at the same capture boundary with `is_commit` unless the user explicitly wants local draft state.
+
+### Map-note captures
+
+A map-note is an ordinary Note whose prose is a useful legend and whose `map` block deliberately selects addresses. Use it when the durable understanding is *what territory matters from this vantage*, not for every Note that happens to mention files.
+
+- Supply the structured `map` argument to `is_write`; never hand-splice YAML into `content`.
+- Git roots need an already-known `space` or `root_node_id` plus an exact full commit SHA. Members carry positions and disclosure `depth`; open addresses may carry name/summary only.
+- Selection is an agreement decision. Do not infer a Map from every file read or tool call.
+- Capture never resolves, clones, or fetches roots. `is_write` validates and canonicalizes the block before touching the file or index.
+- Omitting `map` on a later safe refinement preserves an existing Map. A Map-unaware reader still gets the body legend.
 
 ## How
 

@@ -67,12 +67,13 @@ Use **is-capture** for the outer intent. It decides whether the mechanism is `is
 Use inside capture when the target is a Note. It carries the writing standard and stages the result.
 
 - `is_write path="analysis.md" content="..." name="Analysis" summary="Dense orientation"` — create or update the Note, stage it, and return a content `sha`
-- Optional fields: `tags`, `attached_to`, `if_match`, `force`, `cwd`
+- Optional fields: `tags`, `attached_to`, `map`, `if_match`, `force`, `cwd`
 
-Replace-semantics: callers specify all Layer 1 + 2 fields they want set; existing frontmatter is replaced wholesale. For file moves, deletions, and metadata-only edits, use native `Bash` (`git mv`, `rm`) and `Edit`.
+Preserve-semantics: supplied fields are updated and existing frontmatter fields not supplied remain in place. A structured `map` is validated and canonicalized before write; omitting it preserves an existing Map. For file moves, deletions, and metadata-only edits, use native `Bash` (`git mv`, `rm`) and `Edit`.
 
 Layer 1 (required): `name`, `summary`.
 Layer 2 (optional): `tags`, `attached_to`.
+Map (optional): protocol `roots` + ordered `members`; addresses only, never embedded territory.
 
 Safe update flow:
 
