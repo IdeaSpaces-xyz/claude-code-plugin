@@ -79,6 +79,10 @@ function runOnce(prompt, withPlugin) {
       "-p", prompt,
       "--output-format", "stream-json", "--verbose", "--include-partial-messages",
       "--allowedTools", ...ALLOWED,
+      // --plugin-dir adds a plugin, it does not replace the marketplace install —
+      // the same confound the fidelity probe hit. Every arm disables the installed
+      // copy so the only ideaspaces surface is the one this run declares.
+      "--settings", JSON.stringify({ enabledPlugins: { "ideaspaces@ideaspaces-xyz": false } }),
     ];
     if (withPlugin) args.push("--plugin-dir", PLUGIN ?? pluginDir);
     if (MODEL) args.push("--model", MODEL);
