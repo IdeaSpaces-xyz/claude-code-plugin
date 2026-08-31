@@ -1,10 +1,12 @@
 ---
 name: is-share
 description: >
-  Manage who can access an ideaspace and whether it is public. Use when the user
-  asks to share with a person or team, list or remove recipients, choose
-  Explore/Fork/Collaborate, or make a Space public/private. Do not use for
-  pushing committed captures to the remote; that is is-push.
+  Let someone in — give a person or a team access to this space, or open it to
+  everyone. Use when someone says let her see this, share this with my team,
+  give them access, she needs to get up to speed on this, make it public, let
+  people copy it — or asks who can see it, or to take someone's access away.
+  Access grades: Explore (look around), Fork (take a copy home), Collaborate.
+  Not for sending committed work to the remote; that is is-push.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_auth Read Bash"
 ---
 
