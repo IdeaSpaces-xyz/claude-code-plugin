@@ -134,7 +134,8 @@ The skills invoke this CLI; no global npm install is required.
 | `ideaspaces write <path>` | Create/update a Note with Layer 1 frontmatter; stages it and returns a content sha (`--if-match` for safe updates). |
 | `ideaspaces commit -m <msg> <path>…` | The explicit save — commits only the paths you name (`--all`), never unrelated staged work. Optional `--op` / `--change-id` / `--co-author` / `--conversation` trailers. |
 | `ideaspaces change new [<handle>]` | Mint a `Change-Id` for a decision spanning multiple commits/repos. |
-| `ideaspaces navigate [<path>] [--mark-seen]` | Re-derive orientation at a position (fractal contract + tree + drift); `--json` for the structured block. |
+| `ideaspaces navigate [<path>] [--mark-seen]` | Re-derive bounded orientation at a position (fractal contract + tree + drift); `--json` for the structured block. |
+| `ideaspaces map [<repo>] [--depth full]` | Derive a contract-free local repository Map; full depth is explicit, offline enumeration and dirty/local-only results are non-portable. |
 | `ideaspaces status [--path FILE]` | Git/capture position plus offline root-identity evidence; single-file sha for `--if-match`. |
 | `ideaspaces pull` / `push` | Integrate remote changes / send committed captures (`--dry-run`). |
 | `ideaspaces skills [<name>]` | List the skill catalog, or print one skill's markdown. |
