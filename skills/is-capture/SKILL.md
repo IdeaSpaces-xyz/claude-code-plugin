@@ -47,6 +47,7 @@ A map-note is an ordinary Note whose prose is a useful legend and whose `map` bl
 - Supply the structured `map` argument to `is_write`; never hand-splice YAML into `content`.
 - Git roots need an already-known `space` or `root_node_id` plus an exact full commit SHA. Members carry positions and disclosure `depth`; open addresses may carry name/summary only.
 - Selection is an agreement decision. Do not infer a Map from every file read or tool call.
+- To inspect candidate local territory, run `node "${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js" map <repo> --depth full --json`. This is a working-tree observation, not an automatic capture: review `portable`, `dirty`, and `local_only_paths`, then deliberately select what belongs in the map-note.
 - Capture never resolves, clones, or fetches roots. `is_write` validates and canonicalizes the block before touching the file or index.
 - Omitting `map` on a later safe refinement preserves an existing Map. A Map-unaware reader still gets the body legend.
 

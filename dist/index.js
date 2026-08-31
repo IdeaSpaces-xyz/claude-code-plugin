@@ -29726,7 +29726,7 @@ async function assembleContentAwareness(opts) {
   const pathContextPromise = walkPathContext(base, position);
   const gitPromise = repoRoot ? gitState(repoRoot) : Promise.resolve(null);
   const staleDocsPromise = repoRoot ? collectDocDependencies(repoRoot, repoRoot).then((docs) => staleDocSignals(repoRoot, docs)) : Promise.resolve([]);
-  const treeDepth = Math.min(4, Math.max(1, Math.trunc(opts.treeDepth ?? 1)));
+  const treeDepth = normalizeContentTreeDepth(opts.treeDepth);
   const treeMaxEntries = opts.treeMaxEntries ?? 50;
   const sectionsPromise = lastShaPromise.then((lastSha) => readAwarenessSections({
     root: position,
@@ -29741,7 +29741,8 @@ async function assembleContentAwareness(opts) {
       depth: treeDepth,
       maxEntries: treeMaxEntries,
       summaries: true,
-      summaryLength: opts.summaryExcerptLength ?? 200
+      summaryLength: opts.summaryExcerptLength ?? 200,
+      strict: false
     }
   }));
   const [context, git, staleDocs, sections] = await Promise.all([
@@ -29774,7 +29775,8 @@ async function readAwarenessSections(opts) {
     depth: 1,
     maxEntries: 50,
     summaries: true,
-    summaryLength: summaryExcerptLength
+    summaryLength: summaryExcerptLength,
+    strict: false
   };
   const now = extractNow(contract, nowExcerptLength);
   const contractEntries = stack?.length ? buildStackedContractEntries(stack, summaryExcerptLength) : buildContractEntries(contract, summaryExcerptLength);
@@ -29954,6 +29956,11 @@ function extractNow(contract, max) {
 function truncate(value, max) {
   return value.length <= max ? value : `${value.slice(0, max).trimEnd()}\u2026`;
 }
+function normalizeContentTreeDepth(depth) {
+  if (depth === "full")
+    return "full";
+  return Math.min(4, Math.max(1, Math.trunc(depth ?? 1)));
+}
 async function childSummary(path, isDir, max) {
   try {
     const source = isDir ? join6(path, "README.md") : path;
@@ -29963,27 +29970,29 @@ async function childSummary(path, isDir, max) {
   }
 }
 async function buildTree(root, opts) {
-  const listed = await listTreeLevel(root, opts, opts.depth);
+  const listed = await listTreeLevel(root, opts, opts.depth, true);
   if (!listed)
     return null;
-  const totalMarkdownFiles = await countMarkdown(root);
+  const totalMarkdownFiles = await countMarkdown(root, opts.strict);
   return {
     totalMarkdownFiles,
     entries: listed.entries,
     ...listed.omitted ? { omittedEntries: listed.omitted } : {}
   };
 }
-async function listTreeLevel(dir, opts, levelsLeft) {
+async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
   let raw;
   try {
     const dirents = await fs4.readdir(dir, { withFileTypes: true });
     raw = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
-  } catch {
+  } catch (error2) {
+    if (opts.strict) {
+      throw new Error(`Cannot read Content tree directory ${dir}: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
     return null;
   }
   const dirs = raw.filter((entry) => entry.isDir && isContentDirectoryName(entry.name)).map((entry) => entry.name).sort();
-  const atTop = levelsLeft === opts.depth;
-  const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => atTop || entry.name !== "README.md").map((entry) => entry.name).sort();
+  const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => topLevel || entry.name !== "README.md").map((entry) => entry.name).sort();
   if (!dirs.length && !files.length)
     return null;
   const all = [
@@ -29992,17 +30001,19 @@ async function listTreeLevel(dir, opts, levelsLeft) {
   ];
   const shown = Number.isFinite(opts.maxEntries) ? all.slice(0, opts.maxEntries) : all;
   const omitted = all.length - shown.length;
-  const withSummaries = opts.summaries && atTop;
+  const withSummaries = opts.summaries && (topLevel || opts.depth === "full");
   const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
     const path = join6(dir, name);
-    const entry = isDir ? { name, kind: "directory", markdownFiles: await countMarkdown(path) } : { name, kind: "markdown" };
+    const entry = isDir ? { name, kind: "directory", markdownFiles: await countMarkdown(path, opts.strict) } : { name, kind: "markdown" };
     if (withSummaries) {
       const summary = await childSummary(path, isDir, opts.summaryLength);
       if (summary)
         entry.summary = summary;
     }
-    if (isDir && levelsLeft > 1) {
-      const deeper = await listTreeLevel(path, opts, levelsLeft - 1);
+    const shouldDescend = levelsLeft === "full" || levelsLeft > 1;
+    if (isDir && shouldDescend) {
+      const nextDepth = levelsLeft === "full" ? "full" : levelsLeft - 1;
+      const deeper = await listTreeLevel(path, opts, nextDepth, false);
       if (deeper) {
         entry.children = deeper.entries;
         if (deeper.omitted)
@@ -30013,12 +30024,15 @@ async function listTreeLevel(dir, opts, levelsLeft) {
   }));
   return { entries, omitted };
 }
-async function countMarkdown(dir) {
+async function countMarkdown(dir, strict = false) {
   let count = 0;
   let dirents;
   try {
     dirents = await fs4.readdir(dir, { withFileTypes: true });
-  } catch {
+  } catch (error2) {
+    if (strict) {
+      throw new Error(`Cannot count Content tree directory ${dir}: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
     return 0;
   }
   for (const entry of dirents) {
@@ -30027,7 +30041,7 @@ async function countMarkdown(dir) {
     if (entry.isDirectory()) {
       if (!isContentDirectoryName(entry.name))
         continue;
-      count += await countMarkdown(join6(dir, entry.name));
+      count += await countMarkdown(join6(dir, entry.name), strict);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       count += 1;
     }
