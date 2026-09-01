@@ -1,6 +1,6 @@
 id,job,type,should_trigger,expected_skill,expected_tool,prompt
-implicit-learn-what-this-is,understand,implicit,TRUE,is-space,,"I just installed this ideaspaces thing. What is it, and what sort of stuff can I actually ask you to do with it?"
-contextual-learn-what-this-is,understand,contextual,TRUE,is-space,,A colleague told me to install this and said it'd help me stop losing context between sessions. It's installed. Now what?
+implicit-learn-what-this-is,understand,implicit,TRUE,is-guide,,"I just installed this ideaspaces thing. What is it, and what sort of stuff can I actually ask you to do with it?"
+contextual-learn-what-this-is,understand,contextual,TRUE,is-guide,,A colleague told me to install this and said it'd help me stop losing context between sessions. It's installed. Now what?
 implicit-want-an-assistant,make-an-agent,implicit,TRUE,is-setup,,I'd like to set up an assistant with its own personality that remembers how I like to work. Can you help me do that here?
 explicit-want-an-agent,make-an-agent,explicit,TRUE,is-setup,,Use is-setup to create an agent here called scribe.
 implicit-want-a-knowledge-base,make-a-space,implicit,TRUE,is-setup,,I want to start building up a knowledge base about my customers — somewhere everything we learn about them accumulates instead of getting lost in chats. Where do I start?
@@ -20,10 +20,10 @@ implicit-put-it-online,publish,implicit,TRUE,is-publish,,I want to get at this f
 negative-plain-code-request,none,negative,FALSE,,,This blows up when the account has no owner yet: `function ownerEmail(account) { return account.owner.email.toLowerCase(); }` — fix it.
 negative-push-a-branch,none,negative,FALSE,,,Push my branch to origin so CI picks it up.
 negative-save-a-file,none,negative,FALSE,,,Save this config to vite.config.ts.
-implicit-what-can-i-do,understand,implicit,TRUE,is-space,,What can I do here?
-implicit-how-can-you-help,understand,implicit,TRUE,is-space,,How can you help me
-implicit-how-does-it-work,understand,implicit,TRUE,is-space,,Can you tell me how IdeaSpaces work
-implicit-what-do-i-need,run-requirements,implicit,TRUE,(none today),,What do I need to run IdeaSpaces
+implicit-what-can-i-do,understand,implicit,TRUE,is-guide,,What can I do here?
+implicit-how-can-you-help,understand,implicit,TRUE,is-guide,,How can you help me
+implicit-how-does-it-work,understand,implicit,TRUE,is-guide,,Can you tell me how IdeaSpaces work
+implicit-what-do-i-need,run-requirements,implicit,TRUE,is-guide,,What do I need to run IdeaSpaces
 implicit-executive-assistant,make-an-agent,implicit,TRUE,is-setup,,I need an executive assistant
 implicit-sales-agent,make-an-agent,implicit,TRUE,is-setup,,I’m working on sales agent
 implicit-a-critique,make-an-agent,implicit,TRUE,is-setup,,I need critique who would help me work on my plan
