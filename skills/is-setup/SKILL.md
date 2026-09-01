@@ -1,14 +1,18 @@
 ---
 name: is-setup
 description: >
-  Conversational onboarding for an ideaspace — create a new space or agent here,
-  or open an existing remote space you already have. Create: inspects what's here
-  (greenfield, existing markdowns, old `_agent/`, code repo), confirms, then runs
-  `ideaspaces create` (with `--agent` for an agent vantage plus character
-  elicitation). Open: lists your remote spaces (`is_spaces`), clones the chosen
-  one (`is_clone`), and orients there. Use when: user says "set up a space",
-  "add ideaspaces here", "create an agent", "make me an agent", "get me into my
-  space", "clone my notes", or is a returning user with nothing local yet.
+  Set up the place someone is describing — a space for their knowledge, an agent
+  with a role, or an existing remote space opened here. Use when someone names a
+  thing they want to keep, track, or organize — a knowledge base, a vault for
+  transcripts, a repository for the team's KPIs, notes on a topic, a small CRM —
+  or a helper they want to work with: an assistant, a sales agent, a critique
+  partner. Also on the direct asks: "set up a space", "add ideaspaces here",
+  "create an agent", "get me into my space", "clone my notes", or a returning
+  user with nothing local yet. Create inspects what's here, confirms, then runs
+  `ideaspaces create` (`--agent` for an agent vantage plus character
+  elicitation); Open lists your remote spaces (`is_spaces`) and clones the
+  chosen one (`is_clone`). Not for building software — someone coding an app
+  wants code, not a space.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_auth mcp__plugin_ideaspaces_core__is_spaces mcp__plugin_ideaspaces_core__is_clone mcp__plugin_ideaspaces_core__is_navigate Edit Read Write Glob Bash"
 ---
 

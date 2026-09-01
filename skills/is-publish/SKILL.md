@@ -1,11 +1,13 @@
 ---
 name: is-publish
 description: >
-  Conversational layer over `ideaspaces publish` — host the current folder
-  as a remote ideaspace. Checks frontmatter syntax, login state, existing
-  folder mapping, confirms destination, then runs the bundled CLI. Use when:
-  the user says "publish this", "host it remotely", "make it accessible from
-  another device", or after `/is-setup` finishes.
+  Put this space online — host the current folder as a remote ideaspace, so it
+  outlives this machine and the team or another device can reach it. Use when
+  someone says put it online, publish this, host it, back this up, get this on
+  my other computer, or make it available to the team; or after `/is-setup`
+  finishes. Hosting starts private — who gets in is is-share. Checks
+  frontmatter syntax, login state, and folder mapping, confirms the
+  destination, then runs the bundled CLI.
 allowed-tools: "Read Bash"
 ---
 
