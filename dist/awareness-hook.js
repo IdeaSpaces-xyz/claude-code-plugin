@@ -3994,10 +3994,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep2, value } = collItem;
+        const { start, key, sep: sep3, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep2?.[0],
+          next: key ?? sep3?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -4011,7 +4011,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep2) {
+          if (!keyProps.anchor && !keyProps.tag && !sep3) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -4035,7 +4035,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep2 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep3 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -4051,7 +4051,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep2, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep3, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -4142,7 +4142,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep2 = "";
+        let sep3 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -4156,13 +4156,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep2 + cb;
-              sep2 = "";
+                comment += sep3 + cb;
+              sep3 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep2 += source;
+                sep3 += source;
               hasSpace = true;
               break;
             default:
@@ -4205,18 +4205,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep2, value } = collItem;
+        const { start, key, sep: sep3, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep2?.[0],
+          next: key ?? sep3?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep2 && !value) {
+          if (!props.anchor && !props.tag && !sep3 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -4270,8 +4270,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep2 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep2, null, props, onError);
+        if (!isMap && !sep3 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep3, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -4283,7 +4283,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep2 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep3 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -4294,8 +4294,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep2)
-                for (const st of sep2) {
+              if (sep3)
+                for (const st of sep3) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -4312,7 +4312,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep2, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep3, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -4492,7 +4492,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep2 = "";
+      let sep3 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -4509,24 +4509,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep2 + indent.slice(trimIndent) + content;
-          sep2 = "\n";
+          value += sep3 + indent.slice(trimIndent) + content;
+          sep3 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep2 === " ")
-            sep2 = "\n";
-          else if (!prevMoreIndented && sep2 === "\n")
-            sep2 = "\n\n";
-          value += sep2 + indent.slice(trimIndent) + content;
-          sep2 = "\n";
+          if (sep3 === " ")
+            sep3 = "\n";
+          else if (!prevMoreIndented && sep3 === "\n")
+            sep3 = "\n\n";
+          value += sep3 + indent.slice(trimIndent) + content;
+          sep3 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep2 === "\n")
+          if (sep3 === "\n")
             value += "\n";
           else
-            sep2 = "\n";
+            sep3 = "\n";
         } else {
-          value += sep2 + content;
-          sep2 = " ";
+          value += sep3 + content;
+          sep3 = " ";
           prevMoreIndented = false;
         }
       }
@@ -4708,25 +4708,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep2 = " ";
+      let sep3 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep2 === "\n")
-            res += sep2;
+          if (sep3 === "\n")
+            res += sep3;
           else
-            sep2 = "\n";
+            sep3 = "\n";
         } else {
-          res += sep2 + match[1];
-          sep2 = " ";
+          res += sep3 + match[1];
+          sep3 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep2 + (match?.[1] ?? "");
+      return res + sep3 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -5536,14 +5536,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep2, value }) {
+    function stringifyItem({ start, key, sep: sep3, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep2)
-        for (const st of sep2)
+      if (sep3)
+        for (const st of sep3)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -6710,18 +6710,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep2;
+          let sep3;
           if (scalar.end) {
-            sep2 = scalar.end;
-            sep2.push(this.sourceToken);
+            sep3 = scalar.end;
+            sep3.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep2 = [this.sourceToken];
+            sep3 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep2 }]
+            items: [{ start, key: scalar, sep: sep3 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -6874,15 +6874,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep2 = it.sep;
-                  sep2.push(this.sourceToken);
+                  const sep3 = it.sep;
+                  sep3.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep2 }]
+                    items: [{ start: start2, key, sep: sep3 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -7076,13 +7076,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep2 = fc.end.splice(1, fc.end.length);
-            sep2.push(this.sourceToken);
+            const sep3 = fc.end.splice(1, fc.end.length);
+            sep3.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep2 }]
+              items: [{ start, key: fc, sep: sep3 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -7446,7 +7446,7 @@ async function composeContractAlongPath(position) {
 
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 import { promises as fs4 } from "node:fs";
-import { join as join4, relative as relative3, resolve as resolve4 } from "node:path";
+import { join as join4, relative as relative3, resolve as resolve4, sep as sep2 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
@@ -7540,6 +7540,37 @@ function summarizeMarkdown(content) {
     return line;
   }
   return null;
+}
+
+// node_modules/@ideaspaces/protocol/dist/repository-path.js
+var AGENT_DIRECTORY = "_agent";
+function classifyRepositoryPath(path, kind) {
+  if (kind !== "file" && kind !== "directory") {
+    return { status: "invalid", code: "invalid_kind" };
+  }
+  if (typeof path !== "string" || path.length === 0 || path.startsWith("/") || path.endsWith("/") || path.includes("//") || path.includes("\\") || path.includes("\0")) {
+    return { status: "invalid", code: "invalid_path" };
+  }
+  const segments = path.split("/");
+  if (segments.some((segment) => segment === "." || segment === "..")) {
+    return { status: "invalid", code: "invalid_path" };
+  }
+  const directorySegments = kind === "directory" ? segments : segments.slice(0, -1);
+  for (const segment of directorySegments) {
+    if (segment.toLowerCase() === ".git") {
+      return { status: "ok", role: "reserved" };
+    }
+    if (segment.startsWith("_")) {
+      if (segment === AGENT_DIRECTORY) {
+        return { status: "ok", role: "agent-context" };
+      }
+      return { status: "ok", role: "extension", extension: segment };
+    }
+  }
+  if (kind === "file" && segments.at(-1).endsWith(".md")) {
+    return { status: "ok", role: "knowledge" };
+  }
+  return { status: "ok", role: "ordinary" };
 }
 
 // node_modules/@ideaspaces/protocol/dist/git.js
@@ -7758,6 +7789,12 @@ async function collectDocDependencies(repoRoot, docDir) {
   const root = resolve3(repoRoot);
   const start = resolve3(root, docDir);
   const out = [];
+  const startPath = relative2(root, start).replace(/\\/g, "/");
+  if (startPath) {
+    const classification = classifyRepositoryPath(startPath, "directory");
+    if (classification.status !== "ok" || classification.role !== "ordinary")
+      return out;
+  }
   async function walk(dir) {
     let entries;
     try {
@@ -7772,10 +7809,18 @@ async function collectDocDependencies(repoRoot, docDir) {
       if (entry.name.startsWith("."))
         continue;
       const abs = join3(dir, entry.name);
+      const path = relative2(root, abs).replace(/\\/g, "/");
       if (entry.isDir) {
-        if (!SKIP_DIRS.has(entry.name))
+        if (SKIP_DIRS.has(entry.name))
+          continue;
+        const classification = classifyRepositoryPath(path, "directory");
+        if (classification.status === "ok" && classification.role === "ordinary") {
           await walk(abs);
-      } else if (entry.name.endsWith(".md")) {
+        }
+      } else {
+        const classification = classifyRepositoryPath(path, "file");
+        if (classification.status !== "ok" || classification.role !== "knowledge")
+          continue;
         const content = await readFileOrNull2(abs);
         if (!content)
           continue;
@@ -7900,24 +7945,44 @@ var CONTENT_AWARENESS_SECTIONS = [
   "stale-docs",
   "direction-drift"
 ];
-var SKIP_DIRS2 = /* @__PURE__ */ new Set(["_agent", ...DEFAULT_IGNORED_DIRECTORIES]);
+var SKIP_DIRS2 = new Set(DEFAULT_IGNORED_DIRECTORIES);
+function isContentDirectoryName(name) {
+  if (SKIP_DIRS2.has(name))
+    return false;
+  const classification = classifyRepositoryPath(name, "directory");
+  return classification.status === "ok" && classification.role === "ordinary";
+}
 var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 var DEFAULT_MAX_DRIFT = 10;
 async function assembleContentAwareness(opts) {
   const requestedPosition = resolve4(opts.position);
   const position = await fs4.realpath(requestedPosition).catch(() => requestedPosition);
-  const [repoRoot, composed] = await Promise.all([
-    resolveRepoRoot(position),
-    composeContractAlongPath(position)
-  ]);
+  const repoRoot = await resolveRepoRoot(position);
+  if (repoRoot) {
+    const repositoryPath = relative3(repoRoot, position).split(sep2).join("/");
+    if (repositoryPath) {
+      const classification = classifyRepositoryPath(repositoryPath, "directory");
+      if (classification.status !== "ok" || classification.role !== "ordinary")
+        return null;
+    }
+  }
+  const composed = await composeContractAlongPath(position);
   if (!composed.spaceRoot)
     return null;
+  if (!repoRoot) {
+    const spacePath = relative3(composed.spaceRoot, position).split(sep2).join("/");
+    if (spacePath) {
+      const classification = classifyRepositoryPath(spacePath, "directory");
+      if (classification.status !== "ok" || classification.role !== "ordinary")
+        return null;
+    }
+  }
   const base = repoRoot ?? composed.spaceRoot;
   const lastShaPromise = opts.lastSha === void 0 ? repoRoot ? readSeenRef(repoRoot) : Promise.resolve(void 0) : Promise.resolve(opts.lastSha ?? void 0);
   const pathContextPromise = walkPathContext(base, position);
   const gitPromise = repoRoot ? gitState(repoRoot) : Promise.resolve(null);
   const staleDocsPromise = repoRoot ? collectDocDependencies(repoRoot, repoRoot).then((docs) => staleDocSignals(repoRoot, docs)) : Promise.resolve([]);
-  const treeDepth = Math.min(4, Math.max(1, Math.trunc(opts.treeDepth ?? 1)));
+  const treeDepth = normalizeContentTreeDepth(opts.treeDepth);
   const treeMaxEntries = opts.treeMaxEntries ?? 50;
   const sectionsPromise = lastShaPromise.then((lastSha) => readAwarenessSections({
     root: position,
@@ -7932,7 +7997,8 @@ async function assembleContentAwareness(opts) {
       depth: treeDepth,
       maxEntries: treeMaxEntries,
       summaries: true,
-      summaryLength: opts.summaryExcerptLength ?? 200
+      summaryLength: opts.summaryExcerptLength ?? 200,
+      strict: false
     }
   }));
   const [context, git, staleDocs, sections] = await Promise.all([
@@ -7965,7 +8031,8 @@ async function readAwarenessSections(opts) {
     depth: 1,
     maxEntries: 50,
     summaries: true,
-    summaryLength: summaryExcerptLength
+    summaryLength: summaryExcerptLength,
+    strict: false
   };
   const now = extractNow(contract, nowExcerptLength);
   const contractEntries = stack?.length ? buildStackedContractEntries(stack, summaryExcerptLength) : buildContractEntries(contract, summaryExcerptLength);
@@ -8145,6 +8212,11 @@ function extractNow(contract, max) {
 function truncate(value, max) {
   return value.length <= max ? value : `${value.slice(0, max).trimEnd()}\u2026`;
 }
+function normalizeContentTreeDepth(depth) {
+  if (depth === "full")
+    return "full";
+  return Math.min(4, Math.max(1, Math.trunc(depth ?? 1)));
+}
 async function childSummary(path, isDir, max) {
   try {
     const source = isDir ? join4(path, "README.md") : path;
@@ -8154,27 +8226,29 @@ async function childSummary(path, isDir, max) {
   }
 }
 async function buildTree(root, opts) {
-  const listed = await listTreeLevel(root, opts, opts.depth);
+  const listed = await listTreeLevel(root, opts, opts.depth, true);
   if (!listed)
     return null;
-  const totalMarkdownFiles = await countMarkdown(root);
+  const totalMarkdownFiles = await countMarkdown(root, opts.strict);
   return {
     totalMarkdownFiles,
     entries: listed.entries,
     ...listed.omitted ? { omittedEntries: listed.omitted } : {}
   };
 }
-async function listTreeLevel(dir, opts, levelsLeft) {
+async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
   let raw;
   try {
     const dirents = await fs4.readdir(dir, { withFileTypes: true });
     raw = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
-  } catch {
+  } catch (error) {
+    if (opts.strict) {
+      throw new Error(`Cannot read Content tree directory ${dir}: ${error instanceof Error ? error.message : String(error)}`);
+    }
     return null;
   }
-  const dirs = raw.filter((entry) => entry.isDir && !SKIP_DIRS2.has(entry.name)).map((entry) => entry.name).sort();
-  const atTop = levelsLeft === opts.depth;
-  const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => atTop || entry.name !== "README.md").map((entry) => entry.name).sort();
+  const dirs = raw.filter((entry) => entry.isDir && isContentDirectoryName(entry.name)).map((entry) => entry.name).sort();
+  const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => topLevel || entry.name !== "README.md").map((entry) => entry.name).sort();
   if (!dirs.length && !files.length)
     return null;
   const all = [
@@ -8183,17 +8257,19 @@ async function listTreeLevel(dir, opts, levelsLeft) {
   ];
   const shown = Number.isFinite(opts.maxEntries) ? all.slice(0, opts.maxEntries) : all;
   const omitted = all.length - shown.length;
-  const withSummaries = opts.summaries && atTop;
+  const withSummaries = opts.summaries && (topLevel || opts.depth === "full");
   const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
     const path = join4(dir, name);
-    const entry = isDir ? { name, kind: "directory", markdownFiles: await countMarkdown(path) } : { name, kind: "markdown" };
+    const entry = isDir ? { name, kind: "directory", markdownFiles: await countMarkdown(path, opts.strict) } : { name, kind: "markdown" };
     if (withSummaries) {
       const summary = await childSummary(path, isDir, opts.summaryLength);
       if (summary)
         entry.summary = summary;
     }
-    if (isDir && levelsLeft > 1) {
-      const deeper = await listTreeLevel(path, opts, levelsLeft - 1);
+    const shouldDescend = levelsLeft === "full" || levelsLeft > 1;
+    if (isDir && shouldDescend) {
+      const nextDepth = levelsLeft === "full" ? "full" : levelsLeft - 1;
+      const deeper = await listTreeLevel(path, opts, nextDepth, false);
       if (deeper) {
         entry.children = deeper.entries;
         if (deeper.omitted)
@@ -8204,21 +8280,24 @@ async function listTreeLevel(dir, opts, levelsLeft) {
   }));
   return { entries, omitted };
 }
-async function countMarkdown(dir) {
+async function countMarkdown(dir, strict = false) {
   let count = 0;
   let dirents;
   try {
     dirents = await fs4.readdir(dir, { withFileTypes: true });
-  } catch {
+  } catch (error) {
+    if (strict) {
+      throw new Error(`Cannot count Content tree directory ${dir}: ${error instanceof Error ? error.message : String(error)}`);
+    }
     return 0;
   }
   for (const entry of dirents) {
     if (entry.name.startsWith("."))
       continue;
     if (entry.isDirectory()) {
-      if (SKIP_DIRS2.has(entry.name))
+      if (!isContentDirectoryName(entry.name))
         continue;
-      count += await countMarkdown(join4(dir, entry.name));
+      count += await countMarkdown(join4(dir, entry.name), strict);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       count += 1;
     }

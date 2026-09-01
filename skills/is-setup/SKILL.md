@@ -1,14 +1,18 @@
 ---
 name: is-setup
 description: >
-  Conversational onboarding for an ideaspace — create a new space or agent here,
-  or open an existing remote space you already have. Create: inspects what's here
-  (greenfield, existing markdowns, old `_agent/`, code repo), confirms, then runs
-  `ideaspaces create` (with `--agent` for an agent vantage plus character
-  elicitation). Open: lists your remote spaces (`is_spaces`), clones the chosen
-  one (`is_clone`), and orients there. Use when: user says "set up a space",
-  "add ideaspaces here", "create an agent", "make me an agent", "get me into my
-  space", "clone my notes", or is a returning user with nothing local yet.
+  Set up the place someone is describing — a space for their knowledge, an agent
+  with a role, or an existing remote space opened here. Use when someone names a
+  thing they want to keep, track, or organize — a knowledge base, a vault for
+  transcripts, a repository for the team's KPIs, notes on a topic, a small CRM —
+  or a helper they want to work with: an assistant, a sales agent, a critique
+  partner. Also on the direct asks: "set up a space", "add ideaspaces here",
+  "create an agent", "get me into my space", "clone my notes", or a returning
+  user with nothing local yet. Create inspects what's here, confirms, then runs
+  `ideaspaces create` (`--agent` for an agent vantage plus character
+  elicitation); Open lists your remote spaces (`is_spaces`) and clones the
+  chosen one (`is_clone`). Not for building software — someone coding an app
+  wants code, not a space.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_auth mcp__plugin_ideaspaces_core__is_spaces mcp__plugin_ideaspaces_core__is_clone mcp__plugin_ideaspaces_core__is_navigate Edit Read Write Glob Bash"
 ---
 
@@ -106,7 +110,7 @@ For a code repo where the user wants shared (committed) `_agent/`, add `--shared
 node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create --yes --shared
 ```
 
-The CLI writes the files (`_agent/foundation.md`, `_agent/guide.md`, `CLAUDE.md` or `CLAUDE.local.md`, `.gitattributes`, `.gitignore` defaults) first, then git (init + initial commit) as a **best-effort finalize**. If git is missing or its identity isn't configured, the space is still created — just **unversioned** — and the CLI says so and prints the exact `git init …` commands to add history later. **Relay the CLI's own stdout; don't assume a commit happened.**
+The CLI writes `_agent/foundation.md`, `_agent/guide.md`, `CLAUDE.md` (or `CLAUDE.local.md`), `.gitattributes`, and `.gitignore` defaults first. A shared scaffold mints portable `root_node_id` into the foundation before login; a code repo's private gitignored `_agent/` remains unstamped. Git init + the exact-path initial commit are a **best-effort finalize**. If Git is unavailable, the Space still exists with local identity but no version history, and the CLI prints the recovery commands. **Relay the CLI's own stdout; don't assume a commit happened.**
 
 **Why seed-only:** the scaffolded foundation explains its own shape — the seed names the emergent files, and the drift rule fires from the files themselves. Nothing to restate here.
 
@@ -118,7 +122,7 @@ For each of these, draw the content out and write the file when there's real con
 2. **Now** — *"What are you working on right now?"* Single paragraph becomes `_agent/now.md`.
 3. **Next** — *"What's queued after now?"* Optional. Vague is OK.
 
-Use `is_write` for these (Layer 1 frontmatter — `name`, `summary`). Don't write Purpose *for* the user — elicit and reflect back; the space's own capture rule governs the boundary. After each capture, commit it as its own capture commit with `is_commit` using the explicit path (or `all: true` only for reviewed staged knowledge). Never use a broad git commit that could sweep unrelated staged work.
+Use `is_write` for these (Layer 1 frontmatter — `name`, `summary`). Don't write Purpose *for* the user — elicit and reflect back; the space's own capture rule governs the boundary. After each capture, commit it as its own capture commit with `is_commit` using the explicit path (or `all: true` for paths captured by this MCP session). Never use a broad git commit that could sweep unrelated staged work.
 
 ## 5. Offer publish
 

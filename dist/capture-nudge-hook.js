@@ -51,6 +51,37 @@ async function readContract(agentDir) {
   return entries;
 }
 
+// node_modules/@ideaspaces/protocol/dist/repository-path.js
+var AGENT_DIRECTORY = "_agent";
+function classifyRepositoryPath(path, kind) {
+  if (kind !== "file" && kind !== "directory") {
+    return { status: "invalid", code: "invalid_kind" };
+  }
+  if (typeof path !== "string" || path.length === 0 || path.startsWith("/") || path.endsWith("/") || path.includes("//") || path.includes("\\") || path.includes("\0")) {
+    return { status: "invalid", code: "invalid_path" };
+  }
+  const segments = path.split("/");
+  if (segments.some((segment) => segment === "." || segment === "..")) {
+    return { status: "invalid", code: "invalid_path" };
+  }
+  const directorySegments = kind === "directory" ? segments : segments.slice(0, -1);
+  for (const segment of directorySegments) {
+    if (segment.toLowerCase() === ".git") {
+      return { status: "ok", role: "reserved" };
+    }
+    if (segment.startsWith("_")) {
+      if (segment === AGENT_DIRECTORY) {
+        return { status: "ok", role: "agent-context" };
+      }
+      return { status: "ok", role: "extension", extension: segment };
+    }
+  }
+  if (kind === "file" && segments.at(-1).endsWith(".md")) {
+    return { status: "ok", role: "knowledge" };
+  }
+  return { status: "ok", role: "ordinary" };
+}
+
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 function runGit(repoRoot, args) {
@@ -69,18 +100,32 @@ async function resolveRepoRoot(cwd) {
   return result.ok ? result.out.trim() || null : null;
 }
 function isIdeaspacePath(path) {
-  const normalized = path.replace(/\\/g, "/");
-  return normalized.endsWith(".md") || normalized.split("/").includes("_agent");
+  const classification = classifyRepositoryPath(path.replace(/\\/g, "/"), "file");
+  return classification.status === "ok" && (classification.role === "knowledge" || classification.role === "agent-context" || classification.role === "extension");
 }
 
 // src/capture-nudge.ts
-import { dirname as dirname2, resolve as resolve2 } from "node:path";
+import { realpath } from "node:fs/promises";
+import { basename, dirname as dirname2, join as join2, relative, resolve as resolve2 } from "node:path";
+async function canonicalExistingPath(path) {
+  try {
+    return await realpath(path);
+  } catch {
+    return resolve2(path);
+  }
+}
 async function shouldNudgeKnowledgePath(filePath) {
   const absPath = resolve2(filePath);
-  if (!isIdeaspacePath(absPath)) return false;
   const agent = await findNearestAgent(dirname2(absPath));
   if (agent.source === "none" || !agent.root) return false;
   const fileGitRoot = await resolveRepoRoot(dirname2(absPath));
+  const classificationRoot = fileGitRoot ?? await canonicalExistingPath(agent.root);
+  const canonicalParent = await canonicalExistingPath(dirname2(absPath));
+  const canonicalPath = join2(canonicalParent, basename(absPath));
+  const portablePath = relative(classificationRoot, canonicalPath).replace(/\\/g, "/");
+  if (portablePath === ".." || portablePath.startsWith("../") || !isIdeaspacePath(portablePath)) {
+    return false;
+  }
   if (!fileGitRoot) return true;
   return await resolveRepoRoot(agent.root) === fileGitRoot;
 }

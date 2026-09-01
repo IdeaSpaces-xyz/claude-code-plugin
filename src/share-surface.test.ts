@@ -11,14 +11,18 @@ function read(relative: string): string {
 }
 
 describe("recipient-shaped Share distribution", () => {
-  it("keeps the plugin release and vendored CLI coordinate explicit", () => {
+  it("keeps the plugin release and vendored runtime coordinates explicit", () => {
     const pkg = JSON.parse(read("package.json"));
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.3.11");
-    expect(plugin.version).toBe("0.3.11");
-    expect(vendor.cli.commit).toBe("88e451852caec6946cac2c2bea641344ede935b2");
+    expect(pkg.version).toBe("0.3.24");
+    expect(plugin.version).toBe("0.3.24");
+    expect(vendor.cli.commit).toBe("5e34fed47e9ebd85c201a2ee41537ca7a0e72cab");
+    expect(vendor["mcp-server"].commit).toBe("dea25501e398f5a5277685fc067a9ca7a2a0c242");
+    expect(vendor.cli.protocolPin).toBe(
+      "github:IdeaSpaces-xyz/ideaspace-protocol#075cb7e326760614d62cb2236bccf0eaba62fa12",
+    );
   });
 
   it("ships the people, teams, and visibility help through the bundled CLI", () => {
@@ -32,12 +36,16 @@ describe("recipient-shaped Share distribution", () => {
     expect(help).toContain("--grade collaborate");
     expect(help).toContain("share visibility public");
     expect(help).toContain("share visibility private");
+    expect(read("skills/is-share/SKILL.md")).toContain(
+      "anyone may View and materialize a local Fork without an account",
+    );
     expect(help).not.toContain("share <invite|");
     expect(help).not.toContain("set-access");
   });
 
   it("routes recipient access through is-share rather than is-push", () => {
     const share = read("skills/is-share/SKILL.md");
+    const fork = read("skills/is-fork/SKILL.md");
     const push = read("skills/is-push/SKILL.md");
 
     expect(share).toContain("share person");
@@ -46,6 +54,10 @@ describe("recipient-shaped Share distribution", () => {
     expect(share).toContain("${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js");
     expect(share).toContain("there is no\nnative `is_share` tool");
     expect(share).toContain("Never ask for internal user, organization, Grant, userset, or repository");
+    expect(fork).toContain('"${CLI[@]}" fork "<space-url>" "<destination>"');
+    expect(fork).toContain('"${CLI[@]}" update --yes');
+    expect(fork).toContain("A public source remains account-free");
+    expect(fork).toContain("Publishing is the account boundary;\nFork itself is not");
     expect(push).toContain("Push is not access sharing");
     expect(push).toContain("belong to **is-share**");
   });

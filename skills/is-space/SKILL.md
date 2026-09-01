@@ -67,12 +67,13 @@ Use **is-capture** for the outer intent. It decides whether the mechanism is `is
 Use inside capture when the target is a Note. It carries the writing standard and stages the result.
 
 - `is_write path="analysis.md" content="..." name="Analysis" summary="Dense orientation"` — create or update the Note, stage it, and return a content `sha`
-- Optional fields: `tags`, `attached_to`, `if_match`, `force`, `cwd`
+- Optional fields: `tags`, `attached_to`, `map`, `if_match`, `force`, `cwd`
 
-Replace-semantics: callers specify all Layer 1 + 2 fields they want set; existing frontmatter is replaced wholesale. For file moves, deletions, and metadata-only edits, use native `Bash` (`git mv`, `rm`) and `Edit`.
+Preserve-semantics: supplied fields are updated and existing frontmatter fields not supplied remain in place. A structured `map` is validated and canonicalized before write; omitting it preserves an existing Map. For file moves, deletions, and metadata-only edits, use native `Bash` (`git mv`, `rm`) and `Edit`.
 
 Layer 1 (required): `name`, `summary`.
 Layer 2 (optional): `tags`, `attached_to`.
+Map (optional): protocol `roots` + ordered `members`; addresses only, never embedded territory.
 
 Safe update flow:
 
@@ -89,7 +90,7 @@ Safe update flow:
 
 Use inside capture after user confirmation:
 
-- `is_commit message="Capture decision" all=true` — commit all reviewed staged knowledge (markdown + `_agent/`)
+- `is_commit message="Capture decision" all=true` — commit only paths captured by this MCP session's `is_write` calls
 - `is_commit message="Capture decision" paths=["notes/decision.md"]` — commit explicit paths
 
 It never sweeps unrelated staged user work into the capture commit.
@@ -114,7 +115,7 @@ The default is the MCP server's launch directory.
 
 Sync is opt-in. The plugin works locally without auth.
 
-To host a space remotely after login, use `/is-publish` or run `ideaspaces publish` from inside the space directory. It creates a server-side bare repo, sets the local `user.email` to the OAuth-resolved identity, and pushes. Folder ↔ repo mapping persists at `~/.ideaspaces/spaces.json` so re-publishing from the same dir reuses the existing remote.
+A shared Space created by the current CLI already carries portable `root_node_id` before login; private gitignored code-repo context remains unstamped. A public, copy-enabled Space can come home without an account through `ideaspaces fork <space-url> [dir]`: the CLI creates one independent unpublished commit with fresh identity, no source history, and no remote. To host either kind of local Space, use `/is-publish` or run `ideaspaces publish` from its root. First publish asks Keeper to adopt the committed declaration exactly, sets repo-local Git attribution, and pushes. Later publication reuses the same verified binding; drift refuses, and `--force` never forks or rekeys.
 
 ## Native tools for the rest
 

@@ -16,6 +16,7 @@ The [protocol](https://github.com/IdeaSpaces-xyz/ideaspace-protocol) defines the
 - **Awareness on arrival** — Claude reads the active `_agent/` agreement, current direction, tree, and recent movement.
 - **Deliberate capture** — when understanding crystallizes, Claude proposes preserving it, stages the agreed draft, and commits only after explicit confirmation.
 - **Knowledge that compounds** — decisions and context become ordinary Markdown rather than remaining trapped in transcripts.
+- **Portable map-notes** — capture a curated, pinned navigation frame that another local agent can launch over without fetching its roots.
 - **Explicit history** — commits preserve authorship, agent contribution, conversation provenance, and multi-commit Changes.
 - **Optional collaboration** — work fully offline, then publish, push, or pull when you want remote access.
 
@@ -100,12 +101,14 @@ Once installed, just start working — the plugin orients your agent at the star
   node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create my-space --yes
   ```
 - **Capture as you go** — when a decision or insight lands, the agent proposes writing it down. You confirm.
+- **Take a public Space home** — `ideaspaces fork <space-url> [dir]` materializes a copy-enabled Space locally without an account, source history, or hosted destination.
 - **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device. Optional; everything works fully offline without it.
 - **Choose who can use it** — say *"share this with alice@example.com for Explore"*, *"share with team acme.com for Collaborate"*, or *"make this public"* (`/is-share`).
+- **Ask and reply from your local agent** — say *"check my Inbox"* or *"ask @alice about this Space"* (`/is-inbox`).
 
-Eight skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-shape`, `is-space`, `is-publish`, `is-share`, `is-push`, `is-pull`.
+Eleven skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-capture`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-inbox`, `is-push`, `is-pull`. Most of the time you won't type them — saying what you want (*"write this down"*, *"note this"*) reaches `is-capture` the same way.
 
-Three more run on the agent's initiative rather than yours, so they won't appear in that menu: `is-capture` offers to write a Note when something crystallizes, `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how Notes get written. You reach them by saying what you want — *"capture this"*, *"has our direction changed?"* — not by typing a command.
+Two more run on the agent's initiative rather than yours, so they won't appear in that menu: `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how Notes get written. You reach them by saying what you want — *"has our direction changed?"* — not by typing a command.
 
 ---
 
@@ -125,19 +128,23 @@ The skills invoke this CLI; no global npm install is required.
 
 | Command | What |
 |---|---|
-| `ideaspaces create [name]` | Scaffold the seed `_agent/` contract, `CLAUDE.md`, git defaults, and initial commit. |
+| `ideaspaces create [name]` | Scaffold the seed contract and mint portable root identity before login (except private gitignored code-repo context). |
+| `ideaspaces fork <space-url> [dir]` | Materialize a copy-enabled Space as one independent unpublished local commit, without an account or source history. |
+| `ideaspaces update [--yes]` | Preview or apply account-optional source updates without displacing local work. |
 | `ideaspaces write <path>` | Create/update a Note with Layer 1 frontmatter; stages it and returns a content sha (`--if-match` for safe updates). |
 | `ideaspaces commit -m <msg> <path>…` | The explicit save — commits only the paths you name (`--all`), never unrelated staged work. Optional `--op` / `--change-id` / `--co-author` / `--conversation` trailers. |
 | `ideaspaces change new [<handle>]` | Mint a `Change-Id` for a decision spanning multiple commits/repos. |
-| `ideaspaces navigate [<path>] [--mark-seen]` | Re-derive orientation at a position (fractal contract + tree + drift); `--json` for the structured block. |
-| `ideaspaces status [--path FILE]` | Git position + plugin-tracked captures awaiting commit; single-file sha for `--if-match`. |
+| `ideaspaces navigate [<path>] [--mark-seen]` | Re-derive bounded orientation at a position (fractal contract + tree + drift); `--json` for the structured block. |
+| `ideaspaces map [<repo>] [--depth full]` | Derive a contract-free local repository Map; full depth is explicit, offline enumeration and dirty/local-only results are non-portable. |
+| `ideaspaces status [--path FILE]` | Git/capture position plus offline root-identity evidence; single-file sha for `--if-match`. |
 | `ideaspaces pull` / `push` | Integrate remote changes / send committed captures (`--dry-run`). |
 | `ideaspaces skills [<name>]` | List the skill catalog, or print one skill's markdown. |
 | `ideaspaces login` | Save optional remote credentials. |
-| `ideaspaces publish` | Create/reuse a remote IdeaSpaces repo and push the current branch. |
+| `ideaspaces publish` | Adopt the committed local identity on first publish, or reuse the verified hosted binding. |
 | `ideaspaces share person|team|list|remove|visibility` | Manage recipients, Explore/Fork/Collaborate grades, and public/private visibility. |
+| `ideaspaces inbox list|read|send|reply` | Exchange person-accountable questions and replies about exact shared Content. |
 
-`publish` preflights tracked markdown frontmatter before pushing.
+`fork` validates the complete bounded snapshot before touching its destination and creates no remote or hosted metadata. `update` uses the same credential-optional snapshot boundary, preserves local work through a three-way plan, and requires `--yes` to apply. `publish` later evaluates foundation/origin/registry identity before network mutation, refuses uncommitted declaration drift, and preflights tracked Markdown before pushing. `--force` never forks or rekeys a Space.
 
 ### MCP tools
 
@@ -145,10 +152,10 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 
 | Tool | What |
 |---|---|
-| `is_write` | Create/update a Note (Layer 1 frontmatter); stages it and returns a content sha. `if_match` for safe updates. |
-| `is_commit` | The explicit save — commits only the paths you name, never the user's other staged work. Auto-stamps attribution trailers (agent, session, open Change). |
+| `is_write` | Create/update a Note in-process, optionally with a validated protocol `map` block; stages and tracks its full revision while retaining `sha` for safe-update compatibility. |
+| `is_commit` | The explicit save — commits named paths, or only this MCP session's captures with `all`; never adopts other staged work. Auto-stamps attribution trailers. |
 | `is_change_open` / `is_change_close` | Open/close a Change — a `Change-Id` stamped on every `is_commit` for one decision, across files and repos. |
-| `is_status` | Capture state: git position + tracked captures, or a single file's sha for `if_match`. |
+| `is_status` | Capture state: git position + session captures, or one path's full revision and `sha` compatibility token. |
 | `is_navigate` | Re-derive orientation at a position — the fractal `_agent` contract (foundation + deepest guide/purpose/now), tree, git-state, and drift. Read-only. |
 | `is_pull` | Integrate remote changes into the local space; never pushes; refuses on a dirty/uncommitted tree. |
 | `is_push` | Send committed captures to the remote; never pulls; refuses when behind — pull first. |
@@ -158,7 +165,7 @@ The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, 
 
 Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
 
-MCP stays thin: portable local reads use the protocol in-process, while platform and write verbs shell the bundled CLI with `--json`. Shared shape stays in the protocol; harness lifecycle and presentation stay on the surface. Share is intentionally CLI-backed through `is-share` in this release; there is no native `is_share` tool.
+MCP stays thin: portable local reads, writes, commits, and Change minting use the protocol in-process; platform and transport flows use the bundled CLI. Shared shape stays in the protocol; the session capture ledger and presentation stay on the surface. Fork and Share remain CLI-backed rather than becoming duplicate native tools.
 
 ### Skills
 
@@ -166,17 +173,19 @@ User-invocable (they appear when you type `/`):
 
 - **is-setup** — conversational layer over `ideaspaces create`
 - **is-orient** — orient inside a space: where are we, what's active, what changed
+- **is-capture** — write it down so it is not lost: a Note when conversation crystallizes
 - **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
+- **is-fork** — conversational layer over account-free local Fork and maintained source updates
 - **is-publish** — conversational layer over `ideaspaces publish`
 - **is-share** — manage people, teams, Explore/Fork/Collaborate grades, and public/private visibility
+- **is-inbox** — ask, read, and reply through person-accountable exchanges about shared Content
 - **is-push** — send committed captures to the remote
 - **is-pull** — integrate remote changes into the local space
 
 Model-triggered only — `user-invocable: false` in their `SKILL.md`, so the agent
 reaches for them from their `description`, and typing `/name` will not work:
 
-- **is-capture** — propose writing a Note when conversation crystallizes
 - **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
 - **is-writing** — writing standard for Notes that compound
 

@@ -1,11 +1,13 @@
 ---
 name: is-publish
 description: >
-  Conversational layer over `ideaspaces publish` — host the current folder
-  as a remote ideaspace. Checks frontmatter syntax, login state, existing
-  folder mapping, confirms destination, then runs the bundled CLI. Use when:
-  the user says "publish this", "host it remotely", "make it accessible from
-  another device", or after `/is-setup` finishes.
+  Put this space online — host the current folder as a remote ideaspace, so it
+  outlives this machine and the team or another device can reach it. Use when
+  someone says put it online, publish this, host it, back this up, get this on
+  my other computer, or make it available to the team; or after `/is-setup`
+  finishes. Hosting starts private — who gets in is is-share. Checks
+  frontmatter syntax, login state, and folder mapping, confirms the
+  destination, then runs the bundled CLI.
 allowed-tools: "Read Bash"
 ---
 
@@ -29,7 +31,9 @@ No separate install required.
 test -f _agent/foundation.md && test -d .git && echo "ok" || echo "missing"
 ```
 
-**Markdown frontmatter parses?** Don't run a separate identity check here — no identity frontmatter is required. `ideaspaces publish` preflights tracked markdown for YAML syntax before login/network/push. If that preflight fails, surface the CLI output and ask the user to fix the reported YAML.
+**Portable identity agrees?** Current shared scaffolds declare `root_node_id`; legacy Spaces may validly omit it. Never mint, edit, stage, or commit identity during publish. Run the bundled CLI's `status --json` and inspect `root_identity`: stop on `invalid`, `drift`, `ambiguous`, or `declaration.dirty`. Publish repeats this preflight against HEAD, index, worktree, canonical origin, and local registry before login or remote mutation.
+
+**Markdown frontmatter parses?** The CLI preflights all tracked Markdown for YAML syntax. If it fails, surface the output and ask the user to fix and commit the reported YAML.
 
 **On the `main` branch?** IdeaSpaces uses `main` as the default branch — publishing requires the local branch to match so server and clones stay aligned. Detect:
 
@@ -93,25 +97,24 @@ Example:
 
 For re-publish, don't re-ask names:
 
-> "This folder is already published as `<namespace>/<slug>`. I'll re-push to the same remote. Use `--force` only if you intentionally want a fresh remote mapping."
+> "This folder is already published as `<namespace>/<slug>`. I'll re-push the same committed Space identity to its existing remote."
 
 ## 4. Run publish
 
 Once confirmed:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js publish [--slug ...] [--name ...] [--hostname ...] [--force]
+node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js publish [--slug ...] [--name ...] [--hostname ...]
 ```
 
 The CLI:
 
-1. Preflights tracked markdown frontmatter syntax before network work.
-2. Confirms login via stored credentials.
-3. Calls `/auth/me` and creates/reuses a server repo.
-4. Sets local `git config user.email = person:<username>@ideaspaces` for this folder only.
-5. Adds/updates `origin` pointing at `git.ideaspaces.xyz/<namespace>/<slug>.git`.
-6. Pushes the current branch.
-7. Records folder ↔ space mapping in `~/.ideaspaces/spaces.json`.
+1. Evaluates the committed foundation against index/worktree, canonical origin, and local registry evidence.
+2. Preflights tracked Markdown syntax and size before network work.
+3. Confirms login and asks Keeper to adopt the exact committed `root_node_id` on first publish.
+4. Creates or reuses the one matching hosted Space; `--force` cannot fork or rekey it.
+5. Sets repo-local Git attribution, configures the matching canonical origin, and pushes `main`.
+6. Records the verified folder ↔ Space binding in `~/.ideaspaces/spaces.json`.
 
 ### Size-cap recovery (oversized tracked files)
 
@@ -139,17 +142,13 @@ If any step fails, leave the state visible with `git status --short` and stop fo
 
 **Mixed or unknown offenders** — if any offender is outside the clutter list (e.g. a 5 MB image the user might want), don't auto-fix. Surface the CLI output verbatim and stop with: *"These files are over the 200KB cap. Shrink them, store externally, or link via frontmatter (`attached_to:`). Re-run `/is-publish` when resolved."* — the user might have intent for that file.
 
-### Stale-mapping recovery (remote deleted server-side)
+### Stale-binding recovery
 
-If the CLI exits 1 with `This folder is mapped to <namespace>/<slug> (repo_id=<id>) but that remote no longer exists on the server.`, the local `~/.ideaspaces/spaces.json` entry points at a repo that's been deleted (or the user lost access). The CLI catches this before any push attempt.
+If the mapped remote is gone, inaccessible, or incompatible with the foundation/origin/registry evidence, stop before mutation. Never delete the registry entry or use `--force` merely to make publish proceed: that would erase authority rather than repair it. Offer the actual choices:
 
-Offer the conversational fix as a single yes/no:
-
-> *"This folder was published as `<namespace>/<slug>` but that remote is gone — likely deleted on the server. I can re-publish as a fresh space (new `repo_id`), which keeps the local content and history but creates a new server-side repo. OK?"*
-
-On confirm, re-run `ideaspaces publish --force`. The CLI replaces the stale mapping in `~/.ideaspaces/spaces.json` and provisions a fresh remote. The old `slug` is reused by default; pass `--slug` if the user wants to rename at the same time.
-
-If the user declines (e.g. they want to investigate which case it is first), stop with: *"Remove this folder's entry from `~/.ideaspaces/spaces.json` and re-run `/is-publish` for a fresh space, or restore the remote in the web UI if it was accidentally deleted."* — the spaces.json edit covers both deleted-repo and lost-access cases; the web-UI restore is specific to deletion the user can reverse.
+- restore access or the matching remote;
+- use `ideaspaces link` when the hosted identity is known and the local mapping alone is stale;
+- create an explicit local Fork in a separate destination when the user intends a new Space identity.
 
 ## 5. Narrate result
 
@@ -164,13 +163,16 @@ On success, surface the remote URL and the local changes:
 | `Not logged in` | No stored credentials | Run `ideaspaces login`. |
 | `Cannot publish yet: N tracked file(s) exceed the 200,000-byte server limit.` | CLI size preflight | See "Size-cap recovery" above — auto-handle known clutter, surface the rest. |
 | `Push failed: ... size cap` | Server-side cap (only if CLI preflight is bypassed) | Same as above; re-run `/is-publish` so the local preflight surfaces the offender list. |
-| `This folder is mapped to ... but that remote no longer exists on the server.` | Server-side repo deleted, local mapping stale | See "Stale-mapping recovery" above — offer `--force` re-publish as a fresh space. |
+| `This folder is mapped to ... but that remote no longer exists or you no longer have access` | Hosted binding cannot be reached | Restore access/binding; a new Space requires explicit local Fork in a separate destination. |
 | `Push failed: ... attribution doesn't match` | Commit author doesn't match account | Re-run publish; it sets local `user.email`. Amend/recommit if needed. |
 | `Local branch is \`<x>\`; IdeaSpaces uses \`main\`` | Pre-flight didn't run / user invoked CLI directly | Rename via `git branch -m main` and retry, or use `/is-publish` which offers the rename. |
 | `Couldn't determine the current branch — is HEAD detached?` | Detached-HEAD state (rare; pre-flight catches via skill) | Check out a branch (`git checkout main`) and retry. |
-| `--name only applies on first publish` | Re-publish path | Drop the flag or use `--force` for a fresh remote mapping. |
+| `Root identity evidence is invalid` / `Root identity drift` / `Root identity is ambiguous` | Foundation, origin, or registry evidence is unsafe | Stop. Inspect bundled `status --json`; repair evidence explicitly without rewriting identity. |
+| `The root identity declaration differs between HEAD, the index, and the worktree` | Identity has an uncommitted change | Commit the intended declaration or restore it; never publish a different worktree value than HEAD. |
+| `publish --force cannot fork or rekey` | Existing hosted binding | Re-publish normally, or use explicit local Fork in a separate destination. |
+| `--name only apply on first publish` | Re-publish path | Drop the flag. A new name/identity requires explicit local Fork, not `--force`. |
 
-Recovery posture: re-running publish is safe after failures. If `~/.ideaspaces/spaces.json` has a stale folder mapping, it is plain JSON — delete that entry and re-publish.
+Recovery posture: re-running publish is safe after repair. Preserve identity authority: restore or explicitly link matching evidence, or create a separate local Fork when a new Space is intended.
 
 ## What comes next
 

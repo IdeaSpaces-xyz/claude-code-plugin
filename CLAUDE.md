@@ -24,10 +24,10 @@ A local `_agent/` directory may exist in a checkout, but it is gitignored. Treat
 Keep the plugin small, and keep the seam where the protocol puts it: **the user's side is self-sufficient; the CLI is the platform client, minimal by intent.**
 
 - The MCP server and hooks own user/session-side state and its rendering — the session-id bridge, the persisted open Change (the server decides arming; the SessionStart hook only displays).
-- Platform interactions — auth, the credential helper, pull/push, publish, and recipient-shaped Share — shell the bundled `ideaspaces` CLI. Share stays a skill-mediated flow rather than an automatic native-tool mirror.
-- Write verbs (`is_write`, `is_commit`) also shell the CLI today; that is transitional (a protocol local-write module is planned), not a design commitment.
+- Local reads, `is_write`, `is_commit`, and Change state run in-process through the protocol. MCP owns the process-local capture ledger: `all` means paths captured by that server session, never every staged knowledge path in a shared index.
+- Platform interactions — auth, the credential helper, pull/push, publish, account-free local Fork and maintained updates, recipient-shaped Share, and person-accountable Inbox exchange — shell the bundled `ideaspaces` CLI. Fork/update, Share, and Inbox stay skill-mediated flows rather than automatic native-tool mirrors.
 
-Local workflow goes through the bundled CLI and skills.
+Local capture goes through MCP and the protocol; platform workflow goes through the bundled CLI and skills.
 
 ## Releasing
 

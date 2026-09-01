@@ -2,8 +2,9 @@
  * Conformance e2e — proves the SHIPPED artifacts against the protocol.
  *
  * Drives is_write / is_commit / is_change_* / is_status through the real
- * vendored MCP server (dist/index.js, IS_CLI_PATH → cli/bundle/ideaspaces.js)
- * into a temp space scaffolded by `ideaspaces create`, then validates the
+ * vendored MCP server (`dist/index.js`) with `IS_CLI_PATH` pointing at a marker
+ * executable that always fails. A bundled CLI scaffolds the temp space before
+ * the server starts; local mutation must never invoke it. The suite validates the
  * result with @ideaspaces/protocol: validateSpace over the tree, parseTrailers
  * + CHANGE_ID_PATTERN over the commits it produced.
  *
@@ -23,11 +24,21 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import {
   CHANGE_ID_PATTERN,
   isValidChangeId,
+  parseFrontmatter,
+  parseMap,
   parseTrailers,
   validateSpace,
 } from "@ideaspaces/protocol";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,6 +52,8 @@ const T = 30_000;
 
 let home: string;
 let space: string;
+let failingCli: string;
+let cliMarker: string;
 let client: Client;
 
 /** Run the vendored CLI directly (setup only — the tests go through MCP). */
@@ -91,6 +104,39 @@ function lastCommit(): { author: string; message: string } {
   };
 }
 
+function fakePi(): string {
+  const path = join(home, "fake-pi.mjs");
+  writeFileSync(path, `#!/usr/bin/env node
+const args = process.argv.slice(2);
+const index = args.indexOf("--append-system-prompt");
+const orientation = index === -1 ? "" : (args[index + 1] ?? "");
+let buffered = "";
+process.stdin.on("data", (chunk) => {
+  buffered += String(chunk);
+  while (buffered.includes("\\n")) {
+    const split = buffered.indexOf("\\n");
+    const line = buffered.slice(0, split);
+    buffered = buffered.slice(split + 1);
+    if (!line) continue;
+    const command = JSON.parse(line);
+    if (command.type === "get_state") {
+      console.log(JSON.stringify({ type: "response", command: "get_state", success: true, data: { sessionName: "Plugin Map test" } }));
+    }
+    if (command.type === "prompt") {
+      const complete = orientation.includes('kind=position root=0 position="findings/map.md" depth=full');
+      console.log(JSON.stringify({ type: "response", command: "prompt", success: true }));
+      console.log(JSON.stringify({ type: "agent_start" }));
+      console.log(JSON.stringify({ type: "turn_start" }));
+      console.log(JSON.stringify({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: complete ? "captured map available" : "map missing" } }));
+      console.log(JSON.stringify({ type: "agent_end" }));
+    }
+  }
+});
+`);
+  chmodSync(path, 0o755);
+  return path;
+}
+
 beforeAll(async () => {
   home = mkdtempSync(join(tmpdir(), "is-conformance-home-"));
   space = mkdtempSync(join(tmpdir(), "is-conformance-space-"));
@@ -111,8 +157,15 @@ beforeAll(async () => {
   });
 
   // Real scaffold path: `ideaspaces create` inits git and commits the seed
-  // contract itself.
+  // contract itself. This happens before the MCP local-effect proof begins.
   cli(["create", "--yes"], space);
+
+  cliMarker = join(home, "platform-cli-invoked");
+  failingCli = join(home, "failing-platform-cli.mjs");
+  writeFileSync(
+    failingCli,
+    `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(cliMarker)}, "invoked\\n");\nprocess.exit(73);\n`,
+  );
 
   client = new Client({ name: "conformance-e2e", version: "0.0.0" });
   await client.connect(
@@ -120,13 +173,14 @@ beforeAll(async () => {
       command: "node",
       args: [SERVER],
       cwd: space,
-      env: { ...baseEnv(), IS_CLI_PATH: CLI, CLAUDE_PROJECT_DIR: space },
+      env: { ...baseEnv(), IS_CLI_PATH: failingCli, CLAUDE_PROJECT_DIR: space },
     }),
   );
 }, T);
 
 afterAll(async () => {
   await client?.close();
+  expect(existsSync(cliMarker)).toBe(false);
   rmSync(home, { recursive: true, force: true });
   rmSync(space, { recursive: true, force: true });
 });
@@ -148,6 +202,67 @@ describe("write → commit conformance", () => {
     expect(raw).toContain("name: First finding");
   });
 
+  test("bundled MCP capture feeds the same map-note to bundled CLI launch", { timeout: T }, async () => {
+    const path = "notes/territory.md";
+    await call("is_write", {
+      path,
+      content: "# Territory\n\nA durable navigation legend.\n",
+      name: "Territory",
+      summary: "A bounded territory captured from this conversation.",
+      map: {
+        roots: [
+          {
+            space: "https://GitHub.com/Acme/Research.git",
+            sha: "a".repeat(40),
+          },
+        ],
+        members: [{ space: 0, position: "findings/map.md", depth: "full" }],
+      },
+    });
+
+    expect(
+      parseMap(parseFrontmatter(readFileSync(join(space, path), "utf8"))?.map),
+    ).toMatchObject({
+      status: "valid",
+      map: { roots: [{ space: "github.com/Acme/Research" }] },
+    });
+
+    const launched = spawnSync(
+      "node",
+      [
+        CLI,
+        "conversation",
+        "send",
+        "--local",
+        "--context",
+        space,
+        "--conversation",
+        "plugin-map-test",
+        "--message",
+        "What territory is available?",
+        "--map",
+        path,
+        "--ext",
+        "/fake/pi-is-space,/fake/pi-local-context",
+        "--pi-bin",
+        fakePi(),
+      ],
+      { cwd: space, encoding: "utf8", env: baseEnv() },
+    );
+
+    expect(launched.status, launched.stderr || launched.stdout).toBe(0);
+    const events = launched.stdout
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+    expect(events).toContainEqual({ type: "text_delta", delta: "captured map available" });
+    expect(events.some((event) => event.type === "turn_complete")).toBe(true);
+    expect(existsSync(join(space, "Acme"))).toBe(false);
+
+    await call("is_commit", { message: "Capture territory Map", paths: [path], op: "capture" });
+  });
+
   test("is_commit commits path-scoped, authored by the person, with agent trailers; Conversation omitted when no session cache", { timeout: T }, async () => {
     await call("is_commit", {
       message: "Add first finding",
@@ -166,7 +281,7 @@ describe("write → commit conformance", () => {
     expect(trailers.changeId).toBeUndefined();
   });
 
-  test("is_commit never sweeps unrelated staged work", { timeout: T }, async () => {
+  test("is_commit all selects only this session and never sweeps unrelated staged work", { timeout: T }, async () => {
     writeFileSync(join(space, "unrelated.md"), "# Someone else's staged file\n");
     git(["add", "unrelated.md"]);
 
@@ -176,7 +291,7 @@ describe("write → commit conformance", () => {
       name: "Second",
       summary: "Second note.",
     });
-    await call("is_commit", { message: "Add second note", paths: ["notes/second.md"] });
+    await call("is_commit", { message: "Add second note", all: true });
 
     const committed = git(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"]);
     expect(committed).toBe("notes/second.md");
@@ -349,7 +464,7 @@ describe("Change persistence across server restarts (shipped artifacts)", () => 
         command: "node",
         args: [SERVER],
         cwd: pspace,
-        env: { ...penv(), IS_CLI_PATH: CLI, CLAUDE_PROJECT_DIR: pspace },
+        env: { ...penv(), IS_CLI_PATH: failingCli, CLAUDE_PROJECT_DIR: pspace },
       }),
     );
     clients.push(c);
@@ -371,7 +486,7 @@ describe("Change persistence across server restarts (shipped artifacts)", () => 
     const r = spawnSync("node", [HOOK], {
       cwd: pspace,
       encoding: "utf-8",
-      env: { ...penv(), IS_CLI_PATH: CLI, CLAUDE_PROJECT_DIR: pspace },
+      env: { ...penv(), IS_CLI_PATH: failingCli, CLAUDE_PROJECT_DIR: pspace },
       input: JSON.stringify({ session_id: sessionId, cwd: pspace }),
     });
     expect(r.status).toBe(0);

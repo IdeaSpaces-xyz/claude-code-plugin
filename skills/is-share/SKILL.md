@@ -1,10 +1,12 @@
 ---
 name: is-share
 description: >
-  Manage who can access an ideaspace and whether it is public. Use when the user
-  asks to share with a person or team, list or remove recipients, choose
-  Explore/Fork/Collaborate, or make a Space public/private. Do not use for
-  pushing committed captures to the remote; that is is-push.
+  Let someone in — give a person or a team access to this space, or open it to
+  everyone. Use when someone says let her see this, share this with my team,
+  give them access, she needs to get up to speed on this, make it public, let
+  people copy it — or asks who can see it, or to take someone's access away.
+  Access grades: Explore (look around), Fork (take a copy home), Collaborate.
+  Not for sending committed work to the remote; that is is-push.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_auth Read Bash"
 ---
 
@@ -30,8 +32,8 @@ Use only these user-facing choices:
 - **Fork** — Explore plus an independent current-version copy. It does not expose source history.
 - **Collaborate** — Explore plus clone/fetch/push on the same Space, including source history. Bytes
   already fetched cannot be revoked later.
-- **Public** — anonymous view plus authenticated independent Fork/Copy. Source history, clone, and
-  push remain private.
+- **Public** — anyone may View and materialize a local Fork without an account. Publishing that
+  independent Space still requires sign-in. Source history, clone, and push remain private.
 - **Private** — disable public view and public Fork/Copy without changing named people or team access.
 
 Hosted history for a person is an optional, separately revocable trail; do not describe it as clone
@@ -88,6 +90,7 @@ access.
 - Say who or which team changed, at which grade, and whether hosted history was included.
 - After removal, preserve the CLI's distinction between removed direct access and access surviving
   through another person, team, owner, or policy path.
-- After visibility changes, repeat that named grants are unchanged.
+- After visibility changes, repeat that named grants are unchanged. For Public, distinguish the
+  account-free local `ideaspaces fork <space-url> [dir]` path from authenticated later publication.
 - If the CLI refuses because the folder is unpublished or unmapped, offer **is-publish** or ask for a
   canonical Space URL. Surface other refusals without translating them into guessed authority.
