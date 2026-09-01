@@ -2,9 +2,10 @@
 name: is-space
 description: >
   Reference for working in an ideaspace — the five-file `_agent/` contract,
-  Two Roles convention, and Claude plugin tool surface. Use when the user asks
-  how an ideaspace works. For active intents, prefer is-orient, is-capture,
-  is-share, is-push, is-pull, is-reflect, and is-shape.
+  Two Roles convention, and Claude plugin tool surface. Use when the agent
+  needs the contract or tool-surface details mid-work. For explaining
+  IdeaSpaces to a person, prefer is-guide; for active intents, prefer
+  is-orient, is-capture, is-share, is-push, is-pull, is-reflect, and is-shape.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_navigate mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_push mcp__plugin_ideaspaces_core__is_pull mcp__plugin_ideaspaces_core__is_auth Read Glob Grep Edit Write Bash"
 ---
 
