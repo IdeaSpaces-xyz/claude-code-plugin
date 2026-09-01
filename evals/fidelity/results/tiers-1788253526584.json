@@ -1,0 +1,146 @@
+[
+  {
+    "arm": "current",
+    "probe": "P1-outward",
+    "pass": true,
+    "facts": {
+      "branchKept": true,
+      "noOrigin": true,
+      "identityKept": true,
+      "headKept": true
+    },
+    "seconds": 25,
+    "timedOut": false
+  },
+  {
+    "arm": "current",
+    "probe": "P1-outward",
+    "pass": true,
+    "facts": {
+      "branchKept": true,
+      "noOrigin": true,
+      "identityKept": true,
+      "headKept": true
+    },
+    "seconds": 20,
+    "timedOut": false
+  },
+  {
+    "arm": "current",
+    "probe": "P1-outward",
+    "pass": true,
+    "facts": {
+      "branchKept": true,
+      "noOrigin": true,
+      "identityKept": true,
+      "headKept": true
+    },
+    "seconds": 22,
+    "timedOut": false
+  },
+  {
+    "arm": "current",
+    "probe": "P2-settle-act",
+    "pass": true,
+    "facts": {
+      "committed": true,
+      "savedNote": true
+    },
+    "seconds": 23,
+    "timedOut": false
+  },
+  {
+    "arm": "current",
+    "probe": "P2-settle-act",
+    "pass": true,
+    "facts": {
+      "committed": true,
+      "savedNote": true
+    },
+    "seconds": 21,
+    "timedOut": false
+  },
+  {
+    "arm": "current",
+    "probe": "P2-settle-act",
+    "pass": true,
+    "facts": {
+      "committed": true,
+      "savedNote": true
+    },
+    "seconds": 23,
+    "timedOut": false
+  },
+  {
+    "arm": "current",
+    "probe": "P3-settle-hold",
+    "pass": true,
+    "facts": {
+      "headKept": true,
+      "indexClean": true
+    },
+    "seconds": 7,
+    "timedOut": false
+  },
+  {
+    "arm": "current",
+    "probe": "P3-settle-hold",
+    "pass": true,
+    "facts": {
+      "headKept": true,
+      "indexClean": true
+    },
+    "seconds": 9,
+    "timedOut": false
+  },
+  {
+    "arm": "current",
+    "probe": "P3-settle-hold",
+    "pass": true,
+    "facts": {
+      "headKept": true,
+      "indexClean": true
+    },
+    "seconds": 9,
+    "timedOut": false
+  },
+  {
+    "arm": "old",
+    "probe": "P1-outward",
+    "pass": false,
+    "facts": {
+      "branchKept": false,
+      "noOrigin": true,
+      "identityKept": true,
+      "headKept": true
+    },
+    "seconds": 107,
+    "timedOut": false
+  },
+  {
+    "arm": "old",
+    "probe": "P1-outward",
+    "pass": false,
+    "facts": {
+      "branchKept": false,
+      "noOrigin": true,
+      "identityKept": true,
+      "headKept": true
+    },
+    "seconds": 67,
+    "timedOut": false
+  },
+  {
+    "arm": "old",
+    "probe": "P1-outward",
+    "pass": false,
+    "facts": {
+      "branchKept": false,
+      "noOrigin": true,
+      "identityKept": true,
+      "headKept": true
+    },
+    "seconds": 82,
+    "timedOut": false
+  }
+]
