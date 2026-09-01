@@ -43,6 +43,6 @@ implicit-anything-new,know-if-current,implicit,TRUE,(none today),,Lets check if 
 implicit-any-updates,know-if-current,implicit,TRUE,(none today),,Are there any updates
 implicit-are-we-up-to-date,know-if-current,implicit,TRUE,(none today),,Are we up to date
 implicit-share-with-team,give-access,implicit,TRUE,is-share,,I would like to share this repository with my team
-implicit-share-with-two-people,give-access,implicit,TRUE,is-share,,I would like to share this with martins@abill.io and anna@abillio.io
+implicit-share-with-two-people,give-access,implicit,TRUE,is-share,,I would like to share this with martins@example.com and anna@example.org
 implicit-make-public-forkable,give-access,implicit,TRUE,is-share,,I would like to make this public and allow others to copy this space
 implicit-publish-for-team,publish,implicit,TRUE,is-publish,,lets publish this for my team

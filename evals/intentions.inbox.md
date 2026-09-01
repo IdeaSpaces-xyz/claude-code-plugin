@@ -76,7 +76,7 @@ Are we up to date
 ## Let someone see it / work together
 *2 phrasings, both fail*
 I would like to share this repository with my team
-I would like to share this with martins@abill.io and anna@abillio.io
+I would like to share this with martins@example.com and anna@example.org
 
 -
 
