@@ -31672,7 +31672,7 @@ var MCP_TOOL_PARAMETERS = {
     cwd: cwdField
   },
   is_commit: {
-    message: external_exports.string().describe("Commit message (user-provided or user-confirmed)"),
+    message: external_exports.string().describe("Commit message \u2014 what understanding this saves, in the user's terms"),
     paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using all."),
     all: external_exports.boolean().optional().describe("Commit only paths captured by this MCP server session. Never adopts other staged knowledge from the shared index."),
     op: external_exports.enum(["create", "update", "move", "delete", "restructure", "capture"]).optional().describe("Optional Op trailer \u2014 the kind of change. The meaning lives in the message body."),
@@ -31844,7 +31844,7 @@ server.tool(
 );
 server.tool(
   "is_commit",
-  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name, or this MCP session's captured paths with all; never adopts unrelated staged work. Auto-stamps the assisting agent, Conversation, and open Change-Id. Confirm with the user before calling.",
+  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name, or this MCP session's captured paths with all; never adopts unrelated staged work. Auto-stamps the assisting agent, Conversation, and open Change-Id. Timing: an explicit ask to save IS the agreement \u2014 act, don't re-ask; at a natural ending, commit and tell the user what was saved; with neither signal, hold and keep staging silently.",
   MCP_TOOL_PARAMETERS.is_commit,
   async (input) => {
     const result = await runLocalCommit(input, localToolDependencies());

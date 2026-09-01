@@ -5,15 +5,17 @@ description: >
   outlives this machine and the team or another device can reach it. Use when
   someone says put it online, publish this, host it, back this up, get this on
   my other computer, or make it available to the team; or after `/is-setup`
-  finishes. Hosting starts private — who gets in is is-share. Checks
-  frontmatter syntax, login state, and folder mapping, confirms the
-  destination, then runs the bundled CLI.
+  finishes. Hosting starts private — who gets in is is-share. Plan-first:
+  the bundled CLI shows exactly what would happen and mutates nothing until
+  the user agrees and it runs again with --yes.
 allowed-tools: "Read Bash"
 ---
 
 # Publish an Ideaspace
 
-**Goal:** login check → confirm destination → run `ideaspaces publish` → narrate result.
+**Goal:** login check → plan (`publish` without `--yes`, zero mutations) → the user agrees → apply
+(`publish --yes`) → narrate result. The plan-then-apply split is the CLI's contract, not a
+courtesy — see the outward tier of the agreement principle.
 
 This skill is the conversational layer around the bundled CLI:
 
@@ -83,28 +85,32 @@ node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js login
 
 If the user is in a remote shell or browser open fails, surface the CLI output and let them decide the next step.
 
-## 3. Confirm destination
+## 3. Plan — run publish without `--yes`
 
-Default values:
-
-- **Slug** — derived from folder basename. Override with `--slug <name>`.
-- **Name** — display name; defaults to folder basename. Override with `--name "<display>"`.
-- **Hostname** — personal space by default. Override with `--hostname <host>` for org spaces.
-
-Example:
-
-> "I'll publish this as your personal space using the folder name as slug. Want a different slug/display name, or publish to an organization?"
-
-For re-publish, don't re-ask names:
-
-> "This folder is already published as `<namespace>/<slug>`. I'll re-push the same committed Space identity to its existing remote."
-
-## 4. Run publish
-
-Once confirmed:
+The CLI is plan-first: without `--yes` it runs every preflight, prints exactly what would happen —
+destination `namespace/slug`, the dir-local git identity write, whether the tip-commit author gets
+rewritten, the origin URL, the commit count — and **changes nothing**, local or remote.
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js publish [--slug ...] [--name ...] [--hostname ...]
+```
+
+Show the user the plan and get their yes. Publishing is an outward action: even when the user
+already said "publish this", the plan surfaces side effects they haven't seen (the identity write,
+an author rewrite) — one look before it happens is the agreement, not friction. Flag overrides:
+`--slug <name>`, `--name "<display>"`, `--hostname <host>` for org spaces (first publish only).
+
+For re-publish the plan says it reuses the existing Space identity — don't re-ask names.
+
+**Non-interactive sessions stop here.** With nobody to agree, the plan output *is* the honest
+result; never add `--yes` on the user's behalf.
+
+## 4. Apply — run with `--yes`
+
+On the user's yes:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js publish --yes [same flags as the plan]
 ```
 
 The CLI:

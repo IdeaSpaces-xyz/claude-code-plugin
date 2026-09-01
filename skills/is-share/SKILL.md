@@ -72,10 +72,16 @@ CLI=(node "${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js")
 "${CLI[@]}" share remove "someone@example.com"
 "${CLI[@]}" share remove "team:acme.com"
 
-# Public/private choice
-"${CLI[@]}" share visibility public
+# Public/private choice. Going public is plan-first: without --yes the CLI
+# states what opens up and applies nothing — show that to the user, and add
+# --yes only on their agreement. Going private applies directly.
+"${CLI[@]}" share visibility public          # plan only
+"${CLI[@]}" share visibility public --yes    # apply, after the user's yes
 "${CLI[@]}" share visibility private
 ```
+
+**Non-interactive sessions never add `--yes` to `visibility public` on their own** — with nobody
+to agree, the plan is the honest result.
 
 Append `--space "<url>"` when targeting a Space other than the current folder. Use the normal human
 output rather than `--json`: report recipients, grades, direct standing, and surviving effective
