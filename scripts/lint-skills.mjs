@@ -35,11 +35,33 @@ const FORBIDDEN = [
   { re: /1[–-]64 lowercase ASCII letters/, why: "portable skill-name grammar lives in reference/form-primitive.md — point, don't restate" },
 ];
 
+// The description formula, measured before it was mandated (agent-surface.md,
+// practices 1–3 and 8; trigger eval 2026-08-31): a description routes or it
+// doesn't, and the two things every routing description carries are a
+// when-signal (the trigger conditions, in the words a person uses) and — for
+// skills a person invokes — a boundary clause keeping neighbours apart.
+// Agent-machinery skills (`user-invocable: false`) fire from the agent's own
+// state, so only the when-signal is required there.
+const WHEN_SIGNAL =
+  /\buse (when|at|for|before|after)\b|\bwhen (the user|someone|you)\b|\btriggers? (at|on|when)\b/i;
+const BOUNDARY =
+  /\bnot for\b|\bdo not use\b|\bnever\b|\bdoes not\b|\bprefer is-|\bthat is is-|\buse is-|\bis is-/i;
+
 function leadingFrontmatter(text) {
   const lines = text.split(/\r?\n/);
   if (lines[0]?.trimEnd() !== "---") return "";
   const end = lines.slice(1).findIndex((line) => line.trimEnd() === "---");
   return end === -1 ? "" : lines.slice(1, end + 1).join("\n");
+}
+
+// Either form: inline `description: text`, or a `description: >` block scalar
+// whose value is the indented lines that follow.
+function frontmatterDescription(fm) {
+  const m = fm.match(/^description:([^\n]*)\n((?:[ \t]+[^\n]*\n?)*)/m);
+  if (!m) return "";
+  const inline = m[1].replace(/^\s*[>|][+-]?\s*$/, "").trim();
+  const block = m[2].replace(/\s+/g, " ").trim();
+  return [inline, block].filter(Boolean).join(" ");
 }
 
 const violations = [];
@@ -53,7 +75,20 @@ for (const entry of await readdir(skillsDir, { withFileTypes: true })) {
   } catch {
     continue;
   }
-  const name = leadingFrontmatter(text).match(/^name:\s*(.+?)\s*$/m)?.[1];
+  const fm = leadingFrontmatter(text);
+  const name = fm.match(/^name:\s*(.+?)\s*$/m)?.[1];
+  const description = frontmatterDescription(fm);
+  const userInvocable = !/^user-invocable:\s*false\s*$/m.test(fm);
+  if (!WHEN_SIGNAL.test(description)) {
+    violations.push(
+      `  ${rel}: description has no when-signal — say when to reach for it, in the words a person uses ("Use when …")`,
+    );
+  }
+  if (userInvocable && !BOUNDARY.test(description)) {
+    violations.push(
+      `  ${rel}: description has no boundary clause — name the adjacent ask it does NOT cover ("Not for …; that is is-…")`,
+    );
+  }
   if (!name || name.length > 64 || !SKILL_NAME_RE.test(name)) {
     violations.push(`  ${rel}: invalid Agent Skills name ${JSON.stringify(name ?? "(missing)")}`);
   } else if (name !== entry.name) {
