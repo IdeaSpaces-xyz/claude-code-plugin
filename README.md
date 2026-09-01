@@ -106,9 +106,9 @@ Once installed, just start working — the plugin orients your agent at the star
 - **Choose who can use it** — say *"share this with alice@example.com for Explore"*, *"share with team acme.com for Collaborate"*, or *"make this public"* (`/is-share`).
 - **Ask and reply from your local agent** — say *"check my Inbox"* or *"ask @alice about this Space"* (`/is-inbox`).
 
-Ten skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-inbox`, `is-push`, `is-pull`.
+Eleven skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-capture`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-inbox`, `is-push`, `is-pull`. Most of the time you won't type them — saying what you want (*"write this down"*, *"note this"*) reaches `is-capture` the same way.
 
-Three more run on the agent's initiative rather than yours, so they won't appear in that menu: `is-capture` offers to write a Note when something crystallizes, `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how Notes get written. You reach them by saying what you want — *"capture this"*, *"has our direction changed?"* — not by typing a command.
+Two more run on the agent's initiative rather than yours, so they won't appear in that menu: `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how Notes get written. You reach them by saying what you want — *"has our direction changed?"* — not by typing a command.
 
 ---
 
@@ -173,6 +173,7 @@ User-invocable (they appear when you type `/`):
 
 - **is-setup** — conversational layer over `ideaspaces create`
 - **is-orient** — orient inside a space: where are we, what's active, what changed
+- **is-capture** — write it down so it is not lost: a Note when conversation crystallizes
 - **is-shape** — create a reusable `_agent/` primitive or perspective
 - **is-space** — `_agent/` contract, navigation conventions, voice rules
 - **is-fork** — conversational layer over account-free local Fork and maintained source updates
@@ -185,7 +186,6 @@ User-invocable (they appear when you type `/`):
 Model-triggered only — `user-invocable: false` in their `SKILL.md`, so the agent
 reaches for them from their `description`, and typing `/name` will not work:
 
-- **is-capture** — propose writing a Note when conversation crystallizes
 - **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
 - **is-writing** — writing standard for Notes that compound
 
