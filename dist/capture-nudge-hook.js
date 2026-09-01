@@ -77,7 +77,21 @@ async function shouldNudgeCommitCwd(cwd) {
   return await resolveRepoRoot(agent.root) === cwdRepo;
 }
 function isBashGitCommit(command) {
-  return /\bgit\s+(?:-[A-Za-z]\s+\S+\s+|--?[A-Za-z-]+(?:=\S+)?\s+)*commit\b/.test(command);
+  const tokens = command.split(/\s+/).filter(Boolean);
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i] !== "git" && !tokens[i].endsWith("/git")) continue;
+    for (let j = i + 1; j < tokens.length; j++) {
+      const t = tokens[j];
+      if (t === "commit") return true;
+      if (t === "-C" || t === "-c") {
+        j++;
+        continue;
+      }
+      if (t.startsWith("-")) continue;
+      break;
+    }
+  }
+  return false;
 }
 
 // src/stdin.ts
