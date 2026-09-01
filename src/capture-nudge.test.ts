@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { shouldNudgeKnowledgePath } from "./capture-nudge.js";
+import { isBashGitCommit, shouldNudgeCommitCwd } from "./capture-nudge.js";
 
 const roots: string[] = [];
 
@@ -22,18 +22,34 @@ function initRepo(root: string): void {
   if (result.status !== 0) throw new Error(result.stderr || "git init failed");
 }
 
-describe("shouldNudgeKnowledgePath", () => {
-  it("nudges for knowledge in the ideaspace repository", async () => {
+describe("isBashGitCommit", () => {
+  it("matches plain and flagged git commits", () => {
+    expect(isBashGitCommit('git commit -m "save"')).toBe(true);
+    expect(isBashGitCommit("git -C notes commit -q -m x")).toBe(true);
+    expect(isBashGitCommit('git -c user.email=x@y commit -m "z"')).toBe(true);
+    expect(isBashGitCommit('git add -A && git commit -m "both"')).toBe(true);
+  });
+
+  it("ignores other git and non-git commands", () => {
+    expect(isBashGitCommit("git add -A")).toBe(false);
+    expect(isBashGitCommit("git log --oneline")).toBe(false);
+    expect(isBashGitCommit('node cli/bundle/ideaspaces.js commit -m "x" notes/a.md')).toBe(false);
+    expect(isBashGitCommit("npm run commit")).toBe(false);
+  });
+});
+
+describe("shouldNudgeCommitCwd", () => {
+  it("nudges for a commit from inside the ideaspace repository", async () => {
     const root = tempDir();
     initRepo(root);
     mkdirSync(join(root, "_agent"));
     mkdirSync(join(root, "notes"));
 
-    await expect(shouldNudgeKnowledgePath(join(root, "notes", "finding.md"))).resolves.toBe(true);
-    await expect(shouldNudgeKnowledgePath(join(root, "notes", "data.json"))).resolves.toBe(false);
+    await expect(shouldNudgeCommitCwd(root)).resolves.toBe(true);
+    await expect(shouldNudgeCommitCwd(join(root, "notes"))).resolves.toBe(true);
   });
 
-  it("stays silent across a nested repository boundary", async () => {
+  it("stays silent in a nested code repository under the ideaspace", async () => {
     const root = tempDir();
     initRepo(root);
     mkdirSync(join(root, "_agent"));
@@ -41,12 +57,11 @@ describe("shouldNudgeKnowledgePath", () => {
     const nested = join(root, "projects", "code");
     mkdirSync(nested, { recursive: true });
     initRepo(nested);
-    mkdirSync(join(nested, "docs"));
 
-    await expect(shouldNudgeKnowledgePath(join(nested, "docs", "README.md"))).resolves.toBe(false);
+    await expect(shouldNudgeCommitCwd(nested)).resolves.toBe(false);
   });
 
-  it("nudges when the nested repository has its own contract", async () => {
+  it("nudges when the nested repository carries its own contract", async () => {
     const root = tempDir();
     initRepo(root);
     mkdirSync(join(root, "_agent"));
@@ -56,15 +71,13 @@ describe("shouldNudgeKnowledgePath", () => {
     initRepo(nested);
     mkdirSync(join(nested, "_agent"));
 
-    await expect(shouldNudgeKnowledgePath(join(nested, "README.md"))).resolves.toBe(true);
+    await expect(shouldNudgeCommitCwd(nested)).resolves.toBe(true);
   });
 
-  it("keeps fractal branch contracts active inside the same repository", async () => {
+  it("stays silent outside any ideaspace", async () => {
     const root = tempDir();
     initRepo(root);
-    mkdirSync(join(root, "_agent"));
-    mkdirSync(join(root, "research", "_agent"), { recursive: true });
 
-    await expect(shouldNudgeKnowledgePath(join(root, "research", "finding.md"))).resolves.toBe(true);
+    await expect(shouldNudgeCommitCwd(root)).resolves.toBe(false);
   });
 });

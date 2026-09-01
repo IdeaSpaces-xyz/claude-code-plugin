@@ -1,15 +1,18 @@
 /**
- * PostToolUse hook (Write|Edit) — a deterministic capture nudge.
+ * PostToolUse hook (Bash) — a deterministic nudge on the commit bypass.
  *
- * When a *knowledge* file is written with the native Write/Edit tools — `*.md`
- * or anything under `_agent/`, inside an ideaspace — emit a short nudge toward
- * the plugin's capture flow. It does NOT judge whether the write is worth
- * capturing (that's the `is-capture` skill's job); it only marks the observable
- * moment: a knowledge write happened via native tools rather than `is_write`.
+ * When a Bash command runs `git commit` from inside an ideaspace, the commit
+ * skipped `is_commit`: no attribution trailers (assisting agent, Conversation,
+ * open Change-Id), and a bare `git commit` can sweep a teammate's staged work
+ * in a shared checkout. That bypass is the one native path with a real cost,
+ * so it is the only one that gets a nudge — plain Write/Edit of knowledge
+ * files stays silent (stage-tier work needs no ceremony; see the
+ * agreement-tiers principle).
  *
- * Silent for everything else — source code, configs, build artifacts, markdown
- * outside an ideaspace, and markdown inside a nested code repo that does not
- * carry its own `_agent/` contract.
+ * The nudge is retrospective (PostToolUse fires after the commit) and judges
+ * nothing: it marks the observable moment for the agent's next decision.
+ * Scoped to the session cwd; a `git -C elsewhere commit` is nudged or not by
+ * the cwd's territory — advisory, never blocking.
  *
  * Output reaches the agent via `hookSpecificOutput.additionalContext` (exit 0).
  * Errors must never block the tool — they go to stderr with exit 0.
@@ -17,35 +20,32 @@
  * Bundled with `npm run build:hook`; the committed bundle ships pre-built.
  */
 
-import { resolve } from "node:path";
-import { shouldNudgeKnowledgePath } from "./capture-nudge.js";
+import { isBashGitCommit, shouldNudgeCommitCwd } from "./capture-nudge.js";
 import { readStdin } from "./stdin.js";
 
 async function main(): Promise<void> {
   const raw = await readStdin();
   if (!raw.trim()) return;
 
-  let input: { tool_input?: { file_path?: unknown }; cwd?: unknown };
+  let input: { tool_input?: { command?: unknown }; cwd?: unknown };
   try {
     input = JSON.parse(raw);
   } catch {
     return; // malformed input — say nothing
   }
 
-  const filePath = input?.tool_input?.file_path;
-  if (typeof filePath !== "string" || !filePath) return;
+  const command = input?.tool_input?.command;
+  if (typeof command !== "string" || !isBashGitCommit(command)) return;
   const cwd = typeof input.cwd === "string" ? input.cwd : process.cwd();
-  const abs = resolve(cwd, filePath);
 
-  // Silent outside an ideaspace and across a nested repo boundary unless that
-  // nested repo carries its own `_agent/` contract.
-  if (!(await shouldNudgeKnowledgePath(abs))) return;
+  if (!(await shouldNudgeCommitCwd(cwd))) return;
 
   const nudge =
-    `Knowledge file written with native Write/Edit: \`${filePath}\`. ` +
-    `If this captures a decision, finding, or pattern worth keeping, prefer the plugin's ` +
-    `capture flow — \`is_write\` (stages + tracks) → confirm → \`is_commit\`. ` +
-    `If it's already captured or just a draft edit, ignore this.`;
+    `A Bash \`git commit\` ran inside this ideaspace, bypassing \`is_commit\` — ` +
+    `it carries no attribution trailers (assisting agent, Conversation, open Change-Id), ` +
+    `and a bare \`git commit\` in a shared checkout can sweep someone else's staged work. ` +
+    `For knowledge paths, prefer \`is_commit\` with explicit paths next time; ` +
+    `if this commit was code or deliberate, ignore this.`;
 
   process.stdout.write(
     JSON.stringify({

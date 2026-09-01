@@ -11945,14 +11945,23 @@ function trackedMarkdownFiles(cwd) {
   }
   return r.stdout.split("\0").filter(Boolean).map((path) => join11(cwd, path));
 }
+function deriveFreshNaming(cwd, flags2, unpublishedName, username) {
+  const folderName = basename2(cwd);
+  const name = flags2.name?.toString() || unpublishedName || folderName;
+  const slugInput = flags2.slug?.toString() || unpublishedName || folderName;
+  const slug = slugify2(slugInput);
+  const hostname = flags2.hostname?.toString() ?? null;
+  return { name, slug, slugInput, hostname, namespace: hostname ?? username };
+}
 var publishCommand = {
   name: "publish",
-  description: "Publish this folder as a remote ideaspace",
-  usage: "ideaspaces publish [--slug <slug>] [--name <name>] [--hostname <host>]",
+  description: "Plan hosting this folder as a remote ideaspace; --yes publishes",
+  usage: "ideaspaces publish [--yes] [--slug <slug>] [--name <name>] [--hostname <host>]",
   examples: [
-    "ideaspaces publish                     # publish current directory",
-    "ideaspaces publish --slug my-notes     # explicit slug",
-    "ideaspaces publish --hostname acme.com # publish into an org space (must be a member)"
+    "ideaspaces publish                     # show the plan, change nothing",
+    "ideaspaces publish --yes               # publish current directory",
+    "ideaspaces publish --yes --slug my-notes     # explicit slug",
+    "ideaspaces publish --yes --hostname acme.com # publish into an org space (must be a member)"
   ],
   async run(_args, rawFlags, global2) {
     const output = createOutput(global2);
@@ -12058,6 +12067,78 @@ var publishCommand = {
       output.error("Account has no username yet. Complete onboarding before publishing.");
       return 1;
     }
+    if (global2.yes !== true) {
+      const identityEmailPlanned = identityEmail(me.username);
+      const commitCount = runGit4(cwd, ["rev-list", "--count", "HEAD"]).stdout || "?";
+      const apiUrl = config.apiUrl;
+      const lines = [];
+      const steps = [];
+      let planData;
+      if (hosted) {
+        const stillVisible = me.repos.some((r) => r.repo_id === hosted.repo_id);
+        const rootId = rootIdentity2.root_node_id ?? hosted.root_node_id ?? null;
+        const remoteUrlPlanned = rootId ? canonicalGitUrl(apiUrl, rootId) : legacyGitUrl(apiUrl, hosted.namespace, hosted.slug);
+        lines.push(`Plan \u2014 re-publish to ${hosted.namespace}/${hosted.slug} (existing Space identity)`);
+        if (!stillVisible) {
+          lines.push("");
+          lines.push("Note: that remote is not currently visible to your account; --yes would refuse.");
+        }
+        const ignoredFlags = [
+          flags2.name && "--name",
+          flags2.slug && "--slug",
+          flags2.hostname && "--hostname"
+        ].filter(Boolean);
+        if (ignoredFlags.length > 0) {
+          lines.push("");
+          lines.push(`Note: ${ignoredFlags.join(", ")} only apply on first publish; --yes would refuse them here.`);
+        }
+        steps.push(`IDENTITY  git user.email \u2192 ${identityEmailPlanned} (this directory only)`);
+        steps.push(`REMOTE    origin \u2192 ${remoteUrlPlanned}`);
+        steps.push(`PUSH      main (${commitCount} commit${commitCount === "1" ? "" : "s"})`);
+        planData = {
+          action: "re-publish",
+          namespace: hosted.namespace,
+          slug: hosted.slug,
+          root_node_id: rootId,
+          remote_url: remoteUrlPlanned,
+          identity_email: identityEmailPlanned,
+          commits: Number(commitCount) || null
+        };
+      } else {
+        const naming = deriveFreshNaming(cwd, flags2, unpublished?.name, me.username);
+        const prescribed = typeof rootIdentity2.declaration.head === "string" ? rootIdentity2.declaration.head : null;
+        const remoteUrlPlanned = prescribed ? canonicalGitUrl(apiUrl, prescribed) : legacyGitUrl(apiUrl, naming.namespace, naming.slug);
+        lines.push(`Plan \u2014 publish ${naming.namespace}/${naming.slug} to ${apiUrl}`);
+        if (naming.slug !== naming.slugInput) {
+          lines.push(`  (slug normalized from "${naming.slugInput}")`);
+        }
+        steps.push(`CREATE    remote Space ${naming.namespace}/${naming.slug}` + (prescribed ? ` \u2014 adopts the committed identity ${prescribed}` : " \u2014 the server mints its identity"));
+        steps.push(`IDENTITY  git user.email \u2192 ${identityEmailPlanned} (this directory only)`);
+        const tipAuthor = runGit4(cwd, ["log", "-1", "--format=%ae"]).stdout;
+        if (tipAuthor && tipAuthor !== identityEmailPlanned) {
+          steps.push(`REWRITE   tip commit author \u2192 ${identityEmailPlanned} (currently ${tipAuthor})`);
+        }
+        steps.push(`REMOTE    origin \u2192 ${remoteUrlPlanned}`);
+        steps.push(`PUSH      main (${commitCount} commit${commitCount === "1" ? "" : "s"})`);
+        planData = {
+          action: "publish",
+          namespace: naming.namespace,
+          slug: naming.slug,
+          root_node_id: prescribed,
+          remote_url: remoteUrlPlanned,
+          identity_email: identityEmailPlanned,
+          tip_author_rewrite: Boolean(tipAuthor && tipAuthor !== identityEmailPlanned),
+          commits: Number(commitCount) || null
+        };
+      }
+      lines.push("");
+      for (const step of steps)
+        lines.push(`  ${step}`);
+      lines.push("");
+      lines.push("The Space stays private to your account until you share it. Nothing has changed yet \u2014 re-run with --yes to publish.");
+      output.result({ plan: planData, applied: false }, lines.join("\n"));
+      return 0;
+    }
     let repo;
     let namespace;
     if (hosted) {
@@ -12085,15 +12166,12 @@ var publishCommand = {
       };
       namespace = hosted.namespace;
     } else {
-      const folderName = basename2(cwd);
-      const name = flags2.name?.toString() || unpublished?.name || folderName;
-      const slugInput = flags2.slug?.toString() || unpublished?.name || folderName;
-      const slug = slugify2(slugInput);
+      const naming = deriveFreshNaming(cwd, flags2, unpublished?.name, me.username);
+      const { name, slug, slugInput, hostname } = naming;
       if (slug !== slugInput) {
         output.log(`Using slug: ${slug} (normalized from "${slugInput}")`);
       }
-      const hostname = flags2.hostname?.toString() ?? null;
-      namespace = hostname ?? me.username;
+      namespace = naming.namespace;
       const prescribedRootNodeId = typeof rootIdentity2.declaration.head === "string" ? rootIdentity2.declaration.head : void 0;
       try {
         repo = await createRepo(config, {
@@ -17438,10 +17516,10 @@ async function removeProductAccess(rest, flags2, output) {
   output.error(invitesResult.status === "rejected" ? `${who} has no direct accepted access here, and pending invitations could not be read (${errorText(invitesResult.reason)}).` : `${who} has no direct access or pending invitation here.`);
   return 1;
 }
-async function setVisibility(rest, flags2, output) {
+async function setVisibility(rest, flags2, output, yes) {
   const requested = rest[0]?.toLowerCase();
   if (requested !== "public" && requested !== "private" || rest.length !== 1) {
-    output.error("Usage: ideaspaces share visibility <public|private> [--space <url>]");
+    output.error("Usage: ideaspaces share visibility <public|private> [--yes] [--space <url>]");
     return 1;
   }
   const config = requireConfig2(output);
@@ -17451,6 +17529,17 @@ async function setVisibility(rest, flags2, output) {
   if (!target)
     return 1;
   const repoId = await repoIdForRoot(config, target);
+  if (requested === "public" && !yes) {
+    output.result({ plan: { action: "visibility", visibility: "public", repo_id: repoId }, applied: false }, [
+      "Plan \u2014 make this Space public.",
+      "",
+      "  Anyone can view and fork it locally without an account. Publishing",
+      "  requires sign-in; Git history, clone, and push remain private.",
+      "",
+      "Nothing has changed yet \u2014 re-run with --yes to apply."
+    ].join("\n"));
+    return 0;
+  }
   const result = await setSpaceAccess(config, repoId, {
     read_public: requested === "public",
     copy_access: requested === "public" ? "public" : "owner"
@@ -17458,7 +17547,7 @@ async function setVisibility(rest, flags2, output) {
   output.result({ ...result, visibility: requested }, requested === "public" ? "Public \u2014 anyone can view and fork locally without an account. Publishing requires sign-in; Git history, clone, and push remain private." : "Private \u2014 public view and fork are off. Named people and team access are unchanged.");
   return 0;
 }
-async function run(sub, rest, flags2, output) {
+async function run(sub, rest, flags2, output, yes) {
   const [repoId, arg] = rest;
   try {
     switch (sub) {
@@ -17469,7 +17558,7 @@ async function run(sub, rest, flags2, output) {
       case "list":
         return await listProductAccess(rest, flags2, output);
       case "visibility":
-        return await setVisibility(rest, flags2, output);
+        return await setVisibility(rest, flags2, output, yes);
       case "access": {
         const config = setup(repoId, "ideaspaces share access <repo_id>", output);
         if (!config)
@@ -17703,13 +17792,14 @@ var shareCommand = {
     "ideaspaces share list",
     "ideaspaces share remove someone@example.com",
     "ideaspaces share remove team:acme.com",
-    "ideaspaces share visibility public",
+    "ideaspaces share visibility public        # plan only \u2014 shows what opens up",
+    "ideaspaces share visibility public --yes  # apply",
     "ideaspaces share visibility private --space https://ideaspaces.xyz/spaces/n_0123456789abcdef01234567"
   ],
   async run(args2, flags2, global2) {
     const output = createOutput(global2);
     const [sub, ...rest] = args2;
-    return run(sub ?? "", rest, flags2, output);
+    return run(sub ?? "", rest, flags2, output, global2.yes === true);
   }
 };
 
@@ -19006,7 +19096,7 @@ function printHelp() {
   lines.push("", "Global flags:");
   lines.push("  --json         Structured JSON output to stdout");
   lines.push("  --quiet        Suppress non-essential output");
-  lines.push("  --yes          Skip confirmation prompts");
+  lines.push("  --yes          Apply the plan (create, publish, share visibility)");
   lines.push("  --help         Show help");
   lines.push("", "Run: ideaspaces <command> --help for command-specific help.");
   process.stderr.write(lines.join("\n") + "\n");

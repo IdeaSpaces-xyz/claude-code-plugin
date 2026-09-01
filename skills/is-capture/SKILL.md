@@ -54,11 +54,22 @@ A map-note is an ordinary Note whose prose is a useful legend and whose `map` bl
 
 ## How
 
-Brief. Don't interrupt flow.
+Two arrivals, different consent. A local commit is one revert from undone — narration beats
+permission at this tier.
+
+**The user asked** — "save this", "write that down", "note this". The ask IS the agreement:
+write, commit, and narrate in one line ("Saved the auth decision to the space."). Never answer a
+save request with "shall I commit?" — that is asking permission for permission.
+
+**You noticed a boundary** — a decision just landed, a milestone wrapped, the session is closing
+meaningful work. Offer once, lightly:
 
 > "That decision about [X] is worth capturing. Want me to write it to the space?"
 
-If yes:
+If the user says no, drop it and don't re-ask. **Mid-flow with neither signal: stay silent** —
+keep working; captures settle at boundaries, not per thought.
+
+Either way, the mechanics:
 
 1. Search first with `Glob` / `Grep` to avoid duplicates; `Read` the target area for context.
 2. Choose the mechanism:
@@ -69,11 +80,9 @@ If yes:
    - first update to an existing file: `is_status({ path })` → use its `sha` as `if_match`
    - refinement of a file just written: use the previous `is_write` response's `sha`
    - `force: true` only after re-reading and reconciling divergent content
-4. Show what changed when useful. The user confirms the capture boundary.
+4. Show what changed when useful.
 5. Commit with `is_commit({ message, all: true })` for paths captured by this session's `is_write` calls, or explicit `paths` for native edits. `all` never adopts other staged knowledge.
-6. Optionally use **is-push** / `is_push` to share it (or **is-pull** first to get the latest).
-
-If the user says no, drop it and don't re-ask.
+6. Say what was saved. Optionally use **is-push** / `is_push` to share it (or **is-pull** first to get the latest).
 
 ### Reaching the tools
 
