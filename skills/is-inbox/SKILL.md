@@ -4,6 +4,7 @@ description: >
   Read and reply to direct Inbox exchanges, or ask a person a question about
   shared Content from the local agent. Use when the user says check my Inbox,
   read this exchange, ask the owner/person about this, send an inquiry, or reply.
+  Not for giving someone access to a Space; that is is-share.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_auth Read Bash"
 ---
 

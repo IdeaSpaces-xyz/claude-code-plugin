@@ -1,0 +1,150 @@
+[
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ],
+    "seconds": 45,
+    "timedOut": false
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ],
+    "seconds": 55,
+    "timedOut": false
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ],
+    "seconds": 50,
+    "timedOut": false
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "decisions/vendor-cli-bundle.md"
+    ],
+    "seconds": 74,
+    "timedOut": false
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ],
+    "seconds": 58,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ],
+    "seconds": 77,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "decisions/vendor-cli-bundle.md"
+    ],
+    "seconds": 70,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": false,
+    "attributed": false,
+    "noCollateral": true,
+    "touched": [],
+    "seconds": 64,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "notes/vendored-cli-bundle.md"
+    ],
+    "seconds": 45,
+    "timedOut": false
+  },
+  {
+    "withPlugin": false,
+    "committed": true,
+    "savedSomething": true,
+    "scopeHeld": true,
+    "otherStillStaged": true,
+    "noteShaped": true,
+    "attributed": true,
+    "noCollateral": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ],
+    "seconds": 68,
+    "timedOut": false
+  }
+]

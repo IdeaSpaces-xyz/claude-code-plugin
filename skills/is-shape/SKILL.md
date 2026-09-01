@@ -5,7 +5,7 @@ description: >
   checklist, review pattern, memory routine) or codify a perspective (a
   repeatable thinking pattern). Use when the user wants to make how the agent
   works in a situation repeatable, or to define an evaluation/analysis they
-  apply often.
+  apply often. Not for saving a decision or finding; that is is-capture.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_commit ToolSearch Read Write Edit Glob Bash"
 ---
 

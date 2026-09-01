@@ -17,8 +17,8 @@ describe("direct Inbox distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.3.24");
-    expect(plugin.version).toBe("0.3.24");
+    expect(pkg.version).toBe("0.3.25");
+    expect(plugin.version).toBe("0.3.25");
     expect(vendor.cli.commit).toBe(CLI_COMMIT);
   });
 

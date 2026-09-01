@@ -1,0 +1,100 @@
+[
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ]
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ]
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ]
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ]
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ]
+  },
+  {
+    "withPlugin": false,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/vendored-cli-bundle.md"
+    ]
+  },
+  {
+    "withPlugin": false,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ]
+  },
+  {
+    "withPlugin": false,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/vendor-cli-bundle.md"
+    ]
+  },
+  {
+    "withPlugin": false,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/vendor-the-cli-bundle.md"
+    ]
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": []
+  }
+]

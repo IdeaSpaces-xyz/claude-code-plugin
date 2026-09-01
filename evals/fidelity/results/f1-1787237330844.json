@@ -1,0 +1,88 @@
+[
+  {
+    "withPlugin": true,
+    "committed": false,
+    "savedSomething": false,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": []
+  },
+  {
+    "withPlugin": true,
+    "committed": false,
+    "savedSomething": false,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": []
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/cli-bundle-vendoring.md"
+    ]
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/build-decisions.md"
+    ]
+  },
+  {
+    "withPlugin": true,
+    "committed": true,
+    "savedSomething": true,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": [
+      "notes/cli-bundle-vendored.md"
+    ]
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": []
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": []
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": []
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": []
+  },
+  {
+    "withPlugin": false,
+    "committed": false,
+    "savedSomething": false,
+    "teammateNotCommitted": true,
+    "teammateStillStaged": true,
+    "touched": []
+  }
+]

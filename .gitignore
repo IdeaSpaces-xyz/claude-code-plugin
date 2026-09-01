@@ -8,3 +8,6 @@ CLAUDE.local.md
 *.draft.md
 scratch/
 _local/
+
+# Eval run output — results are reported, not committed
+evals/results/
