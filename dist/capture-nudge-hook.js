@@ -139,7 +139,8 @@ async function main() {
     if (existsSync(marker)) return;
     markFired(marker);
   }
-  const nudge = `About to run a Bash \`git commit\` inside this ideaspace, bypassing \`is_commit\` \u2014 it will carry no attribution trailers (assisting agent, Conversation, open Change-Id), and a bare \`git commit\` in a shared checkout can sweep someone else's staged work. For knowledge paths, prefer \`is_commit\` with explicit paths; if this commit is code or deliberate, carry on \u2014 this won't be repeated this session.`;
+  const closing = sessionId ? "carry on \u2014 this won't be repeated this session." : "carry on.";
+  const nudge = `About to run a Bash \`git commit\` inside this ideaspace, bypassing \`is_commit\` \u2014 it will carry no attribution trailers (assisting agent, Conversation, open Change-Id), and a bare \`git commit\` in a shared checkout can sweep someone else's staged work. For knowledge paths, prefer \`is_commit\` with explicit paths; if this commit is code or deliberate, ${closing}`;
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: nudge }

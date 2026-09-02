@@ -78,12 +78,16 @@ async function main(): Promise<void> {
     markFired(marker);
   }
 
+  // The once-per-session promise is only true when a marker can be kept.
+  const closing = sessionId
+    ? "carry on — this won't be repeated this session."
+    : "carry on.";
   const nudge =
     `About to run a Bash \`git commit\` inside this ideaspace, bypassing \`is_commit\` — ` +
     `it will carry no attribution trailers (assisting agent, Conversation, open Change-Id), ` +
     `and a bare \`git commit\` in a shared checkout can sweep someone else's staged work. ` +
     `For knowledge paths, prefer \`is_commit\` with explicit paths; ` +
-    `if this commit is code or deliberate, carry on — this won't be repeated this session.`;
+    `if this commit is code or deliberate, ${closing}`;
 
   process.stdout.write(
     JSON.stringify({
