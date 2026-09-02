@@ -43,7 +43,10 @@ const TOOLS = [
 const git = (cwd, args) => execFileSync("git", args, { cwd, encoding: "utf-8" }).trim();
 
 function runOnce(withPlugin) {
-  return new Promise(async (resolve) => {
+  // Setup failures resolve as a failed job rather than hanging the pool slot
+  // and crashing the run on an unhandled rejection (review catch on #90).
+  return new Promise((resolve) => {
+    (async () => {
     const cwd = await mkdtemp(join(tmpdir(), "f1-"));
     await cp(FIXTURE, cwd, { recursive: true });
     const baseline = git(cwd, ["rev-parse", "HEAD"]);
@@ -109,6 +112,7 @@ function runOnce(withPlugin) {
     child.stderr.on("data", () => {});
     child.on("close", () => { clearTimeout(timer); finish(); });
     child.on("error", () => { clearTimeout(timer); finish(); });
+    })().catch((e) => resolve({ pass: false, facts: { error: String(e).slice(0, 120) }, seconds: 0, timedOut: false }));
   });
 }
 

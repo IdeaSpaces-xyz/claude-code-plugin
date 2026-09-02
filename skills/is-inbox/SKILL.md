@@ -32,7 +32,7 @@ Listing and reading are read-only and need no confirmation:
 ```
 
 Use normal human output unless exact structured fields are needed; then append `--json`. Preserve the
-CLI's distinction between an empty Inbox and an unavailable one. An exchange is visible only to its
+CLI's distinction between an empty Inbox and an unavailable one. A message is visible only to its
 two human parties.
 
 ## Choose the send coordinate
@@ -40,7 +40,7 @@ two human parties.
 A new inquiry needs:
 
 - one explicit person, as an email address or `@handle`;
-- one exact Content target coordinate (`n_…`) that the exchange is about;
+- one exact Content target coordinate (`n_…`) that the message is about;
 - a short name, dense summary, and Markdown message.
 
 For the current Space root, `"${CLI[@]}" status --json` exposes its declared root identity. A
@@ -72,14 +72,14 @@ printf '%s\n' "# Answer" "" "Keep the boundary narrow." | \
     --send-id "<stable-reply-id>"
 ```
 
-A reply needs no recipient or target: the exchange fixes both. Never change the send id while
+A reply needs no recipient or target: the original message fixes both. Never change the send id while
 retrying changed content; changed content is a new message and needs a new id.
 
 If authentication is required, offer `is_auth action="login"`, then retry the identical operation.
 
 ## Report the result
 
-For a send or reply, report the exchange id and the Content target it remains attached to. Do not
+For a send or reply, report the message id and the Content target it remains attached to. Do not
 claim the recipient read it merely because delivery succeeded. Surface neutral not-found,
 recipient-unavailable, blocked, rate-limit, and history-bound refusals without guessing hidden
 account or Content state.

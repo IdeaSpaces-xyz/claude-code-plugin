@@ -44,6 +44,8 @@ const FORBIDDEN = [
 // state, so only the when-signal is required there.
 const WHEN_SIGNAL =
   /\buse (when|at|for|before|after)\b|\bwhen (the user|someone|you)\b|\btriggers? (at|on|when)\b/i;
+// The handoff alternatives are coupled to the `is-` skill-name prefix; if that
+// convention ever changes, these patterns silently stop matching handoffs.
 const BOUNDARY =
   /\bnot for\b|\bdo not use\b|\bnever\b|\bdoes not\b|\bprefer is-|\bthat is is-|\buse is-|\bis is-/i;
 
