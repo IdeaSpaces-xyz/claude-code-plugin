@@ -28,7 +28,7 @@ Listing and reading are read-only and need no confirmation:
 
 ```bash
 "${CLI[@]}" inbox list
-"${CLI[@]}" inbox read "<exchange-id>"
+"${CLI[@]}" inbox read "<thread-id>"
 ```
 
 Use normal human output unless exact structured fields are needed; then append `--json`. Preserve the
@@ -66,7 +66,7 @@ send after an ambiguous network failure.
   --message "What should happen next?"
 
 printf '%s\n' "# Answer" "" "Keep the boundary narrow." | \
-  "${CLI[@]}" inbox reply "<exchange-id>" \
+  "${CLI[@]}" inbox reply "<thread-id>" \
     --name "Answer" \
     --summary "A bounded answer" \
     --send-id "<stable-reply-id>"
