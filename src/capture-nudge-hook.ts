@@ -1,33 +1,54 @@
 /**
- * PostToolUse hook (Bash) — a deterministic nudge on the commit bypass.
+ * PreToolUse hook (Bash) — a deterministic nudge on the commit bypass,
+ * before the choice is made.
  *
- * When a Bash command runs `git commit` from inside an ideaspace, the commit
- * skipped `is_commit`: no attribution trailers (assisting agent, Conversation,
- * open Change-Id), and a bare `git commit` can sweep a teammate's staged work
- * in a shared checkout. That bypass is the one native path with a real cost,
- * so it is the only one that gets a nudge — plain Write/Edit of knowledge
- * files stays silent (stage-tier work needs no ceremony; see the
+ * When a Bash command is about to run `git commit` inside an ideaspace, the
+ * commit would skip `is_commit`: no attribution trailers (assisting agent,
+ * Conversation, open Change-Id), and a bare `git commit` in a shared checkout
+ * can sweep a teammate's staged work. That bypass is the one native path with
+ * a real cost, so it is the only one that gets a nudge — plain Write/Edit of
+ * knowledge files stays silent (stage-tier work needs no ceremony; see the
  * agreement-tiers principle).
  *
- * The nudge is retrospective (PostToolUse fires after the commit) and judges
- * nothing: it marks the observable moment for the agent's next decision.
- * Scoped to the session cwd; a `git -C elsewhere commit` is nudged or not by
- * the cwd's territory — advisory, never blocking.
+ * Three properties, in order of what they cost when missing (worked out on
+ * feature/skill-matching-w1 and salvaged from it):
  *
- * Output reaches the agent via `hookSpecificOutput.additionalContext` (exit 0).
- * Errors must never block the tool — they go to stderr with exit 0.
+ *   1. **Fires before the choice.** As PostToolUse it could only issue a
+ *      receipt for a decision already made.
+ *   2. **Watches the verb that matters, and only that.** Bash `git commit`
+ *      inside knowledge territory; nothing else.
+ *   3. **Silent after the first.** At most one nudge per session — the first
+ *      bypass is a signpost, the rest are the agent's informed choice.
+ *
+ * It never sets `permissionDecision`: this informs, it does not gate. Errors
+ * must never block the tool — they go to stderr with exit 0. Scoped to the
+ * session cwd; advisory, never blocking.
  *
  * Bundled with `npm run build:hook`; the committed bundle ships pre-built.
  */
 
-import { isBashGitCommit, shouldNudgeCommitCwd } from "./capture-nudge.js";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname } from "node:path";
+import { isBashGitCommit, nudgeMarkerPath, shouldNudgeCommitCwd } from "./capture-nudge.js";
 import { readStdin } from "./stdin.js";
+
+/** Record that the nudge fired. Failure to record is not worth failing over —
+ *  the worst case is one repeated nudge, strictly better than blocking. */
+function markFired(marker: string): void {
+  try {
+    mkdirSync(dirname(marker), { recursive: true });
+    writeFileSync(marker, "");
+  } catch {
+    /* best effort */
+  }
+}
 
 async function main(): Promise<void> {
   const raw = await readStdin();
   if (!raw.trim()) return;
 
-  let input: { tool_input?: { command?: unknown }; cwd?: unknown };
+  let input: { tool_input?: { command?: unknown }; cwd?: unknown; session_id?: unknown };
   try {
     input = JSON.parse(raw);
   } catch {
@@ -37,19 +58,25 @@ async function main(): Promise<void> {
   const command = input?.tool_input?.command;
   if (typeof command !== "string" || !isBashGitCommit(command)) return;
   const cwd = typeof input.cwd === "string" ? input.cwd : process.cwd();
+  const sessionId = typeof input.session_id === "string" ? input.session_id : "";
 
   if (!(await shouldNudgeCommitCwd(cwd))) return;
 
+  // Silent after the first this session.
+  const marker = nudgeMarkerPath(homedir(), sessionId, cwd);
+  if (existsSync(marker)) return;
+  markFired(marker);
+
   const nudge =
-    `A Bash \`git commit\` ran inside this ideaspace, bypassing \`is_commit\` — ` +
-    `it carries no attribution trailers (assisting agent, Conversation, open Change-Id), ` +
+    `About to run a Bash \`git commit\` inside this ideaspace, bypassing \`is_commit\` — ` +
+    `it will carry no attribution trailers (assisting agent, Conversation, open Change-Id), ` +
     `and a bare \`git commit\` in a shared checkout can sweep someone else's staged work. ` +
-    `For knowledge paths, prefer \`is_commit\` with explicit paths next time; ` +
-    `if this commit was code or deliberate, ignore this.`;
+    `For knowledge paths, prefer \`is_commit\` with explicit paths; ` +
+    `if this commit is code or deliberate, carry on — this won't be repeated this session.`;
 
   process.stdout.write(
     JSON.stringify({
-      hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: nudge },
+      hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: nudge },
     }) + "\n",
   );
 }
