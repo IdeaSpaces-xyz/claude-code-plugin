@@ -43,7 +43,7 @@ Canonical protocols: read `${CLAUDE_PLUGIN_ROOT}/reference/capture.md` and `${CL
 
 ### Map-note captures
 
-A map-note is an ordinary Note whose prose is a useful legend and whose `map` block deliberately selects addresses. Use it when the durable understanding is *what territory matters from this vantage*, not for every Note that happens to mention files.
+A map-note is an ordinary Note whose prose is a useful legend and whose `map` block deliberately selects addresses. Use it when the durable understanding is *what territory matters from this point of view*, not for every Note that happens to mention files.
 
 - Supply the structured `map` argument to `is_write`; never hand-splice YAML into `content`.
 - Git roots need an already-known `space` or `root_node_id` plus an exact full commit SHA. Members carry positions and disclosure `depth`; open addresses may carry name/summary only.

@@ -9,9 +9,9 @@ description: >
   partner. Also on the direct asks: "set up a space", "add ideaspaces here",
   "create an agent", "get me into my space", "clone my notes", or a returning
   user with nothing local yet. Create inspects what's here, confirms, then runs
-  `ideaspaces create` (`--agent` for an agent vantage plus character
-  elicitation); Open lists your remote spaces (`is_spaces`) and clones the
-  chosen one (`is_clone`). Not for building software — someone coding an app
+  `ideaspaces create` (`--agent` for an agent with its own character and
+  point of view, drawn out in conversation); Open lists your remote spaces
+  (`is_spaces`) and clones the chosen one (`is_clone`). Not for building software — someone coding an app
   wants code, not a space.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_auth mcp__plugin_ideaspaces_core__is_spaces mcp__plugin_ideaspaces_core__is_clone mcp__plugin_ideaspaces_core__is_navigate Edit Read Write Glob Bash"
 ---
@@ -40,7 +40,7 @@ Ambiguous (logged in, has spaces, empty cwd)? Ask which they want — don't assu
 
 ## Create an agent
 
-An agent is a **vantage-shaped space**: the five-file `_agent/` contract *is* the character (see `${CLAUDE_PLUGIN_ROOT}/reference/form-primitive.md`, Creating Agents). The space is not knowledge *about* the agent — it is the position the agent looks from, and the tree becomes its memory.
+An agent is a space shaped as a **point of view**: the five-file `_agent/` contract *is* the character (see `${CLAUDE_PLUGIN_ROOT}/reference/form-primitive.md`, Creating Agents). The space is not knowledge *about* the agent — it is the position the agent looks from, and the tree becomes its memory.
 
 1. **Name it.** Ask what the agent should be called (short, filesystem-friendly — letters, digits, spaces, `. _ -`; the CLI refuses names that would not survive frontmatter). The agent gets its own folder.
 2. **Scaffold.** Dry-run first, then apply on confirmation:
@@ -50,13 +50,13 @@ An agent is a **vantage-shaped space**: the five-file `_agent/` contract *is* th
    node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create <name> --agent --yes
    ```
 
-   The vantage foundation lands with **elicitation prompts** in Character, Boundaries, and What-this-vantage-is-not — placeholders meant to be replaced, never left standing.
+   The foundation lands with **placeholder prompts** in Character, Boundaries, and What-this-agent-is-not — meant to be replaced in conversation, never left standing.
 3. **Elicit the character — this is the heart of the flow.** Draw it out from real examples, not adjectives: *"Walk me through a task you'd hand this agent. What did a good result look like? Where would you not trust it?"* Three to five character traits, each grounded in what it means in practice; boundaries as things it refuses or never claims without checking; one neighboring role it should not be confused with.
 4. **Replace the prompts.** Use native `Edit` on `_agent/foundation.md` (contract files carry the character, not Note frontmatter), show the result, and on confirmation commit with `is_commit` using explicit paths.
-5. **Offer skills.** If a repeatable procedure surfaced during elicitation ("it always formats reports the same way"), offer **is-shape** to capture it into `_agent/skills/` — and `ideaspaces skills sync` after, so the skill becomes invocable.
+5. **Offer skills.** If a repeatable procedure surfaced while drawing the character out ("it always formats reports the same way"), offer **is-shape** to capture it into `_agent/skills/` — and `ideaspaces skills sync` after, so the skill becomes invocable.
 6. **Purpose / now stay emergent** like any space — elicit them when there is real signal, or let the drift rule surface them next session.
 
-The agent is used by opening a session in its folder: Claude Code reads the vantage and inhabits it. Publishing works like any space when the user wants it on other devices.
+The agent is used by opening a session in its folder: Claude Code reads who the agent is and inhabits it. Publishing works like any space when the user wants it on other devices.
 
 ## Open an existing space
 
