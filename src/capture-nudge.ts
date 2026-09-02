@@ -1,5 +1,6 @@
 import { findNearestAgent, resolveRepoRoot } from "@ideaspaces/protocol";
-import { resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { join, resolve } from "node:path";
 
 /**
  * Whether a Bash `git commit` run from `cwd` bypassed the plugin's commit
@@ -49,4 +50,31 @@ export function isBashGitCommit(command: string): boolean {
     }
   }
   return false;
+}
+
+
+/**
+ * Where the nudge records that it already fired this session.
+ *
+ * A user-level path, so the plugin leaves no footprint in the repos a session
+ * visits — the same scheme as the session and Change caches, keyed by session
+ * *and* project so two sessions in one directory nudge independently.
+ *
+ * Once per session is the point: the first bypass is worth a signpost, and
+ * every one after it is the agent's informed choice. Repeating turns the
+ * nudge into noise an agent learns to read past — measured twice: reported by
+ * an agent working in this repo (feature/skill-matching-w1, where this
+ * mechanism was first built), and again when the per-commit version stamped
+ * every deliberate code commit in one session.
+ */
+export function nudgeMarkerPath(
+  homeDir: string,
+  sessionId: string,
+  projectDir: string,
+): string {
+  const key = createHash("sha256")
+    .update(`${sessionId}\0${resolve(projectDir)}\0commit`)
+    .digest("hex")
+    .slice(0, 16);
+  return join(homeDir, ".ideaspaces", "nudges", key);
 }

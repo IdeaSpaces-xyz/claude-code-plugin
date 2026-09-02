@@ -81,3 +81,14 @@ describe("shouldNudgeCommitCwd", () => {
     await expect(shouldNudgeCommitCwd(root)).resolves.toBe(false);
   });
 });
+
+describe("nudgeMarkerPath", () => {
+  it("keys by session and project, stable across calls", async () => {
+    const { nudgeMarkerPath } = await import("./capture-nudge.js");
+    const a = nudgeMarkerPath("/home/u", "sess-1", "/proj/a");
+    expect(nudgeMarkerPath("/home/u", "sess-1", "/proj/a")).toBe(a);
+    expect(nudgeMarkerPath("/home/u", "sess-2", "/proj/a")).not.toBe(a);
+    expect(nudgeMarkerPath("/home/u", "sess-1", "/proj/b")).not.toBe(a);
+    expect(a.startsWith("/home/u/.ideaspaces/nudges/")).toBe(true);
+  });
+});
