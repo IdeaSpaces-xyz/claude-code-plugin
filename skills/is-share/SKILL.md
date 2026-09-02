@@ -45,7 +45,7 @@ The current published folder is the default. If the user names another Space, pa
 with `--space <url>`. Never ask for internal user, organization, Grant, userset, or repository
 identifiers.
 
-Before a mutation, state the exact target, recipient or visibility, grade, and history implication.
+Before a mutation, state the exact target, recipient or visibility, level, and history implication.
 Ask for confirmation when any of those were inferred or omitted. A current request that already names
 the complete operation counts as confirmation; do not ask twice. Listing is read-only and needs no
 confirmation.
@@ -84,7 +84,7 @@ CLI=(node "${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js")
 to agree, the plan is the honest result.
 
 Append `--space "<url>"` when targeting a Space other than the current folder. Use the normal human
-output rather than `--json`: report recipients, grades, direct standing, and surviving effective
+output rather than `--json`: report recipients, levels, direct standing, and surviving effective
 access, but do not surface backend coordinates.
 
 If authentication is required, offer `is_auth action="login"`, then retry the same command. Do not
@@ -93,7 +93,7 @@ access.
 
 ## Report the result
 
-- Say who or which team changed, at which grade, and whether hosted history was included.
+- Say who or which team changed, at which level, and whether hosted history was included.
 - After removal, preserve the CLI's distinction between removed direct access and access surviving
   through another person, team, owner, or policy path.
 - After visibility changes, repeat that named grants are unchanged. For Public, distinguish the

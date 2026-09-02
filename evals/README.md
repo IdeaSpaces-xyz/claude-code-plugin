@@ -137,13 +137,10 @@ named. For `is-capture` that stacks two problems.
 
 ## Status
 
-**The trigger half runs today.** Outcome grading does not — `claude plugin eval` is in early
-access and not enabled on our account, so the `llm` rubrics in `rubrics/` are still
-uncalibrated predictions. The two halves are complementary: this harness answers *did the
-right skill fire*, the case files answer *was the answer any good*.
-
-**Not yet piloted (outcome half).** `claude plugin eval` is in early access and not enabled on our account,
-so every grader here is an uncalibrated prediction — written against the analysis, never run.
+**The trigger half runs today; the outcome half is not yet piloted.** `claude plugin eval` is in
+early access and not enabled on our account, so the `llm` rubrics in `rubrics/` are uncalibrated
+predictions — written against the analysis, never run. The two halves are complementary: this
+harness answers *did the right skill fire*, the case files answer *was the answer any good*.
 
 Piloting is a gate, not a formality: run the suite, read every judge verdict, ask whether any
 should have scored differently, and revise until the answer is no. Until that happens, treat

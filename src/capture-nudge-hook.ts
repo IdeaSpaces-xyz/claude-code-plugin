@@ -20,6 +20,12 @@
  *   3. **Silent after the first.** At most one nudge per session — the first
  *      bypass is a signpost, the rest are the agent's informed choice.
  *
+ * PreToolUse `additionalContext` is an honored channel: verified live on
+ * 2026-09-02 against Claude Code 2.1.251 (the model quoted this nudge back
+ * verbatim from a real session) and per the hooks reference. Markers under
+ * ~/.ideaspaces/nudges/ are not garbage-collected — same characteristic as
+ * the session and Change caches.
+ *
  * It never sets `permissionDecision`: this informs, it does not gate. Errors
  * must never block the tool — they go to stderr with exit 0. Scoped to the
  * session cwd; advisory, never blocking.
@@ -62,17 +68,26 @@ async function main(): Promise<void> {
 
   if (!(await shouldNudgeCommitCwd(cwd))) return;
 
-  // Silent after the first this session.
-  const marker = nudgeMarkerPath(homedir(), sessionId, cwd);
-  if (existsSync(marker)) return;
-  markFired(marker);
+  // Silent after the first this session. Without a session_id the marker
+  // would collapse to one shared per-project file — silencing every future
+  // session after the first ever nudge — so an absent id means nudge, not
+  // remember (review catch on #94).
+  if (sessionId) {
+    const marker = nudgeMarkerPath(homedir(), sessionId, cwd);
+    if (existsSync(marker)) return;
+    markFired(marker);
+  }
 
+  // The once-per-session promise is only true when a marker can be kept.
+  const closing = sessionId
+    ? "carry on — this won't be repeated this session."
+    : "carry on.";
   const nudge =
     `About to run a Bash \`git commit\` inside this ideaspace, bypassing \`is_commit\` — ` +
     `it will carry no attribution trailers (assisting agent, Conversation, open Change-Id), ` +
     `and a bare \`git commit\` in a shared checkout can sweep someone else's staged work. ` +
     `For knowledge paths, prefer \`is_commit\` with explicit paths; ` +
-    `if this commit is code or deliberate, carry on — this won't be repeated this session.`;
+    `if this commit is code or deliberate, ${closing}`;
 
   process.stdout.write(
     JSON.stringify({
