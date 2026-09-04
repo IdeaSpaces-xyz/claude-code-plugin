@@ -10879,11 +10879,14 @@ function repoRouteNamespace(repo, username) {
   }
   return repo.hostname ?? username;
 }
+function repoDisplaySlug(repo) {
+  return repo.route_slug ?? repo.slug ?? repo.repo_id;
+}
 function spaceRecordForRepo(repo, username) {
   const routeNamespace = repoRouteNamespace(repo, username);
   return {
     repo_id: repo.repo_id,
-    slug: repo.route_slug ?? repo.slug,
+    slug: repoDisplaySlug(repo),
     namespace: routeNamespace ?? repo.hostname ?? username ?? "",
     ...repo.root_node_id ? { root_node_id: repo.root_node_id } : {},
     ...repo.route_status ? { route_status: repo.route_status } : {},
@@ -10900,8 +10903,9 @@ function repoKeys(repo, me, gitBase, apiUrl) {
       keys.push(canonical);
   }
   const namespace = repoRouteNamespace(repo, me.username);
-  if (namespace) {
-    const legacy = normalizeRepoUrl(`${gitBase}/${namespace}/${repo.route_slug ?? repo.slug}.git`);
+  const slug = repo.route_slug ?? repo.slug;
+  if (namespace && slug) {
+    const legacy = normalizeRepoUrl(`${gitBase}/${namespace}/${slug}.git`);
     if (legacy)
       keys.push(legacy);
   }
@@ -11858,6 +11862,36 @@ import { spawnSync as spawnSync5 } from "node:child_process";
 import { existsSync as existsSync6, statSync } from "node:fs";
 import { basename as basename2, join as join11 } from "node:path";
 
+// dist/root-actions.js
+function hasRootAction(repo, action) {
+  if (repo.actions !== void 0)
+    return repo.actions.includes(action);
+  const role = repo.role?.toUpperCase();
+  if (action === "open")
+    return ["OWNER", "MEMBER", "CLONER", "READER"].includes(role ?? "");
+  if (action === "clone")
+    return ["OWNER", "MEMBER", "CLONER"].includes(role ?? "");
+  if (action === "collaborate")
+    return ["OWNER", "MEMBER"].includes(role ?? "");
+  return role === "OWNER";
+}
+function availableRootActions(repo) {
+  const actions = ["open", "copy", "clone", "collaborate"];
+  return actions.filter((action) => hasRootAction(repo, action));
+}
+function rootRelationshipLabel(repo) {
+  const receipts = repo.receipt_classes ?? [];
+  if (receipts.includes("person_owner") || receipts.includes("organization_owner")) {
+    return "owner";
+  }
+  if (receipts.includes("organization_members") || receipts.includes("organization_owners")) {
+    return "team";
+  }
+  if (receipts.includes("direct_person"))
+    return "shared";
+  return repo.role?.toLowerCase() ?? "available";
+}
+
 // dist/frontmatter-report.js
 import { readFile } from "node:fs/promises";
 import { relative as relative5 } from "node:path";
@@ -12144,6 +12178,11 @@ var publishCommand = {
           lines.push("");
           lines.push("Note: that remote is not currently visible to your account; --yes would refuse.");
         }
+        const projected2 = me.repos.find((candidate) => candidate.repo_id === hosted.repo_id);
+        if (projected2 && !hasRootAction(projected2, "collaborate")) {
+          lines.push("");
+          lines.push("Note: your current relationship does not allow publishing changes; --yes would refuse.");
+        }
         const ignoredFlags = [
           flags2.name && "--name",
           flags2.slug && "--slug",
@@ -12219,6 +12258,10 @@ var publishCommand = {
       }
       output.log(`This folder is already published as ${hosted.namespace}/${hosted.slug} (repo_id=${hosted.repo_id}). Re-pushing to the same Space identity.`);
       const projected2 = me.repos.find((candidate) => candidate.repo_id === hosted.repo_id);
+      if (projected2 && !hasRootAction(projected2, "collaborate")) {
+        output.error(`This Space is in your account catalog, but your current relationship does not allow publishing changes.`);
+        return 1;
+      }
       repo = {
         repo_id: hosted.repo_id,
         root_node_id: projected2?.root_node_id ?? hosted.root_node_id ?? void 0,
@@ -14985,7 +15028,7 @@ var whoamiCommand = {
 // dist/commands/repos.js
 var reposCommand = {
   name: "repos",
-  description: "List your spaces \u2014 slug, role, and member count",
+  description: "List your spaces \u2014 relationship and available actions",
   usage: "ideaspaces repos [--json]",
   examples: [
     "ideaspaces repos",
@@ -15011,16 +15054,24 @@ var reposCommand = {
     }
     const repos = me.repos.map((r) => ({
       repo_id: r.repo_id,
-      slug: r.slug,
-      hostname: r.hostname,
+      slug: repoDisplaySlug(r),
+      hostname: r.hostname ?? null,
       root_node_id: r.root_node_id ?? null,
       route_status: r.route_status ?? null,
       namespace: repoRouteNamespace(r, me.username),
       space_url: r.root_node_id ? canonicalSpaceUrl(config.apiUrl, r.root_node_id) : null,
-      role: r.role,
-      member_count: r.member_count
+      // Rolling compatibility for sidecar consumers; never use these fields
+      // to derive the independent receipt actions above.
+      role: r.role ?? null,
+      member_count: r.member_count ?? null,
+      relationship: rootRelationshipLabel(r),
+      receipt_classes: r.receipt_classes ?? [],
+      actions: availableRootActions(r)
     }));
-    output.result({ username: me.username, repos }, repos.length ? repos.map((r) => `${r.slug} (${r.role}, ${r.member_count} member${r.member_count === 1 ? "" : "s"})`).join("\n") : "No spaces yet. Create one at your account, or `ideaspaces create`.");
+    output.result({ username: me.username, repos }, repos.length ? repos.map((r) => {
+      const actions = r.actions.length ? r.actions.join(", ") : "no available actions";
+      return `${r.slug} (${r.relationship}) \u2014 ${actions}`;
+    }).join("\n") : "No spaces yet. Create one at your account, or `ideaspaces create`.");
     return 0;
   }
 };
@@ -15080,18 +15131,23 @@ function deriveCatalog(me, clones, statusByPath) {
   const used = /* @__PURE__ */ new Set();
   for (const repo of me.repos) {
     const namespace = repoRouteNamespace(repo, me.username) ?? "";
+    const slug = repoDisplaySlug(repo);
+    const relationship = rootRelationshipLabel(repo);
     const matching = clonesByRepo.get(repo.repo_id) ?? [];
     if (matching.length === 0) {
       entries.push({
         state: "hosted",
         repo_id: repo.repo_id,
         root_node_id: repo.root_node_id ?? null,
-        slug: repo.slug,
-        display_name: repo.slug,
-        hostname: repo.hostname,
+        slug,
+        display_name: repo.name ?? slug,
+        hostname: repo.hostname ?? null,
         namespace,
-        role: repo.role,
-        member_count: repo.member_count,
+        role: repo.role ?? null,
+        member_count: repo.member_count ?? null,
+        relationship,
+        receipt_classes: repo.receipt_classes ?? [],
+        actions: availableRootActions(repo),
         location: "online-only"
       });
       continue;
@@ -15102,12 +15158,15 @@ function deriveCatalog(me, clones, statusByPath) {
         state: "hosted",
         repo_id: repo.repo_id,
         root_node_id: repo.root_node_id ?? null,
-        slug: repo.slug,
-        display_name: repo.slug,
-        hostname: repo.hostname,
+        slug,
+        display_name: repo.name ?? slug,
+        hostname: repo.hostname ?? null,
         namespace,
-        role: repo.role,
-        member_count: repo.member_count,
+        role: repo.role ?? null,
+        member_count: repo.member_count ?? null,
+        relationship,
+        receipt_classes: repo.receipt_classes ?? [],
+        actions: availableRootActions(repo),
         location: "available",
         clone: { path: c.path },
         ...syncOf(c.path)
@@ -15270,11 +15329,11 @@ var cloneCommand = {
       if (rootNodeId)
         return r.root_node_id === rootNodeId;
       const namespace2 = repoRouteNamespace(r, me.username);
-      const slug2 = r.route_slug ?? r.slug;
+      const slug2 = repoDisplaySlug(r);
       return r.repo_id === target || slug2 === target || `${namespace2}/${slug2}` === target;
     });
-    if (matches.length === 0) {
-      output.error(`No space matches "${target}" in your Git-access catalog. Run \`ideaspaces repos\` to list yours.`);
+    if (!rootNodeId && matches.length === 0) {
+      output.error(`No space matches "${target}" in your account catalog. Run \`ideaspaces repos\` to list yours.`);
       return 1;
     }
     if (matches.length > 1) {
@@ -15282,9 +15341,13 @@ var cloneCommand = {
       return 1;
     }
     const repo = matches[0];
-    const namespace = repoRouteNamespace(repo, me.username);
-    const slug = repo.route_slug ?? repo.slug;
-    const stableRoot = repo.root_node_id ?? rootNodeId;
+    if (!rootNodeId && repo && !hasRootAction(repo, "clone")) {
+      output.error(`Space "${target}" is in your account catalog but does not allow clone.`);
+      return 1;
+    }
+    const namespace = repo ? repoRouteNamespace(repo, me.username) : null;
+    const slug = repo ? repoDisplaySlug(repo) : rootNodeId;
+    const stableRoot = rootNodeId ?? repo?.root_node_id;
     if (!stableRoot && !namespace) {
       output.error("Could not resolve stable Space identity or a compatibility route.");
       return 1;
@@ -15314,10 +15377,12 @@ var cloneCommand = {
       output.error(`Clone succeeded, but the checkout reports ${rootIdentity2.root_node_id ?? "no root identity"} instead of ${stableRoot}. The folder was not bound locally.`);
       return 1;
     }
-    try {
-      saveSpace(dir, spaceRecordForRepo(repo, me.username));
-    } catch {
-      output.error("Clone succeeded but the folder could not be bound \u2014 re-run clone to bind it.");
+    if (repo) {
+      try {
+        saveSpace(dir, spaceRecordForRepo(repo, me.username));
+      } catch {
+        output.error("Clone succeeded but the folder could not be bound \u2014 re-run clone to bind it.");
+      }
     }
     if (me.username) {
       try {
@@ -15328,9 +15393,9 @@ var cloneCommand = {
     }
     const spaceUrl = stableRoot ? canonicalSpaceUrl(config.apiUrl, stableRoot) : null;
     output.result({
-      repo_id: repo.repo_id,
+      repo_id: repo?.repo_id ?? null,
       root_node_id: stableRoot ?? null,
-      slug,
+      slug: repo ? slug : null,
       namespace,
       space_url: spaceUrl,
       remote_url: url,
@@ -16417,7 +16482,7 @@ var linkCommand = {
     if (target) {
       const matches = me.repos.filter((r) => {
         const namespace2 = repoRouteNamespace(r, me.username);
-        const slug = r.route_slug ?? r.slug;
+        const slug = repoDisplaySlug(r);
         return r.repo_id === target || r.root_node_id === target || slug === target || `${namespace2}/${slug}` === target;
       });
       if (matches.length === 0) {
@@ -16430,8 +16495,9 @@ var linkCommand = {
       }
       repo = matches[0];
       if (!repoKeys(repo, me, gitBase, config.apiUrl).includes(originKey)) {
-        const expected = repo.root_node_id ? canonicalGitUrl(config.apiUrl, repo.root_node_id) : `${gitBase}/${repoRouteNamespace(repo, me.username)}/${repo.route_slug ?? repo.slug}.git`;
-        output.error(`${dir}'s origin (${origin}) doesn't match ${repo.slug}.
+        const displaySlug2 = repoDisplaySlug(repo);
+        const expected = repo.root_node_id ? canonicalGitUrl(config.apiUrl, repo.root_node_id) : `${gitBase}/${repoRouteNamespace(repo, me.username)}/${displaySlug2}.git`;
+        output.error(`${dir}'s origin (${origin}) doesn't match ${displaySlug2}.
 Expected a clone of ${expected}.`);
         return 1;
       }
@@ -16471,7 +16537,8 @@ Run \`ideaspaces repos\` to see them, or pass the space explicitly.`);
       } catch {
       }
     }
-    output.result({ repo_id: repo.repo_id, root_node_id: repo.root_node_id ?? null, slug: repo.slug, namespace, path: dir }, `Linked ${namespace}/${repo.slug} \u2192 ${dir}`);
+    const displaySlug = repoDisplaySlug(repo);
+    output.result({ repo_id: repo.repo_id, root_node_id: repo.root_node_id ?? null, slug: displaySlug, namespace, path: dir }, `Linked ${namespace}/${displaySlug} \u2192 ${dir}`);
     return 0;
   }
 };
