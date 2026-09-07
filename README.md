@@ -15,11 +15,18 @@ The plugin does three things. On arrival it reads the folder's `_agent/` instruc
 
 The marketplace is this repository: `IdeaSpaces-xyz/claude-code-plugin`.
 
-**Claude Code**, inside a session or from the terminal:
+**Claude Code**, inside a session:
 
 ```
 /plugin marketplace add IdeaSpaces-xyz/claude-code-plugin
 /plugin install ideaspaces@ideaspaces-xyz
+```
+
+Or from the terminal:
+
+```bash
+claude plugin marketplace add IdeaSpaces-xyz/claude-code-plugin
+claude plugin install ideaspaces@ideaspaces-xyz
 ```
 
 **Codex**:
