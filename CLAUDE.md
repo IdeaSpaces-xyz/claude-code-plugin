@@ -34,3 +34,5 @@ Local capture goes through MCP and the protocol; platform workflow goes through 
 Every PR that changes what users receive — `dist/`, `cli/bundle/`, `reference/`, `skills/`, hooks, or `.claude-plugin/` — **bumps the version** in both `.claude-plugin/plugin.json` and `package.json` (patch unless the surface changed). Claude Code keys the install cache by that version; an unbumped release mutates users' existing `cache/<marketplace>/ideaspaces/<version>/` slot in place, and update checks report "already at the latest version" while content silently drifts (how 0.3.1 accumulated four unversioned content PRs).
 
 Ritual: bump the protocol pin if it moved → `npm install` → `npm run build:reference && npm run build:hook` → `npm run vendor` (siblings on clean `main` with fresh bundles) → bump both version fields → `typecheck` + `test` + `lint:skills` + `check:vendor` → PR.
+
+Listing in Anthropic's built-in plugin catalog is optional and separate from the marketplace install: submit via [claude.com/docs/plugins/submit](https://claude.com/docs/plugins/submit).
