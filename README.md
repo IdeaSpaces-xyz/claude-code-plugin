@@ -31,7 +31,7 @@ codex plugin add ideaspaces@ideaspaces-xyz
 
 **Cowork**: Customize → Plugins → Add marketplace → paste `IdeaSpaces-xyz/claude-code-plugin` → install **ideaspaces**. Cowork's sandbox blocks remote sync; capture there, and switch to Claude Code view to publish, push, or pull the same folder.
 
-**For a whole team**, commit this to `.claude/settings.json` and everyone who trusts the repo gets it:
+**Claude Code, for a whole team**: commit this to `.claude/settings.json` and everyone who trusts the repo gets it:
 
 ```json
 {

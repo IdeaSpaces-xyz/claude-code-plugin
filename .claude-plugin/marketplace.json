@@ -5,13 +5,13 @@
     "email": "hello@ideaspaces.xyz"
   },
   "metadata": {
-    "description": "Ideaspace Protocol for Claude Code and Cowork — durable awareness, deliberate capture, optional sync."
+    "description": "Ideaspace Protocol for Claude Code, Codex, and Cowork — durable awareness, deliberate capture, optional sync."
   },
   "plugins": [
     {
       "name": "ideaspaces",
       "source": "./",
-      "description": "Ideaspace Protocol for Claude Code and Cowork — durable awareness, deliberate capture, optional sync."
+      "description": "Ideaspace Protocol for Claude Code, Codex, and Cowork — durable awareness, deliberate capture, optional sync."
     }
   ]
 }
