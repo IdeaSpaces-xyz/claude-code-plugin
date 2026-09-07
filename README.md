@@ -1,66 +1,37 @@
-# IdeaSpaces for Claude Code and Cowork
+# IdeaSpaces for Claude Code, Codex, and Cowork
 
 [![CI](https://github.com/IdeaSpaces-xyz/claude-code-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/IdeaSpaces-xyz/claude-code-plugin/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> Give Claude a standard way to turn useful work into knowledge that survives the chat.
+> An agent is a folder. This plugin teaches yours to work in one.
 
-Useful decisions, findings, plans, and context should not disappear with the chat. This local-first plugin gives Claude a standard way to orient in your work, recognize when understanding has changed, and capture what matters as ordinary Markdown with git history.
+An ideaspace is a folder of Markdown under git that holds two things: **your knowledge**, and **how to work with it**. Open your agent inside one and that's who you're talking to. The instructions live in the folder, not in the model, so the same folder works in Claude Code today and in whatever you run next year.
 
-The [protocol](https://github.com/IdeaSpaces-xyz/ideaspace-protocol) defines the repository shape and operating loop. This plugin makes that standard native to **Claude Code and Cowork** through session awareness, capture skills, and safe commit/sync tools. Everything stays on your machine unless you choose to publish or sync it.
+The plugin does three things. On arrival it reads the folder's `_agent/` instructions, the tree, and what changed since last time. While you work it proposes writing down decisions and findings as plain Markdown, and commits only what you agreed to, with your name on it. When you want, it publishes, shares, pushes, or pulls. Everything stays on your machine until then.
 
-[Install IdeaSpaces](#install) · [Explore the protocol as an Ideaspace](https://ideaspaces.xyz/spaces/n_64dbf7878f05362337a6cda6) · [Use IdeaSpaces with Pi](https://github.com/IdeaSpaces-xyz/pi-is-space)
-
-## What you get
-
-- **Awareness on arrival** — Claude reads the active `_agent/` agreement, current direction, tree, and recent movement.
-- **Deliberate capture** — when understanding crystallizes, Claude proposes preserving it, stages the agreed draft, and commits only after explicit confirmation.
-- **Knowledge that compounds** — decisions and context become ordinary Markdown rather than remaining trapped in transcripts.
-- **Portable map-notes** — capture a curated, pinned navigation frame that another local agent can launch over without fetching its roots.
-- **Explicit history** — commits preserve authorship, agent contribution, conversation provenance, and multi-commit Changes.
-- **Optional collaboration** — work fully offline, then publish, push, or pull when you want remote access.
+[How it works](https://ideaspaces.xyz/how-it-works) · [The protocol](https://github.com/IdeaSpaces-xyz/ideaspace-protocol) · [Use with Pi](https://github.com/IdeaSpaces-xyz/pi-is-space)
 
 ## Install
 
-IdeaSpaces installs the same way in **Claude Code** and **Cowork** — both read plugins from a GitHub repository. You'll add ours once, then install with one click or one command.
+The marketplace is this repository: `IdeaSpaces-xyz/claude-code-plugin`.
 
-Marketplace repository: **`IdeaSpaces-xyz/claude-code-plugin`**
-
-### Claude Code
-
-Inside a Claude Code session, type:
+**Claude Code**, inside a session or from the terminal:
 
 ```
 /plugin marketplace add IdeaSpaces-xyz/claude-code-plugin
 /plugin install ideaspaces@ideaspaces-xyz
 ```
 
-Or from your terminal:
+**Codex**:
 
-```bash
-claude plugin marketplace add IdeaSpaces-xyz/claude-code-plugin
-claude plugin install ideaspaces@ideaspaces-xyz
+```
+codex plugin marketplace add IdeaSpaces-xyz/claude-code-plugin
+codex plugin add ideaspaces@ideaspaces-xyz
 ```
 
-### Cowork
+**Cowork**: Customize → Plugins → Add marketplace → paste `IdeaSpaces-xyz/claude-code-plugin` → install **ideaspaces**. Cowork's sandbox blocks remote sync; capture there, and switch to Claude Code view to publish, push, or pull the same folder.
 
-1. Open **Customize** in the sidebar, then **Plugins**.
-2. Click **Add marketplace** and paste `IdeaSpaces-xyz/claude-code-plugin` (the `owner/repo` shorthand or the full `https://github.com/IdeaSpaces-xyz/claude-code-plugin` URL both work).
-3. Find **ideaspaces** in the list and click **Install**.
-4. Approve the plugin when prompted — it includes a small local helper (see Requirements).
-
-**What works in Cowork's sandbox.** Cowork runs in an isolated sandbox with restricted network access, so IdeaSpaces behaves a little differently there:
-
-- ✅ **Working locally works fully.** Create a space and capture notes as usual — Cowork writes to a folder you've **connected on the desktop**, so your markdown is saved to real files that persist. Create your space *inside* a connected folder.
-- ⚠️ **Remote sync may be blocked — switch to Claude Code view.** Publishing and `is_push` / `is_pull` reach a git host outside the sandbox, which the Cowork view restricts. The fix is simple: **switch to Claude Code view and ask the agent to push or pull there.** Sync works from Claude Code view, and it's the same space, so nothing is lost — capture in Cowork, sync in Code.
-
-### Your first session
-
-Open Claude Code in any folder and say **"set up an ideaspace"** — or **"create an agent"**. The conversation takes it from there: what's already in the folder gets inspected and confirmed before anything is written, and an agent's character is drawn out from real examples rather than a form.
-
-### For a whole team (auto-install)
-
-Commit this to your project's `.claude/settings.json` and everyone who trusts the repo gets IdeaSpaces automatically:
+**For a whole team**, commit this to `.claude/settings.json` and everyone who trusts the repo gets it:
 
 ```json
 {
@@ -75,165 +46,46 @@ Commit this to your project's `.claude/settings.json` and everyone who trusts th
 
 ### Requirements
 
-IdeaSpaces runs a small local helper on your machine — a Node.js program that manages the markdown and git. It ships pre-built inside the plugin (no `npm install`, and **no global `ideaspaces` command to install** — the skills invoke the bundled CLI for you). But it needs two things available on your PATH:
+**Node.js 18+** and **git** on your PATH. Claude Code's native installer does not put `node` on your PATH, so a machine that only has Claude Code may not have it. Ask your agent: *"set up my machine for IdeaSpaces"*. It finds what is missing and installs it for your OS. Then restart the agent.
 
-- **Node.js 18+** — the runtime for the helper, the MCP server, and the hooks. **Not guaranteed by Claude Code:** the native installer (`irm …` / `curl …`) bundles its own runtime and does *not* put `node` on your PATH, so a machine that only ever installed Claude Code that way has no Node. (Installed Claude Code via `npm i -g`? Then you already have it.)
-- **git** — for version history and remote sync. Working locally needs nothing else; git is only required once you commit, publish, or push.
+## First session
 
-Install whatever's missing:
+Open your agent in any folder and say one of these:
 
-| OS | Node.js | git |
-|---|---|---|
-| **Windows** | `winget install OpenJS.NodeJS` | `winget install Git.Git` |
-| **macOS** | `brew install node` | `brew install git` (or Xcode Command Line Tools) |
-| **Linux** | `apt install nodejs` etc. — older LTS ships < 18, so use [NodeSource](https://github.com/nodesource/distributions) or `nvm` for 18+ | e.g. `apt install git` |
+- *"set up an ideaspace here"* — inspects what is in the folder, confirms, then creates `_agent/`.
+- *"create an agent"* — a folder that *is* an agent; its character is drawn out in conversation.
+- *"take this space home"* with a public space URL — a local copy, no account needed.
 
-After installing, **restart Claude Code** so the new tools are picked up on PATH. Or just ask your agent — *"set up my machine for IdeaSpaces"* — and it can detect what's missing and run the right install for your OS.
+From then on, just work. When something worth keeping lands, the agent offers to write it down. Say *"write this down"* to do it yourself. Say *"publish this space"* to host it, *"share this with alice@example.com"* to let someone in, *"check my inbox"* to read questions about what you shared.
 
----
+Type `/` to see the skills: `is-setup`, `is-guide`, `is-orient`, `is-capture`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-inbox`, `is-push`, `is-pull`. Two more work on the agent's own initiative: `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how notes are written.
 
-## First steps
+## What it installs
 
-Once installed, just start working — the plugin orients your agent at the start of each session and nudges toward capturing what matters.
+- **A session-start hook** that renders the folder's orientation: position, current focus, tree, `_agent/` instructions, skills, and what changed since last time.
+- **MCP tools** for the local loop: `is_navigate`, `is_write`, `is_commit`, `is_status`, `is_change_open` / `is_change_close`, and `is_auth`, `is_spaces`, `is_clone`, `is_push`, `is_pull` for the optional remote.
+- **The `ideaspaces` CLI**, bundled, for fork, update, publish, share, and inbox. No global install needed. Its own page: [IdeaSpaces-xyz/cli](https://github.com/IdeaSpaces-xyz/cli).
+- **A pre-commit nudge**: if a plain `git commit` is about to run inside an ideaspace, it notes once per session that `is_commit` would carry attribution and would not sweep up a teammate's staged files.
 
-- **Start a space** — say *"set up an ideaspace here"* (runs the `/is-setup` skill), or scaffold one directly:
-  ```bash
-  node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create my-space --yes
-  ```
-- **Capture as you go** — when a decision or insight lands, the agent proposes writing it down. You confirm.
-- **Take a public Space home** — `ideaspaces fork <space-url> [dir]` materializes a copy-enabled Space locally without an account, source history, or hosted destination.
-- **Publish when ready** — say *"publish this space"* (`/is-publish`) to host it on a remote and reach it from another device. Optional; everything works fully offline without it.
-- **Choose who can use it** — say *"share this with alice@example.com for Explore"*, *"share with team acme.com for Collaborate"*, or *"make this public"* (`/is-share`).
-- **Ask and reply from your local agent** — say *"check my Inbox"* or *"ask @alice about this Space"* (`/is-inbox`).
+The plugin ships pre-built. The MCP server and CLI are vendored bundles with locked hashes; the skills' reference text is built from the protocol at an exact pin.
 
-Eleven skills are yours to invoke — type `/` in Claude Code or Cowork to see them: `is-setup`, `is-orient`, `is-capture`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-inbox`, `is-push`, `is-pull`. Most of the time you won't type them — saying what you want (*"write this down"*, *"note this"*) reaches `is-capture` the same way.
+## Contributing
 
-Two more run on the agent's initiative rather than yours, so they won't appear in that menu: `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how Notes get written. You reach them by saying what you want — *"has our direction changed?"* — not by typing a command.
-
----
-
-## Under the hood
-
-Everything below is for contributors and the curious — you don't need any of it to use IdeaSpaces.
-
-### How distribution works
-
-The plugin **is** its GitHub repo. `IdeaSpaces-xyz/claude-code-plugin` is public and contains a `.claude-plugin/marketplace.json`, so both Claude Code and Cowork treat it as an installable marketplace directly — there's nothing else to publish. The MCP server and CLI are vendored as self-contained bundles, so an end-user install needs no dependency step.
-
-To also list IdeaSpaces in Anthropic's built-in catalog for discoverability, submit it via [claude.com/docs/plugins/submit](https://claude.com/docs/plugins/submit). That's optional and separate from the install flow above.
-
-### Bundled CLI
-
-The skills invoke this CLI; no global npm install is required.
-
-| Command | What |
-|---|---|
-| `ideaspaces create [name]` | Scaffold the seed contract and mint portable root identity before login (except private gitignored code-repo context). |
-| `ideaspaces fork <space-url> [dir]` | Materialize a copy-enabled Space as one independent unpublished local commit, without an account or source history. |
-| `ideaspaces update [--yes]` | Preview or apply account-optional source updates without displacing local work. |
-| `ideaspaces write <path>` | Create/update a Note with Layer 1 frontmatter; stages it and returns a content sha (`--if-match` for safe updates). |
-| `ideaspaces commit -m <msg> <path>…` | The explicit save — commits only the paths you name (`--all`), never unrelated staged work. Optional `--op` / `--change-id` / `--co-author` / `--conversation` trailers. |
-| `ideaspaces change new [<handle>]` | Mint a `Change-Id` for a decision spanning multiple commits/repos. |
-| `ideaspaces navigate [<path>] [--mark-seen]` | Re-derive bounded orientation at a position (fractal contract + tree + drift); `--json` for the structured block. |
-| `ideaspaces map [<repo>] [--depth full]` | Derive a contract-free local repository Map; full depth is explicit, offline enumeration and dirty/local-only results are non-portable. |
-| `ideaspaces status [--path FILE]` | Git/capture position plus offline root-identity evidence; single-file sha for `--if-match`. |
-| `ideaspaces pull` / `push` | Integrate remote changes / send committed captures (`--dry-run`). |
-| `ideaspaces skills [<name>]` | List the skill catalog, or print one skill's markdown. |
-| `ideaspaces login` | Save optional remote credentials. |
-| `ideaspaces publish` | Adopt the committed local identity on first publish, or reuse the verified hosted binding. |
-| `ideaspaces share person|team|list|remove|visibility` | Manage recipients, Explore/Fork/Collaborate grades, and public/private visibility. |
-| `ideaspaces inbox list|read|send|reply` | Exchange person-accountable questions and replies about exact shared Content. |
-
-`fork` validates the complete bounded snapshot before touching its destination and creates no remote or hosted metadata. `update` uses the same credential-optional snapshot boundary, preserves local work through a three-way plan, and requires `--yes` to apply. `publish` later evaluates foundation/origin/registry identity before network mutation, refuses uncommitted declaration drift, and preflights tracked Markdown before pushing. `--force` never forks or rekeys a Space.
-
-### MCP tools
-
-The MCP tools, plus skill resources. Native Claude Code `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` cover file editing; `is_navigate` adds the composed `_agent` contract that a plain tree can't reconstruct.
-
-| Tool | What |
-|---|---|
-| `is_write` | Create/update a Note in-process, optionally with a validated protocol `map` block; stages and tracks its full revision while retaining `sha` for safe-update compatibility. |
-| `is_commit` | The explicit save — commits named paths, or only this MCP session's captures with `all`; never adopts other staged work. Auto-stamps attribution trailers. |
-| `is_change_open` / `is_change_close` | Open/close a Change — a `Change-Id` stamped on every `is_commit` for one decision, across files and repos. |
-| `is_status` | Capture state: git position + session captures, or one path's full revision and `sha` compatibility token. |
-| `is_navigate` | Re-derive orientation at a position — the fractal `_agent` contract (foundation + deepest guide/purpose/now), tree, git-state, and drift. Read-only. |
-| `is_pull` | Integrate remote changes into the local space; never pushes; refuses on a dirty/uncommitted tree. |
-| `is_push` | Send committed captures to the remote; never pulls; refuses when behind — pull first. |
-| `is_spaces` | List remote spaces available to the signed-in person. |
-| `is_clone` | Clone a selected remote space into a local folder. |
-| `is_auth` | Log in / out for optional remote hosting. |
-
-Skill resources at `ideaspaces://skill/<name>` expose the canonical catalog (`resources/list` / `resources/read`) for non-plugin clients.
-
-MCP stays thin: portable local reads, writes, commits, and Change minting use the protocol in-process; platform and transport flows use the bundled CLI. Shared shape stays in the protocol; the session capture ledger and presentation stay on the surface. Fork and Share remain CLI-backed rather than becoming duplicate native tools.
-
-### Skills
-
-User-invocable (they appear when you type `/`):
-
-- **is-setup** — conversational layer over `ideaspaces create`
-- **is-orient** — orient inside a space: where are we, what's active, what changed
-- **is-capture** — write it down so it is not lost: a Note when conversation crystallizes
-- **is-shape** — create a reusable `_agent/` primitive or perspective
-- **is-space** — `_agent/` contract, navigation conventions, voice rules
-- **is-fork** — conversational layer over account-free local Fork and maintained source updates
-- **is-publish** — conversational layer over `ideaspaces publish`
-- **is-share** — manage people, teams, Explore/Fork/Collaborate grades, and public/private visibility
-- **is-inbox** — ask, read, and reply through person-accountable exchanges about shared Content
-- **is-push** — send committed captures to the remote
-- **is-pull** — integrate remote changes into the local space
-
-Model-triggered only — `user-invocable: false` in their `SKILL.md`, so the agent
-reaches for them from their `description`, and typing `/name` will not work:
-
-- **is-reflect** — propose updates to Purpose, Now, or structure when direction drifts
-- **is-writing** — writing standard for Notes that compound
-
-Skills read their full protocols from `reference/` (the protocol's canonical skill catalog, built via `readSkill()`).
-
-### Hooks
-
-**SessionStart awareness** (`dist/awareness-hook.js`) — imports the exact-pinned protocol directly, assembles its structured Content manifest in-process, and emits the canonical orientation (position, Now, tree, agent context, skills, since-last-session activity, git state, stale-doc drift, and missing direction). Claude-specific placement stays in the hook. After rendering, the hook advances the local seen ref for the next session; that lifecycle write remains surface-owned because protocol shape primitives are read-only. The MCP `is_navigate` tool consumes the same manifest/renderer, so parity is structural rather than routed through a bundled CLI process.
-
-It also **bridges the session id**: the MCP server can't read the Claude Code session id from the protocol, so this hook writes it (from its stdin `session_id`) to a user-level cache (`~/.ideaspaces/sessions/<hash of project dir>`, outside the project tree so no visited repo is touched), where `is_commit` reads it to stamp the `Conversation` trailer. Best-effort; absent → the trailer is simply omitted. The cache is keyed by project dir (the reader only knows `CLAUDE_PROJECT_DIR`, never the session), so distinct dirs and worktrees are isolated but two concurrent sessions in the *same* dir share one entry — last-writer-wins, an accepted v1 tradeoff.
-
-**PreToolUse capture-nudge** (`dist/capture-nudge-hook.js`) — when a Bash `git commit` is about to run inside an ideaspace, notes that it would bypass `is_commit` (no attribution trailers; a bare commit can sweep a teammate's staged work) — before the choice, at most once per session. Plain Write/Edit of knowledge files stays silent — staging needs no ceremony. Silent outside an ideaspace and in nested code repos unless that repo carries its own `_agent/` contract.
-
-### Repo-local agent context
-
-This plugin repo's own `_agent/` is local working context and is gitignored. Public repo orientation lives in `README.md`, `CLAUDE.md`, skill files, and source.
-
-Contributors who want local agent orientation can manually create a private `_agent/`, or run `ideaspaces create` from the repo root to preview the scaffold and copy the parts they want. Do not commit it.
-
-### Rebuilding
-
-The plugin ships pre-built: the CLI and MCP bundles are vendored from the sibling repos, the skill `reference/` is built directly from the protocol, and the hooks are built here. To update after code changes:
+Bundles are build outputs; regenerate, never hand-edit:
 
 ```bash
-# 1. Rebuild the sibling bundles
 cd ../cli && npm run build && npm run bundle
 cd ../mcp-server && npm run build && npm run bundle
-
-# 2. In the plugin: install the protocol pin, vendor bundles, build reference + hooks
 cd ../ideaspaces-plugin
-npm install                # install the exact protocol pin
-npm run vendor             # bundles ← sibling repos; refreshes vendor-lock.json
-npm run build:reference    # reference/*.md ← protocol readSkill()
-npm run build:hook         # SessionStart + capture-nudge hooks
-npm run typecheck
-
-# 3. Drift + smoke checks
-npm run check:generated    # committed references/hooks match their generators
-npm run check:vendor       # rebuild public vendors; verify every locked hash
-node cli/bundle/ideaspaces.js --help
-node cli/bundle/ideaspaces.js skills
+npm install && npm run vendor && npm run build:reference && npm run build:hook
+npm run typecheck && npm run check:generated && npm run check:vendor
 ```
 
-`vendor-lock.json` records each upstream repository commit and expected bundle hash. Vendor CI rebuilds public upstreams byte-for-byte and verifies every committed copy against its lock. The private MCP source repo enforces source → bundle freshness in its own CI; plugin CI verifies that exact bundle's locked hash without requiring cross-repo credentials.
+Every PR that changes what users receive bumps the version in both `.claude-plugin/plugin.json` and `package.json`. Claude Code keys its install cache by that version. See [`CLAUDE.md`](CLAUDE.md).
 
 ## Status
 
-Public preview. The local orientation and capture loop is in active use; the protocol remains provisional before 1.0, and remote hosting is optional.
+Public preview. The local loop is in daily use. The protocol is provisional before 1.0. Hosting is optional.
 
 ## License
 
