@@ -68,6 +68,13 @@ CLI=(node "${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js")
 # Combined people, invitations, and teams
 "${CLI[@]}" share list
 
+# Pending invitation recovery
+"${CLI[@]}" share resend "someone@example.com"
+
+# Independent hosted-history control for a direct person share
+"${CLI[@]}" share history "@someone" on
+"${CLI[@]}" share history "@someone" off
+
 # Aggregate removal by recipient
 "${CLI[@]}" share remove "someone@example.com"
 "${CLI[@]}" share remove "team:acme.com"
@@ -87,13 +94,15 @@ Append `--space "<url>"` when targeting a Space other than the current folder. U
 output rather than `--json`: report recipients, levels, direct standing, and surviving effective
 access, but do not surface backend coordinates.
 
-If authentication is required, offer `is_auth action="login"`, then retry the same command. Do not
-fall back to legacy compatibility subcommands unless the user explicitly asks to manage legacy
-access.
+If authentication is required, offer `is_auth action="login"`, then retry the same command. Never
+invoke retired repository-shaped membership or invitation subcommands; the CLI rejects them locally
+with migration guidance.
 
 ## Report the result
 
 - Say who or which team changed, at which level, and whether hosted history was included.
+- For resend, report delivery failure or the remaining cooldown without inventing a successful send.
+- For history, repeat that Content, Copy, and Git transport are unchanged.
 - After removal, preserve the CLI's distinction between removed direct access and access surviving
   through another person, team, owner, or policy path.
 - After visibility changes, repeat that named grants are unchanged. For Public, distinguish the
