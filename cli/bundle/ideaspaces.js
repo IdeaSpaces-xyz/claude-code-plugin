@@ -8151,18 +8151,6 @@ async function getSpaceAccess(config, repoId) {
 async function setSpaceAccess(config, repoId, update) {
   return request(config, "PATCH", `${repoBase(repoId)}/space-access`, update);
 }
-async function listParticipants(config, repoId, conversationId, opts) {
-  return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}/participants`, void 0, opts);
-}
-async function addParticipant(config, repoId, conversationId, participant, role = "member", opts) {
-  return request(config, "POST", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}/participants`, { participant, role }, opts);
-}
-async function removeParticipant(config, repoId, conversationId, participant, opts) {
-  return request(config, "DELETE", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}/participants/${encodeURIComponent(participant)}`, void 0, opts);
-}
-async function fetchRepoMembers(config, repoId, opts) {
-  return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/members`, void 0, opts);
-}
 async function getConversation(config, repoId, conversationId, opts) {
   return request(config, "GET", `${API_V1}/repos/${encodeURIComponent(repoId)}/conversations/${encodeURIComponent(conversationId)}`, void 0, opts);
 }
@@ -16608,15 +16596,10 @@ function makeConversationsCommand(local) {
 }
 
 // dist/commands/conversation.js
-function toPrincipal(actor) {
-  return /^(person|agent|node):/.test(actor) ? actor : `person:${actor}`;
-}
-function parseRole(value) {
-  if (value === void 0 || value === "member")
-    return "member";
-  if (value === "reader")
-    return "reader";
-  return null;
+var RETIRED_PARTICIPANT_COMMANDS = /* @__PURE__ */ new Set(["participants", "add", "remove", "members"]);
+function rejectRetiredParticipantCommand(sub, output) {
+  output.error(`The \`conversation ${sub}\` command was removed. Conversations are private to one person and their selected agent. Use \`ideaspaces share person <email|@handle>\` or \`ideaspaces share team <hostname>\` to share Content; collaborate through Inbox.`);
+  return 1;
 }
 function requireConfig(output) {
   const config = loadConfig();
@@ -16651,81 +16634,6 @@ async function cmdNew2(args2, flags2, output) {
   try {
     const conv = await createConversation(config, repoId, body);
     output.result(conv, `Created conversation ${conv.name || "(untitled)"} (${conv.conversation_id})`);
-    return 0;
-  } catch (err) {
-    return reportError(err, output);
-  }
-}
-async function cmdParticipants(args2, output) {
-  const [repoId, convId] = args2;
-  if (!repoId || !convId) {
-    output.error("Usage: ideaspaces conversation participants <repo_id> <conversation_id>");
-    return 1;
-  }
-  const config = requireConfig(output);
-  if (!config)
-    return 1;
-  try {
-    const res = await listParticipants(config, repoId, convId);
-    output.result(res, res.participants.length ? res.participants.map((p) => `${p.participant} \u2014 ${p.role}`).join("\n") : "No participants.");
-    return 0;
-  } catch (err) {
-    return reportError(err, output);
-  }
-}
-async function cmdAdd(args2, flags2, output) {
-  const [repoId, convId, actor] = args2;
-  if (!repoId || !convId || !actor) {
-    output.error("Usage: ideaspaces conversation add <repo_id> <conversation_id> <username|principal> [--role member|reader]");
-    return 1;
-  }
-  const role = parseRole(flags2.role);
-  if (role === null) {
-    output.error("--role must be 'member' or 'reader'.");
-    return 1;
-  }
-  const config = requireConfig(output);
-  if (!config)
-    return 1;
-  const participant = toPrincipal(actor);
-  try {
-    const p = await addParticipant(config, repoId, convId, participant, role);
-    output.result(p, `Added ${p.participant} as ${p.role}`);
-    return 0;
-  } catch (err) {
-    return reportError(err, output);
-  }
-}
-async function cmdRemove(args2, output) {
-  const [repoId, convId, actor] = args2;
-  if (!repoId || !convId || !actor) {
-    output.error("Usage: ideaspaces conversation remove <repo_id> <conversation_id> <username|principal>");
-    return 1;
-  }
-  const config = requireConfig(output);
-  if (!config)
-    return 1;
-  const participant = toPrincipal(actor);
-  try {
-    const p = await removeParticipant(config, repoId, convId, participant);
-    output.result(p, `Removed ${participant}`);
-    return 0;
-  } catch (err) {
-    return reportError(err, output);
-  }
-}
-async function cmdMembers(args2, output) {
-  const repoId = args2[0];
-  if (!repoId) {
-    output.error("Usage: ideaspaces conversation members <repo_id>");
-    return 1;
-  }
-  const config = requireConfig(output);
-  if (!config)
-    return 1;
-  try {
-    const members = await fetchRepoMembers(config, repoId);
-    output.result({ repo_id: repoId, members }, members.length ? members.map((m) => `${m.username ?? m.email ?? `user ${m.user_id}`} \u2014 ${m.role}`).join("\n") : "No members.");
     return 0;
   } catch (err) {
     return reportError(err, output);
@@ -16814,19 +16722,15 @@ async function cmdCancel(args2, output) {
     return reportError(err, output);
   }
 }
-var USAGE3 = "ideaspaces conversation <new|participants|add|remove|members|send|get|cancel> \u2026 (send --local for a local pi turn)";
+var USAGE3 = "ideaspaces conversation <new|send|get|cancel> \u2026 (send --local for a local pi turn)";
 function makeConversationCommand(local) {
   return {
     name: "conversation",
-    description: "Create a conversation and manage its participants",
+    description: "Create and run a private conversation",
     usage: USAGE3,
     examples: [
       "ideaspaces conversation new repo_abc --name 'Kickoff'",
       "ideaspaces conversation new repo_abc --agent agent_node_xyz  # pick the agent",
-      "ideaspaces conversation members repo_abc          # who you can add",
-      "ideaspaces conversation add repo_abc c_123 alice  # add a person",
-      "ideaspaces conversation participants repo_abc c_123",
-      "ideaspaces conversation remove repo_abc c_123 alice",
       "ideaspaces conversation send repo_abc c_123 --message 'Hi'  # streams JSON lines",
       "ideaspaces conversation send --local --context /ws --conversation c1 --message 'Hi' --map maps/research.md --ext a,b --skill a/skills,b/skills --pi-bin /path/pi --pi-model sonnet --pi-thinking high  # local pi turn over a map-note",
       "ideaspaces conversation get repo_abc c_123        # detail + history",
@@ -16835,17 +16739,12 @@ function makeConversationCommand(local) {
     async run(args2, flags2, global2) {
       const output = createOutput(global2);
       const [sub, ...rest] = args2;
+      if (RETIRED_PARTICIPANT_COMMANDS.has(sub ?? "")) {
+        return rejectRetiredParticipantCommand(sub, output);
+      }
       switch (sub) {
         case "new":
           return flags2.local ? local.createNew(output) : cmdNew2(rest, flags2, output);
-        case "participants":
-          return cmdParticipants(rest, output);
-        case "add":
-          return cmdAdd(rest, flags2, output);
-        case "remove":
-          return cmdRemove(rest, output);
-        case "members":
-          return cmdMembers(rest, output);
         case "send":
           return flags2.local ? local.send(flags2, output) : cmdSend(rest, flags2, output);
         case "get":
