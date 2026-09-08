@@ -8108,7 +8108,10 @@ async function listPersonShares(config, targetNodeId, opts) {
 function describeShareRefusal(err) {
   const message = err instanceof Error ? err.message : String(err);
   if (message.includes("root_governance_unestablished")) {
-    return "This Space cannot share with a person directly yet \u2014 its ownership record was never established, which is true of most Spaces created before the change.\nThe older path still works for it: ideaspaces share legacy-invite <repo_id> <email> --role READER";
+    return "This Space cannot use current sharing because its ownership record was never established. Ask the server administrator to migrate it, or use CLI 0.1.22 while that server is upgraded.";
+  }
+  if (message.includes("invitation_grade_conflict") || message.includes("invitation_history_conflict")) {
+    return "A pending invitation already exists with different access or history. Remove it with `ideaspaces share remove <email>`, then share again.";
   }
   if (message.includes("\u2192 409") && message.includes("Person Share is unavailable")) {
     return "Direct person sharing is unavailable for this Space.";
@@ -8120,6 +8123,12 @@ async function removePersonShare(config, targetNodeId, userId, opts) {
 }
 async function revokePersonShareInvite(config, targetNodeId, inviteId, opts) {
   return request(config, "DELETE", `${nodeBase(targetNodeId)}/person-share-invites/${encodeURIComponent(inviteId)}`, void 0, opts);
+}
+async function resendPersonShareInvite(config, targetNodeId, inviteId, opts) {
+  return request(config, "POST", `${nodeBase(targetNodeId)}/person-share-invites/${encodeURIComponent(inviteId)}/resend`, void 0, opts);
+}
+async function setPersonShareHistory(config, targetNodeId, userId, enabled, opts) {
+  return request(config, enabled ? "PUT" : "DELETE", `${nodeBase(targetNodeId)}/person-shares/${encodeURIComponent(String(userId))}/history`, void 0, opts);
 }
 async function listPersonShareInvites(config, targetNodeId, opts) {
   return request(config, "GET", `${nodeBase(targetNodeId)}/person-share-invites`, void 0, opts);
@@ -8135,24 +8144,6 @@ async function setTeamShare(config, rootNodeId, orgNodeId, grade, opts) {
 }
 async function removeTeamShare(config, rootNodeId, orgNodeId, opts) {
   return request(config, "DELETE", `${nodeBase(rootNodeId)}/team-shares/${encodeURIComponent(orgNodeId)}`, void 0, opts);
-}
-async function listRepoMembers(config, repoId) {
-  return request(config, "GET", `${repoBase(repoId)}/members`);
-}
-async function removeRepoMember(config, repoId, userId) {
-  await request(config, "DELETE", `${repoBase(repoId)}/members/${encodeURIComponent(String(userId))}`);
-}
-async function listRepoInvites(config, repoId) {
-  return request(config, "GET", `${repoBase(repoId)}/invites`);
-}
-async function createRepoInvites(config, repoId, emails, role) {
-  return request(config, "POST", `${repoBase(repoId)}/invites`, {
-    emails,
-    role
-  });
-}
-async function revokeRepoInvite(config, repoId, inviteId) {
-  await request(config, "DELETE", `${repoBase(repoId)}/invites/${encodeURIComponent(inviteId)}`);
 }
 async function getSpaceAccess(config, repoId) {
   return request(config, "GET", `${repoBase(repoId)}/space-access`);
@@ -11864,16 +11855,7 @@ import { basename as basename2, join as join11 } from "node:path";
 
 // dist/root-actions.js
 function hasRootAction(repo, action) {
-  if (repo.actions !== void 0)
-    return repo.actions.includes(action);
-  const role = repo.role?.toUpperCase();
-  if (action === "open")
-    return ["OWNER", "MEMBER", "CLONER", "READER"].includes(role ?? "");
-  if (action === "clone")
-    return ["OWNER", "MEMBER", "CLONER"].includes(role ?? "");
-  if (action === "collaborate")
-    return ["OWNER", "MEMBER"].includes(role ?? "");
-  return role === "OWNER";
+  return repo.actions?.includes(action) ?? false;
 }
 function availableRootActions(repo) {
   const actions = ["open", "copy", "clone", "collaborate"];
@@ -11889,7 +11871,7 @@ function rootRelationshipLabel(repo) {
   }
   if (receipts.includes("direct_person"))
     return "shared";
-  return repo.role?.toLowerCase() ?? "available";
+  return "available";
 }
 
 // dist/frontmatter-report.js
@@ -15060,10 +15042,6 @@ var reposCommand = {
       route_status: r.route_status ?? null,
       namespace: repoRouteNamespace(r, me.username),
       space_url: r.root_node_id ? canonicalSpaceUrl(config.apiUrl, r.root_node_id) : null,
-      // Rolling compatibility for sidecar consumers; never use these fields
-      // to derive the independent receipt actions above.
-      role: r.role ?? null,
-      member_count: r.member_count ?? null,
       relationship: rootRelationshipLabel(r),
       receipt_classes: r.receipt_classes ?? [],
       actions: availableRootActions(r)
@@ -15143,8 +15121,6 @@ function deriveCatalog(me, clones, statusByPath) {
         display_name: repo.name ?? slug,
         hostname: repo.hostname ?? null,
         namespace,
-        role: repo.role ?? null,
-        member_count: repo.member_count ?? null,
         relationship,
         receipt_classes: repo.receipt_classes ?? [],
         actions: availableRootActions(repo),
@@ -15162,8 +15138,6 @@ function deriveCatalog(me, clones, statusByPath) {
         display_name: repo.name ?? slug,
         hostname: repo.hostname ?? null,
         namespace,
-        role: repo.role ?? null,
-        member_count: repo.member_count ?? null,
         relationship,
         receipt_classes: repo.receipt_classes ?? [],
         actions: availableRootActions(repo),
@@ -17298,10 +17272,8 @@ var timesCommand = {
 };
 
 // dist/commands/share.js
-var USAGE7 = "ideaspaces share <person|team|list|remove|visibility> \u2026";
+var USAGE7 = "ideaspaces share <person|team|list|remove|resend|history|visibility> \u2026";
 var GRADES = ["explore", "fork", "collaborate"];
-var LEGACY_ROLES = ["MEMBER", "READER"];
-var COPY_LEVELS = ["owner", "member", "reader", "public"];
 function requireConfig2(output) {
   const config = loadConfig();
   if (!config) {
@@ -17330,6 +17302,25 @@ function personSelector(value) {
   }
   return null;
 }
+function standingForSelector(standings, selector) {
+  const needle = ("username" in selector ? selector.username : selector.email).toLowerCase();
+  return standings.find((standing) => "username" in selector ? standing.username?.toLowerCase() === needle : standing.email?.toLowerCase() === needle);
+}
+function rejectLegacyShare(sub, output) {
+  const replacements = {
+    access: "Use `ideaspaces share list` to inspect access.",
+    "set-access": "Use `ideaspaces share visibility public|private`.",
+    members: "Use `ideaspaces share list`.",
+    invites: "Use `ideaspaces share list`.",
+    "legacy-invite": "Use `ideaspaces share person <email> --grade explore|fork|collaborate`.",
+    revoke: "Use `ideaspaces share remove <email>`.",
+    invite: "Use `ideaspaces share person <email> --grade explore|fork|collaborate`.",
+    people: "Use `ideaspaces share list`.",
+    unshare: "Use `ideaspaces share remove <email|@handle|team:hostname>`."
+  };
+  output.error(`The legacy \`share ${sub}\` command was removed. ${replacements[sub]}`);
+  return 1;
+}
 function recipientName(person) {
   return person.name ?? person.username ?? person.email ?? `user ${person.user_id}`;
 }
@@ -17347,6 +17338,17 @@ function personStandingGrade(standing) {
     return "explore";
   return null;
 }
+function invitationDeliverySummary(invite) {
+  if (invite.delivery_status === "sent")
+    return "";
+  if (invite.delivery_status === "sending")
+    return "; delivery in progress";
+  const state = invite.delivery_status === "failed" ? `; delivery failed${invite.delivery_error ? ` (${invite.delivery_error})` : ""}` : "; delivery status unknown";
+  if (invite.can_resend)
+    return `${state}; resend available`;
+  const wait = invite.resend_retry_after_seconds;
+  return wait && wait > 0 ? `${state}; resend in ${wait}s` : state;
+}
 function capabilitySummary(capabilities) {
   const labels = {
     read: "view",
@@ -17357,18 +17359,6 @@ function capabilitySummary(capabilities) {
     git_push: "push"
   };
   return capabilities.map((capability) => labels[capability]).join(", ");
-}
-function setup(repoId, usage, output) {
-  if (!repoId) {
-    output.error(`Usage: ${usage}`);
-    return null;
-  }
-  const config = loadConfig();
-  if (!config) {
-    output.error("Not logged in. Run `ideaspaces login`.");
-    return null;
-  }
-  return config;
 }
 async function resolveTarget(spaceUrl, config, output) {
   if (spaceUrl) {
@@ -17558,7 +17548,7 @@ async function listProductAccess(rest, flags2, output) {
     lines.push(`  ${recipientName(standing).padEnd(24)} ${direct}${history}` + (effectiveOnly.length ? `; also ${capabilitySummary(effectiveOnly)} through another path` : ""));
   }
   for (const invite of invites) {
-    lines.push(`  ${invite.invited_email.padEnd(24)} invited (${invite.grade}${invite.share_history ? " + history" : ""})`);
+    lines.push(`  ${invite.invited_email.padEnd(24)} invited (${invite.grade}${invite.share_history ? " + history" : ""})` + invitationDeliverySummary(invite));
   }
   if (invitesResult.status === "rejected")
     lines.push("  pending invitations unavailable");
@@ -17627,11 +17617,25 @@ async function removeProductAccess(rest, flags2, output) {
   if (peopleResult.status === "rejected")
     throw peopleResult.reason;
   const needle = ("username" in selector ? selector.username : selector.email).toLowerCase();
-  const standing = peopleResult.value.standings.find((row) => "username" in selector ? row.username?.toLowerCase() === needle : row.email?.toLowerCase() === needle);
-  if (standing) {
+  const standing = standingForSelector(peopleResult.value.standings, selector);
+  if (standing?.direct_capabilities.length) {
     const result = await removePersonShare(config, target, standing.user_id);
-    const remains = result.effective_capabilities.length ? ` ${recipientName(standing)} still has ${capabilitySummary(result.effective_capabilities)} through another path.` : "";
-    output.result(result, (result.status === "removed" ? `Removed direct access for ${recipientName(standing)}.` : `Direct access was already removed for ${recipientName(standing)}.`) + remains);
+    let effectiveCapabilities = null;
+    let effectiveCapabilitiesUnavailable = null;
+    try {
+      const after = await listPersonShares(config, target);
+      effectiveCapabilities = after.standings.find((row) => row.user_id === standing.user_id)?.effective_capabilities ?? [];
+    } catch (err) {
+      effectiveCapabilitiesUnavailable = errorText(err);
+    }
+    const verified = {
+      ...result,
+      effective_read_remains: effectiveCapabilities?.includes("read") ?? null,
+      effective_capabilities: effectiveCapabilities,
+      effective_capabilities_unavailable: effectiveCapabilitiesUnavailable
+    };
+    const remains = effectiveCapabilities === null ? " Direct access was removed, but remaining access could not be checked." : effectiveCapabilities.length ? ` ${recipientName(standing)} still has ${capabilitySummary(effectiveCapabilities)} through another path.` : "";
+    output.result(verified, (result.status === "removed" ? `Removed direct access for ${recipientName(standing)}.` : `Direct access was already removed for ${recipientName(standing)}.`) + remains);
     return 0;
   }
   const invites = invitesResult.status === "fulfilled" ? invitesResult.value.invites : [];
@@ -17643,6 +17647,63 @@ async function removeProductAccess(rest, flags2, output) {
   }
   output.error(invitesResult.status === "rejected" ? `${who} has no direct accepted access here, and pending invitations could not be read (${errorText(invitesResult.reason)}).` : `${who} has no direct access or pending invitation here.`);
   return 1;
+}
+async function resendInvitation(rest, flags2, output) {
+  const email = rest[0];
+  const selector = email ? personSelector(email) : null;
+  if (!email || rest.length !== 1 || !selector || !("email" in selector)) {
+    output.error("Usage: ideaspaces share resend <email> [--space <url>]");
+    return 1;
+  }
+  const config = requireConfig2(output);
+  if (!config)
+    return 1;
+  const target = await resolveTarget(flagStr(flags2, "space"), config, output);
+  if (!target)
+    return 1;
+  const collection = await listPersonShareInvites(config, target);
+  const invite = collection.invites.find((row) => row.invited_email.toLowerCase() === selector.email.toLowerCase());
+  if (!invite) {
+    output.error(`${email} has no pending invitation here.`);
+    return 1;
+  }
+  if (!invite.can_resend) {
+    const wait = invite.resend_retry_after_seconds;
+    output.error(wait && wait > 0 ? `That invitation cannot be resent yet. Try again in ${wait} second${wait === 1 ? "" : "s"}.` : "That invitation cannot be resent right now.");
+    return 1;
+  }
+  const resent = await resendPersonShareInvite(config, target, invite.invite_id);
+  output.result(resent, resent.delivery_status === "failed" ? `Tried to resend the invitation to ${resent.invited_email}, but delivery failed${resent.delivery_error ? `: ${resent.delivery_error}` : "."}` : `Resent the ${resent.grade} invitation to ${resent.invited_email}.`);
+  return 0;
+}
+async function setHistory(rest, flags2, output) {
+  const who = rest[0];
+  const requested = rest[1]?.toLowerCase();
+  const selector = who ? personSelector(who) : null;
+  if (!who || !selector || requested !== "on" && requested !== "off" || rest.length !== 2) {
+    output.error("Usage: ideaspaces share history <email|@handle> <on|off> [--space <url>]");
+    return 1;
+  }
+  const config = requireConfig2(output);
+  if (!config)
+    return 1;
+  const target = await resolveTarget(flagStr(flags2, "space"), config, output);
+  if (!target)
+    return 1;
+  const people = await listPersonShares(config, target);
+  const standing = standingForSelector(people.standings, selector);
+  if (!standing?.direct_capabilities.length) {
+    output.error(`${who} has no direct person share here. Share with them before changing history.`);
+    return 1;
+  }
+  const enabled = requested === "on";
+  const result = await setPersonShareHistory(config, target, standing.user_id, enabled);
+  if (result.status === "not_direct") {
+    output.result(result, enabled ? `${recipientName(standing)} no longer has a direct person share, so hosted history was not enabled.` : `No direct hosted history remained for ${recipientName(standing)}. Other access was not changed by this command.`);
+    return 0;
+  }
+  output.result(result, result.status === "already_granted" ? `Hosted history was already on for ${recipientName(standing)}.` : `Hosted history is now ${enabled ? "on" : "off"} for ${recipientName(standing)}. Other access is unchanged.`);
+  return 0;
 }
 async function setVisibility(rest, flags2, output, yes) {
   const requested = rest[0]?.toLowerCase();
@@ -17676,7 +17737,6 @@ async function setVisibility(rest, flags2, output, yes) {
   return 0;
 }
 async function run(sub, rest, flags2, output, yes) {
-  const [repoId, arg] = rest;
   try {
     switch (sub) {
       case "person":
@@ -17687,213 +17747,26 @@ async function run(sub, rest, flags2, output, yes) {
         return await listProductAccess(rest, flags2, output);
       case "visibility":
         return await setVisibility(rest, flags2, output, yes);
-      case "access": {
-        const config = setup(repoId, "ideaspaces share access <repo_id>", output);
-        if (!config)
-          return 1;
-        const a = await getSpaceAccess(config, repoId);
-        output.result(a, `read: ${a.read_public ? "public" : "private"}
-copy: ${a.copy_access}
-root: ${a.root_node_id}`);
-        return 0;
-      }
-      case "set-access": {
-        const config = setup(repoId, "ideaspaces share set-access <repo_id> --public <bool> --copy <level>", output);
-        if (!config)
-          return 1;
-        const publicRaw = flagStr(flags2, "public") ?? (flags2.public === true ? "true" : void 0);
-        const copy = flagStr(flags2, "copy");
-        if (publicRaw === void 0 || !copy) {
-          output.error("Both --public <bool> and --copy <level> are required.");
+      case "resend":
+        return await resendInvitation(rest, flags2, output);
+      case "history":
+        return await setHistory(rest, flags2, output);
+      case "remove":
+        if (rest.length === 2 && rest[0]?.startsWith("repo_")) {
+          output.error("Repository-member removal was retired. Use `ideaspaces share remove <email|@handle|team:hostname>`.");
           return 1;
         }
-        if (!COPY_LEVELS.includes(copy)) {
-          output.error(`--copy must be one of: ${COPY_LEVELS.join(", ")}`);
-          return 1;
-        }
-        const read_public = publicRaw === "true";
-        const a = await setSpaceAccess(config, repoId, { read_public, copy_access: copy });
-        output.result(a, `read: ${a.read_public ? "public" : "private"}
-copy: ${a.copy_access}`);
-        return 0;
-      }
-      case "members": {
-        const config = setup(repoId, "ideaspaces share members <repo_id>", output);
-        if (!config)
-          return 1;
-        const members = await listRepoMembers(config, repoId);
-        const human = members.length ? members.map((m) => `${m.role.padEnd(7)} ${m.username ?? m.email ?? `user ${m.user_id}`}`).join("\n") : "no members";
-        output.result({ members }, human);
-        return 0;
-      }
-      case "remove": {
-        if (!(rest.length === 2 && repoId?.startsWith("repo_"))) {
-          return await removeProductAccess(rest, flags2, output);
-        }
-        const config = setup(repoId, "ideaspaces share remove <repo_id> <user_id>", output);
-        if (!config)
-          return 1;
-        const userId = Number(arg);
-        if (!arg || !Number.isInteger(userId)) {
-          output.error("Usage: ideaspaces share remove <repo_id> <user_id>");
-          return 1;
-        }
-        await removeRepoMember(config, repoId, userId);
-        output.result({ removed: userId }, `Removed user ${userId}`);
-        return 0;
-      }
-      case "invites": {
-        const config = setup(repoId, "ideaspaces share invites <repo_id>", output);
-        if (!config)
-          return 1;
-        const invites = await listRepoInvites(config, repoId);
-        const human = invites.length ? invites.map((i) => `${i.role.padEnd(7)} ${i.invited_email}`).join("\n") : "no pending invites";
-        output.result({ invites }, human);
-        return 0;
-      }
-      case "invite": {
-        const email = rest[0];
-        const config = requireConfig2(output);
-        if (!config)
-          return 1;
-        if (email && !email.includes("@")) {
-          output.error(`Not an email address: ${email}
-Usage: ideaspaces share invite <email> [--grade explore|fork|collaborate] [--history]`);
-          return 1;
-        }
-        if (rest.length > 1) {
-          output.error(`Refused \u2014 one address per call, and nothing was sent. A grade is per person.
-You named ${rest.length}: ${rest.join(", ")}
-Run it once per person.`);
-          return 1;
-        }
-        if (!email) {
-          output.error("Usage: ideaspaces share invite <email> [--grade explore|fork|collaborate] [--history]\nSharing a Space you are not standing in: --space <url>");
-          return 1;
-        }
-        const grade = flagStr(flags2, "grade")?.toLowerCase() ?? "explore";
-        if (!GRADES.includes(grade)) {
-          output.error(`--grade must be one of: ${GRADES.join(", ")}`);
-          return 1;
-        }
-        const target = await resolveTarget(flagStr(flags2, "space"), config, output);
-        if (!target)
-          return 1;
-        const res = await addPersonShare(config, target, {
-          email,
-          invite_if_no_match: true,
-          grade,
-          share_history: Boolean(flags2.history)
-        });
-        output.result(res, describeShare(res));
-        return 0;
-      }
-      case "people": {
-        const config = requireConfig2(output);
-        if (!config)
-          return 1;
-        const target = await resolveTarget(flagStr(flags2, "space"), config, output);
-        if (!target)
-          return 1;
-        const [peopleSettled, pendingSettled] = await Promise.allSettled([
-          listPersonShares(config, target),
-          listPersonShareInvites(config, target)
-        ]);
-        if (peopleSettled.status === "rejected")
-          throw peopleSettled.reason;
-        const people = peopleSettled.value;
-        const pending = pendingSettled.status === "fulfilled" ? pendingSettled.value : { invites: [] };
-        const invitesUnread = pendingSettled.status === "rejected" ? pendingSettled.reason instanceof Error ? pendingSettled.reason.message : String(pendingSettled.reason) : null;
-        const lines = [
-          ...people.relationships.map((r) => `  ${(r.username ?? r.email ?? `user ${r.user_id}`).padEnd(24)} ${r.access}${r.share_history ? " + history" : ""}`),
-          ...pending.invites.map((i) => `  ${i.invited_email.padEnd(24)} invited (${i.grade})`)
-        ];
-        if (!people.actions.can_add && people.actions.add_blocked_reason) {
-          lines.push("", `You cannot add people here: ${people.actions.add_blocked_reason}`);
-        }
-        if (!people.actions.can_manage_existing && people.actions.manage_blocked_reason) {
-          lines.push(`You cannot change who has it: ${people.actions.manage_blocked_reason}`);
-        }
-        if (invitesUnread) {
-          lines.push("", `Outstanding invitations could not be read: ${invitesUnread}`);
-        }
-        output.result({ ...people, pending_invites: pending.invites, invites_unavailable: invitesUnread }, lines.length ? lines.join("\n") : "nobody has direct access");
-        return 0;
-      }
-      case "unshare": {
-        const who = rest[0];
-        const config = requireConfig2(output);
-        if (!config)
-          return 1;
-        if (!who) {
-          output.error("Usage: ideaspaces share unshare <email|username> [--space <url>]");
-          return 1;
-        }
-        const target = await resolveTarget(flagStr(flags2, "space"), config, output);
-        if (!target)
-          return 1;
-        const needle = who.toLowerCase();
-        const [peopleSettled, pendingSettled] = await Promise.allSettled([
-          listPersonShares(config, target),
-          listPersonShareInvites(config, target)
-        ]);
-        if (peopleSettled.status === "rejected")
-          throw peopleSettled.reason;
-        const people = peopleSettled.value;
-        const pending = pendingSettled.status === "fulfilled" ? pendingSettled.value : { invites: [] };
-        const held = people.relationships.find((r) => r.email?.toLowerCase() === needle || r.username?.toLowerCase() === needle);
-        if (held) {
-          await removePersonShare(config, target, held.user_id);
-          output.result({ removed: { user_id: held.user_id, username: held.username ?? null }, target_node_id: target }, `Removed ${held.username ?? held.email ?? held.user_id}'s access.`);
-          return 0;
-        }
-        const invite = pending.invites.find((i) => i.invited_email.toLowerCase() === needle);
-        if (invite) {
-          await revokePersonShareInvite(config, target, invite.invite_id);
-          output.result({ revoked: invite.invite_id, invited_email: invite.invited_email, target_node_id: target }, `Withdrew the invitation to ${invite.invited_email}.`);
-          return 0;
-        }
-        output.error(pendingSettled.status === "rejected" ? `${who} holds no direct access here, and the invitation list could not be read (${pendingSettled.reason instanceof Error ? pendingSettled.reason.message : String(pendingSettled.reason)}).
-There may be an invitation outstanding that this cannot see.` : `${who} holds no direct access here and has no invitation outstanding.
-See who does: ideaspaces share people`);
-        return 1;
-      }
-      case "legacy-invite": {
-        const config = setup(repoId, "ideaspaces share legacy-invite <repo_id> <email\u2026> --role <role>", output);
-        if (!config)
-          return 1;
-        const emails = rest.slice(1).filter(Boolean);
-        const roleInput = (flagStr(flags2, "role") ?? "READER").toUpperCase();
-        if (!emails.length) {
-          output.error("Usage: ideaspaces share legacy-invite <repo_id> <email\u2026> --role <role>");
-          return 1;
-        }
-        if (roleInput === "CLONER") {
-          output.error("CLONER is gone. Copying is a grade on the Space now:\n  ideaspaces share invite <email> --grade fork");
-          return 1;
-        }
-        const role = roleInput;
-        if (!LEGACY_ROLES.includes(role)) {
-          output.error(`--role must be one of: ${LEGACY_ROLES.join(", ")}`);
-          return 1;
-        }
-        const res = await createRepoInvites(config, repoId, emails, role);
-        const human = res.results.map((r) => `${r.status.padEnd(16)} ${r.email}`).join("\n");
-        output.result(res, human);
-        return 0;
-      }
-      case "revoke": {
-        const config = setup(repoId, "ideaspaces share revoke <repo_id> <invite_id>", output);
-        if (!config)
-          return 1;
-        if (!arg) {
-          output.error("Usage: ideaspaces share revoke <repo_id> <invite_id>");
-          return 1;
-        }
-        await revokeRepoInvite(config, repoId, arg);
-        output.result({ revoked: arg }, `Revoked invite ${arg}`);
-        return 0;
-      }
+        return await removeProductAccess(rest, flags2, output);
+      case "access":
+      case "set-access":
+      case "members":
+      case "invites":
+      case "legacy-invite":
+      case "revoke":
+      case "invite":
+      case "people":
+      case "unshare":
+        return rejectLegacyShare(sub, output);
       default:
         output.error(`Usage: ${USAGE7}`);
         return 1;
@@ -17910,7 +17783,7 @@ See who does: ideaspaces share people`);
 }
 var shareCommand = {
   name: "share",
-  description: "Manage people, teams, and public visibility for a Space",
+  description: "Share a Space and manage recipient access",
   usage: USAGE7,
   examples: [
     "ideaspaces share person someone@example.com --grade explore",
@@ -17918,6 +17791,8 @@ var shareCommand = {
     "ideaspaces share person someone@example.com --grade collaborate --history",
     "ideaspaces share team acme.com --grade collaborate",
     "ideaspaces share list",
+    "ideaspaces share resend someone@example.com",
+    "ideaspaces share history @someone off",
     "ideaspaces share remove someone@example.com",
     "ideaspaces share remove team:acme.com",
     "ideaspaces share visibility public        # plan only \u2014 shows what opens up",

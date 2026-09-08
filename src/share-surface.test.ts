@@ -16,9 +16,9 @@ describe("recipient-shaped Share distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.3.36");
-    expect(plugin.version).toBe("0.3.36");
-    expect(vendor.cli.commit).toBe("0526fe0ae8e7e497e01cbd70c61281ad9e6fb7f0");
+    expect(pkg.version).toBe("0.3.37");
+    expect(plugin.version).toBe("0.3.37");
+    expect(vendor.cli.commit).toBe("8c6b5f3a62409705c872bdd1187a466ae538c44c");
     expect(vendor["mcp-server"].commit).toBe("525feb23a1d7ff81f4468d365dff5dbeae20f7cc");
     expect(vendor.cli.protocolPin).toBe(
       "github:IdeaSpaces-xyz/ideaspace-protocol#2883c562046f3fb7659037eebfae7552e0ccae67",
@@ -30,10 +30,12 @@ describe("recipient-shaped Share distribution", () => {
     const help = `${result.stdout}${result.stderr}`;
 
     expect(result.status).toBe(0);
-    expect(help).toContain("share <person|team|list|remove|visibility>");
+    expect(help).toContain("share <person|team|list|remove|resend|history|visibility>");
     expect(help).toContain("--grade explore");
     expect(help).toContain("--grade fork");
     expect(help).toContain("--grade collaborate");
+    expect(help).toContain("share resend someone@example.com");
+    expect(help).toContain("share history @someone off");
     expect(help).toContain("share visibility public");
     expect(help).toContain("share visibility private");
     expect(read("skills/is-share/SKILL.md")).toContain(
@@ -50,6 +52,8 @@ describe("recipient-shaped Share distribution", () => {
 
     expect(share).toContain("share person");
     expect(share).toContain("share team");
+    expect(share).toContain("share resend");
+    expect(share).toContain("share history");
     expect(share).toContain("share visibility public");
     expect(share).toContain("${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js");
     expect(share).toContain("there is no\nnative `is_share` tool");
