@@ -41,8 +41,8 @@ or Collaborate.
 
 ## Choose the target
 
-The current published folder is the default. If the user names another Space, pass its canonical URL
-with `--space <url>`. Never ask for internal user, organization, Grant, userset, or repository
+The current published folder is the default. If the user names another repository, pass its canonical
+URL with `--repo <url>`. Never ask for internal user, organization, Grant, userset, or repository
 identifiers.
 
 Before a mutation, state the exact target, recipient or visibility, level, and history implication.
@@ -90,7 +90,7 @@ CLI=(node "${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js")
 **Non-interactive sessions never add `--yes` to `visibility public` on their own** — with nobody
 to agree, the plan is the honest result.
 
-Append `--space "<url>"` when targeting a Space other than the current folder. Use the normal human
+Append `--repo "<url>"` when targeting a repository other than the current folder. Use the normal human
 output rather than `--json`: report recipients, levels, direct standing, and surviving effective
 access, but do not surface backend coordinates.
 

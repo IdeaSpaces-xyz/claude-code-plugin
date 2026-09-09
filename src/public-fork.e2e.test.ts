@@ -56,14 +56,14 @@ describe("vendored account-free Fork", () => {
     const server = createServer((request, response) => {
       authorization.push(request.headers.authorization);
       response.setHeader("content-type", "application/json");
-      if (request.url === `/api/v1/spaces/${SOURCE_ROOT}`) {
+      if (request.url === `/api/v1/public/repos/${SOURCE_ROOT}`) {
         response.end(
           JSON.stringify({
             kind: "space",
             node_id: SOURCE_ROOT,
             container_node_id: SOURCE_ROOT,
             name: "Public Guide",
-            canonical_url: `/spaces/${SOURCE_ROOT}`,
+            canonical_url: `/repos/${SOURCE_ROOT}`,
             copy_enabled: true,
             login_required_to_copy: true,
             summary: null,
@@ -72,7 +72,7 @@ describe("vendored account-free Fork", () => {
         );
         return;
       }
-      if (request.url === `/api/v1/spaces/${SOURCE_ROOT}/copy-snapshot`) {
+      if (request.url === `/api/v1/public/repos/${SOURCE_ROOT}/copy-snapshot`) {
         if (!publicView || !publicFork) {
           response.statusCode = 404;
           response.end(JSON.stringify({ detail: "Space not found" }));
@@ -112,7 +112,7 @@ describe("vendored account-free Fork", () => {
 
       const forked = await run(
         process.execPath,
-        [CLI, "fork", `${apiUrl}/spaces/${SOURCE_ROOT}`, destination, "--json"],
+        [CLI, "fork", `${apiUrl}/repos/${SOURCE_ROOT}`, destination, "--json"],
         { env, timeout: 30_000, maxBuffer: 8 * 1024 * 1024 },
       );
       const output = JSON.parse(forked.stdout);

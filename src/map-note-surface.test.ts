@@ -52,7 +52,7 @@ describe("file-first Map distribution", () => {
       git(repo, ["init", "-q", "-b", "main"]);
       git(repo, ["config", "user.email", "map@example.com"]);
       git(repo, ["config", "user.name", "Map Test"]);
-      git(repo, ["remote", "add", "origin", "https://GitHub.com/Acme/Research.git"]);
+      git(repo, ["remote", "add", "origin", "https://git.ideaspaces.xyz/repos/n_0123456789abcdef01234567.git"]);
       const deep = join(repo, "one", "two", "three", "four", "five");
       mkdirSync(deep, { recursive: true });
       writeFileSync(
