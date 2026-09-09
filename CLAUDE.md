@@ -26,6 +26,7 @@ Keep the plugin small, and keep the seam where the protocol puts it: **the user'
 - The MCP server and hooks own user/session-side state and its rendering — the session-id bridge, the persisted open Change (the server decides arming; the SessionStart hook only displays).
 - Local reads, `is_write`, `is_commit`, and Change state run in-process through the protocol. MCP owns the process-local capture ledger: `all` means paths captured by that server session, never every staged knowledge path in a shared index.
 - Platform interactions — auth, the credential helper, pull/push, publish, account-free local Fork and maintained updates, recipient-shaped Share, and person-accountable Inbox exchange — shell the bundled `ideaspaces` CLI. Fork/update, Share, and Inbox stay skill-mediated flows rather than automatic native-tool mirrors.
+- `is_consult` is a third category: it spawns a read-only headless `claude` in another point of view's `_agent/` folder to consult that vantage — neither an in-process protocol read nor a platform CLI call. It relies on this plugin's own SessionStart hook to orient the spawned session.
 
 Local capture goes through MCP and the protocol; platform workflow goes through the bundled CLI and skills.
 
