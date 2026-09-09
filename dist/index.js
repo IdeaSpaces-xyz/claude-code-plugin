@@ -2988,7 +2988,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve10.call(this, root, ref);
+      let _sch = resolve11.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3015,7 +3015,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve10(root, ref) {
+    function resolve11(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3590,7 +3590,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve10(baseURI, relativeURI, options) {
+    function resolve11(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -3817,7 +3817,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve10,
+      resolve: resolve11,
       resolveComponent,
       equal,
       serialize,
@@ -26224,7 +26224,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve10) => setTimeout(resolve10, pollInterval));
+        await new Promise((resolve11) => setTimeout(resolve11, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -26241,7 +26241,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve10, reject) => {
+    return new Promise((resolve11, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -26319,7 +26319,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve10(parseResult.data);
+            resolve11(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -26580,12 +26580,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve10, reject) => {
+    return new Promise((resolve11, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve10, interval);
+      const timeoutId = setTimeout(resolve11, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -27685,7 +27685,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve10) => setTimeout(resolve10, pollInterval));
+      await new Promise((resolve11) => setTimeout(resolve11, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -28334,23 +28334,23 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve10) => {
+    return new Promise((resolve11) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve10();
+        resolve11();
       } else {
-        this._stdout.once("drain", resolve10);
+        this._stdout.once("drain", resolve11);
       }
     });
   }
 };
 
 // src/index.ts
-import { spawn as spawn3 } from "node:child_process";
+import { spawn as spawn4 } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname as dirname4, join as join9 } from "node:path";
-import { existsSync as existsSync2, readFileSync } from "node:fs";
-import { userInfo, homedir } from "node:os";
+import { dirname as dirname4, join as join10 } from "node:path";
+import { existsSync as existsSync3, readFileSync } from "node:fs";
+import { userInfo, homedir as homedir2 } from "node:os";
 
 // src/trailers.ts
 var PRINCIPAL_PREFIX = /^(person|agent|node):/;
@@ -29066,14 +29066,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot, args) {
-  return new Promise((resolve10) => {
+  return new Promise((resolve11) => {
     const proc = spawn("git", ["-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve10({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve10({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve11({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve11({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -31682,6 +31682,117 @@ function planChangeClose(armed, persisted, hasCacheFile) {
   };
 }
 
+// src/consult.ts
+import { spawn as spawn3 } from "node:child_process";
+import { existsSync as existsSync2, readdirSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { isAbsolute as isAbsolute5, join as join9, resolve as resolve10 } from "node:path";
+var DEPTH_ENV = "IS_CONSULT_DEPTH";
+var ALLOWED_TOOLS = "Read,Grep,Glob";
+var MAX_TURNS = "8";
+var TIMEOUT_MS = Number(process.env.IS_CONSULT_TIMEOUT_MS) || 3e5;
+function resolveClaude() {
+  return process.env.IS_CLAUDE_PATH?.trim() || "claude";
+}
+var spawnClaude = (args, cwd) => new Promise((res) => {
+  const proc = spawn3(resolveClaude(), args, {
+    cwd,
+    stdio: ["pipe", "pipe", "pipe"],
+    env: { ...process.env, [DEPTH_ENV]: "1" }
+  });
+  let out = "";
+  let err = "";
+  let settled = false;
+  const finish = (r) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    res(r);
+  };
+  const timer = setTimeout(() => {
+    proc.kill("SIGKILL");
+    finish({ out, err: err || `consult exceeded ${TIMEOUT_MS}ms and was terminated`, code: 1 });
+  }, TIMEOUT_MS);
+  proc.stdout.on("data", (d) => out += d);
+  proc.stderr.on("data", (d) => err += d);
+  proc.on("close", (code) => finish({ out, err, code: code ?? 1 }));
+  proc.on("error", (e) => finish({ out: "", err: e.message, code: 1 }));
+  proc.stdin.end();
+});
+function resolvePov(pov, cwd) {
+  const dir = isAbsolute5(pov) ? pov : resolve10(cwd || process.cwd(), pov);
+  if (!existsSync2(dir) || !statSync(dir).isDirectory()) {
+    return { error: `Not a directory: ${dir}` };
+  }
+  if (!existsSync2(join9(dir, "_agent"))) {
+    return { error: `Not a point of view \u2014 no _agent/ contract at ${dir}` };
+  }
+  return { dir };
+}
+function findTranscript(handle) {
+  const base = join9(homedir(), ".claude", "projects");
+  if (!existsSync2(base)) return null;
+  for (const bucket of readdirSync(base)) {
+    const file = join9(base, bucket, `${handle}.jsonl`);
+    if (existsSync2(file)) return file;
+  }
+  return null;
+}
+async function turn(dir, message, handle, run2) {
+  const args = ["-p", "--output-format", "json", "--allowedTools", ALLOWED_TOOLS, "--max-turns", MAX_TURNS];
+  if (handle) args.push("--resume", handle);
+  args.push(message);
+  const { out, err, code } = await run2(args, dir);
+  if (code !== 0) {
+    return { ok: false, text: err.trim() || out.trim() || `claude exited ${code}` };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(out);
+  } catch {
+    return { ok: false, text: `Could not parse claude output: ${out.slice(0, 200)}` };
+  }
+  return {
+    ok: true,
+    text: JSON.stringify({ handle: parsed.session_id, answer: (parsed.result || "").trim() }, null, 2)
+  };
+}
+async function runConsult(input, run2 = spawnClaude) {
+  const { action, pov, message, handle, cwd } = input;
+  if ((action === "open" || action === "say") && process.env[DEPTH_ENV]) {
+    return {
+      ok: false,
+      text: "Refusing to consult from inside a consult \u2014 nesting is disabled in this release."
+    };
+  }
+  switch (action) {
+    case "open":
+    case "say": {
+      if (!pov) return { ok: false, text: "pov is required \u2014 a folder carrying an _agent/ contract." };
+      if (!message) return { ok: false, text: "message is required." };
+      if (action === "say" && !handle) {
+        return { ok: false, text: "handle is required for say \u2014 the one returned by open." };
+      }
+      const { dir, error: error2 } = resolvePov(pov, cwd);
+      if (error2) return { ok: false, text: error2 };
+      return turn(dir, message, action === "say" ? handle : void 0, run2);
+    }
+    case "close": {
+      if (!handle) return { ok: false, text: "handle is required for close." };
+      return {
+        ok: true,
+        text: JSON.stringify(
+          { closed: handle, transcript: findTranscript(handle), retention: "deferred to policy" },
+          null,
+          2
+        )
+      };
+    }
+    default:
+      return { ok: false, text: `Unknown action: ${String(action)}` };
+  }
+}
+
 // src/tool-parameters.ts
 var mapRoot = external_exports.object({
   space: external_exports.string().optional().describe("Canonical or normalizable Git remote locator"),
@@ -31765,6 +31876,17 @@ var MCP_TOOL_PARAMETERS = {
     space: external_exports.string().describe("Which space to clone \u2014 slug, namespace/slug, or repo_id (from is_spaces)."),
     dir: external_exports.string().optional().describe("Target folder, relative to cwd. Defaults to ./<slug>."),
     cwd: cwdField
+  },
+  is_consult: {
+    action: external_exports.enum(["open", "say", "close"]).describe(
+      "open: start consulting a point of view. say: continue that consult. close: end it (non-destructive)."
+    ),
+    pov: external_exports.string().optional().describe(
+      "For open/say: the point of view to consult \u2014 a folder carrying an _agent/ contract (an agent repo, a sibling vantage). Relative to cwd or absolute."
+    ),
+    message: external_exports.string().optional().describe("For open/say: the question or task to put to that point of view."),
+    handle: external_exports.string().optional().describe("For say/close: the consult handle returned by open (the point of view's session id)."),
+    cwd: cwdField
   }
 };
 var MCP_TOOL_REQUIRE_ANY = {
@@ -31778,15 +31900,15 @@ function hasAnyNonEmptyString(keys, values) {
 function resolveCli() {
   if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
   const __dirname = dirname4(fileURLToPath(import.meta.url));
-  const relative5 = join9(__dirname, "../cli/bundle/ideaspaces.js");
-  if (existsSync2(relative5)) return relative5;
+  const relative5 = join10(__dirname, "../cli/bundle/ideaspaces.js");
+  if (existsSync3(relative5)) return relative5;
   return "ideaspaces";
 }
 var CLI = resolveCli();
 function cli(args, stdin, cwd) {
-  return new Promise((resolve10) => {
+  return new Promise((resolve11) => {
     const isFile = CLI.includes("/") || CLI.includes("\\") || CLI.endsWith(".js");
-    const proc = spawn3(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
+    const proc = spawn4(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
       stdio: ["pipe", "pipe", "pipe"],
       // The MCP server starts in whatever cwd Claude Code launched it from
       // (the user's session-start dir). The agent may have `cd`-ed inside
@@ -31800,8 +31922,8 @@ function cli(args, stdin, cwd) {
     let err = "";
     proc.stdout.on("data", (d) => out += d);
     proc.stderr.on("data", (d) => err += d);
-    proc.on("close", (code) => resolve10({ out, err, code: code ?? 1 }));
-    proc.on("error", (e) => resolve10({ out: "", err: e.message, code: 1 }));
+    proc.on("close", (code) => resolve11({ out, err, code: code ?? 1 }));
+    proc.on("error", (e) => resolve11({ out: "", err: e.message, code: 1 }));
     if (stdin != null) proc.stdin.write(stdin);
     proc.stdin.end();
   });
@@ -31833,7 +31955,7 @@ function readSessionId() {
   const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
   if (!dir) return void 0;
   try {
-    const id = readFileSync(sessionIdCachePath(homedir(), dir), "utf-8").trim();
+    const id = readFileSync(sessionIdCachePath(homedir2(), dir), "utf-8").trim();
     return id || void 0;
   } catch {
     return void 0;
@@ -31842,7 +31964,7 @@ function readSessionId() {
 function changeCacheFile() {
   const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
   if (!dir) return void 0;
-  return changeCachePath(homedir(), dir);
+  return changeCachePath(homedir2(), dir);
 }
 async function openChangeState() {
   const file = changeCacheFile();
@@ -32006,6 +32128,15 @@ server.tool(
     const a = ["clone", space];
     if (dir) a.push(dir);
     return run(a, void 0, cwd);
+  }
+);
+server.tool(
+  "is_consult",
+  "Consult another point of view \u2014 open a conversation with the agent/vantage that lives in a folder, continue it, and close it. A point of view is any folder with an _agent/ contract; the consulted session boots oriented AS that vantage (its foundation/purpose/now), reasons from where it stands, and answers you. open returns a handle; say continues the same conversation by that handle; close ends it and is non-destructive \u2014 how the transcript is retained is the consulted POV's own policy, not this tool's. Read-only by construction: a consult cannot write, and cannot itself consult. Use it to get another vantage's reading on something, not to run work there.",
+  MCP_TOOL_PARAMETERS.is_consult,
+  async (input) => {
+    const result = await runConsult(input);
+    return result.ok ? ok(result.text) : fail(result.text);
   }
 );
 for (const skill of await listSkills()) {
