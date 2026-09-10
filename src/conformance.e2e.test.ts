@@ -212,11 +212,11 @@ describe("write → commit conformance", () => {
       map: {
         roots: [
           {
-            space: "https://GitHub.com/Acme/Research.git",
+            repo: "https://ideaspaces.xyz/repos/n_0123456789abcdef01234567",
             sha: "a".repeat(40),
           },
         ],
-        members: [{ space: 0, position: "findings/map.md", depth: "full" }],
+        members: [{ root: 0, position: "findings/map.md", depth: "full" }],
       },
     });
 
@@ -224,7 +224,7 @@ describe("write → commit conformance", () => {
       parseMap(parseFrontmatter(readFileSync(join(space, path), "utf8"))?.map),
     ).toMatchObject({
       status: "valid",
-      map: { roots: [{ space: "github.com/Acme/Research" }] },
+      map: { roots: [{ repo: "https://ideaspaces.xyz/repos/n_0123456789abcdef01234567", root_node_id: "n_0123456789abcdef01234567" }] },
     });
 
     const launched = spawnSync(

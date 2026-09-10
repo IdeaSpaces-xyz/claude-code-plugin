@@ -1,6 +1,6 @@
 {
   "name": "ideaspaces-plugin",
-  "version": "0.3.39",
+  "version": "0.3.40",
   "description": "Ideaspace Protocol for Claude Code, Codex, and Cowork — durable awareness, deliberate capture, optional sync.",
   "private": true,
   "type": "module",
@@ -27,7 +27,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@ideaspaces/protocol": "github:IdeaSpaces-xyz/ideaspace-protocol#2883c562046f3fb7659037eebfae7552e0ccae67",
+    "@ideaspaces/protocol": "github:IdeaSpaces-xyz/ideaspace-protocol#6b6bae869127845d22bd4989457c0b61ef38874b",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^20.0.0",
     "esbuild": "^0.24.0",

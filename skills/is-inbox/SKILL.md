@@ -44,7 +44,7 @@ A new inquiry needs:
 - a short name, dense summary, and Markdown message.
 
 For the current Space root, `"${CLI[@]}" status --json` exposes its declared root identity. A
-canonical `/spaces/n_…` URL also carries the root coordinate. For a nested target, use an exact
+canonical `/repos/n_…` URL also carries the root coordinate. For a nested target, use an exact
 coordinate already supplied by the user, Map, or hosted reader; never guess one from a local path.
 
 Before sending, state the recipient, target, and message. Ask for confirmation when any were inferred

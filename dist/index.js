@@ -30461,50 +30461,35 @@ var MAP_DEPTHS = ["name", "summary", "surface", "children", "full"];
 var DEPTHS = new Set(MAP_DEPTHS);
 var ADDRESS_PATTERN = /^[a-z][a-z0-9_]*:.+$/;
 var PIN_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-var HOST_PATTERN = /^(?:\[[0-9a-f:.]+\]|[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)(?::[0-9]+)?$/;
-var URL_PROTOCOLS = /* @__PURE__ */ new Set(["http:", "https:", "ssh:", "git:"]);
-function canonicalizeMapSpace(value) {
+var REPO_PATH_PATTERN = /^\/repos\/(n_(?:[0-9a-f]{12}|[0-9a-f]{24}))$/;
+var HTTP_LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]"]);
+function parseCanonicalRepoUrl(value) {
   if (typeof value !== "string" || value.length === 0 || value.trim() !== value) {
-    return invalidSpace();
+    return invalidRepo();
   }
-  let host = "";
-  let path = "";
-  if (value.includes("://")) {
-    let url;
-    try {
-      url = new URL(value);
-    } catch {
-      return invalidSpace();
-    }
-    if (!URL_PROTOCOLS.has(url.protocol) || url.search || url.hash || !url.hostname) {
-      return invalidSpace();
-    }
-    const port = normalizedPort(url.protocol, url.port);
-    host = `${url.hostname.toLowerCase()}${port ? `:${port}` : ""}`;
-    path = url.pathname.replace(/^\/+/, "");
-  } else {
-    const canonical = value.match(/^([^/@:\s]+(?::[0-9]+)?)\/(.+)$/);
-    if (canonical) {
-      host = canonical[1].toLowerCase();
-      path = canonical[2];
-    } else {
-      const scp = value.match(/^(?:[^@/:\s]+@)?([^/:\s]+):(.+)$/);
-      if (!scp)
-        return invalidSpace();
-      host = scp[1].toLowerCase();
-      path = scp[2];
-    }
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return invalidRepo();
   }
-  if (!HOST_PATTERN.test(host))
-    return invalidSpace();
-  const normalizedPath = normalizeRemotePath(path);
-  if (normalizedPath === null)
-    return invalidSpace();
-  return { status: "valid", space: `${host}/${normalizedPath}` };
+  if (url.username || url.password || url.search || url.hash || url.protocol !== "https:" && !(url.protocol === "http:" && HTTP_LOOPBACK_HOSTS.has(url.hostname))) {
+    return invalidRepo();
+  }
+  const pathMatch = url.pathname.match(REPO_PATH_PATTERN);
+  if (!pathMatch || `${url.origin}${url.pathname}` !== value)
+    return invalidRepo();
+  const parsed = parseRootNodeId(pathMatch[1]);
+  if (parsed.status !== "valid")
+    return invalidRepo();
+  return { status: "valid", repo: value, rootNodeId: parsed.rootNodeId };
 }
 function parseMap(value) {
   if (value === void 0)
     return { status: "absent" };
+  return parseMapBlock(value);
+}
+function parseMapBlock(value) {
   if (!isRecord2(value)) {
     return { status: "invalid", issues: [{ path: "map", code: "invalid_map_type" }] };
   }
@@ -30530,33 +30515,42 @@ function parseRoots(value, issues) {
       issues.push({ path: base, code: "invalid_root_type" });
       continue;
     }
-    let space;
     if ("space" in input) {
-      const normalized = canonicalizeMapSpace(input.space);
+      issues.push({ path: `${base}.space`, code: "retired_space_field" });
+    }
+    let repo;
+    let repoRootNodeId;
+    if ("repo" in input) {
+      const normalized = parseCanonicalRepoUrl(input.repo);
       if (normalized.status === "invalid") {
-        issues.push({ path: `${base}.space`, code: "invalid_space" });
+        issues.push({ path: `${base}.repo`, code: "invalid_repo" });
       } else {
-        space = normalized.space;
+        repo = normalized.repo;
+        repoRootNodeId = normalized.rootNodeId;
       }
     }
-    let rootNodeId;
+    let declaredRootNodeId;
     if ("root_node_id" in input) {
       const parsed = parseRootNodeId(input.root_node_id);
       if (parsed.status !== "valid") {
         issues.push({ path: `${base}.root_node_id`, code: "invalid_root_node_id" });
       } else {
-        rootNodeId = parsed.rootNodeId;
+        declaredRootNodeId = parsed.rootNodeId;
       }
     }
-    if (!("space" in input) && !("root_node_id" in input)) {
+    if (!("repo" in input) && !("root_node_id" in input) && !("space" in input)) {
       issues.push({ path: base, code: "missing_root_identity" });
+    }
+    if (repoRootNodeId !== void 0 && declaredRootNodeId !== void 0 && repoRootNodeId !== declaredRootNodeId) {
+      issues.push({ path: base, code: "root_identity_mismatch" });
     }
     if (typeof input.sha !== "string" || !PIN_PATTERN.test(input.sha)) {
       issues.push({ path: `${base}.sha`, code: "invalid_pin" });
     }
+    const rootNodeId = declaredRootNodeId ?? repoRootNodeId;
     roots.push({
       ...input,
-      ...space === void 0 ? {} : { space },
+      ...repo === void 0 ? {} : { repo },
       ...rootNodeId === void 0 ? {} : { root_node_id: rootNodeId },
       sha: typeof input.sha === "string" ? input.sha : ""
     });
@@ -30578,12 +30572,17 @@ function parseMembers(value, rootCount, issues) {
       issues.push({ path: base, code: "invalid_member_type" });
       continue;
     }
+    if ("space" in input) {
+      issues.push({ path: `${base}.space`, code: "retired_space_field" });
+      continue;
+    }
     const isAddress = "address" in input;
-    const isPosition = "space" in input || "position" in input;
+    const isPosition = "root" in input || "position" in input;
     if (isAddress === isPosition) {
       issues.push({ path: base, code: "invalid_member_shape" });
       continue;
     }
+    validateDisclosure(input, base, issues);
     if (isAddress) {
       if (typeof input.address !== "string" || !ADDRESS_PATTERN.test(input.address)) {
         issues.push({ path: `${base}.address`, code: "invalid_address" });
@@ -30600,8 +30599,8 @@ function parseMembers(value, rootCount, issues) {
       members.push(input);
       continue;
     }
-    if (!Number.isInteger(input.space) || input.space < 0 || input.space >= rootCount) {
-      issues.push({ path: `${base}.space`, code: "invalid_root_index" });
+    if (!Number.isInteger(input.root) || input.root < 0 || input.root >= rootCount) {
+      issues.push({ path: `${base}.root`, code: "invalid_root_index" });
     }
     if (!isMapPosition(input.position)) {
       issues.push({ path: `${base}.position`, code: "invalid_position" });
@@ -30613,6 +30612,23 @@ function parseMembers(value, rootCount, issues) {
   }
   return members;
 }
+function validateDisclosure(member, base, issues) {
+  if (!("disclosure" in member))
+    return;
+  const disclosure = member.disclosure;
+  if (!isRecord2(disclosure)) {
+    issues.push({ path: `${base}.disclosure`, code: "invalid_disclosure" });
+    return;
+  }
+  for (const field of ["name", "summary"]) {
+    if (field in disclosure && typeof disclosure[field] !== "string") {
+      issues.push({ path: `${base}.disclosure.${field}`, code: `invalid_${field}` });
+    }
+  }
+  if (member.depth === "name" && "summary" in disclosure) {
+    issues.push({ path: `${base}.disclosure.summary`, code: "disclosure_exceeds_depth" });
+  }
+}
 function isMapPosition(value) {
   if (value === ".")
     return true;
@@ -30622,30 +30638,8 @@ function isMapPosition(value) {
   const segments = value.split("/");
   return !segments.some((segment) => segment === "." || segment === ".." || segment.startsWith("_") || segment.toLowerCase() === ".git");
 }
-function normalizeRemotePath(value) {
-  if (value.length === 0 || /[\s\\?#\0]/.test(value) || value.includes("//")) {
-    return null;
-  }
-  let path = value.replace(/^\/+|\/+$/g, "");
-  if (path.endsWith(".git"))
-    path = path.slice(0, -4);
-  if (!path)
-    return null;
-  const segments = path.split("/");
-  if (segments.some((segment) => !segment || segment === "." || segment === ".."))
-    return null;
-  return segments.join("/");
-}
-function normalizedPort(protocol, port) {
-  if (!port)
-    return "";
-  if (protocol === "http:" && port === "80" || protocol === "https:" && port === "443" || protocol === "ssh:" && port === "22" || protocol === "git:" && port === "9418") {
-    return "";
-  }
-  return port;
-}
-function invalidSpace() {
-  return { status: "invalid", code: "invalid_space" };
+function invalidRepo() {
+  return { status: "invalid", code: "invalid_repo" };
 }
 function isRecord2(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -31795,12 +31789,12 @@ async function runConsult(input, run2 = spawnClaude) {
 
 // src/tool-parameters.ts
 var mapRoot = external_exports.object({
-  space: external_exports.string().optional().describe("Canonical or normalizable Git remote locator"),
+  repo: external_exports.string().optional().describe("Canonical absolute repository URL: <web-origin>/repos/{root_node_id}"),
   root_node_id: external_exports.string().optional().describe("Portable root Node identity"),
   sha: external_exports.string().describe("Full resolved Git commit object id")
 }).passthrough();
 var mapPositionMember = external_exports.object({
-  space: external_exports.number().int().describe("Zero-based index into map.roots"),
+  root: external_exports.number().int().optional().describe("Zero-based index into map.roots"),
   position: external_exports.string().describe("Portable repository-relative protocol position, or ."),
   depth: external_exports.enum(["name", "summary", "surface", "children", "full"])
 }).passthrough();
