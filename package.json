@@ -1,6 +1,6 @@
 {
   "name": "ideaspaces-plugin",
-  "version": "0.3.40",
+  "version": "0.3.41",
   "description": "Ideaspace Protocol for Claude Code, Codex, and Cowork — durable awareness, deliberate capture, optional sync.",
   "private": true,
   "type": "module",

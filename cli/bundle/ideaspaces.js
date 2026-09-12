@@ -11833,7 +11833,11 @@ function buildCliLoginUrl(apiUrl, port) {
   return url.toString();
 }
 function openBrowser(url) {
-  const cmd2 = platform() === "darwin" ? "open" : platform() === "win32" ? "start" : "xdg-open";
+  if (platform() === "win32") {
+    exec(`start "" "${url}"`);
+    return;
+  }
+  const cmd2 = platform() === "darwin" ? "open" : "xdg-open";
   exec(`${cmd2} "${url}"`);
 }
 var loginCommand = {
