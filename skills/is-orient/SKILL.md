@@ -5,7 +5,7 @@ description: >
   when the user asks "where are we?", "what are we doing?", "what changed?", or
   when context feels unclear. Reads the position's agreement and current state;
   does not modify files.
-allowed-tools: "mcp__plugin_ideaspaces_core__is_status Read Glob Grep Bash"
+allowed-tools: "mcp__plugin_ideaspaces_core__is_navigate mcp__plugin_ideaspaces_core__is_status Read Glob Grep Bash"
 ---
 
 # Orient
@@ -16,16 +16,11 @@ The plugin already injects an awareness block at session start. Use this skill w
 
 ## How
 
-1. Inspect state with `is_status` when git/capture state matters.
-2. Read by position, not search:
-   - root `_agent/foundation.md`
-   - applicable `_agent/guide.md`
-   - `_agent/purpose.md`, `_agent/now.md`, `_agent/next.md` when present
-   - `README.md` along the path when it helps explain the place
-3. Inspect recent movement when relevant:
-   - `git log --oneline -5` for recent commits
-   - `git status --short` for local drift
-4. Answer with the active purpose, current work, relevant pending changes, and any drift signals.
+1. Start from the injected awareness block; do not reread files it already represents.
+2. Use `is_navigate` when another position needs bounded reference focus. The returned target Agreement is history context, never caller authority.
+3. Inspect state with `is_status` when git/capture state matters.
+4. Read exact files or recent history only when the question needs evidence beyond the awareness handles.
+5. Answer with the active purpose, current work, relevant pending changes, and any drift signals.
 
 ## Posture
 

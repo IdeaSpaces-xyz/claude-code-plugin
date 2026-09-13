@@ -3994,10 +3994,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep3, value } = collItem;
+        const { start, key, sep: sep4, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep3?.[0],
+          next: key ?? sep4?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -4011,7 +4011,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep3) {
+          if (!keyProps.anchor && !keyProps.tag && !sep4) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -4035,7 +4035,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep3 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep4 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -4051,7 +4051,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep3, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep4, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -4142,7 +4142,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep3 = "";
+        let sep4 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -4156,13 +4156,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep3 + cb;
-              sep3 = "";
+                comment += sep4 + cb;
+              sep4 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep3 += source;
+                sep4 += source;
               hasSpace = true;
               break;
             default:
@@ -4205,18 +4205,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep3, value } = collItem;
+        const { start, key, sep: sep4, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep3?.[0],
+          next: key ?? sep4?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep3 && !value) {
+          if (!props.anchor && !props.tag && !sep4 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -4270,8 +4270,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep3 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep3, null, props, onError);
+        if (!isMap && !sep4 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep4, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -4283,7 +4283,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep3 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep4 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -4294,8 +4294,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep3)
-                for (const st of sep3) {
+              if (sep4)
+                for (const st of sep4) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -4312,7 +4312,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep3, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep4, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -4492,7 +4492,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep3 = "";
+      let sep4 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -4509,24 +4509,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep3 + indent.slice(trimIndent) + content;
-          sep3 = "\n";
+          value += sep4 + indent.slice(trimIndent) + content;
+          sep4 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep3 === " ")
-            sep3 = "\n";
-          else if (!prevMoreIndented && sep3 === "\n")
-            sep3 = "\n\n";
-          value += sep3 + indent.slice(trimIndent) + content;
-          sep3 = "\n";
+          if (sep4 === " ")
+            sep4 = "\n";
+          else if (!prevMoreIndented && sep4 === "\n")
+            sep4 = "\n\n";
+          value += sep4 + indent.slice(trimIndent) + content;
+          sep4 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep3 === "\n")
+          if (sep4 === "\n")
             value += "\n";
           else
-            sep3 = "\n";
+            sep4 = "\n";
         } else {
-          value += sep3 + content;
-          sep3 = " ";
+          value += sep4 + content;
+          sep4 = " ";
           prevMoreIndented = false;
         }
       }
@@ -4708,25 +4708,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep3 = " ";
+      let sep4 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep3 === "\n")
-            res += sep3;
+          if (sep4 === "\n")
+            res += sep4;
           else
-            sep3 = "\n";
+            sep4 = "\n";
         } else {
-          res += sep3 + match[1];
-          sep3 = " ";
+          res += sep4 + match[1];
+          sep4 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep3 + (match?.[1] ?? "");
+      return res + sep4 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -5536,14 +5536,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep3, value }) {
+    function stringifyItem({ start, key, sep: sep4, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep3)
-        for (const st of sep3)
+      if (sep4)
+        for (const st of sep4)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -6710,18 +6710,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep3;
+          let sep4;
           if (scalar.end) {
-            sep3 = scalar.end;
-            sep3.push(this.sourceToken);
+            sep4 = scalar.end;
+            sep4.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep3 = [this.sourceToken];
+            sep4 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep3 }]
+            items: [{ start, key: scalar, sep: sep4 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -6874,15 +6874,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep3 = it.sep;
-                  sep3.push(this.sourceToken);
+                  const sep4 = it.sep;
+                  sep4.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep3 }]
+                    items: [{ start: start2, key, sep: sep4 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -6911,14 +6911,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs5 = this.flowScalar(this.type);
+              const fs6 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs5, sep: [] });
+                map.items.push({ start, key: fs6, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs5);
+                this.stack.push(fs6);
               } else {
-                Object.assign(it, { key: fs5, sep: [] });
+                Object.assign(it, { key: fs6, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7046,13 +7046,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs5 = this.flowScalar(this.type);
+              const fs6 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs5, sep: [] });
+                fc.items.push({ start: [], key: fs6, sep: [] });
               else if (it.sep)
-                this.stack.push(fs5);
+                this.stack.push(fs6);
               else
-                Object.assign(it, { key: fs5, sep: [] });
+                Object.assign(it, { key: fs6, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7076,13 +7076,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep3 = fc.end.splice(1, fc.end.length);
-            sep3.push(this.sourceToken);
+            const sep4 = fc.end.splice(1, fc.end.length);
+            sep4.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep3 }]
+              items: [{ start, key: fc, sep: sep4 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -7363,7 +7363,7 @@ var require_dist = __commonJS({
 // src/awareness-hook.ts
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
-import { dirname as dirname2 } from "node:path";
+import { dirname as dirname4 } from "node:path";
 import { homedir } from "node:os";
 
 // node_modules/@ideaspaces/protocol/dist/space.js
@@ -7444,9 +7444,9 @@ async function composeContractAlongPath(position) {
   };
 }
 
-// node_modules/@ideaspaces/protocol/dist/awareness.js
-import { promises as fs4 } from "node:fs";
-import { join as join4, relative as relative3, resolve as resolve4, sep as sep2 } from "node:path";
+// node_modules/@ideaspaces/protocol/dist/agreement.js
+import { promises as fs2 } from "node:fs";
+import { basename, dirname as dirname2, join as join2, relative, resolve as resolve2, sep } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
@@ -7457,11 +7457,48 @@ function stripFrontmatter(content) {
     return content;
   return block.lines.slice(block.endLineIndex + 1).join("\n");
 }
+function inspectFrontmatterSyntax(content) {
+  if (!startsFrontmatter(content))
+    return { status: "none" };
+  const block = frontmatterBlock(content);
+  if (!block) {
+    return {
+      status: "malformed",
+      message: "frontmatter block is missing closing ---",
+      line: 1,
+      column: 1
+    };
+  }
+  const source = block.lines.slice(1, block.endLineIndex).map((line) => line.replace(/\r$/, "")).join("\n");
+  const doc = (0, import_yaml.parseDocument)(source);
+  const err = doc.errors[0];
+  if (!err)
+    return { status: "valid" };
+  const linePos = err.linePos?.[0];
+  return {
+    status: "malformed",
+    message: err.message,
+    // YAML line 1 is content line 2 because line 1 is the opening delimiter.
+    line: linePos ? linePos.line + 1 : void 0,
+    column: linePos?.col
+  };
+}
 function extractSummary(content) {
   return extractScalarField(content, "summary");
 }
 function extractDescription(content) {
   return extractScalarField(content, "description") ?? extractScalarField(content, "summary");
+}
+function parseFrontmatter(content) {
+  const block = frontmatterBlock(content);
+  if (!block)
+    return null;
+  const source = block.lines.slice(1, block.endLineIndex).map((line) => line.replace(/\r$/, "")).join("\n");
+  const doc = (0, import_yaml.parseDocument)(source);
+  if (doc.errors.length)
+    return null;
+  const value = doc.toJS();
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
 function extractScalarField(content, field) {
   if (!content.startsWith(`${DELIM}
@@ -7527,6 +7564,271 @@ function frontmatterBlock(content) {
   return null;
 }
 
+// node_modules/@ideaspaces/protocol/dist/root-identity.js
+var CURRENT_ROOT_NODE_ID_PATTERN = /^n_[0-9a-f]{24}$/;
+var ROOT_NODE_ID_PATTERN = /^n_(?:[0-9a-f]{12}|[0-9a-f]{24})$/;
+function parseRootNodeId(value) {
+  if (value === void 0)
+    return { status: "absent" };
+  if (typeof value !== "string")
+    return { status: "invalid", code: "invalid_type" };
+  if (!ROOT_NODE_ID_PATTERN.test(value)) {
+    return { status: "invalid", code: "invalid_format" };
+  }
+  return {
+    status: "valid",
+    rootNodeId: value,
+    format: CURRENT_ROOT_NODE_ID_PATTERN.test(value) ? "current" : "legacy"
+  };
+}
+
+// node_modules/@ideaspaces/protocol/dist/agreement.js
+async function composeAgreementAlongPath(position, repoRoot = null) {
+  const start = resolve2(position);
+  const boundary = repoRoot ? resolve2(repoRoot) : null;
+  const scanned = [];
+  let identityRoot = null;
+  let rootNodeId;
+  let dir = start;
+  while (true) {
+    const level = await scanLevel(dir);
+    if (level) {
+      scanned.push(level);
+      if (level.rootNodeId) {
+        identityRoot = dir;
+        rootNodeId = level.rootNodeId;
+        break;
+      }
+    }
+    if (boundary && dir === boundary)
+      break;
+    const parent = dirname2(dir);
+    if (parent === dir)
+      break;
+    if (boundary && !isWithin(boundary, parent))
+      break;
+    dir = parent;
+  }
+  const agreementLevels = scanned.filter((level) => level.agreementPath !== null);
+  const spaceRoot = identityRoot ?? boundary ?? agreementLevels.at(-1)?.dir ?? null;
+  if (!spaceRoot || agreementLevels.length === 0) {
+    return {
+      position: start,
+      spaceRoot: null,
+      stack: [],
+      agreements: [],
+      issues: []
+    };
+  }
+  const selected = scanned.filter((level) => isWithin(spaceRoot, level.dir)).reverse();
+  const issues = selected.flatMap((level) => level.issues);
+  const stack = [];
+  for (const level of selected) {
+    const files = await readLevelFiles(level, issues);
+    stack.push({ dir: level.dir, agreementPath: level.agreementPath, files });
+  }
+  return {
+    position: start,
+    spaceRoot,
+    stack,
+    agreements: stack.flatMap((level) => level.files.filter((file) => file.name === "agreement")),
+    ...rootNodeId ? { rootNodeId } : {},
+    issues
+  };
+}
+async function scanLevel(dir) {
+  const agentDir = join2(dir, "_agent");
+  if (!await isDirectory2(agentDir))
+    return null;
+  const agreementPath = join2(agentDir, "agreement.md");
+  const agreementContent = await readRegularFile(agreementPath);
+  if (agreementContent === null) {
+    return {
+      dir,
+      agentDir,
+      agreementPath: null,
+      agreementContent: null,
+      fullLoads: [],
+      issues: []
+    };
+  }
+  const issues = [];
+  const syntax = inspectFrontmatterSyntax(agreementContent);
+  if (syntax.status === "malformed") {
+    issues.push({
+      path: agreementPath,
+      code: "agreement_frontmatter_malformed",
+      detail: syntax.message
+    });
+    return {
+      dir,
+      agentDir,
+      agreementPath,
+      agreementContent,
+      fullLoads: [],
+      issues
+    };
+  }
+  const frontmatter = parseFrontmatter(agreementContent);
+  let rootNodeId;
+  if (frontmatter && "root_node_id" in frontmatter) {
+    const parsed = parseRootNodeId(frontmatter.root_node_id);
+    if (parsed.status === "valid")
+      rootNodeId = parsed.rootNodeId;
+    else {
+      issues.push({
+        path: agreementPath,
+        code: "invalid_root_node_id",
+        detail: parsed.status === "invalid" ? parsed.code : "absent root_node_id declaration"
+      });
+    }
+  }
+  const fullLoads = parseFullLoads(frontmatter, agreementPath, issues);
+  return {
+    dir,
+    agentDir,
+    agreementPath,
+    agreementContent,
+    ...rootNodeId ? { rootNodeId } : {},
+    fullLoads,
+    issues
+  };
+}
+function parseFullLoads(frontmatter, agreementPath, issues) {
+  if (!frontmatter || !("context" in frontmatter))
+    return [];
+  const context = frontmatter.context;
+  if (!isRecord(context)) {
+    issues.push({
+      path: agreementPath,
+      code: "invalid_context",
+      detail: "`context` must be an object"
+    });
+    return [];
+  }
+  if (!("full" in context))
+    return [];
+  if (!Array.isArray(context.full) || !context.full.every((value) => typeof value === "string")) {
+    issues.push({
+      path: agreementPath,
+      code: "invalid_full_loads",
+      detail: "`context.full` must be an array of Markdown basenames"
+    });
+    return [];
+  }
+  const names = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const value of context.full) {
+    if (!isDirectMarkdownBasename(value) || value === "agreement.md" || value === "foundation.md") {
+      issues.push({
+        path: agreementPath,
+        code: "invalid_full_load_path",
+        detail: `invalid context.full path: ${value}`
+      });
+      continue;
+    }
+    if (seen.has(value)) {
+      issues.push({
+        path: agreementPath,
+        code: "duplicate_full_load",
+        detail: `duplicate context.full path: ${value}`
+      });
+      continue;
+    }
+    seen.add(value);
+    names.push(value);
+  }
+  return names;
+}
+async function readLevelFiles(level, issues) {
+  const files = [];
+  if (level.agreementPath && level.agreementContent !== null) {
+    files.push({
+      name: "agreement",
+      path: level.agreementPath,
+      sourcePosition: level.dir,
+      content: level.agreementContent,
+      representation: "full"
+    });
+  }
+  let entries;
+  try {
+    entries = await fs2.readdir(level.agentDir, { withFileTypes: true });
+  } catch (error) {
+    issues.push({
+      path: level.agentDir,
+      code: "agent_context_unreadable",
+      detail: error instanceof Error ? error.message : String(error)
+    });
+    return files;
+  }
+  const regularMarkdown = entries.filter((entry) => entry.isFile() && entry.name.endsWith(".md")).map((entry) => entry.name).sort();
+  const available = new Set(regularMarkdown);
+  for (const name of level.fullLoads) {
+    if (!available.has(name)) {
+      issues.push({
+        path: join2(level.agentDir, name),
+        code: "missing_full_load",
+        detail: `declared full load does not exist as a regular file: ${name}`
+      });
+    }
+  }
+  for (const name of regularMarkdown) {
+    if (name === "agreement.md" || name === "foundation.md")
+      continue;
+    const content = await readRegularFile(join2(level.agentDir, name));
+    if (content === null) {
+      if (level.fullLoads.includes(name)) {
+        issues.push({
+          path: join2(level.agentDir, name),
+          code: "missing_full_load",
+          detail: `declared full load became unavailable while reading: ${name}`
+        });
+      }
+      continue;
+    }
+    files.push({
+      name: basename(name, ".md"),
+      path: join2(level.agentDir, name),
+      sourcePosition: level.dir,
+      content,
+      representation: level.fullLoads.includes(name) ? "full" : "summary"
+    });
+  }
+  return files;
+}
+function isDirectMarkdownBasename(value) {
+  return value.length > 3 && value.endsWith(".md") && value === basename(value) && !value.includes("/") && !value.includes("\\") && !value.includes(":") && !/[*!?\[\]{}]/.test(value) && value !== ".md" && value !== "..md";
+}
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function isWithin(root, path) {
+  const rel = relative(root, path);
+  return rel === "" || !rel.startsWith("..") && !rel.split(sep).includes("..");
+}
+async function isDirectory2(path) {
+  try {
+    return (await fs2.lstat(path)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+async function readRegularFile(path) {
+  try {
+    if (!(await fs2.lstat(path)).isFile())
+      return null;
+    return await fs2.readFile(path, "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+// node_modules/@ideaspaces/protocol/dist/awareness.js
+import { createHash } from "node:crypto";
+import { promises as fs5 } from "node:fs";
+import { basename as basename2, dirname as dirname3, join as join5, relative as relative4, resolve as resolve5, sep as sep3 } from "node:path";
+
 // node_modules/@ideaspaces/protocol/dist/markdown-inspection.js
 function summarizeMarkdown(content) {
   const summary = extractSummary(content);
@@ -7579,14 +7881,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot, args) {
-  return new Promise((resolve6) => {
+  return new Promise((resolve7) => {
     const proc = spawn("git", ["-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve6({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve6({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve7({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve7({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -7684,8 +7986,8 @@ async function recentActivity(repoRoot, sinceSha, limit = DEFAULT_COMMIT_LIMIT) 
 }
 
 // node_modules/@ideaspaces/protocol/dist/path-context.js
-import { promises as fs2 } from "node:fs";
-import { isAbsolute, join as join2, relative, resolve as resolve2, sep } from "node:path";
+import { promises as fs3 } from "node:fs";
+import { isAbsolute, join as join3, relative as relative2, resolve as resolve3, sep as sep2 } from "node:path";
 function spaceRootLevel(ctx) {
   return ctx.levels.find((l) => l.foundation) ?? null;
 }
@@ -7696,24 +7998,26 @@ function currentBranchLevel(ctx) {
   }
   return null;
 }
-function renderPosition({ pos, base, repoRoot, ctx }) {
-  const spaceRoot = spaceRootLevel(ctx);
+function renderPosition({ pos, base, repoRoot, spaceRoot: selectedRoot, ctx }) {
+  const legacyRoot = spaceRootLevel(ctx);
   const branch = currentBranchLevel(ctx);
   const lines = ["Position:"];
   if (repoRoot)
     lines.push(`  repo: ${repoRoot}`);
-  lines.push(`  cwd: ${relative(base, pos) || "."}`);
-  if (spaceRoot)
-    lines.push(`  space root: ${spaceRoot.path || "."}`);
+  lines.push(`  cwd: ${relative2(base, pos) || "."}`);
+  if (selectedRoot)
+    lines.push(`  space root: ${relative2(base, selectedRoot) || "."}`);
+  else if (legacyRoot)
+    lines.push(`  space root: ${legacyRoot.path || "."}`);
   if (branch)
     lines.push(`  active _agent: ${branch.path || "."}`);
   return lines.join("\n");
 }
 async function walkPathContext(repoRoot, currentPath, opts = {}) {
   const { includeContent = false } = opts;
-  const root = resolve2(repoRoot);
-  const rel = relative(root, resolve2(root, currentPath));
-  const segments = rel === "" || rel.startsWith("..") || isAbsolute(rel) ? [] : rel.split(sep).filter(Boolean);
+  const root = resolve3(repoRoot);
+  const rel = relative2(root, resolve3(root, currentPath));
+  const segments = rel === "" || rel.startsWith("..") || isAbsolute(rel) ? [] : rel.split(sep2).filter(Boolean);
   const relPaths = [""];
   let acc = "";
   for (const segment of segments) {
@@ -7725,11 +8029,11 @@ async function walkPathContext(repoRoot, currentPath, opts = {}) {
   return { position, levels };
 }
 async function readLevel(root, relPath, includeContent) {
-  const absPath = relPath ? join2(root, relPath) : root;
-  const agentDir = join2(absPath, "_agent");
+  const absPath = relPath ? join3(root, relPath) : root;
+  const agentDir = join3(absPath, "_agent");
   const [hasAgent, readme] = await Promise.all([
-    isDirectory2(agentDir),
-    readFileOrNull(join2(absPath, "README.md"))
+    isDirectory3(agentDir),
+    readFileOrNull(join3(absPath, "README.md"))
   ]);
   let contract = {};
   if (hasAgent)
@@ -7765,16 +8069,16 @@ function describe(content) {
   }
   return null;
 }
-async function isDirectory2(path) {
+async function isDirectory3(path) {
   try {
-    return (await fs2.stat(path)).isDirectory();
+    return (await fs3.stat(path)).isDirectory();
   } catch {
     return false;
   }
 }
 async function readFileOrNull(path) {
   try {
-    return await fs2.readFile(path, "utf-8");
+    return await fs3.readFile(path, "utf-8");
   } catch {
     return null;
   }
@@ -7782,14 +8086,14 @@ async function readFileOrNull(path) {
 
 // node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
-import { promises as fs3 } from "node:fs";
-import { join as join3, relative as relative2, resolve as resolve3 } from "node:path";
+import { promises as fs4 } from "node:fs";
+import { join as join4, relative as relative3, resolve as resolve4 } from "node:path";
 var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
 async function collectDocDependencies(repoRoot, docDir) {
-  const root = resolve3(repoRoot);
-  const start = resolve3(root, docDir);
+  const root = resolve4(repoRoot);
+  const start = resolve4(root, docDir);
   const out = [];
-  const startPath = relative2(root, start).replace(/\\/g, "/");
+  const startPath = relative3(root, start).replace(/\\/g, "/");
   if (startPath) {
     const classification = classifyRepositoryPath(startPath, "directory");
     if (classification.status !== "ok" || classification.role !== "ordinary")
@@ -7798,7 +8102,7 @@ async function collectDocDependencies(repoRoot, docDir) {
   async function walk(dir) {
     let entries;
     try {
-      entries = (await fs3.readdir(dir, { withFileTypes: true })).map((e) => ({
+      entries = (await fs4.readdir(dir, { withFileTypes: true })).map((e) => ({
         name: e.name,
         isDir: e.isDirectory()
       }));
@@ -7808,8 +8112,8 @@ async function collectDocDependencies(repoRoot, docDir) {
     for (const entry of entries) {
       if (entry.name.startsWith("."))
         continue;
-      const abs = join3(dir, entry.name);
-      const path = relative2(root, abs).replace(/\\/g, "/");
+      const abs = join4(dir, entry.name);
+      const path = relative3(root, abs).replace(/\\/g, "/");
       if (entry.isDir) {
         if (SKIP_DIRS.has(entry.name))
           continue;
@@ -7826,7 +8130,7 @@ async function collectDocDependencies(repoRoot, docDir) {
           continue;
         const codePaths = readCodePaths(content);
         if (codePaths.length) {
-          out.push({ path: relative2(root, abs), codePaths });
+          out.push({ path: relative3(root, abs), codePaths });
         }
       }
     }
@@ -7835,12 +8139,12 @@ async function collectDocDependencies(repoRoot, docDir) {
   return out;
 }
 async function staleDocSignals(repoRoot, docs) {
-  const root = resolve3(repoRoot);
+  const root = resolve4(repoRoot);
   const signals = [];
   for (const { path, codePaths } of docs) {
     const missing = [];
     for (const code of codePaths) {
-      if (!await exists(join3(root, code)))
+      if (!await exists(join4(root, code)))
         missing.push(code);
     }
     if (missing.length)
@@ -7901,14 +8205,14 @@ function readCodePaths(content) {
 }
 async function readFileOrNull2(path) {
   try {
-    return await fs3.readFile(path, "utf-8");
+    return await fs4.readFile(path, "utf-8");
   } catch {
     return null;
   }
 }
 async function exists(path) {
   try {
-    await fs3.stat(path);
+    await fs4.stat(path);
     return true;
   } catch {
     return false;
@@ -7955,52 +8259,43 @@ function isContentDirectoryName(name) {
 var CONTRACT_ORDER = ["foundation", "guide", "purpose", "now", "next"];
 var DEFAULT_MAX_DRIFT = 10;
 async function assembleContentAwareness(opts) {
-  const requestedPosition = resolve4(opts.position);
-  const position = await fs4.realpath(requestedPosition).catch(() => requestedPosition);
-  const repoRoot = await resolveRepoRoot(position);
-  if (repoRoot) {
-    const repositoryPath = relative3(repoRoot, position).split(sep2).join("/");
-    if (repositoryPath) {
-      const classification = classifyRepositoryPath(repositoryPath, "directory");
-      if (classification.status !== "ok" || classification.role !== "ordinary")
-        return null;
-    }
-  }
-  const composed = await composeContractAlongPath(position);
-  if (!composed.spaceRoot)
-    return null;
-  if (!repoRoot) {
-    const spacePath = relative3(composed.spaceRoot, position).split(sep2).join("/");
-    if (spacePath) {
-      const classification = classifyRepositoryPath(spacePath, "directory");
-      if (classification.status !== "ok" || classification.role !== "ordinary")
-        return null;
-    }
-  }
-  const base = repoRoot ?? composed.spaceRoot;
+  const selected = await selectContentFrame(opts.position, opts.contractSource);
+  if (!selected || "status" in selected)
+    return selected;
+  const { position, repoRoot, foundation, agreement, contractSource, spaceRoot, base } = selected;
   const lastShaPromise = opts.lastSha === void 0 ? repoRoot ? readSeenRef(repoRoot) : Promise.resolve(void 0) : Promise.resolve(opts.lastSha ?? void 0);
-  const pathContextPromise = walkPathContext(base, position);
-  const gitPromise = repoRoot ? gitState(repoRoot) : Promise.resolve(null);
-  const staleDocsPromise = repoRoot ? collectDocDependencies(repoRoot, repoRoot).then((docs) => staleDocSignals(repoRoot, docs)) : Promise.resolve([]);
-  const treeDepth = normalizeContentTreeDepth(opts.treeDepth);
-  const treeMaxEntries = opts.treeMaxEntries ?? 50;
-  const sectionsPromise = lastShaPromise.then((lastSha) => readAwarenessSections({
-    root: position,
-    activityRoot: base,
-    contract: composed.contract,
-    stack: composed.stack,
-    lastSha,
-    maxChanges: opts.maxChanges,
-    nowExcerptLength: opts.nowExcerptLength,
-    summaryExcerptLength: opts.summaryExcerptLength,
-    tree: {
-      depth: treeDepth,
-      maxEntries: treeMaxEntries,
-      summaries: true,
-      summaryLength: opts.summaryExcerptLength ?? 200,
-      strict: false
+  const pathContextPromise = walkPathContext(base, position).then((context2) => filterPathContextForSource(context2, contractSource));
+  const gitPromise = repoRoot ? gitState(repoRoot).then((state) => ({ ...state, placement: "tail" })) : Promise.resolve(null);
+  const staleDocsPromise = repoRoot ? collectDocDependencies(repoRoot, repoRoot).then((docs) => staleDocSignals(repoRoot, docs)).then((signals) => signals.map((signal) => ({ ...signal, placement: "tail" }))) : Promise.resolve([]);
+  const tree = {
+    depth: normalizeContentTreeDepth(opts.treeDepth),
+    maxEntries: opts.treeMaxEntries ?? 50,
+    summaries: true,
+    summaryLength: opts.summaryExcerptLength ?? 200,
+    strict: false
+  };
+  const sectionsPromise = lastShaPromise.then((lastSha) => {
+    const common = {
+      root: position,
+      activityRoot: base,
+      lastSha,
+      maxChanges: opts.maxChanges,
+      nowExcerptLength: opts.nowExcerptLength,
+      summaryExcerptLength: opts.summaryExcerptLength,
+      tree
+    };
+    if (contractSource === "foundation") {
+      return readAwarenessSections({
+        ...common,
+        contract: foundation.contract,
+        stack: foundation.stack
+      });
     }
-  }));
+    if (contractSource === "agreement") {
+      return readAgreementAwarenessSections({ ...common, agreement });
+    }
+    return readFloorAwarenessSections(common);
+  });
   const [context, git, staleDocs, sections] = await Promise.all([
     pathContextPromise,
     gitPromise,
@@ -8008,22 +8303,158 @@ async function assembleContentAwareness(opts) {
     sectionsPromise
   ]);
   const missingDirection = [];
-  if (!composed.contract.purpose)
-    missingDirection.push("purpose");
-  if (!composed.contract.now)
-    missingDirection.push("now");
+  if (contractSource === "foundation") {
+    if (!foundation.contract.purpose)
+      missingDirection.push("purpose");
+    if (!foundation.contract.now)
+      missingDirection.push("now");
+  }
   return {
+    status: "ok",
     kind: "content",
-    spaceRoot: composed.spaceRoot,
-    position: { path: position, base, repoRoot, context },
+    contractSource,
+    spaceRoot,
+    position: { placement: "head", path: position, base, repoRoot, context },
     ...sections,
     git,
     staleDocs,
     missingDirection
   };
 }
-function renderContentAwareness(manifest, opts = {}) {
-  return renderAwarenessSections({ ...manifest, levelBase: manifest.spaceRoot }, opts);
+function renderContentAwareness(result, opts = {}) {
+  if (result.status !== "ok")
+    return renderContentAwarenessDiagnostic(result);
+  return renderAwarenessSections({ ...result, levelBase: result.spaceRoot, spaceRoot: result.spaceRoot }, opts);
+}
+function renderContentAwarenessDiagnostic(result) {
+  if (result.status === "contract_choice_required") {
+    return "Contract choice required: select `foundation` or `agreement`.";
+  }
+  if (result.status === "contract_source_unavailable") {
+    return `Contract source unavailable: ${result.requestedSource}.`;
+  }
+  const lines = ["Agreement contract is invalid:"];
+  for (const issue of result.issues ?? []) {
+    lines.push(`  ${issue.code}: ${issue.path} \u2014 ${issue.detail}`);
+  }
+  return lines.join("\n");
+}
+async function selectContentFrame(requested, requestedSource) {
+  const requestedPosition = resolve5(requested);
+  const position = await fs5.realpath(requestedPosition).catch(() => requestedPosition);
+  const repoRoot = await resolveRepoRoot(position);
+  if (repoRoot) {
+    const repositoryPath = relative4(repoRoot, position).split(sep3).join("/");
+    if (repositoryPath) {
+      const classification = classifyRepositoryPath(repositoryPath, "directory");
+      if (classification.status !== "ok" || classification.role !== "ordinary")
+        return null;
+    }
+  } else if (hasOpaqueFilesystemAncestor(position)) {
+    return null;
+  }
+  const [foundation, agreement] = await Promise.all([
+    composeContractAlongPath(position),
+    composeAgreementAlongPath(position, repoRoot)
+  ]);
+  const availableSources = [];
+  if (foundation.spaceRoot)
+    availableSources.push("foundation");
+  if (agreement.agreements.length)
+    availableSources.push("agreement");
+  let contractSource = requestedSource ?? null;
+  if (contractSource && !availableSources.includes(contractSource)) {
+    return {
+      status: "contract_source_unavailable",
+      kind: "content",
+      availableSources,
+      requestedSource: contractSource
+    };
+  }
+  const identityConflict = contractIdentityConflict(foundation, agreement);
+  if (identityConflict) {
+    return {
+      status: "contract_invalid",
+      kind: "content",
+      availableSources,
+      ...contractSource ? { requestedSource: contractSource } : {},
+      issues: [identityConflict]
+    };
+  }
+  if (!contractSource && availableSources.length > 1) {
+    return { status: "contract_choice_required", kind: "content", availableSources };
+  }
+  contractSource ??= availableSources[0] ?? null;
+  if (contractSource === "agreement" && agreement.issues.length) {
+    return {
+      status: "contract_invalid",
+      kind: "content",
+      availableSources,
+      ...requestedSource ? { requestedSource } : {},
+      issues: agreement.issues
+    };
+  }
+  const spaceRoot = contractSource === "foundation" ? foundation.spaceRoot : contractSource === "agreement" ? agreement.spaceRoot : repoRoot ?? position;
+  if (!repoRoot && contractSource) {
+    const spacePath = relative4(spaceRoot, position).split(sep3).join("/");
+    if (spacePath) {
+      const classification = classifyRepositoryPath(spacePath, "directory");
+      if (classification.status !== "ok" || classification.role !== "ordinary")
+        return null;
+    }
+  }
+  return {
+    position,
+    repoRoot,
+    foundation,
+    agreement,
+    contractSource,
+    spaceRoot,
+    base: repoRoot ?? spaceRoot
+  };
+}
+function contractIdentityConflict(foundation, agreement) {
+  if (!foundation.spaceRoot || !agreement.spaceRoot || foundation.spaceRoot !== agreement.spaceRoot || !agreement.rootNodeId) {
+    return null;
+  }
+  const foundationContent = foundation.contract.foundation?.content;
+  if (!foundationContent)
+    return null;
+  const value = parseFrontmatter(foundationContent)?.root_node_id;
+  const parsed = parseRootNodeId(value);
+  if (parsed.status !== "valid" || parsed.rootNodeId === agreement.rootNodeId)
+    return null;
+  return {
+    path: join5(foundation.spaceRoot, "_agent"),
+    code: "root_node_id_conflict",
+    detail: "foundation.md and agreement.md declare different root_node_id values"
+  };
+}
+function filterPathContextForSource(context, source) {
+  if (source === "foundation")
+    return context;
+  return {
+    ...context,
+    levels: context.levels.map((level) => ({
+      ...level,
+      foundation: false,
+      agentFiles: [],
+      contractSummaries: {},
+      contract: null
+    }))
+  };
+}
+function hasOpaqueFilesystemAncestor(path) {
+  let current = resolve5(path);
+  while (true) {
+    const name = basename2(current);
+    if (name.startsWith("_"))
+      return true;
+    const parent = dirname3(current);
+    if (parent === current)
+      return false;
+    current = parent;
+  }
 }
 async function readAwarenessSections(opts) {
   const { root, activityRoot, contract, stack, lastSha, maxChanges = 15, nowExcerptLength = 200, summaryExcerptLength = 200 } = opts;
@@ -8049,6 +8480,48 @@ async function readAwarenessSections(opts) {
     activity
   };
 }
+async function readAgreementAwarenessSections(opts) {
+  const { root, activityRoot, agreement, lastSha, maxChanges = 15, summaryExcerptLength = 200 } = opts;
+  const treeOpts = opts.tree ?? {
+    depth: 1,
+    maxEntries: 50,
+    summaries: true,
+    summaryLength: summaryExcerptLength,
+    strict: false
+  };
+  const contract = agreement.stack.flatMap((level) => level.files.map((file) => ({
+    name: file.name,
+    path: file.path,
+    sourcePosition: file.sourcePosition,
+    level: file.sourcePosition,
+    summary: describeFile(file.content, summaryExcerptLength),
+    representation: file.representation,
+    ...file.representation === "full" ? { content: file.content } : {},
+    revision: contentRevision(file.content),
+    placement: "head"
+  })));
+  const [tree, skills, activity] = await Promise.all([
+    buildTree(root, treeOpts),
+    readSkills(agreement.stack.map((level) => level.dir), summaryExcerptLength),
+    lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
+  ]);
+  return { now: null, tree, contract, skills, activity };
+}
+async function readFloorAwarenessSections(opts) {
+  const { root, activityRoot, lastSha, maxChanges = 15, summaryExcerptLength = 200 } = opts;
+  const treeOpts = opts.tree ?? {
+    depth: 1,
+    maxEntries: 50,
+    summaries: true,
+    summaryLength: summaryExcerptLength,
+    strict: false
+  };
+  const [tree, activity] = await Promise.all([
+    buildTree(root, treeOpts),
+    lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
+  ]);
+  return { now: null, tree, contract: [], skills: [], activity };
+}
 function renderAwarenessSections(data, opts) {
   const included = new Set(opts.sections ?? CONTENT_AWARENESS_SECTIONS);
   const sections = [];
@@ -8062,7 +8535,8 @@ function renderAwarenessSections(data, opts) {
           pos: data.position.path,
           base: data.position.base,
           repoRoot: data.position.repoRoot,
-          ctx: data.position.context
+          ctx: data.position.context,
+          spaceRoot: data.spaceRoot
         }) : null;
         break;
       case "now":
@@ -8104,8 +8578,11 @@ function buildContractEntries(contract, max) {
     entries.push({
       name,
       path: entry.path,
-      ...hasLevel(entry) ? { level: entry.level } : {},
-      summary: describeFile(entry.content, max)
+      ...hasLevel(entry) ? { level: entry.level, sourcePosition: entry.level } : {},
+      summary: describeFile(entry.content, max),
+      representation: "summary",
+      revision: contentRevision(entry.content),
+      placement: "head"
     });
   }
   return entries;
@@ -8124,7 +8601,11 @@ function buildStackedContractEntries(stack, max) {
         name,
         path: entry.path,
         level: level.dir,
-        summary: describeFile(entry.content, max)
+        sourcePosition: level.dir,
+        summary: describeFile(entry.content, max),
+        representation: "summary",
+        revision: contentRevision(entry.content),
+        placement: "head"
       });
     }
   }
@@ -8133,23 +8614,23 @@ function buildStackedContractEntries(stack, max) {
 async function discoverSkillEntries(levels) {
   const byName = /* @__PURE__ */ new Map();
   for (const dir of levels) {
-    const skillsDir = join4(dir, "_agent", "skills");
+    const skillsDir = join5(dir, "_agent", "skills");
     let dirents;
     try {
-      dirents = await fs4.readdir(skillsDir, { withFileTypes: true });
+      dirents = await fs5.readdir(skillsDir, { withFileTypes: true });
     } catch {
       continue;
     }
     const flat = dirents.filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "README.md").map((e) => e.name).sort();
     for (const file of flat) {
       const name = file.replace(/\.md$/, "");
-      byName.set(name, { name, path: join4(skillsDir, file), level: dir });
+      byName.set(name, { name, path: join5(skillsDir, file), level: dir });
     }
     const skillDirs = dirents.filter((e) => e.isDirectory()).map((e) => e.name).sort();
     for (const name of skillDirs) {
-      const path = join4(skillsDir, name, "SKILL.md");
+      const path = join5(skillsDir, name, "SKILL.md");
       try {
-        if ((await fs4.stat(path)).isFile()) {
+        if ((await fs5.stat(path)).isFile()) {
           byName.set(name, { name, path, level: dir });
         }
       } catch {
@@ -8162,10 +8643,28 @@ async function readSkills(levels, max) {
   const entries = await discoverSkillEntries(levels);
   return Promise.all(entries.map(async ({ name, path, level }) => {
     try {
-      const content = await fs4.readFile(path, "utf-8");
-      return { name, path, level, summary: describeSkill(content, max) };
+      const content = await fs5.readFile(path, "utf-8");
+      return {
+        name,
+        path,
+        level,
+        sourcePosition: level,
+        summary: describeSkill(content, max),
+        representation: "summary",
+        revision: contentRevision(content),
+        placement: "head"
+      };
     } catch {
-      return { name, path, level, summary: null };
+      return {
+        name,
+        path,
+        level,
+        sourcePosition: level,
+        summary: null,
+        representation: "summary",
+        revision: null,
+        placement: "head"
+      };
     }
   }));
 }
@@ -8175,6 +8674,7 @@ async function readActivity(repoRoot, lastSha, maxChanges) {
     return null;
   const changes = changedFiles.slice(0, maxChanges);
   return {
+    placement: "tail",
     totalChanges: changedFiles.length,
     changes,
     omittedChanges: changedFiles.length - changes.length
@@ -8201,16 +8701,32 @@ function extractNow(contract, max) {
       continue;
     if (line.startsWith(">")) {
       const stripped = line.replace(/^>+\s*/, "").trim();
-      if (stripped)
-        return { text: truncate(stripped, max), source: entry.path };
+      if (stripped) {
+        return {
+          text: truncate(stripped, max),
+          source: entry.path,
+          representation: "summary",
+          placement: "head",
+          revision: contentRevision(entry.content)
+        };
+      }
       continue;
     }
-    return { text: truncate(line, max), source: entry.path };
+    return {
+      text: truncate(line, max),
+      source: entry.path,
+      representation: "summary",
+      placement: "head",
+      revision: contentRevision(entry.content)
+    };
   }
   return null;
 }
 function truncate(value, max) {
   return value.length <= max ? value : `${value.slice(0, max).trimEnd()}\u2026`;
+}
+function contentRevision(content) {
+  return `sha256:${createHash("sha256").update(content, "utf-8").digest("hex")}`;
 }
 function normalizeContentTreeDepth(depth) {
   if (depth === "full")
@@ -8219,8 +8735,8 @@ function normalizeContentTreeDepth(depth) {
 }
 async function childSummary(path, isDir, max) {
   try {
-    const source = isDir ? join4(path, "README.md") : path;
-    return describeFile(await fs4.readFile(source, "utf-8"), max);
+    const source = isDir ? join5(path, "README.md") : path;
+    return describeFile(await fs5.readFile(source, "utf-8"), max);
   } catch {
     return null;
   }
@@ -8231,6 +8747,7 @@ async function buildTree(root, opts) {
     return null;
   const totalMarkdownFiles = await countMarkdown(root, opts.strict);
   return {
+    placement: "head",
     totalMarkdownFiles,
     entries: listed.entries,
     ...listed.omitted ? { omittedEntries: listed.omitted } : {}
@@ -8239,7 +8756,7 @@ async function buildTree(root, opts) {
 async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
   let raw;
   try {
-    const dirents = await fs4.readdir(dir, { withFileTypes: true });
+    const dirents = await fs5.readdir(dir, { withFileTypes: true });
     raw = dirents.filter((entry) => !entry.name.startsWith(".") || entry.name === ".gitignore").map((entry) => ({ name: entry.name, isDir: entry.isDirectory() }));
   } catch (error) {
     if (opts.strict) {
@@ -8259,8 +8776,8 @@ async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
   const omitted = all.length - shown.length;
   const withSummaries = opts.summaries && (topLevel || opts.depth === "full");
   const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
-    const path = join4(dir, name);
-    const entry = isDir ? { name, kind: "directory", markdownFiles: await countMarkdown(path, opts.strict) } : { name, kind: "markdown" };
+    const path = join5(dir, name);
+    const entry = isDir ? { name, placement: "head", kind: "directory", markdownFiles: await countMarkdown(path, opts.strict) } : { name, placement: "head", kind: "markdown" };
     if (withSummaries) {
       const summary = await childSummary(path, isDir, opts.summaryLength);
       if (summary)
@@ -8284,7 +8801,7 @@ async function countMarkdown(dir, strict = false) {
   let count = 0;
   let dirents;
   try {
-    dirents = await fs4.readdir(dir, { withFileTypes: true });
+    dirents = await fs5.readdir(dir, { withFileTypes: true });
   } catch (error) {
     if (strict) {
       throw new Error(`Cannot count Content tree directory ${dir}: ${error instanceof Error ? error.message : String(error)}`);
@@ -8297,7 +8814,7 @@ async function countMarkdown(dir, strict = false) {
     if (entry.isDirectory()) {
       if (!isContentDirectoryName(entry.name))
         continue;
-      count += await countMarkdown(join4(dir, entry.name), strict);
+      count += await countMarkdown(join5(dir, entry.name), strict);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       count += 1;
     }
@@ -8327,7 +8844,7 @@ function renderTreeEntries(entries, level, lines) {
 function levelAnnotation(level, base) {
   if (!level || !base || level === base)
     return "";
-  const rel = relative3(base, level);
+  const rel = relative4(base, level);
   return rel && !rel.startsWith("..") ? ` (${rel}/)` : "";
 }
 function renderContract(entries, levelBase) {
@@ -8336,7 +8853,13 @@ function renderContract(entries, levelBase) {
   const lines = ["Agent context:"];
   for (const entry of entries) {
     const name = `${entry.name}${levelAnnotation(entry.level, levelBase)}`;
-    lines.push(entry.summary ? `  ${name} \u2014 ${entry.summary}` : `  ${name}`);
+    if (entry.representation === "full" && entry.content !== void 0) {
+      lines.push(`  ${name} [full]:`);
+      for (const line of entry.content.trimEnd().split("\n"))
+        lines.push(`    ${line}`);
+    } else {
+      lines.push(entry.summary ? `  ${name} \u2014 ${entry.summary}` : `  ${name}`);
+    }
   }
   return lines.join("\n");
 }
@@ -8398,15 +8921,15 @@ function renderDirectionDrift(missing) {
 }
 
 // src/session-path.ts
-import { createHash } from "node:crypto";
-import { join as join5, resolve as resolve5 } from "node:path";
+import { createHash as createHash2 } from "node:crypto";
+import { join as join6, resolve as resolve6 } from "node:path";
 function sessionIdCachePath2(homeDir, projectDir) {
-  const key = createHash("sha256").update(resolve5(projectDir)).digest("hex").slice(0, 16);
-  return join5(homeDir, ".ideaspaces", "sessions", key);
+  const key = createHash2("sha256").update(resolve6(projectDir)).digest("hex").slice(0, 16);
+  return join6(homeDir, ".ideaspaces", "sessions", key);
 }
 function changeCachePath2(homeDir, projectDir) {
-  const key = createHash("sha256").update(resolve5(projectDir)).digest("hex").slice(0, 16);
-  return join5(homeDir, ".ideaspaces", "changes", key);
+  const key = createHash2("sha256").update(resolve6(projectDir)).digest("hex").slice(0, 16);
+  return join6(homeDir, ".ideaspaces", "changes", key);
 }
 
 // src/change-line.ts
@@ -8465,7 +8988,7 @@ function captureSessionId(raw) {
   if (typeof sessionId !== "string" || !sessionId) return { projectDir };
   try {
     const file = sessionIdCachePath2(homedir(), projectDir);
-    mkdirSync(dirname2(file), { recursive: true });
+    mkdirSync(dirname4(file), { recursive: true });
     writeFileSync(file, sessionId + "\n");
   } catch {
   }
@@ -8492,11 +9015,20 @@ async function main() {
   const { sessionId, projectDir } = captureSessionId(await readStdin());
   const openChange = changeLine(sessionId, projectDir);
   try {
-    const manifest = await assembleContentAwareness({ position: projectDir });
+    let manifest = await assembleContentAwareness({ position: projectDir });
+    if (manifest?.status === "contract_choice_required") {
+      manifest = await assembleContentAwareness({
+        position: projectDir,
+        contractSource: "agreement"
+      });
+    }
+    if (manifest?.status === "ok" && manifest.contractSource === null) {
+      manifest = null;
+    }
     if (manifest) {
       const text = renderContentAwareness(manifest);
       if (text.trim()) process.stdout.write(text + "\n");
-      if (manifest.position.repoRoot && manifest.git?.headSha) {
+      if (manifest.status === "ok" && manifest.position.repoRoot && manifest.git?.headSha) {
         markSeen(manifest.position.repoRoot, manifest.git.headSha);
       }
     }

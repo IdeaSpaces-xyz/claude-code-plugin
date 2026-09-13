@@ -186,6 +186,19 @@ afterAll(async () => {
 });
 
 describe("write → commit conformance", () => {
+  test("bundled MCP and CLI emit the same reference focus", { timeout: T }, async () => {
+    const navigated = await call("is_navigate", { path: "." });
+    const fromCli = JSON.parse(
+      cli(["--json", "navigate", ".", "--focus"], space),
+    ) as { text: string; manifest: { contractRole: string } };
+
+    expect(navigated.text).toBe(fromCli.text);
+    expect(fromCli.manifest.contractRole).toBe("reference");
+    expect(navigated.text).toContain("contract role: reference — read, never composed");
+    expect(navigated.text).not.toContain("Position:");
+    expect(navigated.text).not.toContain("Git:");
+  });
+
   test("is_write produces a staged Note with Layer-1 frontmatter and a content sha", { timeout: T }, async () => {
     const r = await call("is_write", {
       path: "notes/first-finding.md",
