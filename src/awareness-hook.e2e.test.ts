@@ -102,6 +102,39 @@ describe("shipped in-process awareness hook", () => {
     );
   });
 
+  it("prefers Agreement without mixing in Foundation", () => {
+    const space = tempDir("is-awareness-hook-agreement-");
+    const home = tempDir("is-awareness-hook-agreement-home-");
+    mkdirSync(join(space, "_agent"));
+    writeFileSync(
+      join(space, "_agent", "foundation.md"),
+      "# Foundation\n\nFOUNDATION BODY SENTINEL\n",
+    );
+    writeFileSync(
+      join(space, "_agent", "agreement.md"),
+      "# Agreement\n\nAGREEMENT BODY SENTINEL\n",
+    );
+    writeFileSync(
+      join(space, "_agent", "purpose.md"),
+      "---\nsummary: Purpose handle.\n---\nPURPOSE BODY SENTINEL\n",
+    );
+
+    const result = spawnSync("node", [HOOK], {
+      cwd: space,
+      env: { ...process.env, HOME: home, CLAUDE_PROJECT_DIR: space },
+      input: JSON.stringify({ session_id: "session-agreement", cwd: space }),
+      encoding: "utf-8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("agreement [full]:");
+    expect(result.stdout).toContain("AGREEMENT BODY SENTINEL");
+    expect(result.stdout).toContain("purpose — Purpose handle.");
+    expect(result.stdout).not.toContain("FOUNDATION BODY SENTINEL");
+    expect(result.stdout).not.toContain("PURPOSE BODY SENTINEL");
+  });
+
   it("renders awareness at the resolved project dir, not the spawn cwd", () => {
     const space = tempDir("is-awareness-hook-proj-");
     const elsewhere = tempDir("is-awareness-hook-elsewhere-");

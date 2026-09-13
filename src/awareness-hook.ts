@@ -93,14 +93,26 @@ async function main(): Promise<void> {
     // Awareness renders at the resolved project dir, not the spawn cwd — the
     // harness may launch hooks from elsewhere (CLAUDE_PROJECT_DIR is the
     // contract; input.cwd and process.cwd() are fallbacks, in that order).
-    const manifest = await assembleContentAwareness({ position: projectDir });
+    let manifest = await assembleContentAwareness({ position: projectDir });
+    // Protocol selection is neutral; the Claude habitat follows the shared
+    // Agreement → Foundation → floor policy.
+    if (manifest?.status === "contract_choice_required") {
+      manifest = await assembleContentAwareness({
+        position: projectDir,
+        contractSource: "agreement",
+      });
+    }
     if (manifest) {
       const text = renderContentAwareness(manifest);
       if (text.trim()) process.stdout.write(text + "\n");
 
       // Read-before-write ordering is load-bearing: this session rendered the
       // previous baseline; only now may it become the next session's baseline.
-      if (manifest.position.repoRoot && manifest.git?.headSha) {
+      if (
+        manifest.status === "ok" &&
+        manifest.position.repoRoot &&
+        manifest.git?.headSha
+      ) {
         markSeen(manifest.position.repoRoot, manifest.git.headSha);
       }
     }
