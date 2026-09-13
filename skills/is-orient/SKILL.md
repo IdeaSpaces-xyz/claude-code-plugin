@@ -5,7 +5,7 @@ description: >
   when the user asks "where are we?", "what are we doing?", "what changed?", or
   when context feels unclear. Reads the position's agreement and current state;
   does not modify files.
-allowed-tools: "mcp__plugin_ideaspaces_core__is_status Read Glob Grep Bash"
+allowed-tools: "mcp__plugin_ideaspaces_core__is_navigate mcp__plugin_ideaspaces_core__is_status Read Glob Grep Bash"
 ---
 
 # Orient

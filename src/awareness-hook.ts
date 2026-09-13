@@ -102,6 +102,11 @@ async function main(): Promise<void> {
         contractSource: "agreement",
       });
     }
+    // The protocol's floor is useful to explicit readers, but this hook keeps
+    // its established boundary: no automatic injection outside an ideaspace.
+    if (manifest?.status === "ok" && manifest.contractSource === null) {
+      manifest = null;
+    }
     if (manifest) {
       const text = renderContentAwareness(manifest);
       if (text.trim()) process.stdout.write(text + "\n");

@@ -135,6 +135,22 @@ describe("shipped in-process awareness hook", () => {
     expect(result.stdout).not.toContain("PURPOSE BODY SENTINEL");
   });
 
+  it("keeps automatic SessionStart silent at the protocol floor", () => {
+    const folder = tempDir("is-awareness-hook-floor-");
+    const home = tempDir("is-awareness-hook-floor-home-");
+
+    const result = spawnSync("node", [HOOK], {
+      cwd: folder,
+      env: { ...process.env, HOME: home, CLAUDE_PROJECT_DIR: folder },
+      input: JSON.stringify({ session_id: "session-floor", cwd: folder }),
+      encoding: "utf-8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toBe("");
+  });
+
   it("renders awareness at the resolved project dir, not the spawn cwd", () => {
     const space = tempDir("is-awareness-hook-proj-");
     const elsewhere = tempDir("is-awareness-hook-elsewhere-");
