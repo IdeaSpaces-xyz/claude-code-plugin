@@ -24,7 +24,7 @@ A local `_agent/` directory may exist in a checkout, but it is gitignored. Treat
 Keep the plugin small, and keep the seam where the protocol puts it: **the user's side is self-sufficient; the CLI is the platform client, minimal by intent.**
 
 - The MCP server and hooks own user/session-side state and its rendering — the session-id bridge, the persisted open Change (the server decides arming; the SessionStart hook only displays).
-- Local reads, `is_write`, `is_commit`, and Change state run in-process through the protocol. MCP owns the process-local capture ledger: `all` means paths captured by that server session, never every staged knowledge path in a shared index.
+- Local `is_navigate` / `is_look` reads, `is_write`, `is_commit`, and Change state run in-process through the protocol. MCP owns the process-local capture ledger: `all` means paths captured by that server session, never every staged knowledge path in a shared index.
 - Platform interactions — auth, the credential helper, pull/push, publish, account-free local Fork and maintained updates, recipient-shaped Share, and person-accountable Inbox exchange — shell the bundled `ideaspaces` CLI. Fork/update, Share, and Inbox stay skill-mediated flows rather than automatic native-tool mirrors.
 - `is_collaborate` is a third category: it spawns a headless `claude` in another point of view's `_agent/` folder — neither an in-process protocol read nor a platform CLI call. consult/review pin a read-only built-in set and load no MCP servers; delegate pins nothing, so the target folder's own settings govern. It relies on this plugin's own SessionStart hook to orient the spawned session.
 

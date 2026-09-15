@@ -159,6 +159,10 @@ beforeAll(async () => {
   // Real scaffold path: `ideaspaces create` inits git and commits the seed
   // contract itself. This happens before the MCP local-effect proof begins.
   cli(["create", "--yes"], space);
+  writeFileSync(
+    join(space, "look.md"),
+    "---\nname: Look proof\nsummary: Cross-surface Content look.\n---\n# Look proof\n\n## Evidence\n",
+  );
 
   cliMarker = join(home, "platform-cli-invoked");
   failingCli = join(home, "failing-platform-cli.mjs");
@@ -197,6 +201,18 @@ describe("write → commit conformance", () => {
     expect(navigated.text).toContain("contract role: reference — read, never composed");
     expect(navigated.text).not.toContain("Position:");
     expect(navigated.text).not.toContain("Git:");
+  });
+
+  test("bundled MCP and CLI emit the same rung-selective Content look", { timeout: T }, async () => {
+    const looked = await call("is_look", { path: "look.md", depth: "children" });
+    const fromCli = JSON.parse(
+      cli(["--json", "look", "look.md", "--depth", "children"], space),
+    ) as { text: string; target: { depth: string }; reference: { contractRole: string } };
+
+    expect(looked.text).toBe(fromCli.text);
+    expect(fromCli.target.depth).toBe("children");
+    expect(fromCli.reference.contractRole).toBe("reference");
+    expect(looked.text).toContain("placement: history");
   });
 
   test("is_write produces a staged Note with Layer-1 frontmatter and a content sha", { timeout: T }, async () => {

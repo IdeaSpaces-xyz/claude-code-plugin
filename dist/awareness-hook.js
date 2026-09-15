@@ -8237,6 +8237,71 @@ var DEFAULT_IGNORED_DIRECTORIES = [
   "build"
 ];
 
+// node_modules/@ideaspaces/protocol/dist/map-projection.js
+function projectContentTreeMembers(tree, root = 0) {
+  const members = [];
+  appendTreeEntries(tree.entries, root, "", 1, members);
+  return {
+    totalMarkdownFiles: tree.totalMarkdownFiles,
+    members,
+    ...tree.omittedEntries === void 0 ? {} : { omittedEntries: tree.omittedEntries }
+  };
+}
+function appendTreeEntries(entries, root, parent, level, output) {
+  for (const entry of entries) {
+    const position = parent ? `${parent}/${entry.name}` : entry.name;
+    const summary = entry.summary ?? void 0;
+    output.push({
+      member: {
+        root,
+        position,
+        depth: summary === void 0 ? "name" : "summary",
+        disclosure: {
+          name: entry.name,
+          ...summary === void 0 ? {} : { summary }
+        }
+      },
+      presentation: {
+        kind: entry.kind,
+        level,
+        ...entry.markdownFiles === void 0 ? {} : { markdownFiles: entry.markdownFiles },
+        ...entry.omittedChildren === void 0 ? {} : { omittedChildren: entry.omittedChildren }
+      }
+    });
+    if (entry.children) {
+      appendTreeEntries(entry.children, root, position, level + 1, output);
+    }
+  }
+}
+function renderContentTreeProjection(projection) {
+  const lines = [`Tree (${projection.totalMarkdownFiles} files):`];
+  const openDirectories = [];
+  const closeThrough = (level) => {
+    while (openDirectories.length && openDirectories[openDirectories.length - 1].level >= level) {
+      const closed = openDirectories.pop();
+      if (closed.omittedChildren) {
+        lines.push(`${"  ".repeat(closed.level + 1)}\u2026 and ${closed.omittedChildren} more`);
+      }
+    }
+  };
+  for (const entry of projection.members) {
+    closeThrough(entry.presentation.level);
+    const indent = "  ".repeat(entry.presentation.level);
+    const disclosure = entry.member.disclosure;
+    const name = disclosure?.name ?? entry.member.position;
+    const base = entry.presentation.kind === "directory" ? entry.presentation.markdownFiles ? `${indent}${name}/ (${entry.presentation.markdownFiles})` : `${indent}${name}/` : `${indent}${name}`;
+    lines.push(disclosure?.summary ? `${base} \u2014 ${disclosure.summary}` : base);
+    if (entry.presentation.kind === "directory") {
+      openDirectories.push(entry.presentation);
+    }
+  }
+  closeThrough(0);
+  if (projection.omittedEntries) {
+    lines.push(`  \u2026 and ${projection.omittedEntries} more`);
+  }
+  return lines.join("\n");
+}
+
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 var CONTENT_AWARENESS_SECTIONS = [
   "position",
@@ -8528,6 +8593,9 @@ function renderAwarenessSections(data, opts) {
   for (const section of CONTENT_AWARENESS_SECTIONS) {
     if (!included.has(section))
       continue;
+    if (opts.placement && awarenessSectionPlacement(data, section) !== opts.placement) {
+      continue;
+    }
     let rendered = null;
     switch (section) {
       case "position":
@@ -8568,6 +8636,30 @@ function renderAwarenessSections(data, opts) {
       sections.push(rendered);
   }
   return sections.join("\n\n");
+}
+function awarenessSectionPlacement(data, section) {
+  switch (section) {
+    case "position":
+      return data.position?.placement === "head" ? "head" : null;
+    case "now":
+      return data.now?.placement === "head" ? "head" : null;
+    case "tree":
+      return data.tree?.placement === "head" ? "head" : null;
+    // Ambient contract and skill arrays are homogeneous at head by
+    // construction. Focus remaps them to history and uses its own renderer.
+    case "contract":
+      return data.contract.some((entry) => entry.placement === "head") ? "head" : null;
+    case "skills":
+      return data.skills.some((skill) => skill.placement === "head") ? "head" : null;
+    case "activity":
+      return data.activity?.placement === "tail" ? "tail" : null;
+    case "git":
+      return data.git && "placement" in data.git && data.git.placement === "tail" ? "tail" : null;
+    case "stale-docs":
+      return data.staleDocs.some((signal) => "placement" in signal && signal.placement === "tail") ? "tail" : null;
+    case "direction-drift":
+      return data.missingDirection.length ? "tail" : null;
+  }
 }
 function buildContractEntries(contract, max) {
   const entries = [];
@@ -8822,24 +8914,7 @@ async function countMarkdown(dir, strict = false) {
   return count;
 }
 function renderTree(tree) {
-  const lines = [`Tree (${tree.totalMarkdownFiles} files):`];
-  renderTreeEntries(tree.entries, 1, lines);
-  if (tree.omittedEntries)
-    lines.push(`  \u2026 and ${tree.omittedEntries} more`);
-  return lines.join("\n");
-}
-function renderTreeEntries(entries, level, lines) {
-  const indent = "  ".repeat(level);
-  for (const entry of entries) {
-    const base = entry.kind === "directory" ? entry.markdownFiles ? `${indent}${entry.name}/ (${entry.markdownFiles})` : `${indent}${entry.name}/` : `${indent}${entry.name}`;
-    lines.push(entry.summary ? `${base} \u2014 ${entry.summary}` : base);
-    if (entry.children) {
-      renderTreeEntries(entry.children, level + 1, lines);
-      if (entry.omittedChildren) {
-        lines.push(`${"  ".repeat(level + 1)}\u2026 and ${entry.omittedChildren} more`);
-      }
-    }
-  }
+  return renderContentTreeProjection(projectContentTreeMembers(tree));
 }
 function levelAnnotation(level, base) {
   if (!level || !base || level === base)

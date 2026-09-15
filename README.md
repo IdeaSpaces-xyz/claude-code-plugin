@@ -70,7 +70,7 @@ Type `/` to see the skills: `is-setup`, `is-guide`, `is-orient`, `is-capture`, `
 ## What it installs
 
 - **A session-start hook** that renders the folder's orientation: position, current focus, tree, `_agent/` instructions, skills, and what changed since last time.
-- **MCP tools** for the local loop: reference-only `is_navigate`, `is_write`, `is_commit`, `is_status`, `is_change_open` / `is_change_close`, and `is_auth`, `is_spaces`, `is_clone`, `is_push`, `is_pull` for the optional remote.
+- **MCP tools** for the local loop: reference-only `is_navigate`, five-rung `is_look`, `is_write`, `is_commit`, `is_status`, `is_change_open` / `is_change_close`, and `is_auth`, `is_spaces`, `is_clone`, `is_push`, `is_pull` for the optional remote. `is_look` reads one local Note or directory at `name`, `summary`, `surface`, `children`, or `full` without adopting its Agreement.
 - **`is_collaborate`** — work with another point of view: open, continue, and close a conversation with the vantage in another `_agent/`-contract folder. It spawns a fresh headless `claude` there, oriented by this same hook, and that point of view answers or acts from where it stands. The mode is the instruction: consult and review are read-only; delegate hands it a task under that folder's own settings.
 - **The `ideaspaces` CLI**, bundled, for fork, update, publish, share, and inbox. No global install needed. Its own page: [IdeaSpaces-xyz/cli](https://github.com/IdeaSpaces-xyz/cli).
 - **A pre-commit nudge**: if a plain `git commit` is about to run inside an ideaspace, it notes once per session that `is_commit` would carry attribution and would not sweep up a teammate's staged files.
