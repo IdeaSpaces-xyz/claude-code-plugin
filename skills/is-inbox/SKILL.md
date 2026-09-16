@@ -39,17 +39,24 @@ two human parties.
 
 A new inquiry needs:
 
-- one explicit person, as an email address or `@handle`;
-- one exact Content target coordinate (`n_…`) that the message is about;
+- one exact target coordinate (`n_…`) the message is about — a Content Note, an Actor profile, or
+  a Process the sender can read;
+- optionally one person, as an email address or `@handle`. **Omit the person and the message goes
+  to the target's owner.** That is the right form when the user knows the Space but not its maker;
 - a short name, dense summary, and Markdown message.
 
 For the current Space root, `"${CLI[@]}" status --json` exposes its declared root identity. A
 canonical `/repos/n_…` URL also carries the root coordinate. For a nested target, use an exact
 coordinate already supplied by the user, Map, or hosted reader; never guess one from a local path.
 
-Before sending, state the recipient, target, and message. Ask for confirmation when any were inferred
-or composed beyond the user's request. A request that already names the recipient, target, and
-message counts as confirmation; do not ask twice.
+When the subject is not any Content — the tool itself, the service, the person — the honest target
+is the maker's public profile: a Thread about their Actor node, with no recipient, reaches them.
+Sending grants nothing: the recipient sees the message and the Map's legend, and reads a named Note
+only with access they already hold. Use **is-share** if they should be able to read it.
+
+Before sending, state the target, the recipient (or that it goes to the owner), and the message.
+Ask for confirmation when any were inferred or composed beyond the user's request. A request that
+already names them counts as confirmation; do not ask twice.
 
 ## Send and reply
 
@@ -65,6 +72,14 @@ send after an ambiguous network failure.
   --send-id "<stable-send-id>" \
   --message "What should happen next?"
 
+# No person named: the Node's owner receives it.
+"${CLI[@]}" inbox send \
+  --about "n_0123456789abcdef01234567" \
+  --name "share invite fails" \
+  --summary "404 on every repo since this morning" \
+  --send-id "<stable-send-id>" \
+  --message "..."
+
 printf '%s\n' "# Answer" "" "Keep the boundary narrow." | \
   "${CLI[@]}" inbox reply "<thread-id>" \
     --name "Answer" \
@@ -79,7 +94,8 @@ If authentication is required, offer `is_auth action="login"`, then retry the id
 
 ## Report the result
 
-For a send or reply, report the message id and the Content target it remains attached to. Do not
+For a send or reply, report the message id, the target it remains attached to, and — when no
+person was named — that it went to the target's owner. Do not
 claim the recipient read it merely because delivery succeeded. Surface neutral not-found,
 recipient-unavailable, blocked, rate-limit, and history-bound refusals without guessing hidden
 account or Content state.

@@ -7895,6 +7895,16 @@ async function resolveRepoRoot(cwd) {
   const result = await runGit(cwd, ["rev-parse", "--show-toplevel"]);
   return result.ok ? result.out.trim() || null : null;
 }
+function isIdeaspacePath(path) {
+  const classification = classifyRepositoryPath(path.replace(/\\/g, "/"), "file");
+  return classification.status === "ok" && (classification.role === "knowledge" || classification.role === "agent-context" || classification.role === "extension");
+}
+async function stagedIdeaspacePaths(repoRoot) {
+  const result = await runGit(repoRoot, ["diff", "--cached", "--name-only"]);
+  if (!result.ok)
+    return [];
+  return result.out.split("\n").map((path) => path.trim()).filter(Boolean).filter(isIdeaspacePath);
+}
 async function lastCommitTime(repoRoot, path) {
   const res = await runGit(repoRoot, ["log", "-1", "--format=%ct", "--", path]);
   if (!res.ok)
@@ -8995,6 +9005,46 @@ function renderDirectionDrift(missing) {
   return lines.length ? lines.join("\n") : null;
 }
 
+// node_modules/@ideaspaces/protocol/dist/content-state.js
+function renderContentState(state) {
+  const { git, captures } = state;
+  const lines = ["State:", `  branch: ${git.branch ?? "(detached)"}`];
+  if (git.ahead != null || git.behind != null) {
+    lines.push(`  remote: ahead ${git.ahead ?? 0}, behind ${git.behind ?? 0}`);
+  } else {
+    lines.push("  remote: no upstream");
+  }
+  lines.push(`  working tree: ${git.dirty ? "dirty" : "clean"}`);
+  lines.push(`  captures awaiting commit: ${captures.length}`);
+  if (git.untrackedInTrackedDirs.length) {
+    lines.push(`  untracked knowledge files: ${git.untrackedInTrackedDirs.length}`);
+  }
+  return lines.join("\n");
+}
+function renderContentTail(manifest, opts = {}) {
+  const parts = [];
+  if (opts.state)
+    parts.push(renderContentState(opts.state));
+  for (const handle of opts.handles ?? []) {
+    if (handle?.trim())
+      parts.push(handle);
+  }
+  if (manifest) {
+    const requested = opts.sections ?? CONTENT_AWARENESS_SECTIONS;
+    const sections = opts.state ? requested.filter((section) => section !== "git") : requested;
+    const tail = renderContentAwareness(manifest, {
+      placement: "tail",
+      sections,
+      ...opts.maxDrift === void 0 ? {} : { maxDrift: opts.maxDrift }
+    });
+    if (tail.trim())
+      parts.push(tail);
+  }
+  if (opts.change?.trim())
+    parts.push(opts.change);
+  return parts.join("\n\n");
+}
+
 // src/session-path.ts
 import { createHash as createHash2 } from "node:crypto";
 import { join as join6, resolve as resolve6 } from "node:path";
@@ -9100,12 +9150,24 @@ async function main() {
     if (manifest?.status === "ok" && manifest.contractSource === null) {
       manifest = null;
     }
+    if (manifest && manifest.status === "ok") {
+      const head = renderContentAwareness(manifest, { placement: "head" });
+      const state = manifest.position.repoRoot && manifest.git ? {
+        placement: "tail",
+        git: manifest.git,
+        captures: await stagedIdeaspacePaths(manifest.position.repoRoot)
+      } : null;
+      const tail = renderContentTail(manifest, { state, change: openChange });
+      const text = [head, tail].filter((part) => part.trim()).join("\n\n");
+      if (text) process.stdout.write(text + "\n");
+      if (manifest.position.repoRoot && manifest.git?.headSha) {
+        markSeen(manifest.position.repoRoot, manifest.git.headSha);
+      }
+      return;
+    }
     if (manifest) {
       const text = renderContentAwareness(manifest);
       if (text.trim()) process.stdout.write(text + "\n");
-      if (manifest.status === "ok" && manifest.position.repoRoot && manifest.git?.headSha) {
-        markSeen(manifest.position.repoRoot, manifest.git.headSha);
-      }
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

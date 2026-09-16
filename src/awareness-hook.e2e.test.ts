@@ -12,6 +12,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { changeCachePath } from "./session-path.js";
 
 const HOOK = join(process.cwd(), "dist", "awareness-hook.js");
 const roots: string[] = [];
@@ -84,7 +85,13 @@ describe("shipped in-process awareness hook", () => {
       `Position:\n  repo: ${space}\n  cwd: .\n  space root: .\n  active _agent: .`,
     );
     expect(first.stdout).toContain("Now: Second state.");
-    expect(first.stdout).toContain("Since last session (1 changes):");
+    // The tail is the protocol's one composition: State supersedes the compact
+    // Git line and leads, activity follows — the same bytes `status` renders.
+    const headEnd = first.stdout.indexOf("State:\n  branch: main");
+    expect(headEnd).toBeGreaterThan(first.stdout.indexOf("Now: Second state."));
+    expect(first.stdout).toContain("  working tree: clean\n  captures awaiting commit: 0");
+    expect(first.stdout).not.toContain("Git: branch");
+    expect(first.stdout.indexOf("Since last session (1 changes):")).toBeGreaterThan(headEnd);
     expect(first.stdout).toContain("M\t_agent/now.md");
     expect(existsSync(marker)).toBe(false);
     expect(git(space, "rev-parse", "refs/ideaspaces/seen")).toBe(head);
@@ -97,6 +104,21 @@ describe("shipped in-process awareness hook", () => {
     });
     expect(second.status).toBe(0);
     expect(second.stdout).not.toContain("Since last session");
+
+    // An open Change persisted by the MCP server rides the same composition,
+    // last — after State and the manifest tail.
+    const changeFile = changeCachePath(home, space);
+    mkdirSync(join(changeFile, ".."), { recursive: true });
+    writeFileSync(changeFile, JSON.stringify({ change_id: "chg_awareness-hook-0001", session_id: "session-a", opened_at: Date.now() }));
+    const third = spawnSync("node", [HOOK], {
+      cwd: space,
+      env,
+      input: JSON.stringify({ session_id: "session-a", cwd: space }),
+      encoding: "utf-8",
+    });
+    expect(third.status).toBe(0);
+    expect(third.stdout.trimEnd().split("\n").at(-1)).toContain("Change open: chg_awareness-hook-0001");
+    expect(third.stdout.indexOf("Change open:")).toBeGreaterThan(third.stdout.indexOf("State:"));
     expect(readFileSync(join(home, ".ideaspaces", "sessions", sessionCacheName(space)), "utf-8")).toBe(
       "session-a\n",
     );
