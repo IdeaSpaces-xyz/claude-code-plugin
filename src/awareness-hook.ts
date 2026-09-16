@@ -26,10 +26,11 @@ import { dirname } from "node:path";
 import { homedir } from "node:os";
 import {
   assembleContentAwareness,
-  assembleContentState,
   renderContentAwareness,
   renderContentTail,
+  stagedIdeaspacePaths,
   SEEN_REF,
+  type ContentState,
 } from "@ideaspaces/protocol";
 import { changeCachePath, sessionIdCachePath } from "./session-path.js";
 import { parseChangeRecord, renderChangeLine } from "./change-line.js";
@@ -116,11 +117,17 @@ async function main(): Promise<void> {
     }
     if (manifest && manifest.status === "ok") {
       const head = renderContentAwareness(manifest, { placement: "head" });
-      // State is read only inside a repository; elsewhere the tail keeps the
-      // manifest's own sections and the compact Git line stays absent anyway.
-      const state = manifest.position.repoRoot
-        ? await assembleContentState(manifest.position.repoRoot)
-        : null;
+      // State reuses the Git facts the manifest already read — one more read,
+      // the staged captures, not a second status walk. Outside a repository
+      // there is no State and no compact Git line either.
+      const state: ContentState | null =
+        manifest.position.repoRoot && manifest.git
+          ? {
+              placement: "tail",
+              git: manifest.git,
+              captures: await stagedIdeaspacePaths(manifest.position.repoRoot),
+            }
+          : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const text = [head, tail].filter((part) => part.trim()).join("\n\n");
       if (text) process.stdout.write(text + "\n");

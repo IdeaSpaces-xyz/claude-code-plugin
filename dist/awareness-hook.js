@@ -9006,13 +9006,6 @@ function renderDirectionDrift(missing) {
 }
 
 // node_modules/@ideaspaces/protocol/dist/content-state.js
-async function assembleContentState(repoRoot) {
-  const [git, captures] = await Promise.all([
-    gitState(repoRoot),
-    stagedIdeaspacePaths(repoRoot)
-  ]);
-  return { placement: "tail", git, captures };
-}
 function renderContentState(state) {
   const { git, captures } = state;
   const lines = ["State:", `  branch: ${git.branch ?? "(detached)"}`];
@@ -9159,7 +9152,11 @@ async function main() {
     }
     if (manifest && manifest.status === "ok") {
       const head = renderContentAwareness(manifest, { placement: "head" });
-      const state = manifest.position.repoRoot ? await assembleContentState(manifest.position.repoRoot) : null;
+      const state = manifest.position.repoRoot && manifest.git ? {
+        placement: "tail",
+        git: manifest.git,
+        captures: await stagedIdeaspacePaths(manifest.position.repoRoot)
+      } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const text = [head, tail].filter((part) => part.trim()).join("\n\n");
       if (text) process.stdout.write(text + "\n");
