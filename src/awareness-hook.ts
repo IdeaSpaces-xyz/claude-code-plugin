@@ -1,15 +1,20 @@
 /**
  * SessionStart hook — surfaces local Content awareness at session start.
  *
- * Assembles and renders the protocol's structured Content manifest in-process:
- * position, Now, tree, agent context, skills, since-last-session activity, git,
- * stale-doc drift, and missing direction. The hook then advances the local seen
- * ref for the next session. That ref write stays surface-owned; protocol shape
- * primitives remain read-only.
+ * Assembles the protocol's structured Content manifest in-process and renders
+ * its head — position, Now, tree, agent context, skills — followed by the
+ * protocol's one Content-tail composition: local State (branch, upstream,
+ * working tree, captures awaiting commit), since-last-session activity,
+ * stale-doc drift, missing direction, and the open Change line last. The same
+ * composer renders the CLI's `status` and Pi's post-breakpoint register, so
+ * the three surfaces cannot order the tail differently. Claude Code exposes no
+ * breakpoint-placement primitive, so head and tail ship as one deterministic
+ * SessionStart render. The hook then advances the local seen ref for the next
+ * session; that ref write stays surface-owned.
  *
- * The session-id bridge and persisted open-Change line are Claude-harness state,
- * not Content awareness, and remain local here. Outside an ideaspace the hook
- * emits only an open Change when present.
+ * The session-id bridge and persisted open-Change record are Claude-harness
+ * state, not Content awareness. Outside an ideaspace the hook emits only an
+ * open Change when present.
  *
  * Hooks must never block session start — errors go to stderr and exit 0.
  * Bundled with `npm run build:hook`; the committed dist artifact ships pre-built.
@@ -21,7 +26,9 @@ import { dirname } from "node:path";
 import { homedir } from "node:os";
 import {
   assembleContentAwareness,
+  assembleContentState,
   renderContentAwareness,
+  renderContentTail,
   SEEN_REF,
 } from "@ideaspaces/protocol";
 import { changeCachePath, sessionIdCachePath } from "./session-path.js";
@@ -107,25 +114,35 @@ async function main(): Promise<void> {
     if (manifest?.status === "ok" && manifest.contractSource === null) {
       manifest = null;
     }
-    if (manifest) {
-      const text = renderContentAwareness(manifest);
-      if (text.trim()) process.stdout.write(text + "\n");
+    if (manifest && manifest.status === "ok") {
+      const head = renderContentAwareness(manifest, { placement: "head" });
+      // State is read only inside a repository; elsewhere the tail keeps the
+      // manifest's own sections and the compact Git line stays absent anyway.
+      const state = manifest.position.repoRoot
+        ? await assembleContentState(manifest.position.repoRoot)
+        : null;
+      const tail = renderContentTail(manifest, { state, change: openChange });
+      const text = [head, tail].filter((part) => part.trim()).join("\n\n");
+      if (text) process.stdout.write(text + "\n");
 
       // Read-before-write ordering is load-bearing: this session rendered the
       // previous baseline; only now may it become the next session's baseline.
-      if (
-        manifest.status === "ok" &&
-        manifest.position.repoRoot &&
-        manifest.git?.headSha
-      ) {
+      if (manifest.position.repoRoot && manifest.git?.headSha) {
         markSeen(manifest.position.repoRoot, manifest.git.headSha);
       }
+      return;
+    }
+    if (manifest) {
+      // A diagnostic (invalid contract, unavailable source): render it as before.
+      const text = renderContentAwareness(manifest);
+      if (text.trim()) process.stdout.write(text + "\n");
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     process.stderr.write(`awareness-hook: awareness failed: ${message}\n`);
   }
 
+  // No Content manifest rendered the Change line: it still surfaces alone.
   if (openChange) process.stdout.write(openChange + "\n");
 }
 

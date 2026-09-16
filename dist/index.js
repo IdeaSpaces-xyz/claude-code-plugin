@@ -33088,7 +33088,15 @@ var contentDepth = external_exports.enum(["name", "summary", "surface", "childre
 var cwdField = external_exports.string().optional().describe(
   "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
 );
-var MCP_TOOL_PARAMETERS = {
+function sortedShape(shape) {
+  return Object.fromEntries(Object.entries(shape).sort(([a], [b]) => a.localeCompare(b)));
+}
+function frozenRoster(authored) {
+  return Object.fromEntries(
+    Object.entries(authored).map(([tool, shape]) => [tool, sortedShape(shape)])
+  );
+}
+var AUTHORED_TOOL_PARAMETERS = {
   is_auth: {
     action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
   },
@@ -33174,6 +33182,7 @@ var MCP_TOOL_PARAMETERS = {
     cwd: cwdField
   }
 };
+var MCP_TOOL_PARAMETERS = frozenRoster(AUTHORED_TOOL_PARAMETERS);
 var MCP_TOOL_REQUIRE_ANY = {
   is_change_open: ["handle", "id"]
 };
