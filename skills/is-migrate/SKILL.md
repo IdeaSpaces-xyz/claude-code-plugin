@@ -5,7 +5,8 @@ description: >
   to a new Agreement-shaped copy. Use when someone says "migrate this space", "upgrade to agreement",
   "make an agreement copy", or wants to move away from `foundation.md` safely. Reads the source
   space, forms a new clean space beside it with `_agent/agreement.md`, copies knowledge notes and
-  skills, and lets the user test before archiving the old one.
+  skills, and lets the user test before archiving the old one. Not for setting up a fresh space;
+  that is is-setup. Not for revisiting an existing agreement; that is is-reflect.
 allowed-tools: "read write edit bash"
 ---
 
