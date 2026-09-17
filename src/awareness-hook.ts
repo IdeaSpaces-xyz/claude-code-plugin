@@ -2,8 +2,10 @@
  * SessionStart hook — surfaces local Content awareness at session start.
  *
  * Assembles the protocol's structured Content manifest in-process and renders
- * its head — position, Now, tree, agent context, skills — followed by the
- * protocol's one Content-tail composition: local State (branch, upstream,
+ * its head — position, Now, tree, agent context, skills — then the habitat's
+ * own line naming the convention the Space's Agreement declares (an agent is
+ * inhabited, a knowledge space is oriented in, anything else is shown as
+ * declared), followed by the protocol's one Content-tail composition: local State (branch, upstream,
  * working tree, captures awaiting commit), since-last-session activity,
  * stale-doc drift, missing direction, and the open Change line last. The same
  * composer renders the CLI's `status` and Pi's post-breakpoint register, so
@@ -34,6 +36,7 @@ import {
 } from "@ideaspaces/protocol";
 import { changeCachePath, sessionIdCachePath } from "./session-path.js";
 import { parseChangeRecord, renderChangeLine } from "./change-line.js";
+import { renderKindLine } from "./kind-line.js";
 import { readStdin } from "./stdin.js";
 
 /**
@@ -129,7 +132,10 @@ async function main(): Promise<void> {
             }
           : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
-      const text = [head, tail].filter((part) => part.trim()).join("\n\n");
+      // The habitat's one line between head and tail: which convention the
+      // Space declares, and what that means in Claude Code.
+      const kind = renderKindLine(manifest) ?? "";
+      const text = [head, kind, tail].filter((part) => part.trim()).join("\n\n");
       if (text) process.stdout.write(text + "\n");
 
       // Read-before-write ordering is load-bearing: this session rendered the

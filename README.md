@@ -59,8 +59,8 @@ codex plugin add ideaspaces@ideaspaces-xyz
 
 Open your agent in any folder and say one of these:
 
-- *"set up an ideaspace here"* — inspects what is in the folder, confirms, then creates `_agent/`.
-- *"create an agent"* — a folder that *is* an agent; its character is drawn out in conversation.
+- *"set up an ideaspace here"* — looks at what is in the folder, draws out what the place is and how work goes, then writes that as `_agent/agreement.md`.
+- *"create an agent"* — a folder that *is* an agent; who it is is drawn out in conversation and written as its Agreement.
 - *"take this space home"* with a public space URL — a local copy, no account needed.
 
 From then on, just work. When something worth keeping lands, the agent offers to write it down. Say *"write this down"* to do it yourself. Say *"publish this space"* to host it, *"share this with alice@example.com"* to let someone in, *"check my inbox"* to read questions about what you shared.

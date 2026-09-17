@@ -157,6 +157,83 @@ describe("shipped in-process awareness hook", () => {
     expect(result.stdout).not.toContain("PURPOSE BODY SENTINEL");
   });
 
+  it("names the convention an Agreement declares — agent, knowledge, or as written", () => {
+    const home = tempDir("is-awareness-hook-kind-home-");
+    const run = (space: string) =>
+      spawnSync("node", [HOOK], {
+        cwd: space,
+        env: { ...process.env, HOME: home, CLAUDE_PROJECT_DIR: space },
+        input: JSON.stringify({ session_id: "session-kind", cwd: space }),
+        encoding: "utf-8",
+      });
+    const agreement = (frontmatter: string, body: string) =>
+      `---\n${frontmatter}\n---\n# Agreement\n\n${body}\n`;
+
+    // An agent, fresh from `ideaspaces create --agent`: still prompts.
+    const agent = tempDir("is-awareness-hook-kind-agent-");
+    mkdirSync(join(agent, "_agent"));
+    writeFileSync(
+      join(agent, "_agent", "agreement.md"),
+      agreement(
+        "name: Agreement — scribe\nsummary: A fixture.\nagreement: agent:repo:n_0935a5df1f883eeb60bcdfbb",
+        "> Every section below is a prompt, not content.",
+      ),
+    );
+    const agentRun = run(agent);
+    expect(agentRun.status).toBe(0);
+    expect(agentRun.stderr).toBe("");
+    expect(agentRun.stdout).toContain(
+      "Kind: agent (agent:repo:n_0935a5df1f883eeb60bcdfbb) — launching here means being scribe, not studying it;",
+    );
+    expect(agentRun.stdout).toContain("Its sections are still prompts");
+    // Between the head's agent context and the tail.
+    expect(agentRun.stdout.indexOf("Kind: agent")).toBeGreaterThan(agentRun.stdout.indexOf("agreement [full]:"));
+
+    // A knowledge space whose Agreement has been written.
+    const knowledge = tempDir("is-awareness-hook-kind-knowledge-");
+    mkdirSync(join(knowledge, "_agent"));
+    writeFileSync(
+      join(knowledge, "_agent", "agreement.md"),
+      agreement(
+        "name: Agreement — Decisions\nsummary: A fixture.\nagreement: knowledge:repo:n_f1511280efecd7fcff155152",
+        "One file per decision.",
+      ),
+    );
+    const knowledgeRun = run(knowledge);
+    expect(knowledgeRun.status).toBe(0);
+    expect(knowledgeRun.stdout).toContain(
+      "Kind: knowledge space (knowledge:repo:n_f1511280efecd7fcff155152) — orient in the Agreement above;",
+    );
+    expect(knowledgeRun.stdout).not.toContain("still prompts");
+
+    // A reference this plugin does not recognise: shown verbatim, no error,
+    // and the Space orients normally.
+    const other = tempDir("is-awareness-hook-kind-other-");
+    mkdirSync(join(other, "_agent"));
+    writeFileSync(
+      join(other, "_agent", "agreement.md"),
+      agreement(
+        "name: Agreement — Loop\nsummary: A fixture.\nagreement: program:repo:n_0123456789abcdef01234567",
+        "A program branch.",
+      ),
+    );
+    const otherRun = run(other);
+    expect(otherRun.status).toBe(0);
+    expect(otherRun.stderr).toBe("");
+    expect(otherRun.stdout).toContain("agreement [full]:");
+    expect(otherRun.stdout).toContain(
+      "Kind: program:repo:n_0123456789abcdef01234567 — declared by the Agreement; not a convention this plugin recognises",
+    );
+
+    // No reference: no line.
+    const plain = tempDir("is-awareness-hook-kind-plain-");
+    mkdirSync(join(plain, "_agent"));
+    writeFileSync(join(plain, "_agent", "agreement.md"), agreement("name: Agreement\nsummary: A fixture.", "Body."));
+    const plainRun = run(plain);
+    expect(plainRun.status).toBe(0);
+    expect(plainRun.stdout).not.toContain("Kind:");
+  });
+
   it("keeps automatic SessionStart silent at the protocol floor", () => {
     const folder = tempDir("is-awareness-hook-floor-");
     const home = tempDir("is-awareness-hook-floor-home-");

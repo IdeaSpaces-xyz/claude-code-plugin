@@ -31,8 +31,8 @@ describe("portable root identity in the vendored CLI", () => {
       expect(result.identity_state).toBe("local_only");
 
       const space = join(root, "space");
-      const foundationPath = join(space, "_agent", "foundation.md");
-      const original = readFileSync(foundationPath, "utf-8");
+      const agreementPath = join(space, "_agent", "agreement.md");
+      const original = readFileSync(agreementPath, "utf-8");
       expect(original).toContain(`root_node_id: ${result.root_node_id}`);
       const clean = run(space, ["status", "--json"]);
       expect(clean.status).toBe(0);
@@ -44,11 +44,11 @@ describe("portable root identity in the vendored CLI", () => {
 
       const replacement = "n_aaaaaaaaaaaaaaaaaaaaaaaa";
       writeFileSync(
-        foundationPath,
+        agreementPath,
         original.replace(`root_node_id: ${result.root_node_id}`, `root_node_id: ${replacement}`),
       );
-      spawnSync("git", ["-C", space, "add", "_agent/foundation.md"]);
-      writeFileSync(foundationPath, original);
+      spawnSync("git", ["-C", space, "add", "_agent/agreement.md"]);
+      writeFileSync(agreementPath, original);
 
       const raced = run(space, ["status", "--json"]);
       expect(raced.status).toBe(0);

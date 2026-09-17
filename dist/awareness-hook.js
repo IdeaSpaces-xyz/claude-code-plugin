@@ -7627,12 +7627,15 @@ async function composeAgreementAlongPath(position, repoRoot = null) {
     const files = await readLevelFiles(level, issues);
     stack.push({ dir: level.dir, agreementPath: level.agreementPath, files });
   }
+  const ceilingLevel = selected[0];
+  const agreementReference = ceilingLevel?.agreementReference;
   return {
     position: start,
     spaceRoot,
     stack,
     agreements: stack.flatMap((level) => level.files.filter((file) => file.name === "agreement")),
     ...rootNodeId ? { rootNodeId } : {},
+    ...agreementReference ? { agreementReference } : {},
     issues
   };
 }
@@ -7683,6 +7686,12 @@ async function scanLevel(dir) {
       });
     }
   }
+  let agreementReference;
+  if (frontmatter && "agreement" in frontmatter) {
+    if (typeof frontmatter.agreement === "string" && frontmatter.agreement.trim()) {
+      agreementReference = frontmatter.agreement.trim();
+    }
+  }
   const fullLoads = parseFullLoads(frontmatter, agreementPath, issues);
   return {
     dir,
@@ -7690,6 +7699,7 @@ async function scanLevel(dir) {
     agreementPath,
     agreementContent,
     ...rootNodeId ? { rootNodeId } : {},
+    ...agreementReference ? { agreementReference } : {},
     fullLoads,
     issues
   };
@@ -8388,6 +8398,7 @@ async function assembleContentAwareness(opts) {
     status: "ok",
     kind: "content",
     contractSource,
+    ...contractSource === "agreement" && agreement.agreementReference ? { agreementReference: agreement.agreementReference } : {},
     spaceRoot,
     position: { placement: "head", path: position, base, repoRoot, context },
     ...sections,
@@ -9090,6 +9101,38 @@ function renderChangeLine(rec, currentSessionId, now) {
   return `\u26A0 Change open: ${rec.change_id}${handle} (opened ${opened ?? "in a previous session"}${opened ? ", previous session" : ""}) \u2014 resume with is_change_open({ id: "${rec.change_id}" }) or clear with is_change_close.`;
 }
 
+// src/kind-line.ts
+var RECOGNISED = {
+  "agent:repo:n_0935a5df1f883eeb60bcdfbb": "agent",
+  "knowledge:repo:n_f1511280efecd7fcff155152": "knowledge"
+};
+var PROMPTS_MARKER = "Every section below is a prompt";
+function agreementName(manifest) {
+  const entry = manifest.contract.find((e) => e.name === "agreement" && e.content);
+  const name = entry?.content ? parseFrontmatter(entry.content)?.name : void 0;
+  if (typeof name !== "string" || !name.trim()) return null;
+  return name.replace(/^Agreement\s+[—–-]\s+/u, "").trim() || null;
+}
+function agreementStillPrompts(manifest) {
+  const entry = manifest.contract.find((e) => e.name === "agreement" && e.content);
+  return Boolean(entry?.content?.includes(PROMPTS_MARKER));
+}
+function renderKindLine(manifest) {
+  const reference = manifest.agreementReference?.trim();
+  if (!reference) return null;
+  const kind = RECOGNISED[reference];
+  const prompts = agreementStillPrompts(manifest) ? " Its sections are still prompts \u2014 the first conversation draws them out and replaces them." : "";
+  if (kind === "agent") {
+    const name = agreementName(manifest);
+    const who = name ? `being ${name}` : "being this agent";
+    return `Kind: agent (${reference}) \u2014 launching here means ${who}, not studying it; the Agreement above is who you are for the session.${prompts}`;
+  }
+  if (kind === "knowledge") {
+    return `Kind: knowledge space (${reference}) \u2014 orient in the Agreement above; knowledge lands as Notes the agent proposes and the person confirms.${prompts}`;
+  }
+  return `Kind: ${reference} \u2014 declared by the Agreement; not a convention this plugin recognises, so it is read as written.`;
+}
+
 // src/stdin.ts
 async function readStdin() {
   if (process.stdin.isTTY) return "";
@@ -9158,7 +9201,8 @@ async function main() {
         captures: await stagedIdeaspacePaths(manifest.position.repoRoot)
       } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
-      const text = [head, tail].filter((part) => part.trim()).join("\n\n");
+      const kind = renderKindLine(manifest) ?? "";
+      const text = [head, kind, tail].filter((part) => part.trim()).join("\n\n");
       if (text) process.stdout.write(text + "\n");
       if (manifest.position.repoRoot && manifest.git?.headSha) {
         markSeen(manifest.position.repoRoot, manifest.git.headSha);
