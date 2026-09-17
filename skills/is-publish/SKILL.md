@@ -27,10 +27,10 @@ No separate install required.
 
 ## 1. Pre-flight checks
 
-**Inside an ideaspace?** This dir should be a git repo with `_agent/foundation.md` already scaffolded. If not, suggest `/is-setup` first.
+**Inside an ideaspace?** This dir should be a git repo with a root contract — `_agent/agreement.md`, or `_agent/foundation.md` on the older shape; the CLI publishes either. If neither, suggest `/is-setup` first.
 
 ```bash
-test -f _agent/foundation.md && test -d .git && echo "ok" || echo "missing"
+{ test -f _agent/agreement.md || test -f _agent/foundation.md; } && test -d .git && echo "ok" || echo "missing"
 ```
 
 **Portable identity agrees?** Current shared scaffolds declare `root_node_id`; legacy Spaces may validly omit it. Never mint, edit, stage, or commit identity during publish. Run the bundled CLI's `status --json` and inspect `root_identity`: stop on `invalid`, `drift`, `ambiguous`, or `declaration.dirty`. Publish repeats this preflight against HEAD, index, worktree, canonical origin, and local registry before login or remote mutation.
@@ -115,7 +115,7 @@ node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js publish --yes [same flags as
 
 The CLI:
 
-1. Evaluates the committed foundation against index/worktree, canonical origin, and local registry evidence.
+1. Evaluates the committed root contract (Agreement, or Foundation on the older shape) against index/worktree, canonical origin, and local registry evidence.
 2. Preflights tracked Markdown syntax and size before network work.
 3. Confirms login and asks Keeper to adopt the exact committed `root_node_id` on first publish.
 4. Creates or reuses the one matching hosted Space; `--force` cannot fork or rekey it.
@@ -150,7 +150,7 @@ If any step fails, leave the state visible with `git status --short` and stop fo
 
 ### Stale-binding recovery
 
-If the mapped remote is gone, inaccessible, or incompatible with the foundation/origin/registry evidence, stop before mutation. Never delete the registry entry or use `--force` merely to make publish proceed: that would erase authority rather than repair it. Offer the actual choices:
+If the mapped remote is gone, inaccessible, or incompatible with the contract/origin/registry evidence, stop before mutation. Never delete the registry entry or use `--force` merely to make publish proceed: that would erase authority rather than repair it. Offer the actual choices:
 
 - restore access or the matching remote;
 - use `ideaspaces link` when the hosted identity is known and the local mapping alone is stale;
