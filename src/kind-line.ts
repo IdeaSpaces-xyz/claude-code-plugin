@@ -52,5 +52,5 @@ export function renderKindLine(manifest: ContentAwarenessManifest): string | nul
   if (kind === "knowledge") {
     return `Kind: knowledge space (${reference}) — orient in the Agreement above; knowledge lands as Notes the agent proposes and the person confirms.${prompts}`;
   }
-  return `Kind: ${reference} — declared by the Agreement; not a convention this plugin recognises, so it is read as written.`;
+  return `Kind: ${reference} — declared by the Agreement; not a kind this plugin recognises, so it is read as written.`;
 }

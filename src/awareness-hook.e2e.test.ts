@@ -222,7 +222,7 @@ describe("shipped in-process awareness hook", () => {
     expect(otherRun.stderr).toBe("");
     expect(otherRun.stdout).toContain("agreement [full]:");
     expect(otherRun.stdout).toContain(
-      "Kind: program:repo:n_0123456789abcdef01234567 — declared by the Agreement; not a convention this plugin recognises",
+      "Kind: program:repo:n_0123456789abcdef01234567 — declared by the Agreement; not a kind this plugin recognises",
     );
 
     // No reference: no line.
