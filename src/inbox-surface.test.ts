@@ -17,8 +17,8 @@ describe("direct Inbox distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.3.46");
-    expect(plugin.version).toBe("0.3.46");
+    expect(pkg.version).toBe("0.3.47");
+    expect(plugin.version).toBe("0.3.47");
     expect(vendor.cli.commit).toBe(CLI_COMMIT);
   });
 
@@ -45,7 +45,7 @@ describe("direct Inbox distribution", () => {
     expect(skill).toContain("${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js");
     expect(skill).toContain('"${CLI[@]}" inbox list --new --depth name');
     expect(skill).toContain("Use `is_follow`");
-    expect(skill).toContain("Only acknowledgement advances");
+    expect(skill).toContain("Only explicit acknowledgement advances");
     expect(skill).toContain('"${CLI[@]}" inbox send');
     expect(skill).toContain('"${CLI[@]}" inbox reply');
     expect(skill).toContain("acts as the logged-in person");

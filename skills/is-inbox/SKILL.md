@@ -44,16 +44,17 @@ membership.
 
 ## Follow and acknowledge
 
-Following is deliberate listening. Use `is_follow` rather than raw API calls:
+Following is deliberate listening. Use `is_follow` for standalone subscription writes rather than raw API calls:
 
 - `{ action: "follow", source: "thread", id: "x_…" }`
 - `{ action: "follow", source: "node" | "repo", id: "n_…" }`
 - `{ action: "ack", source: "thread", id: "x_…", position: 42 }`
 - `{ action: "unfollow", source: "thread", id: "x_…" }`
 
-Only acknowledgement advances the stored cursor. Listing and reading never do. When the person asks
-to read and mark a followed Thread caught up in one step, `"${CLI[@]}" inbox read "<thread-id>"
---new --ack` is the explicit combined form.
+Only explicit acknowledgement advances the stored cursor. Plain listing and reading never do. When
+the person asks to read and catch up to the latest position in one step, `"${CLI[@]}" inbox read
+"<thread-id>" --new --ack` deliberately combines the read with acknowledgement; use `is_follow`
+with `action: "ack"` when the exact position is already known.
 
 ## Choose the send coordinate
 
