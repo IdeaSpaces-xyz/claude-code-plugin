@@ -33112,6 +33112,12 @@ var AUTHORED_TOOL_PARAMETERS = {
   is_auth: {
     action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
   },
+  is_follow: {
+    action: external_exports.enum(["follow", "unfollow", "ack"]).default("follow").describe("Follow, unfollow, or explicitly acknowledge one source."),
+    source: external_exports.enum(["thread", "node", "repo"]).describe("The kind of source. Thread ids start x_; Node and repository roots use n_."),
+    id: external_exports.string().min(1).describe("The exact Thread, Node, or repository root id."),
+    position: external_exports.number().int().nonnegative().optional().describe("Required only for action=ack; the event position to acknowledge.")
+  },
   is_write: {
     path: external_exports.string().describe("File path within the ideaspace"),
     content: external_exports.string().describe("Markdown content (frontmatter prepended automatically)"),
@@ -33317,6 +33323,21 @@ server.tool(
       case "logout":
         return run(["power", "logout"]);
     }
+  }
+);
+server.tool(
+  "is_follow",
+  "Choose whether the logged-in person listens to a Thread, Node, or repository, or explicitly advance that source's event cursor. Reading never acknowledges. Requires person login; never substitutes an Agent credential.",
+  MCP_TOOL_PARAMETERS.is_follow,
+  async ({ action, source, id, position }) => {
+    if (action === "ack") {
+      if (position === void 0) return fail("action=ack requires `position`.");
+      return run(["follow", source, id, "--ack", String(position)]);
+    }
+    if (position !== void 0) {
+      return fail("`position` is valid only with action=ack.");
+    }
+    return run([action === "unfollow" ? "unfollow" : "follow", source, id]);
   }
 );
 function localToolDependencies() {
