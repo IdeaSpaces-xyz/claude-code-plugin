@@ -11591,6 +11591,23 @@ async function sendInquiry(config, body, opts) {
 async function replyToExchange(config, exchangeId, body, opts) {
   return request(config, "POST", `${API_V1}/exchanges/${encodeURIComponent(exchangeId)}/replies`, body, opts);
 }
+async function listSubscriptions(config, opts) {
+  const response = await request(config, "GET", `${API_V1}/subscriptions`, void 0, opts);
+  return response.subscriptions;
+}
+async function putSubscription(config, source, opts) {
+  return request(config, "POST", `${API_V1}/subscriptions`, source, opts);
+}
+async function deleteSubscription(config, followId, opts) {
+  return request(config, "DELETE", `${API_V1}/subscriptions/${encodeURIComponent(followId)}`, void 0, opts);
+}
+async function acknowledgeSubscription(config, followId, position, opts) {
+  return request(config, "PATCH", `${API_V1}/subscriptions/${encodeURIComponent(followId)}`, { position }, opts);
+}
+async function fetchSubscriptionEvents(config, limit = 100, opts) {
+  const response = await request(config, "GET", `${API_V1}/subscriptions/events?limit=${encodeURIComponent(String(limit))}`, void 0, opts);
+  return response.events;
+}
 async function fetchEntity(config, entityType, entityKey, opts) {
   return request(config, "GET", `${API_V1}/entities/${encodeURIComponent(entityType)}/${encodeURIComponent(entityKey)}`, void 0, opts);
 }
@@ -20094,6 +20111,8 @@ var shareCommand = {
 import { randomUUID as randomUUID4 } from "node:crypto";
 import { readFileSync as readFileSync7, statSync as statSync10 } from "node:fs";
 var USAGE11 = "ideaspaces inbox <list|read|send|reply|expand> ...";
+var LIST_USAGE = "ideaspaces inbox list [--new|--since <position>] [--kind <message|reframe|request>] [--depth <name|summary|full>]";
+var READ_USAGE = "ideaspaces inbox read <thread_id> [--new|--since <position>] [--kind <message|reframe>] [--depth <name|summary|full>] [--ack]";
 var SEND_USAGE = "ideaspaces inbox send [<email|@handle>] [--about <node_id>] [--map <selection.json>] --name <title> --summary <summary> [--message <markdown>] [--send-id <id>]";
 var EXPAND_USAGE = "ideaspaces inbox expand <thread_id> <member_ordinal>";
 var MAX_SELECTION_FILE_BYTES = 128 * 1024;
@@ -20162,29 +20181,99 @@ function participantLabel(participant) {
 function participantsText(participants) {
   return participants.map(participantLabel).join(", ");
 }
+function isInquiry(item) {
+  return item.kind === "inquiry";
+}
+function inboxItemName(item) {
+  if (isInquiry(item))
+    return `${item.exchange_id}  ${item.latest_message.name}`;
+  return `${item.request_id}  Access request for ${item.target_node_id}`;
+}
 function inboxItemText(item) {
+  if (!isInquiry(item)) {
+    return [
+      inboxItemName(item),
+      `  ${participantLabel(item.requester)} requests ${item.requested_grade}`,
+      ...item.reason ? [`  ${item.reason}`] : []
+    ].join("\n");
+  }
   const count = `${item.message_count} ${item.message_count === 1 ? "message" : "messages"}`;
+  const cursor = item.cursor === null ? "not followed" : `cursor ${item.cursor}`;
   return [
-    `${item.exchange_id}  ${item.latest_message.name}`,
+    inboxItemName(item),
     `  ${item.latest_message.summary}`,
-    `  about ${item.target_node_id} \xB7 ${count} \xB7 ${participantsText(item.participants)}`
+    `  about ${item.target_node_id} \xB7 ${count} \xB7 ${cursor} \xB7 ${participantsText(item.participants)}`
   ].join("\n");
 }
-function exchangeText(exchange) {
+function exchangeText(exchange, messages = exchange.messages, depth = "full") {
+  const current = exchange.messages.find((message) => message.note_node_id === exchange.subject?.current_note_id) ?? exchange.messages.at(-1);
+  if (depth === "name")
+    return `${exchange.exchange_id}  ${current?.name ?? "Thread"}`;
   const lines = [
     `Thread ${exchange.exchange_id}`,
     `About ${exchange.target_node_id}`,
-    `Participants: ${participantsText(exchange.participants)}`
+    `Participants: ${participantsText(exchange.participants)}`,
+    `Cursor: ${exchange.cursor ?? "not followed"} \xB7 Latest: ${exchange.latest_position}`
   ];
-  for (const message of exchange.messages) {
+  for (const message of messages) {
     const author = exchange.participants.find((participant) => participant.participant === message.author_ref);
     const actor = message.actor_ref === message.author_ref ? "" : ` via ${message.actor_ref}`;
     lines.push("", `[${message.position}] ${author ? participantLabel(author) : message.author_ref}${actor} \u2014 ${message.name}`, message.summary);
-    if (message.map)
-      lines.push(...formatPortableMap(message.map));
-    lines.push(message.markdown);
+    if (depth === "full") {
+      if (message.map)
+        lines.push(...formatPortableMap(message.map));
+      lines.push(message.markdown);
+    }
   }
   return lines.join("\n");
+}
+function parsePosition(value, output) {
+  if (value === void 0)
+    return void 0;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) {
+    output.error("--since must be a non-negative integer position.");
+    return null;
+  }
+  const position = Number(value);
+  if (!Number.isSafeInteger(position)) {
+    output.error("--since must be a non-negative safe integer position.");
+    return null;
+  }
+  return position;
+}
+function parseKind(value, output) {
+  if (value === void 0)
+    return void 0;
+  if (value === "message" || value === "reframe" || value === "request")
+    return value;
+  output.error("--kind must be one of: message, reframe, request.");
+  return null;
+}
+function parseDepth3(value, output) {
+  if (value === void 0)
+    return "summary";
+  if (value === "name" || value === "summary" || value === "full")
+    return value;
+  output.error("--depth must be one of: name, summary, full.");
+  return null;
+}
+function validateTemporalFlags(flags2, output) {
+  if (flags2.new !== void 0 && flags2.new !== true) {
+    output.error("--new does not take a value.");
+    return false;
+  }
+  if (flags2.new && flags2.since !== void 0) {
+    output.error("Use either --new or --since, not both.");
+    return false;
+  }
+  return true;
+}
+async function boundedSubscriptionEvents(config) {
+  const events = await fetchSubscriptionEvents(config, 1e3);
+  if (events.length === 1e3) {
+    throw new Error("The new-event view reached its 1,000-event safety bound. Acknowledge a known position or narrow the followed sources before reading reframes.");
+  }
+  return events;
 }
 async function runAuthenticated(output, operation) {
   const config = loadConfig();
@@ -20203,26 +20292,139 @@ async function runAuthenticated(output, operation) {
     return 1;
   }
 }
-async function list(rest, output) {
+async function list(rest, flags2, output) {
   if (rest.length) {
-    output.error("Usage: ideaspaces inbox list");
+    output.error(`Usage: ${LIST_USAGE}`);
     return 1;
   }
+  if (!validateTemporalFlags(flags2, output))
+    return 1;
+  const since = parsePosition(flags2.since, output);
+  if (since === null)
+    return 1;
+  const kind = parseKind(flags2.kind, output);
+  if (kind === null)
+    return 1;
+  if (flags2.new && kind === "request") {
+    output.error("--new cannot be combined with --kind request because access requests have no followed cursor. Use --kind request, optionally with --since <position>.");
+    return 1;
+  }
+  const depth = parseDepth3(flags2.depth, output);
+  if (!depth)
+    return 1;
   return runAuthenticated(output, async (config) => {
     const inbox = await fetchInbox(config);
-    output.result(inbox, inbox.items.length ? inbox.items.map(inboxItemText).join("\n\n") : "Inbox is empty.");
+    let reframeNoteIds;
+    let items = inbox.items.filter((item) => since === void 0 || item.latest_position > since);
+    if (flags2.new) {
+      items = items.filter((item) => isInquiry(item) && item.cursor !== null && item.latest_position > item.cursor);
+    }
+    if (kind === "message")
+      items = items.filter(isInquiry);
+    if (kind === "request")
+      items = items.filter((item) => !isInquiry(item));
+    if (kind === "reframe") {
+      reframeNoteIds = /* @__PURE__ */ new Map();
+      for (const event of await boundedSubscriptionEvents(config)) {
+        if (event.action !== "thread.reframed" || !event.exchange_id || !event.note_node_id)
+          continue;
+        const noteIds = reframeNoteIds.get(event.exchange_id) ?? /* @__PURE__ */ new Set();
+        noteIds.add(event.note_node_id);
+        reframeNoteIds.set(event.exchange_id, noteIds);
+      }
+      items = items.filter((item) => isInquiry(item) && reframeNoteIds?.has(item.exchange_id));
+    }
+    let text;
+    if (!items.length) {
+      text = flags2.new ? "No new followed Threads." : "Inbox is empty.";
+    } else if (depth === "name") {
+      text = items.map(inboxItemName).join("\n");
+    } else if (depth === "full") {
+      const blocks = await Promise.all(items.map(async (item) => {
+        if (!isInquiry(item))
+          return inboxItemText(item);
+        const exchange = await fetchExchange(config, item.exchange_id);
+        const noteIds = reframeNoteIds?.get(item.exchange_id);
+        const messages = noteIds ? exchange.messages.filter((message) => noteIds.has(message.note_node_id)) : exchange.messages;
+        return exchangeText(exchange, messages, "full");
+      }));
+      text = blocks.join("\n\n");
+    } else {
+      text = items.map(inboxItemText).join("\n\n");
+    }
+    output.result({ items }, text);
     return 0;
   });
 }
-async function read(rest, output) {
+async function read(rest, flags2, output) {
   const [exchangeId] = rest;
   if (!exchangeId || rest.length !== 1) {
-    output.error("Usage: ideaspaces inbox read <thread_id>");
+    output.error(`Usage: ${READ_USAGE}`);
     return 1;
   }
+  if (!validateTemporalFlags(flags2, output))
+    return 1;
+  if (flags2.ack !== void 0 && flags2.ack !== true) {
+    output.error("--ack does not take a value here; use `ideaspaces follow thread <id> --ack <position>` to acknowledge an exact position.");
+    return 1;
+  }
+  if (flags2.ack && flags2.since !== void 0) {
+    output.error("--ack cannot be combined with --since because omitted events would be marked read. Use --new --ack, or acknowledge an exact position with `follow --ack`.");
+    return 1;
+  }
+  const since = parsePosition(flags2.since, output);
+  if (since === null)
+    return 1;
+  const kind = parseKind(flags2.kind, output);
+  if (kind === null)
+    return 1;
+  if (kind === "request") {
+    output.error("Access requests are Inbox items, not Thread messages; use `inbox list --kind request`.");
+    return 1;
+  }
+  if (kind === "reframe" && flags2.ack) {
+    output.error("--ack cannot be combined with --kind reframe because hidden message events would be marked read. Read reframes without acknowledgement, or acknowledge an exact position with `follow --ack`.");
+    return 1;
+  }
+  const depth = parseDepth3(flags2.depth ?? "full", output);
+  if (!depth)
+    return 1;
   return runAuthenticated(output, async (config) => {
     const exchange = await fetchExchange(config, exchangeId);
-    output.result(exchange, exchangeText(exchange));
+    if ((flags2.new || flags2.ack) && exchange.cursor === null) {
+      output.error(`Thread ${exchangeId} is not followed. Run \`ideaspaces follow thread ${exchangeId}\` first.`);
+      return 1;
+    }
+    const after = flags2.new ? exchange.cursor ?? void 0 : since;
+    let messages = exchange.messages.filter((message) => after === void 0 || message.position > after);
+    let events = [];
+    if (kind === "reframe") {
+      if (after !== void 0 && exchange.cursor !== null && after < exchange.cursor) {
+        output.error(`Reframe events before the stored cursor ${exchange.cursor} are no longer in the subscription read. Use --new or --since ${exchange.cursor} or later.`);
+        return 1;
+      }
+      events = (await boundedSubscriptionEvents(config)).filter((event) => event.exchange_id === exchangeId && event.action === "thread.reframed" && (after === void 0 || event.position > after));
+      const noteIds = new Set(events.map((event) => event.note_node_id));
+      messages = exchange.messages.filter((message) => noteIds.has(message.note_node_id));
+    }
+    let acknowledged;
+    if (flags2.ack) {
+      const rows = await listSubscriptions(config);
+      const row = rows.find((candidate) => candidate.source_kind === "exchange" && candidate.source_id === exchangeId);
+      if (!row) {
+        output.error(`Thread ${exchangeId} is not followed.`);
+        return 1;
+      }
+      acknowledged = await acknowledgeSubscription(config, row.id, exchange.latest_position);
+    }
+    const data = {
+      ...exchange,
+      messages,
+      ...kind === "reframe" ? { events } : {},
+      ...acknowledged ? { acknowledged_cursor: acknowledged.cursor } : {}
+    };
+    const empty = kind === "reframe" ? "No new reframe events." : "No messages after that position.";
+    output.result(data, messages.length ? exchangeText(exchange, messages, depth) : empty);
     return 0;
   });
 }
@@ -20332,8 +20534,8 @@ var inboxCommand = {
   description: "Ask, read, and reply to messages about shared Content",
   usage: USAGE11,
   examples: [
-    "ideaspaces inbox list",
-    "ideaspaces inbox read x_example",
+    "ideaspaces inbox list --new --depth name",
+    "ideaspaces inbox read x_example --new --depth full --ack",
     "ideaspaces inbox expand x_example 0",
     "ideaspaces inbox send @owner --map selection.json --name 'Question' --summary 'One decision' --message 'What should happen next?'",
     "ideaspaces inbox send @owner --about n_0123456789abcdef01234567 --name 'Question' --summary 'One decision' --message 'What should happen next?'",
@@ -20345,9 +20547,9 @@ var inboxCommand = {
     const [sub, ...rest] = args2;
     switch (sub) {
       case "list":
-        return list(rest, output);
+        return list(rest, flags2, output);
       case "read":
-        return read(rest, output);
+        return read(rest, flags2, output);
       case "send":
         return send(rest, flags2, output);
       case "reply":
@@ -20358,6 +20560,132 @@ var inboxCommand = {
         output.error(`Usage: ${USAGE11}`);
         return 1;
     }
+  }
+};
+
+// dist/commands/follow.js
+var FOLLOW_USAGE = "ideaspaces follow <thread|node|repo> <id> [--ack <position>]";
+var UNFOLLOW_USAGE = "ideaspaces unfollow <thread|node|repo> <id>";
+var EXCHANGE_ID = /^x_[A-Za-z0-9_-]{1,62}$/;
+var NODE_ID2 = /^n_(?:[0-9a-f]{12}|[0-9a-f]{24})$/;
+function sourceFrom(args2, output, usage) {
+  const [rawName, rawId] = args2;
+  if (args2.length !== 2 || !rawName || !rawId) {
+    output.error(`Usage: ${usage}`);
+    return null;
+  }
+  if (rawName !== "thread" && rawName !== "node" && rawName !== "repo") {
+    output.error(`Source must be one of: thread, node, repo.
+Usage: ${usage}`);
+    return null;
+  }
+  const pattern = rawName === "thread" ? EXCHANGE_ID : NODE_ID2;
+  if (!pattern.test(rawId)) {
+    output.error(`Invalid ${rawName} id: ${rawId}`);
+    return null;
+  }
+  return {
+    name: rawName,
+    kind: rawName === "thread" ? "exchange" : "node",
+    id: rawId
+  };
+}
+function parsePosition2(value, output) {
+  if (value === void 0)
+    return void 0;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) {
+    output.error("--ack must be a non-negative integer position.");
+    return null;
+  }
+  const position = Number(value);
+  if (!Number.isSafeInteger(position)) {
+    output.error("--ack must be a non-negative safe integer position.");
+    return null;
+  }
+  return position;
+}
+function matchingFollow(rows, source) {
+  return rows.find((row) => row.source_kind === source.kind && row.source_id === source.id);
+}
+async function runAuthenticated2(output, operation) {
+  const config = loadConfig();
+  if (!config) {
+    output.error("Not logged in. Run `ideaspaces login`.");
+    return 1;
+  }
+  try {
+    return await operation(config);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      output.error("Session expired. Run `ideaspaces login`.");
+      return 1;
+    }
+    output.error(err instanceof Error ? err.message : String(err));
+    return 1;
+  }
+}
+async function follow(args2, flags2, output) {
+  const source = sourceFrom(args2, output, FOLLOW_USAGE);
+  if (!source)
+    return 1;
+  const position = parsePosition2(flags2.ack, output);
+  if (position === null)
+    return 1;
+  return runAuthenticated2(output, async (config) => {
+    if (position === void 0) {
+      const row2 = await putSubscription(config, source.kind === "exchange" ? { exchange_id: source.id } : { target_node_id: source.id });
+      output.result(row2, `Following ${source.name} ${source.id} from position ${row2.cursor}.`);
+      return 0;
+    }
+    const row = matchingFollow(await listSubscriptions(config), source);
+    if (!row) {
+      output.error(`Not following ${source.name} ${source.id}. Follow it before acknowledging.`);
+      return 1;
+    }
+    const acknowledged = await acknowledgeSubscription(config, row.id, position);
+    output.result(acknowledged, `Acknowledged ${source.name} ${source.id} through position ${acknowledged.cursor}.`);
+    return 0;
+  });
+}
+async function unfollow(args2, output) {
+  const source = sourceFrom(args2, output, UNFOLLOW_USAGE);
+  if (!source)
+    return 1;
+  return runAuthenticated2(output, async (config) => {
+    const row = matchingFollow(await listSubscriptions(config), source);
+    if (!row) {
+      output.error(`Not following ${source.name} ${source.id}.`);
+      return 1;
+    }
+    await deleteSubscription(config, row.id);
+    output.result({ removed: true, subscription: row }, `Unfollowed ${source.name} ${source.id}.`);
+    return 0;
+  });
+}
+var followCommand = {
+  name: "follow",
+  description: "Follow a Thread, Node, or repository and acknowledge its cursor",
+  usage: FOLLOW_USAGE,
+  examples: [
+    "ideaspaces follow thread x_example",
+    "ideaspaces follow node n_0123456789abcdef01234567",
+    "ideaspaces follow repo n_0123456789abcdef01234567",
+    "ideaspaces follow thread x_example --ack 42"
+  ],
+  async run(args2, flags2, global2) {
+    return follow(args2, flags2, createOutput(global2));
+  }
+};
+var unfollowCommand = {
+  name: "unfollow",
+  description: "Stop following a Thread, Node, or repository",
+  usage: UNFOLLOW_USAGE,
+  examples: [
+    "ideaspaces unfollow thread x_example",
+    "ideaspaces unfollow repo n_0123456789abcdef01234567"
+  ],
+  async run(args2, _flags, global2) {
+    return unfollow(args2, createOutput(global2));
   }
 };
 
@@ -22334,6 +22662,8 @@ var topLevel = [
   timesCommand,
   shareCommand,
   inboxCommand,
+  followCommand,
+  unfollowCommand,
   pullCommand,
   pushCommand,
   syncCommand,

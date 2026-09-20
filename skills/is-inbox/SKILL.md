@@ -1,11 +1,12 @@
 ---
 name: is-inbox
 description: >
-  Read and reply to direct Inbox messages, or ask a person a question about
-  shared Content from the local agent. Use when the user says check my Inbox,
-  read this message, ask the owner/person about this, send an inquiry, or reply.
-  Not for giving someone access to a Space; that is is-share.
-allowed-tools: "mcp__plugin_ideaspaces_core__is_auth Read Bash"
+  Read and reply to direct Inbox messages, ask a person a question about shared
+  Content, or follow a Thread, Node, or repository for updates. Use when the user
+  says check my Inbox, read this message, follow this, show what is new, ask the
+  owner/person about this, send an inquiry, or reply. Not for giving someone
+  access to a Space; that is is-share.
+allowed-tools: "mcp__plugin_ideaspaces_core__is_auth mcp__plugin_ideaspaces_core__is_follow Read Bash"
 ---
 
 # Direct Inbox
@@ -24,16 +25,35 @@ No separate install or native Inbox tool is required.
 
 ## Read
 
-Listing and reading are read-only and need no confirmation:
+Listing and reading are read-only and need no confirmation. Neither moves a cursor unless `--ack` is
+explicit:
 
 ```bash
 "${CLI[@]}" inbox list
+"${CLI[@]}" inbox list --new --depth name
 "${CLI[@]}" inbox read "<thread-id>"
+"${CLI[@]}" inbox read "<thread-id>" --new --depth full
 ```
 
-Use normal human output unless exact structured fields are needed; then append `--json`. Preserve the
-CLI's distinction between an empty Inbox and an unavailable one. A message is visible only to its
-two human parties.
+Use `--since <position>` for a supplied event position, `--kind message|reframe|request` to narrow a
+list (`request` is list-only), and `--depth name|summary|full` for the disclosure rung. Use normal
+human output unless exact structured fields are needed; then append `--json`. Preserve the CLI's
+distinction between an empty Inbox and an unavailable one. A Thread's Notes remain visible only to
+its human parties; a followed Node may expose authorized event envelopes without granting Thread
+membership.
+
+## Follow and acknowledge
+
+Following is deliberate listening. Use `is_follow` rather than raw API calls:
+
+- `{ action: "follow", source: "thread", id: "x_…" }`
+- `{ action: "follow", source: "node" | "repo", id: "n_…" }`
+- `{ action: "ack", source: "thread", id: "x_…", position: 42 }`
+- `{ action: "unfollow", source: "thread", id: "x_…" }`
+
+Only acknowledgement advances the stored cursor. Listing and reading never do. When the person asks
+to read and mark a followed Thread caught up in one step, `"${CLI[@]}" inbox read "<thread-id>"
+--new --ack` is the explicit combined form.
 
 ## Choose the send coordinate
 
