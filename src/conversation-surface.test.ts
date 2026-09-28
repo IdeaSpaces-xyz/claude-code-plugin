@@ -12,7 +12,7 @@ describe("private conversation distribution", () => {
     const help = `${result.stdout}${result.stderr}`;
 
     expect(result.status).toBe(0);
-    expect(help).toContain("conversation <new|send|get|cancel>");
+    expect(help).toContain("conversation <new|send|get|cancel|compact>");
     expect(help).toContain("Create and run a private conversation");
     expect(help).not.toMatch(/conversation (members|participants|add|remove)/);
   });

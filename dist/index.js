@@ -2992,7 +2992,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve12.call(this, root, ref);
+      let _sch = resolve14.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3019,7 +3019,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve12(root, ref) {
+    function resolve14(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3849,7 +3849,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve12(baseURI, relativeURI, options) {
+    function resolve14(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -3882,49 +3882,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative6, options, skipNormalization) {
+    function resolveComponent(base, relative7, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative6 = parse3(serialize(relative6, options), options);
+        relative7 = parse3(serialize(relative7, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative6.scheme) {
-        target.scheme = relative6.scheme;
-        target.userinfo = relative6.userinfo;
-        target.host = relative6.host;
-        target.port = relative6.port;
-        target.path = removeDotSegments(relative6.path || "");
-        target.query = relative6.query;
+      if (!options.tolerant && relative7.scheme) {
+        target.scheme = relative7.scheme;
+        target.userinfo = relative7.userinfo;
+        target.host = relative7.host;
+        target.port = relative7.port;
+        target.path = removeDotSegments(relative7.path || "");
+        target.query = relative7.query;
       } else {
-        if (relative6.userinfo !== void 0 || relative6.host !== void 0 || relative6.port !== void 0) {
-          target.userinfo = relative6.userinfo;
-          target.host = relative6.host;
-          target.port = relative6.port;
-          target.path = removeDotSegments(relative6.path || "");
-          target.query = relative6.query;
+        if (relative7.userinfo !== void 0 || relative7.host !== void 0 || relative7.port !== void 0) {
+          target.userinfo = relative7.userinfo;
+          target.host = relative7.host;
+          target.port = relative7.port;
+          target.path = removeDotSegments(relative7.path || "");
+          target.query = relative7.query;
         } else {
-          if (!relative6.path) {
+          if (!relative7.path) {
             target.path = base.path;
-            if (relative6.query !== void 0) {
-              target.query = relative6.query;
+            if (relative7.query !== void 0) {
+              target.query = relative7.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative6.path[0] === "/") {
-              target.path = removeDotSegments(relative6.path);
+            if (relative7.path[0] === "/") {
+              target.path = removeDotSegments(relative7.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative6.path;
+                target.path = "/" + relative7.path;
               } else if (!base.path) {
-                target.path = relative6.path;
+                target.path = relative7.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative6.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative7.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative6.query;
+            target.query = relative7.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3932,7 +3932,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative6.fragment;
+      target.fragment = relative7.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -4218,7 +4218,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve12,
+      resolve: resolve14,
       resolveComponent,
       equal,
       serialize,
@@ -11168,10 +11168,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key: key2, sep: sep6, value } = collItem;
+        const { start, key: key2, sep: sep7, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key2 ?? sep6?.[0],
+          next: key2 ?? sep7?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -11185,7 +11185,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key2 && key2.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep6) {
+          if (!keyProps.anchor && !keyProps.tag && !sep7) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -11209,7 +11209,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep6 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep7 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -11225,7 +11225,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep6, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep7, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -11316,7 +11316,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep6 = "";
+        let sep7 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -11330,13 +11330,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep6 + cb;
-              sep6 = "";
+                comment += sep7 + cb;
+              sep7 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep6 += source;
+                sep7 += source;
               hasSpace = true;
               break;
             default:
@@ -11379,18 +11379,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key: key2, sep: sep6, value } = collItem;
+        const { start, key: key2, sep: sep7, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key2 ?? sep6?.[0],
+          next: key2 ?? sep7?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep6 && !value) {
+          if (!props.anchor && !props.tag && !sep7 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -11444,8 +11444,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep6 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep6, null, props, onError);
+        if (!isMap && !sep7 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep7, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -11457,7 +11457,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key2))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep6 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep7 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -11468,8 +11468,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep6)
-                for (const st of sep6) {
+              if (sep7)
+                for (const st of sep7) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -11486,7 +11486,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep6, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep7, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -11666,7 +11666,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep6 = "";
+      let sep7 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -11683,24 +11683,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep6 + indent.slice(trimIndent) + content;
-          sep6 = "\n";
+          value += sep7 + indent.slice(trimIndent) + content;
+          sep7 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep6 === " ")
-            sep6 = "\n";
-          else if (!prevMoreIndented && sep6 === "\n")
-            sep6 = "\n\n";
-          value += sep6 + indent.slice(trimIndent) + content;
-          sep6 = "\n";
+          if (sep7 === " ")
+            sep7 = "\n";
+          else if (!prevMoreIndented && sep7 === "\n")
+            sep7 = "\n\n";
+          value += sep7 + indent.slice(trimIndent) + content;
+          sep7 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep6 === "\n")
+          if (sep7 === "\n")
             value += "\n";
           else
-            sep6 = "\n";
+            sep7 = "\n";
         } else {
-          value += sep6 + content;
-          sep6 = " ";
+          value += sep7 + content;
+          sep7 = " ";
           prevMoreIndented = false;
         }
       }
@@ -11882,25 +11882,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep6 = " ";
+      let sep7 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep6 === "\n")
-            res += sep6;
+          if (sep7 === "\n")
+            res += sep7;
           else
-            sep6 = "\n";
+            sep7 = "\n";
         } else {
-          res += sep6 + match[1];
-          sep6 = " ";
+          res += sep7 + match[1];
+          sep7 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep6 + (match?.[1] ?? "");
+      return res + sep7 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -12710,14 +12710,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key: key2, sep: sep6, value }) {
+    function stringifyItem({ start, key: key2, sep: sep7, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key2)
         res += stringifyToken(key2);
-      if (sep6)
-        for (const st of sep6)
+      if (sep7)
+        for (const st of sep7)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -13884,18 +13884,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep6;
+          let sep7;
           if (scalar.end) {
-            sep6 = scalar.end;
-            sep6.push(this.sourceToken);
+            sep7 = scalar.end;
+            sep7.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep6 = [this.sourceToken];
+            sep7 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep6 }]
+            items: [{ start, key: scalar, sep: sep7 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -14048,15 +14048,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key2 = it.key;
-                  const sep6 = it.sep;
-                  sep6.push(this.sourceToken);
+                  const sep7 = it.sep;
+                  sep7.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key: key2, sep: sep6 }]
+                    items: [{ start: start2, key: key2, sep: sep7 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -14250,13 +14250,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep6 = fc.end.splice(1, fc.end.length);
-            sep6.push(this.sourceToken);
+            const sep7 = fc.end.splice(1, fc.end.length);
+            sep7.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep6 }]
+              items: [{ start, key: fc, sep: sep7 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -26625,7 +26625,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve12) => setTimeout(resolve12, pollInterval));
+        await new Promise((resolve14) => setTimeout(resolve14, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -26642,7 +26642,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve12, reject) => {
+    return new Promise((resolve14, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -26720,7 +26720,7 @@ var Protocol = class {
           if (!parseResult2.success) {
             reject(parseResult2.error);
           } else {
-            resolve12(parseResult2.data);
+            resolve14(parseResult2.data);
           }
         } catch (error2) {
           reject(error2);
@@ -26981,12 +26981,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve12, reject) => {
+    return new Promise((resolve14, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve12, interval);
+      const timeoutId = setTimeout(resolve14, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -28086,7 +28086,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve12) => setTimeout(resolve12, pollInterval));
+      await new Promise((resolve14) => setTimeout(resolve14, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -28735,12 +28735,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve12) => {
+    return new Promise((resolve14) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve12();
+        resolve14();
       } else {
-        this._stdout.once("drain", resolve12);
+        this._stdout.once("drain", resolve14);
       }
     });
   }
@@ -28749,7 +28749,7 @@ var StdioServerTransport = class {
 // src/index.ts
 import { spawn as spawn4 } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname as dirname7, join as join11 } from "node:path";
+import { dirname as dirname7, join as join11, resolve as resolve13 } from "node:path";
 import { existsSync as existsSync3, readFileSync } from "node:fs";
 import { userInfo, homedir as homedir2 } from "node:os";
 
@@ -29540,8 +29540,8 @@ function appendTrailers(message, add) {
   while (end >= 0 && lines[end].trim() === "")
     end--;
   const body = lines.slice(0, end + 1);
-  const sep6 = body.length > 0 ? [""] : [];
-  return [...body, ...sep6, ...additions].join("\n");
+  const sep7 = body.length > 0 ? [""] : [];
+  return [...body, ...sep7, ...additions].join("\n");
 }
 function findTrailerBlock(rawLines) {
   let end = rawLines.length - 1;
@@ -29910,14 +29910,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot, args) {
-  return new Promise((resolve12) => {
+  return new Promise((resolve14) => {
     const proc = spawn("git", ["-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve12({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve12({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve14({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve14({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -31174,6 +31174,7 @@ import { basename as basename3, dirname as dirname4, extname, join as join7, rel
 // node_modules/@ideaspaces/protocol/dist/maps.js
 var MAP_DEPTHS = ["name", "summary", "surface", "children", "full"];
 var DEPTHS = new Set(MAP_DEPTHS);
+var REVISION_PATTERN = /^n_(?:[0-9a-f]{12}|[0-9a-f]{24})$/;
 var ADDRESS_PATTERN = /^[a-z][a-z0-9_]*:.+$/;
 var PIN_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 var REPO_PATH_PATTERN = /^\/repos\/(n_(?:[0-9a-f]{12}|[0-9a-f]{24}))$/;
@@ -31311,6 +31312,9 @@ function parseMembers(value, rootCount, issues) {
       if ("depth" in input && input.depth !== "name" && input.depth !== "summary") {
         issues.push({ path: `${base}.depth`, code: "invalid_depth" });
       }
+      if ("revision" in input && (typeof input.revision !== "string" || !REVISION_PATTERN.test(input.revision))) {
+        issues.push({ path: `${base}.revision`, code: "invalid_revision" });
+      }
       members.push(input);
       continue;
     }
@@ -31351,7 +31355,7 @@ function isMapPosition(value) {
     return false;
   }
   const segments = value.split("/");
-  return !segments.some((segment) => segment === "." || segment === ".." || segment.startsWith("_") || segment.toLowerCase() === ".git");
+  return !segments.some((segment) => segment === "." || segment === ".." || segment.toLowerCase() === ".git" || segment.startsWith("_") && segment !== "_threads");
 }
 function invalidRepo() {
   return { status: "invalid", code: "invalid_repo" };
@@ -32928,11 +32932,80 @@ function planChangeClose(armed, persisted, hasCacheFile) {
   };
 }
 
+// src/threads.ts
+import { relative as relative6, resolve as resolve11, sep as sep6 } from "node:path";
+import { realpathSync } from "node:fs";
+function threadArgs(input) {
+  const { action, path } = input;
+  if (action === "list") {
+    if (path?.startsWith("x_")) throw new Error("is_threads is local-only; use a directory, not a hosted x_ id.");
+    return ["threads", "list", path || ".", "--depth", input.depth ?? "summary"];
+  }
+  if (!path?.trim() || path.trim().startsWith("x_")) {
+    throw new Error("Provide a local Thread path, not a hosted x_ id.");
+  }
+  if (action === "open") {
+    if (input.pin && !input.position || input.position && !input.pin) throw new Error("Pinned open requires both authored pin and position; never substitute HEAD.");
+    if (input.map) throw new Error("Opening a pinned member needs an authored pin and position; map is for posting.");
+    return [
+      "threads",
+      "open",
+      path,
+      "--depth",
+      input.pin ? "full" : input.depth ?? "summary",
+      ...input.pin ? ["--pin", input.pin, "--position", input.position] : []
+    ];
+  }
+  if (input.pin || input.position || input.depth) throw new Error("Pin, position and depth apply to opening, not writing.");
+  if (!input.message?.trim()) throw new Error("A post or closure needs a nonempty message.");
+  if (action === "close" && (input.reply_to?.length || input.name || input.summary || input.map)) throw new Error("Closure only accepts message and author; omit reply_to, name, summary and map.");
+  return [
+    "threads",
+    action,
+    path,
+    "--message",
+    input.message,
+    ...input.author ? ["--author", input.author] : [],
+    ...action === "post" ? [
+      ...input.reply_to?.length ? ["--reply-to", input.reply_to.join(",")] : [],
+      ...input.name ? ["--name", input.name] : [],
+      ...input.summary ? ["--summary", input.summary] : [],
+      ...input.map ? ["--map", input.map] : []
+    ] : []
+  ];
+}
+function postView(text, position, depth) {
+  const fm = parseFrontmatter(text);
+  const name = typeof fm?.name === "string" ? fm.name : position.split("/").at(-1).replace(/\.md$/, "");
+  return depth === "name" ? name : depth === "summary" ? `${name}
+${summarizeMarkdown(text) ?? ""}` : depth === "surface" ? stripFrontmatter(text) : text;
+}
+function pinnedView(data, depth, expected) {
+  if (!data.pinned || data.pin !== expected.pin || data.position !== expected.position) {
+    throw new Error("CLI did not return the requested authored pin and position; refusing working-tree fallback.");
+  }
+  return postView(data.pinned, expected.position, depth);
+}
+function threadPost(path, root) {
+  let realRoot;
+  let realTarget;
+  try {
+    realRoot = realpathSync(root);
+    realTarget = realpathSync(resolve11(root, path));
+  } catch {
+    return null;
+  }
+  const rel = relative6(realRoot, realTarget).split(sep6).join("/");
+  const match = /^_threads\/([^/]+)\/([^/]+\.md)$/.exec(rel);
+  if (!match || match[2] === "README.md") return null;
+  return { thread: resolve11(realRoot, "_threads", match[1]), position: rel };
+}
+
 // src/collaborate.ts
 import { spawn as spawn3 } from "node:child_process";
 import { existsSync as existsSync2, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute as isAbsolute5, join as join10, resolve as resolve11 } from "node:path";
+import { isAbsolute as isAbsolute5, join as join10, resolve as resolve12 } from "node:path";
 var DEPTH_ENV = "IS_COLLABORATE_DEPTH";
 var TIMEOUT_MS = Number(process.env.IS_COLLABORATE_TIMEOUT_MS) || 6e5;
 var READ_MAX_TURNS = 20;
@@ -32974,7 +33047,7 @@ function postureArgs(mode, maxTurns) {
   return mode === "delegate" ? args : [...READ_POSTURE, ...args];
 }
 function resolvePov(pov, cwd) {
-  const dir = isAbsolute5(pov) ? pov : resolve11(cwd || process.cwd(), pov);
+  const dir = isAbsolute5(pov) ? pov : resolve12(cwd || process.cwd(), pov);
   if (!existsSync2(dir) || !statSync(dir).isDirectory()) {
     return { error: `Not a directory: ${dir}` };
   }
@@ -33112,6 +33185,20 @@ var AUTHORED_TOOL_PARAMETERS = {
   is_auth: {
     action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
   },
+  is_threads: {
+    action: external_exports.enum(["list", "open", "post", "close"]),
+    path: external_exports.string().optional().describe("Local Thread path; omit for list in cwd. Hosted x_ ids are not supported."),
+    depth: external_exports.enum(["name", "summary", "full"]).optional(),
+    message: external_exports.string().optional().describe("Body for an immutable post or closure"),
+    reply_to: external_exports.array(external_exports.string()).optional().describe("Parent post ids"),
+    author: external_exports.string().optional().describe("Agent Agreement name if running outside its folder"),
+    name: external_exports.string().optional(),
+    summary: external_exports.string().optional(),
+    map: external_exports.string().optional().describe("Authored Map selection for a citing post; CLI validates pins"),
+    pin: external_exports.string().optional().describe("Authored commit pin for open, paired with position"),
+    position: external_exports.string().optional().describe("Authored _threads/ post position, paired with pin"),
+    cwd: cwdField
+  },
   is_follow: {
     action: external_exports.enum(["follow", "unfollow", "ack"]).default("follow").describe("Follow, unfollow, or explicitly acknowledge one source."),
     source: external_exports.enum(["thread", "node", "repo"]).describe("The kind of source. Thread ids start x_; Node and repository roots use n_."),
@@ -33156,7 +33243,9 @@ var AUTHORED_TOOL_PARAMETERS = {
     path: external_exports.string().min(1).describe("Local Markdown file or Content directory: relative to cwd or absolute."),
     depth: contentDepth.default("summary").describe("Requested representation rung. Children means Note headings or direct directory handles."),
     contract: external_exports.enum(["foundation", "agreement"]).optional().describe("Explicit target frame; otherwise the habitat prefers Agreement, then Foundation, then floor."),
-    cwd: cwdField
+    cwd: cwdField,
+    pin: external_exports.string().optional().describe("Authored commit pin for a _threads/ post; never inferred from HEAD"),
+    position: external_exports.string().optional().describe("Authored _threads/ post position paired with pin")
   },
   is_navigate: {
     path: external_exports.string().optional().describe('Target position: relative to cwd or absolute. Omit or "." to orient at the current directory.'),
@@ -33220,13 +33309,13 @@ function hasAnyNonEmptyString(keys, values) {
 function resolveCli() {
   if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
   const __dirname = dirname7(fileURLToPath(import.meta.url));
-  const relative6 = join11(__dirname, "../cli/bundle/ideaspaces.js");
-  if (existsSync3(relative6)) return relative6;
+  const relative7 = join11(__dirname, "../cli/bundle/ideaspaces.js");
+  if (existsSync3(relative7)) return relative7;
   return "ideaspaces";
 }
 var CLI = resolveCli();
 function cli(args, stdin, cwd) {
-  return new Promise((resolve12) => {
+  return new Promise((resolve14) => {
     const isFile = CLI.includes("/") || CLI.includes("\\") || CLI.endsWith(".js");
     const proc = spawn4(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
       stdio: ["pipe", "pipe", "pipe"],
@@ -33242,8 +33331,8 @@ function cli(args, stdin, cwd) {
     let err = "";
     proc.stdout.on("data", (d) => out += d);
     proc.stderr.on("data", (d) => err += d);
-    proc.on("close", (code) => resolve12({ out, err, code: code ?? 1 }));
-    proc.on("error", (e) => resolve12({ out: "", err: e.message, code: 1 }));
+    proc.on("close", (code) => resolve14({ out, err, code: code ?? 1 }));
+    proc.on("error", (e) => resolve14({ out: "", err: e.message, code: 1 }));
     if (stdin != null) proc.stdin.write(stdin);
     proc.stdin.end();
   });
@@ -33322,6 +33411,24 @@ server.tool(
         return run(["login"]);
       case "logout":
         return run(["power", "logout"]);
+    }
+  }
+);
+server.tool(
+  "is_threads",
+  "List, open at name/summary/full, post to, or close a local Thread via the installed CLI. Reading never acknowledges. No hosted x_ id or ambient loading.",
+  MCP_TOOL_PARAMETERS.is_threads,
+  async (input) => {
+    try {
+      const args = threadArgs(input);
+      if (input.action === "open" && input.pin) {
+        const result = await cli(["--json", ...args], void 0, input.cwd);
+        if (result.code !== 0) return fail(result.err.trim() || result.out.trim());
+        return ok(pinnedView(JSON.parse(result.out), input.depth ?? "summary", { pin: input.pin, position: input.position }));
+      }
+      return run(args, void 0, input.cwd);
+    } catch (error2) {
+      return fail(error2 instanceof Error ? error2.message : String(error2));
     }
   }
 );
@@ -33421,9 +33528,27 @@ server.tool(
 );
 server.tool(
   "is_look",
-  "Read one local Markdown Note or Content directory at name, summary, surface, children, or full depth beneath its applicable reference-only Agreement/Foundation frame. Read-only: never changes caller authority or working directory.",
+  "Read one local Markdown Note or Content directory at a canonical rung; _threads/ posts also accept an authored pin and position (resolved via CLI, never HEAD). Read-only; never changes caller authority or working directory.",
   MCP_TOOL_PARAMETERS.is_look,
-  async ({ path, depth, contract, cwd }) => {
+  async ({ path, depth, contract, cwd, pin, position }) => {
+    const target = resolve13(cwd || process.cwd(), path);
+    const post = threadPost(target, cwd || process.cwd());
+    if (post) {
+      if (!!pin !== !!position) return fail("Pinned post look requires both authored pin and position.");
+      if (position && position !== post.position) return fail("Authored position does not match the requested post.");
+      if (depth === "children") return fail("Thread posts support name, summary, surface and full rungs; not children.");
+      try {
+        if (pin) {
+          const result2 = await cli(["--json", ...threadArgs({ action: "open", path: post.thread, depth: "full", pin, position })], void 0, dirname7(dirname7(post.thread)));
+          if (result2.code !== 0) return fail(result2.err.trim() || result2.out.trim());
+          return ok(pinnedView(JSON.parse(result2.out), depth ?? "summary", { pin, position: post.position }));
+        }
+        return ok(postView(readFileSync(target, "utf8"), post.position, depth ?? "summary"));
+      } catch (error2) {
+        return fail(`Cannot read ${target}: ${error2 instanceof Error ? error2.message : String(error2)}`);
+      }
+    }
+    if (pin || position) return fail("Pin and position are for _threads/ posts only.");
     const result = await readLook({ path, depth, contract, cwd });
     return result.ok ? ok(result.text) : fail(result.error);
   }
