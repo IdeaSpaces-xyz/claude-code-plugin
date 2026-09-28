@@ -2,6 +2,7 @@
 name: is-threads
 description: >
   Use when another vantage needs to respond in a local Thread or the work should resume in a later session. List, open, post, or close it explicitly; not for a private conversation, hosted exchange, or ordinary Note capture.
+allowed-tools: "mcp__plugin_ideaspaces_core__is_threads mcp__plugin_ideaspaces_core__is_look mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_commit Read Bash"
 ---
 
 # Local Threads
