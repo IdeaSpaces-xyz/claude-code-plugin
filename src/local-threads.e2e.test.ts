@@ -53,8 +53,10 @@ describe("installed Claude plugin local Threads", () => {
     await call("is_threads", { action: "post", path: "test", message: "Second decision", author: "Pi Agent", reply_to: [first.id] });
     expect(await call("is_threads", { action: "open", path: "test", pin, position, depth: "summary" })).toContain("Pinned decision");
     expect(await call("is_look", { path: first.path, pin, position, depth: "full" })).toContain("Initial decision");
+    mkdirSync(join(dir, "nested"));
+    expect(await call("is_look", { path: `../${position}`, cwd: join(dir, "nested"), pin, position, depth: "full" })).toContain("Initial decision");
     expect(await call("is_look", { path: first.path, depth: "summary" })).toContain("Pinned decision");
-    for (const bad of [{ pin }, { pin, position: "_threads/other/post.md" }, { depth: "children" }]) {
+    for (const bad of [{ pin }, { pin, position: "_threads/other/post.md" }, { depth: "children" }, { contract: "agreement" }]) {
       const refused = await client.callTool({ name: "is_look", arguments: { path: first.path, ...bad } });
       expect(refused.isError).toBe(true);
     }

@@ -32946,7 +32946,7 @@ function threadArgs(input) {
   }
   if (action === "open") {
     if (input.pin && !input.position || input.position && !input.pin) throw new Error("Pinned open requires both authored pin and position; never substitute HEAD.");
-    if (input.map) throw new Error("Opening a pinned member needs an authored pin and position; map is for posting.");
+    if (input.map) throw new Error("map is only valid for post, not open; use an authored pin and position to open a pinned member.");
     return [
       "threads",
       "open",
@@ -33186,14 +33186,14 @@ var AUTHORED_TOOL_PARAMETERS = {
     action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
   },
   is_threads: {
-    action: external_exports.enum(["list", "open", "post", "close"]),
+    action: external_exports.enum(["list", "open", "post", "close"]).describe("Explicit local Thread operation; no ambient or hosted read."),
     path: external_exports.string().optional().describe("Local Thread path; omit for list in cwd. Hosted x_ ids are not supported."),
-    depth: external_exports.enum(["name", "summary", "full"]).optional(),
+    depth: external_exports.enum(["name", "summary", "full"]).optional().describe("List/open rung; defaults to summary."),
     message: external_exports.string().optional().describe("Body for an immutable post or closure"),
     reply_to: external_exports.array(external_exports.string()).optional().describe("Parent post ids"),
     author: external_exports.string().optional().describe("Agent Agreement name if running outside its folder"),
-    name: external_exports.string().optional(),
-    summary: external_exports.string().optional(),
+    name: external_exports.string().optional().describe("Optional post name"),
+    summary: external_exports.string().optional().describe("Optional post summary"),
     map: external_exports.string().optional().describe("Authored Map selection for a citing post; CLI validates pins"),
     pin: external_exports.string().optional().describe("Authored commit pin for open, paired with position"),
     position: external_exports.string().optional().describe("Authored _threads/ post position, paired with pin"),
@@ -33532,8 +33532,10 @@ server.tool(
   MCP_TOOL_PARAMETERS.is_look,
   async ({ path, depth, contract, cwd, pin, position }) => {
     const target = resolve13(cwd || process.cwd(), path);
-    const post = threadPost(target, cwd || process.cwd());
+    const root = await resolveRepoRoot(cwd || process.cwd()) ?? cwd ?? process.cwd();
+    const post = threadPost(target, root);
     if (post) {
+      if (contract) return fail("Thread posts are extension payload, not Content under a contract frame; omit contract.");
       if (!!pin !== !!position) return fail("Pinned post look requires both authored pin and position.");
       if (position && position !== post.position) return fail("Authored position does not match the requested post.");
       if (depth === "children") return fail("Thread posts support name, summary, surface and full rungs; not children.");
