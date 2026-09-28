@@ -65,14 +65,14 @@ Open your agent in any folder and say one of these:
 
 From then on, just work. When something worth keeping lands, the agent offers to write it down. Say *"write this down"* to do it yourself. Say *"publish this space"* to host it, *"share this with alice@example.com"* to let someone in, *"check my inbox"* to read questions about what you shared.
 
-Type `/` to see the skills: `is-setup`, `is-guide`, `is-orient`, `is-capture`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-inbox`, `is-push`, `is-pull`. Two more work on the agent's own initiative: `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how notes are written.
+Type `/` to see the skills: `is-setup`, `is-guide`, `is-orient`, `is-capture`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-inbox`, `is-threads`, `is-push`, `is-pull`. Two more work on the agent's own initiative: `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how notes are written.
 
 ## What it installs
 
 - **A session-start hook** that renders the folder's orientation: position, current focus, tree, `_agent/` instructions, skills, and what changed since last time.
-- **MCP tools** for the local loop: reference-only `is_navigate`, five-rung `is_look`, `is_write`, `is_commit`, `is_status`, `is_change_open` / `is_change_close`, and `is_auth`, `is_spaces`, `is_clone`, `is_push`, `is_pull` for the optional remote. `is_look` reads one local Note or directory at `name`, `summary`, `surface`, `children`, or `full` without adopting its Agreement.
+- **MCP tools** for the local loop: reference-only `is_navigate`, five-rung `is_look`, explicit local `is_threads` (list/open/post/close, no ambient loading), `is_write`, `is_commit`, `is_status`, `is_change_open` / `is_change_close`, and `is_auth`, `is_spaces`, `is_clone`, `is_push`, `is_pull` for the optional remote. `is_look` reads one local Note or directory at `name`, `summary`, `surface`, `children`, or `full` without adopting its Agreement.
 - **`is_collaborate`** — work with another point of view: open, continue, and close a conversation with the vantage in another `_agent/`-contract folder. It spawns a fresh headless `claude` there, oriented by this same hook, and that point of view answers or acts from where it stands. The mode is the instruction: consult and review are read-only; delegate hands it a task under that folder's own settings.
-- **The `ideaspaces` CLI**, bundled, for fork, update, publish, share, and inbox. No global install needed. Its own page: [IdeaSpaces-xyz/cli](https://github.com/IdeaSpaces-xyz/cli).
+- **The `ideaspaces` CLI**, bundled, for fork, update, publish, share, inbox, and explicit local Threads. No global install needed. Its own page: [IdeaSpaces-xyz/cli](https://github.com/IdeaSpaces-xyz/cli).
 - **A pre-commit nudge**: if a plain `git commit` is about to run inside an ideaspace, it notes once per session that `is_commit` would carry attribution and would not sweep up a teammate's staged files.
 
 The plugin ships pre-built. The MCP server and CLI are vendored bundles with locked hashes; the skills' reference text is built from the protocol at an exact pin.
