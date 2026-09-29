@@ -38,7 +38,7 @@ describe("file-first Map distribution", () => {
     expect(launchHelp).toContain("--map maps/research.md");
     expect(launchHelp).toContain("local pi turn; absent trust flag keeps legacy explicit approval");
     expect(map.status).toBe(0);
-    expect(mapHelp).toContain("map [<repo>] [--depth <1..4|full>]");
+    expect(mapHelp).toContain("map [<folder|map-note>] [--depth <1..4|full>]");
     expect(capture).toContain("structured `map` argument to `is_write`");
     expect(capture).toContain("never resolves, clones, or fetches roots");
     expect(capture).toContain("Omitting `map` on a later safe refinement preserves an existing Map");
