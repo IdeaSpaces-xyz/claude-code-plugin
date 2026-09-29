@@ -36,7 +36,7 @@ describe("file-first Map distribution", () => {
 
     expect(launch.status).toBe(0);
     expect(launchHelp).toContain("--map maps/research.md");
-    expect(launchHelp).toContain("local pi turn over a map-note");
+    expect(launchHelp).toContain("local pi turn; absent trust flag keeps legacy explicit approval");
     expect(map.status).toBe(0);
     expect(mapHelp).toContain("map [<repo>] [--depth <1..4|full>]");
     expect(capture).toContain("structured `map` argument to `is_write`");
