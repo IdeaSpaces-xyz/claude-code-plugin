@@ -7831,36 +7831,38 @@ var require_Alias = __commonJS({
           if (node.anchor === this.source)
             found = node;
         }
+        if (found && ctx) {
+          const { anchors: anchors2, doc: doc2, maxAliasCount } = ctx;
+          let data = anchors2.get(found);
+          if (!data) {
+            toJS.toJS(found, null, ctx);
+            data = anchors2.get(found);
+          }
+          if (data?.res === void 0) {
+            const msg = "This should not happen: Alias anchor was not resolved?";
+            throw new ReferenceError(msg);
+          }
+          if (maxAliasCount >= 0) {
+            data.count += 1;
+            if (data.aliasCount === 0)
+              data.aliasCount = getAliasCount(doc2, found, anchors2);
+            if (data.count * data.aliasCount > maxAliasCount) {
+              const msg = "Excessive alias count indicates a resource exhaustion attack";
+              throw new ReferenceError(msg);
+            }
+          }
+        }
         return found;
       }
       toJSON(_arg, ctx) {
         if (!ctx)
           return { source: this.source };
-        const { anchors: anchors2, doc, maxAliasCount } = ctx;
-        const source = this.resolve(doc, ctx);
+        const source = this.resolve(ctx.doc, ctx);
         if (!source) {
           const msg = `Unresolved alias (the anchor must be set before the alias): ${this.source}`;
           throw new ReferenceError(msg);
         }
-        let data = anchors2.get(source);
-        if (!data) {
-          toJS.toJS(source, null, ctx);
-          data = anchors2.get(source);
-        }
-        if (data?.res === void 0) {
-          const msg = "This should not happen: Alias anchor was not resolved?";
-          throw new ReferenceError(msg);
-        }
-        if (maxAliasCount >= 0) {
-          data.count += 1;
-          if (data.aliasCount === 0)
-            data.aliasCount = getAliasCount(doc, source, anchors2);
-          if (data.count * data.aliasCount > maxAliasCount) {
-            const msg = "Excessive alias count indicates a resource exhaustion attack";
-            throw new ReferenceError(msg);
-          }
-        }
-        return data.res;
+        return ctx.anchors.get(source).res;
       }
       toString(ctx, _onComment, _onChompKeep) {
         const src = `*${this.source}`;
@@ -11862,37 +11864,38 @@ var require_resolve_flow_scalar = __commonJS({
       }
       if (badChar)
         onError(0, "BAD_SCALAR_START", `Plain value cannot start with ${badChar}`);
-      return foldLines(source);
+      return unfoldLines(source);
     }
     function singleQuotedValue(source, onError) {
       if (source[source.length - 1] !== "'" || source.length === 1)
         onError(source.length, "MISSING_CHAR", "Missing closing 'quote");
-      return foldLines(source.slice(1, -1)).replace(/''/g, "'");
+      return unfoldLines(source.slice(1, -1)).replace(/''/g, "'");
     }
-    function foldLines(source) {
-      let first, line;
-      try {
-        first = new RegExp("(.*?)(?<![ 	])[ 	]*\r?\n", "sy");
-        line = new RegExp("[ 	]*(.*?)(?:(?<![ 	])[ 	]*)?\r?\n", "sy");
-      } catch {
-        first = /(.*?)[ \t]*\r?\n/sy;
-        line = /[ \t]*(.*?)[ \t]*\r?\n/sy;
-      }
-      let match = first.exec(source);
+    function unfoldLines(source) {
+      const line = /(.*?)\r?\n/sy;
+      let match = line.exec(source);
       if (!match)
         return source;
-      let res = match[1];
+      let trimEnd, trimBoth;
+      try {
+        trimEnd = new RegExp("(?<![ 	])[ 	]+$");
+        trimBoth = new RegExp("^[ 	]+|(?<![ 	])[ 	]+$", "g");
+      } catch {
+        trimEnd = /[ \t]+$/;
+        trimBoth = /^[ \t]+|[ \t]+$/g;
+      }
+      let res = match[1].replace(trimEnd, "");
       let sep7 = " ";
-      let pos = first.lastIndex;
-      line.lastIndex = pos;
+      let pos = line.lastIndex;
       while (match = line.exec(source)) {
-        if (match[1] === "") {
+        const lm = match[1].replace(trimBoth, "");
+        if (lm === "") {
           if (sep7 === "\n")
             res += sep7;
           else
             sep7 = "\n";
         } else {
-          res += sep7 + match[1];
+          res += sep7 + lm;
           sep7 = " ";
         }
         pos = line.lastIndex;
@@ -28749,7 +28752,7 @@ var StdioServerTransport = class {
 // src/index.ts
 import { spawn as spawn4 } from "node:child_process";
 import { dirname as dirname8, resolve as resolve13 } from "node:path";
-import { readFileSync } from "node:fs";
+import { readFileSync as readFileSync2 } from "node:fs";
 
 // src/cli-executable.ts
 import { existsSync } from "node:fs";
@@ -32949,9 +32952,17 @@ function planChangeClose(armed, persisted, hasCacheFile) {
 
 // src/threads.ts
 import { relative as relative6, resolve as resolve11, sep as sep6 } from "node:path";
-import { realpathSync } from "node:fs";
+import { existsSync as existsSync3, lstatSync, readFileSync, realpathSync } from "node:fs";
+var import_yaml3 = __toESM(require_dist2(), 1);
 function threadArgs(input) {
   const { action, path } = input;
+  const selected = input.member !== void 0;
+  if (input.checkout && !selected) throw new Error("checkout requires an authored map and member.");
+  if (selected && (!input.map?.trim() || !Number.isSafeInteger(input.member) || input.member < 0)) {
+    throw new Error("Selected Thread requires an authored map and zero-based member.");
+  }
+  if (input.map && action === "open" && !selected) throw new Error("Pinned open with map requires a member; no HEAD fallback.");
+  if ((selected || input.checkout) && action !== "open" && action !== "post") throw new Error("Selection is only available for open and post.");
   if (action === "list") {
     if (path?.startsWith("x_")) throw new Error("is_threads is local-only; use a directory, not a hosted x_ id.");
     return ["threads", "list", path || ".", "--depth", input.depth ?? "summary"];
@@ -32961,17 +32972,18 @@ function threadArgs(input) {
   }
   if (action === "open") {
     if (input.pin && !input.position || input.position && !input.pin) throw new Error("Pinned open requires both authored pin and position; never substitute HEAD.");
-    if (input.map) throw new Error("map is only valid for post, not open; use an authored pin and position to open a pinned member.");
+    if (selected && (input.pin || input.position)) throw new Error("Use either authored map/member selection or pin/position, not both.");
     return [
       "threads",
       "open",
       path,
       "--depth",
-      input.pin ? "full" : input.depth ?? "summary",
-      ...input.pin ? ["--pin", input.pin, "--position", input.position] : []
+      selected || input.pin ? "full" : input.depth ?? "summary",
+      ...selected ? ["--map", input.map, "--member", String(input.member), ...input.checkout ? ["--checkout", input.checkout] : []] : input.pin ? ["--pin", input.pin, "--position", input.position] : []
     ];
   }
   if (input.pin || input.position || input.depth) throw new Error("Pin, position and depth apply to opening, not writing.");
+  if (selected && (input.author || !input.reply_to?.length)) throw new Error("Selected posts require an explicit reply_to and the caller's Agreement author; omit author.");
   if (!input.message?.trim()) throw new Error("A post or closure needs a nonempty message.");
   if (action === "close" && (input.reply_to?.length || input.name || input.summary || input.map)) throw new Error("Closure only accepts message and author; omit reply_to, name, summary and map.");
   return [
@@ -32985,9 +32997,34 @@ function threadArgs(input) {
       ...input.reply_to?.length ? ["--reply-to", input.reply_to.join(",")] : [],
       ...input.name ? ["--name", input.name] : [],
       ...input.summary ? ["--summary", input.summary] : [],
-      ...input.map ? ["--map", input.map] : []
+      ...input.map ? ["--map", input.map] : [],
+      ...selected ? ["--member", String(input.member), ...input.checkout ? ["--checkout", input.checkout] : []] : []
     ] : []
   ];
+}
+function selectedPin(input, cwd) {
+  if (input.map === void 0 || input.member === void 0) throw new Error("Selected Thread requires map and member.");
+  const file = resolve11(cwd, input.map);
+  let value;
+  if (existsSync3(file)) {
+    const stat2 = lstatSync(file);
+    if (!stat2.isFile() || stat2.isSymbolicLink() || stat2.size > 128 * 1024) throw new Error("Map must be a regular file no larger than 128 KiB.");
+    const text = readFileSync(file, "utf8");
+    value = parseFrontmatter(text)?.map ?? (0, import_yaml3.parse)(text);
+  } else {
+    if (!input.map.includes("\n") && !input.map.includes(":")) throw new Error(`Map file not found: ${file}`);
+    value = (0, import_yaml3.parse)(input.map);
+  }
+  if (value && typeof value === "object" && "map" in value) value = value.map;
+  const parsed = parseMap(value);
+  if (parsed.status !== "valid") throw new Error("Map must supply valid roots and members with authored pins.");
+  const member = parsed.map.members[input.member];
+  if (!member || !("position" in member) || typeof member.position !== "string" || typeof member.root !== "number") {
+    throw new Error("Selected Map member is not a pinned local position.");
+  }
+  const pin = parsed.map.roots[member.root]?.sha;
+  if (!pin) throw new Error("Selected Map root has no authored pin.");
+  return { pin, position: member.position };
 }
 function postView(text, position, depth) {
   const fm = parseFrontmatter(text);
@@ -33019,7 +33056,7 @@ function threadPost(path, root) {
 // src/collaborate.ts
 import { spawn as spawn3 } from "node:child_process";
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { lstatSync, realpathSync as realpathSync2 } from "node:fs";
+import { lstatSync as lstatSync2, realpathSync as realpathSync2 } from "node:fs";
 import { isAbsolute as isAbsolute5, join as join11, resolve as resolve12 } from "node:path";
 var DEPTH_ENV = "IS_COLLABORATE_DEPTH";
 var DEFAULT_TIMEOUT_MS = 6e5;
@@ -33123,8 +33160,8 @@ function resolvePov(pov, cwd) {
   const candidate = isAbsolute5(pov) ? pov : resolve12(cwd ?? process.cwd(), pov);
   try {
     const dir = realpathSync2(candidate);
-    const root = lstatSync(dir);
-    const contract = lstatSync(join11(dir, "_agent", "agreement.md"));
+    const root = lstatSync2(dir);
+    const contract = lstatSync2(join11(dir, "_agent", "agreement.md"));
     if (root.isDirectory() && contract.isFile() && !contract.isSymbolicLink()) return { dir };
   } catch {
   }
@@ -33294,11 +33331,13 @@ var AUTHORED_TOOL_PARAMETERS = {
     depth: external_exports.enum(["name", "summary", "full"]).optional().describe("List/open rung; defaults to summary."),
     message: external_exports.string().optional().describe("Body for an immutable post or closure"),
     reply_to: external_exports.array(external_exports.string()).optional().describe("Parent post ids"),
-    author: external_exports.string().optional().describe("Agent Agreement name if running outside its folder"),
+    author: external_exports.string().optional().describe("Legacy same-Space writer override only. Selected posts reject author and derive it from the caller's own Agreement."),
     name: external_exports.string().optional().describe("Optional post name"),
     summary: external_exports.string().optional().describe("Optional post summary"),
-    map: external_exports.string().optional().describe("Authored Map selection for a citing post; CLI validates pins"),
-    pin: external_exports.string().optional().describe("Authored commit pin for open, paired with position"),
+    map: external_exports.string().optional().describe("Authored Map file or inline selection: with member selects a pinned local Thread for open/post; without member cites a same-Space post"),
+    member: external_exports.number().int().nonnegative().optional().describe("Zero-based authored Map member selecting a pinned _threads/ post; pair with map"),
+    checkout: external_exports.string().optional().describe("Explicit local Space root hint, validated against the selected Map root by the CLI; not a cwd override"),
+    pin: external_exports.string().optional().describe("Authored commit pin for legacy same-Space open, paired with position; do not combine with map/member"),
     position: external_exports.string().optional().describe("Authored _threads/ post position, paired with pin"),
     cwd: cwdField
   },
@@ -33454,7 +33493,7 @@ function readSessionId() {
   const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
   if (!dir) return void 0;
   try {
-    const id = readFileSync(sessionIdCachePath(homedir(), dir), "utf-8").trim();
+    const id = readFileSync2(sessionIdCachePath(homedir(), dir), "utf-8").trim();
     return id || void 0;
   } catch {
     return void 0;
@@ -33506,15 +33545,16 @@ server.tool(
 );
 server.tool(
   "is_threads",
-  "List, open at name/summary/full, post to, or close a local Thread via the installed CLI. Reading never acknowledges. No hosted x_ id or ambient loading.",
+  "List, open, post to or close a local Thread through the installed CLI. For another Space, supply an authored map, member and optional validated checkout from the caller's Agreement cwd. Selected reads verify the exact pin/position; selected posts require reply_to and use the caller's Agreement author. No hosted x_ id or ambient loading.",
   MCP_TOOL_PARAMETERS.is_threads,
   async (input) => {
     try {
       const args = threadArgs(input);
-      if (input.action === "open" && input.pin) {
+      if (input.action === "open" && (input.pin || input.member !== void 0)) {
+        const expected = input.member !== void 0 ? selectedPin(input, input.cwd ?? process.cwd()) : { pin: input.pin, position: input.position };
         const result = await cli(["--json", ...args], void 0, input.cwd);
         if (result.code !== 0) return fail(result.err.trim() || result.out.trim());
-        return ok(pinnedView(JSON.parse(result.out), input.depth ?? "summary", { pin: input.pin, position: input.position }));
+        return ok(pinnedView(JSON.parse(result.out), input.depth ?? "summary", expected));
       }
       return run(args, void 0, input.cwd);
     } catch (error2) {
@@ -33635,7 +33675,7 @@ server.tool(
           if (result2.code !== 0) return fail(result2.err.trim() || result2.out.trim());
           return ok(pinnedView(JSON.parse(result2.out), depth ?? "summary", { pin, position: post.position }));
         }
-        return ok(postView(readFileSync(target, "utf8"), post.position, depth ?? "summary"));
+        return ok(postView(readFileSync2(target, "utf8"), post.position, depth ?? "summary"));
       } catch (error2) {
         return fail(`Cannot read ${target}: ${error2 instanceof Error ? error2.message : String(error2)}`);
       }
