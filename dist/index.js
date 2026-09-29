@@ -26716,11 +26716,11 @@ var Protocol = class {
           return reject(response);
         }
         try {
-          const parseResult2 = safeParse2(resultSchema, response.result);
-          if (!parseResult2.success) {
-            reject(parseResult2.error);
+          const parseResult = safeParse2(resultSchema, response.result);
+          if (!parseResult.success) {
+            reject(parseResult.error);
           } else {
-            resolve14(parseResult2.data);
+            resolve14(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -27418,9 +27418,9 @@ var Server = class extends Protocol {
       this.setRequestHandler(SetLevelRequestSchema, async (request, extra) => {
         const transportSessionId = extra.sessionId || extra.requestInfo?.headers["mcp-session-id"] || void 0;
         const { level } = request.params;
-        const parseResult2 = LoggingLevelSchema.safeParse(level);
-        if (parseResult2.success) {
-          this._loggingLevels.set(transportSessionId, parseResult2.data);
+        const parseResult = LoggingLevelSchema.safeParse(level);
+        if (parseResult.success) {
+          this._loggingLevels.set(transportSessionId, parseResult.data);
         }
         return {};
       });
@@ -28009,13 +28009,13 @@ var McpServer = class {
     }
     const inputObj = normalizeObjectSchema(tool.inputSchema);
     const schemaToParse = inputObj ?? tool.inputSchema;
-    const parseResult2 = await safeParseAsync2(schemaToParse, args);
-    if (!parseResult2.success) {
-      const error2 = "error" in parseResult2 ? parseResult2.error : "Unknown error";
+    const parseResult = await safeParseAsync2(schemaToParse, args);
+    if (!parseResult.success) {
+      const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
       const errorMessage = getParseErrorMessage(error2);
       throw new McpError(ErrorCode.InvalidParams, `Input validation error: Invalid arguments for tool ${toolName}: ${errorMessage}`);
     }
-    return parseResult2.data;
+    return parseResult.data;
   }
   /**
    * Validates tool output against the tool's output schema.
@@ -28034,9 +28034,9 @@ var McpServer = class {
       throw new McpError(ErrorCode.InvalidParams, `Output validation error: Tool ${toolName} has an output schema but no structured content was provided`);
     }
     const outputObj = normalizeObjectSchema(tool.outputSchema);
-    const parseResult2 = await safeParseAsync2(outputObj, result.structuredContent);
-    if (!parseResult2.success) {
-      const error2 = "error" in parseResult2 ? parseResult2.error : "Unknown error";
+    const parseResult = await safeParseAsync2(outputObj, result.structuredContent);
+    if (!parseResult.success) {
+      const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
       const errorMessage = getParseErrorMessage(error2);
       throw new McpError(ErrorCode.InvalidParams, `Output validation error: Invalid structured content for tool ${toolName}: ${errorMessage}`);
     }
@@ -28247,13 +28247,13 @@ var McpServer = class {
       }
       if (prompt.argsSchema) {
         const argsObj = normalizeObjectSchema(prompt.argsSchema);
-        const parseResult2 = await safeParseAsync2(argsObj, request.params.arguments);
-        if (!parseResult2.success) {
-          const error2 = "error" in parseResult2 ? parseResult2.error : "Unknown error";
+        const parseResult = await safeParseAsync2(argsObj, request.params.arguments);
+        if (!parseResult.success) {
+          const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
           const errorMessage = getParseErrorMessage(error2);
           throw new McpError(ErrorCode.InvalidParams, `Invalid arguments for prompt ${request.params.name}: ${errorMessage}`);
         }
-        const args = parseResult2.data;
+        const args = parseResult.data;
         const cb = prompt.callback;
         return await Promise.resolve(cb(args, extra));
       } else {
@@ -28748,10 +28748,25 @@ var StdioServerTransport = class {
 
 // src/index.ts
 import { spawn as spawn4 } from "node:child_process";
+import { dirname as dirname8, resolve as resolve13 } from "node:path";
+import { readFileSync } from "node:fs";
+
+// src/cli-executable.ts
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { dirname as dirname7, join as join11, resolve as resolve13 } from "node:path";
-import { existsSync as existsSync3, readFileSync } from "node:fs";
-import { userInfo, homedir as homedir2 } from "node:os";
+function resolveCli() {
+  if (process.env.IS_CLI_PATH?.trim()) return process.env.IS_CLI_PATH.trim();
+  const bundled = join(dirname(fileURLToPath(import.meta.url)), "../cli/bundle/ideaspaces.js");
+  return existsSync(bundled) ? bundled : "ideaspaces";
+}
+function cliInvocation(path, args) {
+  const script = /\.(?:[cm]?js)$/.test(path);
+  return { command: script ? process.execPath : path, argv: script ? [path, ...args] : args };
+}
+
+// src/index.ts
+import { userInfo, homedir } from "node:os";
 
 // src/trailers.ts
 var PRINCIPAL_PREFIX = /^(person|agent|node):/;
@@ -28789,7 +28804,7 @@ function buildCommitTrailers(op, context) {
 
 // node_modules/@ideaspaces/protocol/dist/space.js
 import { promises as fs } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname as dirname2, join as join2, resolve } from "node:path";
 var CONTRACT_FILES = [
   "foundation",
   "guide",
@@ -28808,7 +28823,7 @@ async function isDirectory(path) {
 async function readContract(agentDir) {
   const entries = {};
   await Promise.all(CONTRACT_FILES.map(async (name) => {
-    const path = join(agentDir, `${name}.md`);
+    const path = join2(agentDir, `${name}.md`);
     try {
       const content = await fs.readFile(path, "utf-8");
       entries[name] = { path, content };
@@ -28823,7 +28838,7 @@ async function composeContractAlongPath(position) {
   let spaceRoot = null;
   let dir = start;
   while (true) {
-    const agentDir = join(dir, "_agent");
+    const agentDir = join2(dir, "_agent");
     if (await isDirectory(agentDir)) {
       const contract2 = await readContract(agentDir);
       found.push({ dir, contract: contract2 });
@@ -28832,7 +28847,7 @@ async function composeContractAlongPath(position) {
         break;
       }
     }
-    const parent = dirname(dir);
+    const parent = dirname2(dir);
     if (parent === dir)
       break;
     dir = parent;
@@ -28867,7 +28882,7 @@ async function composeContractAlongPath(position) {
 
 // node_modules/@ideaspaces/protocol/dist/agreement.js
 import { promises as fs2 } from "node:fs";
-import { basename, dirname as dirname2, join as join2, relative, resolve as resolve2, sep } from "node:path";
+import { basename, dirname as dirname3, join as join3, relative, resolve as resolve2, sep } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist2(), 1);
@@ -29023,7 +29038,7 @@ async function composeAgreementAlongPath(position, repoRoot = null) {
     }
     if (boundary && dir === boundary)
       break;
-    const parent = dirname2(dir);
+    const parent = dirname3(dir);
     if (parent === dir)
       break;
     if (boundary && !isWithin(boundary, parent))
@@ -29061,10 +29076,10 @@ async function composeAgreementAlongPath(position, repoRoot = null) {
   };
 }
 async function scanLevel(dir) {
-  const agentDir = join2(dir, "_agent");
+  const agentDir = join3(dir, "_agent");
   if (!await isDirectory2(agentDir))
     return null;
-  const agreementPath = join2(agentDir, "agreement.md");
+  const agreementPath = join3(agentDir, "agreement.md");
   const agreementContent = await readRegularFile(agreementPath);
   if (agreementContent === null) {
     return {
@@ -29198,7 +29213,7 @@ async function readLevelFiles(level, issues) {
   for (const name of level.fullLoads) {
     if (!available.has(name)) {
       issues.push({
-        path: join2(level.agentDir, name),
+        path: join3(level.agentDir, name),
         code: "missing_full_load",
         detail: `declared full load does not exist as a regular file: ${name}`
       });
@@ -29207,11 +29222,11 @@ async function readLevelFiles(level, issues) {
   for (const name of regularMarkdown) {
     if (name === "agreement.md" || name === "foundation.md")
       continue;
-    const content = await readRegularFile(join2(level.agentDir, name));
+    const content = await readRegularFile(join3(level.agentDir, name));
     if (content === null) {
       if (level.fullLoads.includes(name)) {
         issues.push({
-          path: join2(level.agentDir, name),
+          path: join3(level.agentDir, name),
           code: "missing_full_load",
           detail: `declared full load became unavailable while reading: ${name}`
         });
@@ -29220,7 +29235,7 @@ async function readLevelFiles(level, issues) {
     }
     files.push({
       name: basename(name, ".md"),
-      path: join2(level.agentDir, name),
+      path: join3(level.agentDir, name),
       sourcePosition: level.dir,
       content,
       representation: level.fullLoads.includes(name) ? "full" : "summary"
@@ -29258,7 +29273,7 @@ async function readRegularFile(path) {
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 import { createHash as createHash2 } from "node:crypto";
 import { promises as fs4 } from "node:fs";
-import { basename as basename2, dirname as dirname3, join as join6, relative as relative3, resolve as resolve6, sep as sep3 } from "node:path";
+import { basename as basename2, dirname as dirname4, join as join7, relative as relative3, resolve as resolve6, sep as sep3 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/markdown-inspection.js
 function inspectMarkdown(content, request) {
@@ -29440,7 +29455,7 @@ function classifyRepositoryPath(path, kind) {
 // node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 import { lstat as nodeLstat, realpath as nodeRealpath } from "node:fs/promises";
-import { isAbsolute as isAbsolute2, join as join3, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute2, join as join4, resolve as resolve3 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/local-effects.js
 import { isAbsolute } from "node:path";
@@ -30006,7 +30021,7 @@ async function inspectPathComponents(root, path, filesystem) {
   const segments = path.split("/");
   let current = root;
   for (const [index, segment] of segments.entries()) {
-    current = join3(current, segment);
+    current = join4(current, segment);
     try {
       const stat2 = await filesystem.lstat(current);
       if (stat2 === null)
@@ -30028,7 +30043,7 @@ async function inspectPathComponents(root, path, filesystem) {
 }
 async function worktreeObjectId(runner, root, path, filesystem) {
   try {
-    const stat2 = await filesystem.lstat(join3(root, ...path.split("/")));
+    const stat2 = await filesystem.lstat(join4(root, ...path.split("/")));
     if (stat2 === null)
       return null;
     if (stat2.kind !== "file") {
@@ -30218,7 +30233,7 @@ async function recentActivity(repoRoot, sinceSha, limit = DEFAULT_COMMIT_LIMIT) 
 
 // node_modules/@ideaspaces/protocol/dist/path-context.js
 import { promises as fs3 } from "node:fs";
-import { isAbsolute as isAbsolute3, join as join4, relative as relative2, resolve as resolve4, sep as sep2 } from "node:path";
+import { isAbsolute as isAbsolute3, join as join5, relative as relative2, resolve as resolve4, sep as sep2 } from "node:path";
 function spaceRootLevel(ctx) {
   return ctx.levels.find((l) => l.foundation) ?? null;
 }
@@ -30260,11 +30275,11 @@ async function walkPathContext(repoRoot, currentPath, opts = {}) {
   return { position, levels };
 }
 async function readLevel(root, relPath, includeContent) {
-  const absPath = relPath ? join4(root, relPath) : root;
-  const agentDir = join4(absPath, "_agent");
+  const absPath = relPath ? join5(root, relPath) : root;
+  const agentDir = join5(absPath, "_agent");
   const [hasAgent, readme] = await Promise.all([
     isDirectory3(agentDir),
-    readFileOrNull(join4(absPath, "README.md"))
+    readFileOrNull(join5(absPath, "README.md"))
   ]);
   let contract = {};
   if (hasAgent)
@@ -30318,12 +30333,12 @@ async function readFileOrNull(path) {
 // node_modules/@ideaspaces/protocol/dist/surface-state.js
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { join as join5, resolve as resolve5 } from "node:path";
+import { join as join6, resolve as resolve5 } from "node:path";
 function projectCacheKey(projectDir) {
   return createHash("sha256").update(resolve5(projectDir)).digest("hex").slice(0, 16);
 }
 function cachePath(homeDir, kind, projectDir) {
-  return join5(homeDir, ".ideaspaces", kind, projectCacheKey(projectDir));
+  return join6(homeDir, ".ideaspaces", kind, projectCacheKey(projectDir));
 }
 function sessionIdCachePath(homeDir, projectDir) {
   return cachePath(homeDir, "sessions", projectDir);
@@ -30661,7 +30676,7 @@ function contractIdentityConflict(foundation, agreement) {
   if (parsed.status !== "valid" || parsed.rootNodeId === agreement.rootNodeId)
     return null;
   return {
-    path: join6(foundation.spaceRoot, "_agent"),
+    path: join7(foundation.spaceRoot, "_agent"),
     code: "root_node_id_conflict",
     detail: "foundation.md and agreement.md declare different root_node_id values"
   };
@@ -30686,7 +30701,7 @@ function hasOpaqueFilesystemAncestor(path) {
     const name = basename2(current);
     if (name.startsWith("_"))
       return true;
-    const parent = dirname3(current);
+    const parent = dirname4(current);
     if (parent === current)
       return false;
     current = parent;
@@ -30877,7 +30892,7 @@ function buildStackedContractEntries(stack, max) {
 async function discoverSkillEntries(levels) {
   const byName = /* @__PURE__ */ new Map();
   for (const dir of levels) {
-    const skillsDir = join6(dir, "_agent", "skills");
+    const skillsDir = join7(dir, "_agent", "skills");
     let dirents;
     try {
       dirents = await fs4.readdir(skillsDir, { withFileTypes: true });
@@ -30887,11 +30902,11 @@ async function discoverSkillEntries(levels) {
     const flat = dirents.filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "README.md").map((e) => e.name).sort();
     for (const file of flat) {
       const name = file.replace(/\.md$/, "");
-      byName.set(name, { name, path: join6(skillsDir, file), level: dir });
+      byName.set(name, { name, path: join7(skillsDir, file), level: dir });
     }
     const skillDirs = dirents.filter((e) => e.isDirectory()).map((e) => e.name).sort();
     for (const name of skillDirs) {
-      const path = join6(skillsDir, name, "SKILL.md");
+      const path = join7(skillsDir, name, "SKILL.md");
       try {
         if ((await fs4.stat(path)).isFile()) {
           byName.set(name, { name, path, level: dir });
@@ -30998,7 +31013,7 @@ function normalizeContentTreeDepth(depth) {
 }
 async function childSummary(path, isDir, max) {
   try {
-    const source = isDir ? join6(path, "README.md") : path;
+    const source = isDir ? join7(path, "README.md") : path;
     return describeFile(await fs4.readFile(source, "utf-8"), max);
   } catch {
     return null;
@@ -31039,7 +31054,7 @@ async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
   const omitted = all.length - shown.length;
   const withSummaries = opts.summaries && (topLevel || opts.depth === "full");
   const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
-    const path = join6(dir, name);
+    const path = join7(dir, name);
     const entry = isDir ? { name, placement: "head", kind: "directory", markdownFiles: await countMarkdown(path, opts.strict) } : { name, placement: "head", kind: "markdown" };
     if (withSummaries) {
       const summary = await childSummary(path, isDir, opts.summaryLength);
@@ -31077,7 +31092,7 @@ async function countMarkdown(dir, strict = false) {
     if (entry.isDirectory()) {
       if (!isContentDirectoryName(entry.name))
         continue;
-      count += await countMarkdown(join6(dir, entry.name), strict);
+      count += await countMarkdown(join7(dir, entry.name), strict);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       count += 1;
     }
@@ -31169,7 +31184,7 @@ function renderDirectionDrift(missing) {
 // node_modules/@ideaspaces/protocol/dist/content-look.js
 import { createHash as createHash3 } from "node:crypto";
 import { promises as fs5 } from "node:fs";
-import { basename as basename3, dirname as dirname4, extname, join as join7, relative as relative4, resolve as resolve7, sep as sep4 } from "node:path";
+import { basename as basename3, dirname as dirname5, extname, join as join8, relative as relative4, resolve as resolve7, sep as sep4 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/maps.js
 var MAP_DEPTHS = ["name", "summary", "surface", "children", "full"];
@@ -31376,7 +31391,7 @@ async function assembleContentLook(opts) {
   const kind = stat2.isDirectory() ? "directory" : stat2.isFile() && extname(path).toLowerCase() === ".md" ? "markdown" : null;
   if (!kind)
     return null;
-  const framePosition = kind === "directory" ? path : dirname4(path);
+  const framePosition = kind === "directory" ? path : dirname5(path);
   const focusOpts = {
     position: framePosition,
     ...opts.contractSource ? { contractSource: opts.contractSource } : {},
@@ -31495,7 +31510,7 @@ function finishTarget(target) {
   return target;
 }
 async function readDirectoryReadme(path) {
-  const readme = join7(path, "README.md");
+  const readme = join8(path, "README.md");
   try {
     const stat2 = await fs5.lstat(readme);
     if (!stat2.isFile())
@@ -31914,7 +31929,7 @@ import { isAbsolute as isAbsolute4, relative as relative5, resolve as resolve8, 
 var import_yaml2 = __toESM(require_dist2(), 1);
 import { randomUUID } from "node:crypto";
 import { lstat as nodeLstat2, mkdir, open, readFile as readFile2, realpath as nodeRealpath2, rename, rm } from "node:fs/promises";
-import { basename as basename4, dirname as dirname5, join as join8 } from "node:path";
+import { basename as basename4, dirname as dirname6, join as join9 } from "node:path";
 var nodeLocalEffectFileSystem = {
   realpath: (path) => nodeRealpath2(path),
   async lstat(path) {
@@ -31932,7 +31947,7 @@ var nodeLocalEffectFileSystem = {
   },
   readUtf8: (path) => readFile2(path, "utf8"),
   async atomicWriteUtf8(path, content) {
-    await mkdir(dirname5(path), { recursive: true });
+    await mkdir(dirname6(path), { recursive: true });
     let mode = 438;
     try {
       mode = (await nodeLstat2(path)).mode & 511;
@@ -31940,7 +31955,7 @@ var nodeLocalEffectFileSystem = {
       if (error2.code !== "ENOENT")
         throw error2;
     }
-    const temporary = join8(dirname5(path), `.${basename4(path)}.${process.pid}.${randomUUID()}.tmp`);
+    const temporary = join9(dirname6(path), `.${basename4(path)}.${process.pid}.${randomUUID()}.tmp`);
     let handle = null;
     try {
       handle = await open(temporary, "wx", mode);
@@ -32264,7 +32279,7 @@ async function runGit2(capabilities, root, args) {
   }
 }
 function hostPath(root, path) {
-  return join8(root, ...path.split("/"));
+  return join9(root, ...path.split("/"));
 }
 function literalPathspec2(path) {
   return `:(literal)${path}`;
@@ -32398,7 +32413,7 @@ function localEffectError(operation, code, phase, message, path, detail3) {
 }
 
 // src/local-tools.ts
-import { join as join9, resolve as resolve10 } from "node:path";
+import { join as join10, resolve as resolve10 } from "node:path";
 
 // src/read-tools.ts
 import { stat } from "node:fs/promises";
@@ -32661,7 +32676,7 @@ async function runLocalWrite(input, deps) {
   const revision = result.path_revisions[0]?.revision;
   return success({
     ...result,
-    path: join9(location.root, ...location.path.split("/")),
+    path: join10(location.root, ...location.path.split("/")),
     sha: revision?.worktree ?? null,
     staged: revision?.worktree !== null && revision?.index === revision?.worktree
   });
@@ -32862,20 +32877,20 @@ async function runLocalCommit(input, deps) {
   return success({
     ...result,
     commit_sha: result.commit_oid,
-    committed_paths: usingAll ? paths : paths.map((path) => join9(root, ...path.split("/")))
+    committed_paths: usingAll ? paths : paths.map((path) => join10(root, ...path.split("/")))
   });
 }
 
 // src/change-state.ts
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname as dirname6 } from "node:path";
+import { existsSync as existsSync2, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname as dirname7 } from "node:path";
 function writePersistedChange(file, rec) {
-  mkdirSync(dirname6(file), { recursive: true });
+  mkdirSync(dirname7(file), { recursive: true });
   writeFileSync(file, JSON.stringify(rec) + "\n");
 }
 function clearPersistedChange(file) {
   try {
-    if (!existsSync(file)) return false;
+    if (!existsSync2(file)) return false;
     unlinkSync(file);
     return true;
   } catch {
@@ -33003,149 +33018,237 @@ function threadPost(path, root) {
 
 // src/collaborate.ts
 import { spawn as spawn3 } from "node:child_process";
-import { existsSync as existsSync2, readdirSync, statSync } from "node:fs";
-import { homedir } from "node:os";
-import { isAbsolute as isAbsolute5, join as join10, resolve as resolve12 } from "node:path";
+import { randomUUID as randomUUID2 } from "node:crypto";
+import { lstatSync, realpathSync as realpathSync2 } from "node:fs";
+import { isAbsolute as isAbsolute5, join as join11, resolve as resolve12 } from "node:path";
 var DEPTH_ENV = "IS_COLLABORATE_DEPTH";
-var TIMEOUT_MS = Number(process.env.IS_COLLABORATE_TIMEOUT_MS) || 6e5;
-var READ_MAX_TURNS = 20;
-var DELEGATE_MAX_TURNS = 30;
-var READ_TOOLS = "Read,Grep,Glob";
-var READ_POSTURE = ["--tools", READ_TOOLS, "--allowedTools", READ_TOOLS, "--strict-mcp-config"];
-var HANDLE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-function resolveClaude() {
-  return process.env.IS_CLAUDE_PATH?.trim() || "claude";
+var DEFAULT_TIMEOUT_MS = 6e5;
+var MAX_EVENT_BYTES = 1024 * 1024;
+var MAX_OUTPUT_BYTES = 4 * 1024 * 1024;
+var MAX_REPLY_CHARS = 12e3;
+var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+var activeChildren = /* @__PURE__ */ new Set();
+function signalTree(child, signal) {
+  if (!child.pid) return;
+  try {
+    if (process.platform === "win32") spawn3("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+    else process.kill(-child.pid, signal);
+  } catch {
+    try {
+      child.kill(signal);
+    } catch {
+    }
+  }
 }
-var spawnClaude = (args, cwd) => new Promise((res) => {
-  const proc = spawn3(resolveClaude(), args, {
+function onParentExit() {
+  for (const child of activeChildren) signalTree(child, "SIGKILL");
+}
+function onParentSignal(signal) {
+  onParentExit();
+  process.off("SIGINT", onInterrupt);
+  process.off("SIGTERM", onTerminate);
+  process.kill(process.pid, signal);
+}
+function onInterrupt() {
+  onParentSignal("SIGINT");
+}
+function onTerminate() {
+  onParentSignal("SIGTERM");
+}
+function trackChild(child) {
+  if (activeChildren.size === 0) {
+    process.once("exit", onParentExit);
+    process.on("SIGINT", onInterrupt);
+    process.on("SIGTERM", onTerminate);
+  }
+  activeChildren.add(child);
+}
+function untrackChild(child) {
+  activeChildren.delete(child);
+  if (activeChildren.size === 0) {
+    process.off("exit", onParentExit);
+    process.off("SIGINT", onInterrupt);
+    process.off("SIGTERM", onTerminate);
+  }
+}
+var spawnCli = (args, cwd) => new Promise((done) => {
+  const { command, argv } = cliInvocation(resolveCli(), args);
+  const timeoutMs = Number(process.env.IS_COLLABORATE_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS;
+  const child = spawn3(command, argv, {
     cwd,
-    stdio: ["pipe", "pipe", "pipe"],
+    shell: false,
+    detached: true,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, [DEPTH_ENV]: "1" }
   });
+  trackChild(child);
   let out = "";
   let err = "";
   let settled = false;
-  const finish = (r) => {
+  let timedOut = false;
+  let overflow = false;
+  const finish = (code) => {
     if (settled) return;
     settled = true;
     clearTimeout(timer);
-    res(r);
+    untrackChild(child);
+    const reason = overflow ? "CLI output exceeded limit" : timedOut ? `CLI turn timed out after ${timeoutMs}ms` : "";
+    done({ out, err: (reason ? `${reason}${err ? `: ${err}` : ""}` : err).slice(0, 4e3), code: timedOut || overflow ? 1 : code });
   };
   const timer = setTimeout(() => {
-    proc.kill("SIGKILL");
-    finish({ out, err: err || `collaboration exceeded ${TIMEOUT_MS}ms and was terminated`, code: 1 });
-  }, TIMEOUT_MS);
-  proc.stdout.on("data", (d) => out += d);
-  proc.stderr.on("data", (d) => err += d);
-  proc.on("close", (code) => finish({ out, err, code: code ?? 1 }));
-  proc.on("error", (e) => finish({ out: "", err: e.message, code: 1 }));
-  proc.stdin.end();
+    timedOut = true;
+    signalTree(child, "SIGTERM");
+    setTimeout(() => signalTree(child, "SIGKILL"), 2e3).unref();
+  }, timeoutMs);
+  child.stdout?.setEncoding("utf8");
+  child.stdout?.on("data", (chunk) => {
+    out += chunk;
+    if (Buffer.byteLength(out) > MAX_OUTPUT_BYTES) {
+      overflow = true;
+      out = "";
+      signalTree(child, "SIGKILL");
+    }
+  });
+  child.stderr?.setEncoding("utf8");
+  child.stderr?.on("data", (chunk) => {
+    err = (err + chunk).slice(0, 4e3);
+  });
+  child.on("error", (error2) => {
+    err = `Could not start CLI: ${error2.message}`;
+  });
+  child.on("close", (code) => finish(code ?? 1));
 });
-function postureArgs(mode, maxTurns) {
-  const cap = maxTurns ?? (mode === "delegate" ? DELEGATE_MAX_TURNS : READ_MAX_TURNS);
-  const args = ["--max-turns", String(cap)];
-  return mode === "delegate" ? args : [...READ_POSTURE, ...args];
-}
 function resolvePov(pov, cwd) {
-  const dir = isAbsolute5(pov) ? pov : resolve12(cwd || process.cwd(), pov);
-  if (!existsSync2(dir) || !statSync(dir).isDirectory()) {
-    return { error: `Not a directory: ${dir}` };
-  }
-  if (!existsSync2(join10(dir, "_agent"))) {
-    return { error: `Not a point of view \u2014 no _agent/ contract at ${dir}` };
-  }
-  return { dir };
-}
-function findTranscript(handle) {
-  const base = join10(homedir(), ".claude", "projects");
-  if (!existsSync2(base)) return null;
-  for (const bucket of readdirSync(base)) {
-    const file = join10(base, bucket, `${handle}.jsonl`);
-    if (existsSync2(file)) return file;
-  }
-  return null;
-}
-function parseResult(out) {
+  const candidate = isAbsolute5(pov) ? pov : resolve12(cwd ?? process.cwd(), pov);
   try {
-    const v = JSON.parse(out);
-    return v && typeof v === "object" ? v : null;
+    const dir = realpathSync2(candidate);
+    const root = lstatSync(dir);
+    const contract = lstatSync(join11(dir, "_agent", "agreement.md"));
+    if (root.isDirectory() && contract.isFile() && !contract.isSymbolicLink()) return { dir };
   } catch {
-    return null;
   }
+  return { error: `Not a local Agreement POV: ${candidate} (requires a regular _agent/agreement.md in the target repository)` };
 }
-async function turn(dir, message, mode, maxTurns, handle, run2) {
-  const args = ["-p", "--output-format", "json", ...postureArgs(mode, maxTurns)];
-  if (handle) args.push("--resume", handle);
-  args.push(message);
-  const { out, err, code } = await run2(args, dir);
-  const parsed = parseResult(out);
-  if (parsed?.session_id && parsed.subtype === "error_max_turns") {
-    return {
-      ok: true,
-      text: JSON.stringify(
-        {
-          handle: parsed.session_id,
-          mode,
-          answer: (parsed.result || "").trim(),
-          stopped: "max_turns",
-          hint: "The turn cap was reached before an answer. say with the same handle to continue, or raise max_turns."
-        },
-        null,
-        2
-      )
-    };
+function parseTurn(out, err, code, conversationId) {
+  if (err.startsWith("CLI output exceeded limit") || err.startsWith("CLI turn timed out")) return { ok: false, text: err };
+  let reply = "";
+  let complete = false;
+  let failure2;
+  for (const line of out.split("\n")) {
+    if (!line.trim()) continue;
+    if (Buffer.byteLength(line) > MAX_EVENT_BYTES) return { ok: false, text: "CLI event exceeded limit" };
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      return { ok: false, text: `Invalid CLI event: ${line.slice(0, 160)}` };
+    }
+    if (event.type === "message_start" && event.conversation_id !== conversationId) {
+      return { ok: false, text: "CLI returned a different conversation id" };
+    }
+    if (event.type === "text_delta" && typeof event.delta === "string") reply = (reply + event.delta).slice(0, MAX_REPLY_CHARS);
+    if (event.type === "turn_complete") {
+      complete = true;
+      const response = event.result?.response;
+      if (typeof response === "string") reply = response.slice(0, MAX_REPLY_CHARS);
+    }
+    if (event.type === "error") failure2 = String(event.message ?? "Child failed").slice(0, 4e3);
+    if (event.type === "cancelled") failure2 = "Child turn was cancelled";
   }
-  if (code !== 0) {
-    return { ok: false, text: err.trim() || out.trim() || `claude exited ${code}` };
+  if (code !== 0 || failure2 || !complete) {
+    return { ok: false, text: (failure2 || err.trim() || `CLI exited ${code} without a successful turn_complete`).slice(0, 4e3) };
   }
-  if (!parsed) {
-    return { ok: false, text: `Could not parse claude output: ${out.slice(0, 200)}` };
-  }
-  return {
-    ok: true,
-    text: JSON.stringify({ handle: parsed.session_id, mode, answer: (parsed.result || "").trim() }, null, 2)
-  };
+  return { ok: true, text: reply.trim() };
 }
-async function runCollaborate(input, run2 = spawnClaude) {
-  const { action, pov, message, handle, cwd, max_turns } = input;
-  const mode = input.mode ?? "consult";
-  if ((action === "open" || action === "say") && process.env[DEPTH_ENV]) {
-    return {
-      ok: false,
-      text: "Refusing to collaborate from inside a collaboration \u2014 nesting is disabled in this release."
-    };
+async function runCollaborate(input, run2 = spawnCli) {
+  if (input.action === "close") {
+    if (!input.handle || !UUID.test(input.handle)) return { ok: false, text: "A valid conversation handle is required for close." };
+    return { ok: true, text: JSON.stringify({
+      conversation_id: input.handle,
+      closed: false,
+      note: "No live process is held here; the transcript is retained and may be resumed."
+    }) };
   }
-  switch (action) {
-    case "open":
-    case "say": {
-      if (!pov) return { ok: false, text: "pov is required \u2014 a folder carrying an _agent/ contract." };
-      if (!message) return { ok: false, text: "message is required." };
-      if (max_turns !== void 0 && (!Number.isInteger(max_turns) || max_turns < 1)) {
-        return { ok: false, text: `max_turns must be a positive integer, got ${String(max_turns)}` };
-      }
-      if (action === "say") {
-        if (!handle) return { ok: false, text: "handle is required for say \u2014 the one returned by open." };
-        if (!HANDLE.test(handle)) return { ok: false, text: `Not a valid handle: ${handle}` };
-      }
-      const { dir, error: error2 } = resolvePov(pov, cwd);
-      if (error2) return { ok: false, text: error2 };
-      return turn(dir, message, mode, max_turns, action === "say" ? handle : void 0, run2);
-    }
-    case "close": {
-      if (!handle) return { ok: false, text: "handle is required for close." };
-      if (!HANDLE.test(handle)) return { ok: false, text: `Not a valid handle: ${handle}` };
-      return {
-        ok: true,
-        text: JSON.stringify(
-          { closed: handle, transcript: findTranscript(handle), retention: "deferred to policy" },
-          null,
-          2
-        )
-      };
-    }
-    default:
-      return { ok: false, text: `Unknown action: ${String(action)}` };
+  if (process.env[DEPTH_ENV]) return { ok: false, text: "Refusing to collaborate from inside a collaboration \u2014 nesting is disabled." };
+  if (!input.pov || !input.message?.trim()) return { ok: false, text: "pov (local Agreement repo) and message are required." };
+  if (Buffer.byteLength(input.message) > 8 * 1024) return { ok: false, text: "Launch message exceeds 8 KiB; provide a smaller instruction or point to a local Note." };
+  if (input.action === "say" && (!input.handle || !UUID.test(input.handle))) return { ok: false, text: "A valid conversation handle is required for say." };
+  const selected = resolvePov(input.pov, input.cwd);
+  if (!selected.dir) return { ok: false, text: selected.error };
+  const runtime = input.runtime ?? "claude";
+  if (runtime !== "pi" && runtime !== "claude") return { ok: false, text: "runtime must be pi or claude" };
+  if (runtime === "pi" && (input.effort || input.permission_mode || input.read_only === true)) {
+    return { ok: false, text: "Claude effort, permission mode, and read-only tool policy are unavailable under Pi." };
   }
+  if (runtime === "claude" && input.thinking) return { ok: false, text: "Pi thinking is unavailable under Claude; choose effort instead." };
+  const readOnly = runtime === "claude" && (input.read_only ?? true);
+  if (readOnly && input.permission_mode === "bypassPermissions") return { ok: false, text: "Read-only cannot bypass permissions." };
+  if (runtime === "pi" || readOnly || input.effort) {
+    const help = await run2(["agent", "run", "--help"], selected.dir);
+    const marker = runtime === "pi" ? "--pi-trust" : readOnly ? "--read-only" : "--claude-effort";
+    const usage = help.out + help.err;
+    if (help.code !== 0 || !usage.includes(marker) || input.effort && !usage.includes("--claude-effort")) {
+      return { ok: false, text: `CLI does not support ${marker}; update the IdeaSpaces CLI before this launch.` };
+    }
+  }
+  const id = input.action === "say" ? input.handle : randomUUID2();
+  if (input.action === "say") {
+    const prior = await run2([
+      "--json",
+      "conversation",
+      "get",
+      "--local",
+      "--runtime",
+      runtime,
+      "--context",
+      selected.dir,
+      "--conversation",
+      id
+    ], selected.dir);
+    if (prior.code !== 0) return { ok: false, text: (prior.err || prior.out || "Could not check conversation").slice(0, 4e3) };
+    if (Buffer.byteLength(prior.out) > MAX_OUTPUT_BYTES) return { ok: false, text: "Conversation history exceeds resume verification limit" };
+    try {
+      const detail3 = JSON.parse(prior.out);
+      const reported = typeof detail3.repo_id === "string" ? realpathSync2(detail3.repo_id) : "";
+      if (reported !== selected.dir || !Array.isArray(detail3.history) || detail3.history.length === 0) {
+        return { ok: false, text: `No existing ${runtime} conversation ${id} at this Agreement POV; refusing to start a new transcript.` };
+      }
+    } catch {
+      return { ok: false, text: "Cannot verify conversation identity before resume" };
+    }
+  }
+  const args = [
+    "--json",
+    "agent",
+    "run",
+    selected.dir,
+    "--runtime",
+    runtime,
+    "--conversation",
+    id,
+    `--message=${input.message}`
+  ];
+  if (input.model) args.push("--model", input.model);
+  if (runtime === "pi") args.push("--pi-trust", "saved");
+  if (input.thinking) args.push("--pi-thinking", input.thinking);
+  if (input.effort) args.push("--claude-effort", input.effort);
+  if (runtime === "claude") {
+    args.push("--permission-mode", input.permission_mode ?? (readOnly ? "dontAsk" : "acceptEdits"));
+    if (readOnly) args.push("--read-only");
+  }
+  const { out, err, code } = await run2(args, selected.dir);
+  const result = parseTurn(out, err, code, id);
+  if (!result.ok) return result;
+  return { ok: true, text: JSON.stringify({
+    conversation_id: id,
+    handle: id,
+    runtime,
+    model: input.model ?? null,
+    permission_mode: runtime === "claude" ? input.permission_mode ?? (readOnly ? "dontAsk" : "acceptEdits") : null,
+    read_only: readOnly,
+    answer: result.text
+  }, null, 2) };
 }
 
 // src/tool-parameters.ts
@@ -33278,22 +33381,16 @@ var AUTHORED_TOOL_PARAMETERS = {
     cwd: cwdField
   },
   is_collaborate: {
-    action: external_exports.enum(["open", "say", "close"]).describe(
-      "open: start collaborating with a point of view. say: continue it. close: end it (non-destructive)."
-    ),
-    pov: external_exports.string().optional().describe(
-      "For open/say: the point of view \u2014 a folder carrying an _agent/ contract (an agent repo, a sibling vantage). Relative to cwd or absolute."
-    ),
-    message: external_exports.string().optional().describe(
-      "For open/say: what to put to that point of view. The mode lives in how you phrase it \u2014 ask for a reading (consult), hand it a task (delegate), or ask it to judge an artifact (review)."
-    ),
-    mode: external_exports.enum(["consult", "delegate", "review"]).optional().describe(
-      "Posture for this turn; default consult. consult/review: pinned read-only. delegate: no tool restriction \u2014 the session runs under the point of view's own folder settings, so delegate only into folders you trust. Not sticky: pass it on every say that should keep writing."
-    ),
-    max_turns: external_exports.number().int().positive().optional().describe(
-      "Turn cap for this turn. Defaults: 20 for consult/review, 30 for delegate. A capped turn returns its handle with stopped: max_turns so you can say to continue."
-    ),
-    handle: external_exports.string().optional().describe("For say/close: the handle returned by open (the point of view's session id)."),
+    action: external_exports.enum(["open", "say", "close"]).describe("open: start a CLI-backed local conversation. say: resume by conversation id. close: compatibility acknowledgement only; it changes no state."),
+    pov: external_exports.string().optional().describe("For open/say: explicit local IdeaSpace repo path with its own _agent/agreement.md; relative to cwd or absolute."),
+    message: external_exports.string().optional().describe("For open/say: the purpose and task, in your own words. Intent does not grant tools."),
+    handle: external_exports.string().optional().describe("For say/close: exact conversation_id returned by open; supply the same runtime on say."),
+    runtime: external_exports.enum(["pi", "claude"]).optional().describe("Child harness, default claude. On say specify pi if open used pi."),
+    model: external_exports.string().optional().describe("Model alias/id for the selected runtime."),
+    thinking: external_exports.enum(["off", "minimal", "low", "medium", "high", "xhigh", "max"]).optional().describe("Pi thinking only."),
+    effort: external_exports.enum(["low", "medium", "high", "xhigh", "max"]).optional().describe("Claude effort only, if the installed Claude Code supports --effort."),
+    permission_mode: external_exports.enum(["acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan"]).optional().describe("Claude permission mode. bypassPermissions requires read_only=false explicitly."),
+    read_only: external_exports.boolean().optional().describe("Claude-only restricted Read/Grep/Glob and no plugin MCP servers. Default true on Claude; pass false deliberately to allow writes."),
     cwd: cwdField
   }
 };
@@ -33306,18 +33403,11 @@ function hasAnyNonEmptyString(keys, values) {
 }
 
 // src/index.ts
-function resolveCli() {
-  if (process.env.IS_CLI_PATH) return process.env.IS_CLI_PATH;
-  const __dirname = dirname7(fileURLToPath(import.meta.url));
-  const relative7 = join11(__dirname, "../cli/bundle/ideaspaces.js");
-  if (existsSync3(relative7)) return relative7;
-  return "ideaspaces";
-}
 var CLI = resolveCli();
 function cli(args, stdin, cwd) {
   return new Promise((resolve14) => {
-    const isFile = CLI.includes("/") || CLI.includes("\\") || CLI.endsWith(".js");
-    const proc = spawn4(isFile ? "node" : CLI, isFile ? [CLI, ...args] : args, {
+    const { command, argv } = cliInvocation(CLI, args);
+    const proc = spawn4(command, argv, {
       stdio: ["pipe", "pipe", "pipe"],
       // The MCP server starts in whatever cwd Claude Code launched it from
       // (the user's session-start dir). The agent may have `cd`-ed inside
@@ -33364,7 +33454,7 @@ function readSessionId() {
   const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
   if (!dir) return void 0;
   try {
-    const id = readFileSync(sessionIdCachePath(homedir2(), dir), "utf-8").trim();
+    const id = readFileSync(sessionIdCachePath(homedir(), dir), "utf-8").trim();
     return id || void 0;
   } catch {
     return void 0;
@@ -33373,7 +33463,7 @@ function readSessionId() {
 function changeCacheFile() {
   const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
   if (!dir) return void 0;
-  return changeCachePath(homedir2(), dir);
+  return changeCachePath(homedir(), dir);
 }
 async function openChangeState() {
   const file = changeCacheFile();
@@ -33541,7 +33631,7 @@ server.tool(
       if (depth === "children") return fail("Thread posts support name, summary, surface and full rungs; not children.");
       try {
         if (pin) {
-          const result2 = await cli(["--json", ...threadArgs({ action: "open", path: post.thread, depth: "full", pin, position })], void 0, dirname7(dirname7(post.thread)));
+          const result2 = await cli(["--json", ...threadArgs({ action: "open", path: post.thread, depth: "full", pin, position })], void 0, dirname8(dirname8(post.thread)));
           if (result2.code !== 0) return fail(result2.err.trim() || result2.out.trim());
           return ok(pinnedView(JSON.parse(result2.out), depth ?? "summary", { pin, position: post.position }));
         }
@@ -33614,7 +33704,7 @@ server.tool(
 );
 server.tool(
   "is_collaborate",
-  "Collaborate with another point of view \u2014 open a conversation with the agent/vantage that lives in a folder, continue it, and close it. A point of view is any folder with an _agent/ contract; the session boots oriented AS that vantage (its foundation/purpose/now) and works from where it stands. The mode is how you phrase the message: consult (get its reading), review (have it judge an artifact), or delegate (hand it a task to carry out \u2014 claim a slice, build it, report back). consult/review are read-only. delegate pins nothing: the session runs under the point of view's own folder settings, inheriting this environment \u2014 the folder governs, not the caller \u2014 so delegate only into points of view you trust. Mode is per turn and echoed in every result; a say without mode is read-only. A turn that hits max_turns returns its handle with stopped: max_turns \u2014 say to continue. open returns a handle; say continues by that handle; close is non-destructive (retention is the POV's own policy). A collaboration cannot itself collaborate (one hop).",
+  "Launch a fellow point of view in a local IdeaSpace repository carrying its own _agent/agreement.md. open selects pi or claude, model and supported thinking/effort; say resumes the returned conversation_id. The message carries purpose, not a consult/delegate task type. Claude defaults to restricted read-only tools; to permit writes set read_only=false, and choose bypassPermissions only explicitly. Pi read-only is not supported. A failed child is a failed tool call. close is a compatibility response only: it changes no state, and the transcript can still be resumed. A collaboration cannot nest.",
   MCP_TOOL_PARAMETERS.is_collaborate,
   async (input) => {
     const result = await runCollaborate(input);
