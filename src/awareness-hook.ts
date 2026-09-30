@@ -13,8 +13,8 @@
  * the three surfaces cannot order the tail differently. Claude Code exposes no
  * breakpoint-placement primitive, so head and tail ship as one deterministic
  * SessionStart render, kept under Claude Code's inline limit (inline-budget.ts)
- * so it is never reduced to a preview. The hook then advances the local seen ref for the next
- * session; that ref write stays surface-owned.
+ * so it is never reduced to a preview. The hook then advances the local seen
+ * ref for the next session; that ref write stays surface-owned.
  *
  * The session-id bridge and persisted open-Change record are Claude-harness
  * state, not Content awareness. Outside an ideaspace the hook emits only an

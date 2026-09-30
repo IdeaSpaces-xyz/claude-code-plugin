@@ -14,6 +14,12 @@ describe("inline budget", () => {
     expect(cut).toMatch(/line \d+\n\n\[Orientation cut to fit the inline limit; is_navigate shows the rest\.\]$/);
   });
 
+  it("cuts a render with no line break inside the budget mid-line, still under it", () => {
+    const cut = cutToBudget("x".repeat(20_000));
+    expect(cut.length).toBeLessThanOrEqual(INLINE_BUDGET);
+    expect(cut.endsWith("is_navigate shows the rest.]")).toBe(true);
+  });
+
   it("names demoted files relative to the project and the verbs that read them", () => {
     expect(renderDemotedLine(["/space/_agent/agreement.md"], "/space")).toBe(
       "Summarised to fit the inline limit: _agent/agreement.md. Read it in full with Read before acting.",

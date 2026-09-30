@@ -33383,7 +33383,7 @@ var AUTHORED_TOOL_PARAMETERS = {
   is_change_close: {},
   is_look: {
     path: external_exports.string().min(1).describe("Local Markdown file or Content directory: relative to cwd or absolute."),
-    depth: contentDepth.default("summary").describe("How much to read: summary (one line), children (headings or directory entries), surface or full (the whole Note), name (label only). Start at summary or children; deepen to full when the text itself matters."),
+    depth: contentDepth.default("summary").describe("How much to read: name (label only), summary (one line), children (a Note's headings or a directory's entries), surface (a Note's body or a directory's README), full (the same as surface for a Note; README plus entries for a directory). Start at summary or children; deepen when the text itself matters."),
     contract: external_exports.enum(["foundation", "agreement"]).optional().describe("Explicit target frame; otherwise the habitat prefers Agreement, then Foundation, then floor."),
     cwd: cwdField,
     pin: external_exports.string().optional().describe("Authored commit pin for a _threads/ post; never inferred from HEAD"),
@@ -33658,7 +33658,7 @@ server.tool(
 );
 server.tool(
   "is_look",
-  "Read a Note \u2014 any Markdown file or Content directory in an ideaspace \u2014 so the conversation Map records it. Use it instead of cat, head or sed on a .md file: a shell read never reaches the Map. depth: summary (default, one line), children (headings, or a directory's entries), surface or full (the whole Note; a directory's README plus its entries), name (the label only). _threads/ posts also accept an authored pin and position (resolved via CLI, never HEAD). Read-only; never changes caller authority or working directory.",
+  "Read a Note \u2014 any Markdown file or Content directory in an ideaspace \u2014 so the conversation Map records it. Use it instead of cat, head or sed on a .md file: a Bash read is not recorded as a read. _threads/ posts also accept an authored pin and position (resolved via CLI, never HEAD). Read-only; never changes caller authority or working directory.",
   MCP_TOOL_PARAMETERS.is_look,
   async ({ path, depth, contract, cwd, pin, position }) => {
     const target = resolve13(cwd || process.cwd(), path);
