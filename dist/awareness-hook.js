@@ -9133,6 +9133,46 @@ function renderKindLine(manifest) {
   return `Kind: ${reference} \u2014 declared by the Agreement; not a kind this plugin recognises, so it is read as written.`;
 }
 
+// src/inline-budget.ts
+import { relative as relative5 } from "node:path";
+var INLINE_BUDGET = 9500;
+function summarizeContract(manifest) {
+  const demoted = [];
+  const contract = manifest.contract.map((entry) => {
+    if (entry.representation !== "full") return entry;
+    demoted.push(entry.path);
+    const { content: _content, ...rest } = entry;
+    return { ...rest, representation: "summary" };
+  });
+  return { manifest: { ...manifest, contract }, demoted };
+}
+function renderDemotedLine(paths, base) {
+  const shown = paths.map((path) => relative5(base, path) || path).join(", ");
+  const it = paths.length === 1 ? "it" : "each";
+  return `Summarised to fit the inline limit: ${shown}. Read ${it} in full with the Read tool before acting.`;
+}
+function joinParts(...parts) {
+  return parts.filter((part) => part.trim()).join("\n\n");
+}
+function fitToBudget(head, tail, budget = INLINE_BUDGET) {
+  const join7 = joinParts;
+  const whole = join7(head, tail);
+  if (whole.length <= budget) return whole;
+  const room = budget - tail.length - 2;
+  if (room < 1e3) return cutToBudget(whole, budget);
+  return join7(cutToBudget(head, room), tail);
+}
+function cutToBudget(text, budget = INLINE_BUDGET) {
+  if (text.length <= budget) return text;
+  const note = "\n\n[Orientation cut here to fit the inline limit; is_navigate shows the position in full.]";
+  const room = budget - note.length;
+  const end = text.lastIndexOf("\n", room);
+  return text.slice(0, end > 0 ? end : room) + note;
+}
+
+// src/reading-line.ts
+var READING_LINE = "Reading: read Notes here with is_look or Read, not cat, head or sed \u2014 only those reads reach the conversation Map. Shell reads of code are fine.";
+
 // src/stdin.ts
 async function readStdin() {
   if (process.stdin.isTTY) return "";
@@ -9202,7 +9242,17 @@ async function main() {
       } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const kind = renderKindLine(manifest) ?? "";
-      const text = [head, kind, tail].filter((part) => part.trim()).join("\n\n");
+      const join7 = joinParts;
+      const rest = join7(kind, READING_LINE, tail);
+      let text = join7(head, rest);
+      if (text.length > INLINE_BUDGET) {
+        const slim = summarizeContract(manifest);
+        const slimHead = slim.demoted.length ? join7(
+          renderContentAwareness(slim.manifest, { placement: "head" }),
+          renderDemotedLine(slim.demoted, projectDir)
+        ) : head;
+        text = fitToBudget(slimHead, rest);
+      }
       if (text) process.stdout.write(text + "\n");
       if (manifest.position.repoRoot && manifest.git?.headSha) {
         markSeen(manifest.position.repoRoot, manifest.git.headSha);

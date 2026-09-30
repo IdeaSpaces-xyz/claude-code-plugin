@@ -3,6 +3,7 @@
     "core": {
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "alwaysLoad": true,
       "env": {
         "IS_CLI_PATH": "${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js"
       }
