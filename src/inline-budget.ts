@@ -8,7 +8,7 @@
  * stand in arrives clipped. The render therefore fits or degrades on purpose:
  * the full text when it fits; otherwise every full contract entry falls to its
  * summary and the render names the files to read whole; and as a last resort
- * the text is cut at the budget with a line saying so.
+ * the head is cut at the budget with a line saying so, the tail kept whole.
  */
 
 import { relative } from "node:path";
@@ -39,10 +39,25 @@ export function renderDemotedLine(paths: string[], base: string): string {
   return `Summarised to fit the inline limit: ${shown}. Read ${it} in full with Read before acting.`;
 }
 
+/**
+ * Join head and tail within the budget. When they do not fit, the head is cut
+ * and the tail kept whole: State and the open Change are what the session acts
+ * on, and the head's tree, contract and skills are one is_navigate away.
+ */
+export function fitToBudget(head: string, tail: string, budget = INLINE_BUDGET): string {
+  const join = (a: string, b: string) => [a, b].filter((part) => part.trim()).join("\n\n");
+  const whole = join(head, tail);
+  if (whole.length <= budget) return whole;
+  const room = budget - tail.length - 2;
+  // A tail that leaves no useful room for the head is cut like anything else.
+  if (room < 1_000) return cutToBudget(whole, budget);
+  return join(cutToBudget(head, room), tail);
+}
+
 /** Cut an over-budget render at a line boundary and say where the rest is. */
 export function cutToBudget(text: string, budget = INLINE_BUDGET): string {
   if (text.length <= budget) return text;
-  const note = "\n\n[Orientation cut to fit the inline limit; is_navigate shows the rest.]";
+  const note = "\n\n[Orientation cut here to fit the inline limit; is_navigate shows the position in full.]";
   const room = budget - note.length;
   const end = text.lastIndexOf("\n", room);
   return text.slice(0, end > 0 ? end : room) + note;

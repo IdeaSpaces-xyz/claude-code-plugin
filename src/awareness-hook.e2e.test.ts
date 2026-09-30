@@ -200,6 +200,37 @@ describe("shipped in-process awareness hook", () => {
     expect(longRun.stdout).not.toContain("Orientation cut");
   });
 
+  it("cuts an oversized head, never the State and open Change after it", () => {
+    const space = tempDir("is-awareness-hook-cut-");
+    const home = tempDir("is-awareness-hook-cut-home-");
+    mkdirSync(join(space, "_agent"));
+    writeFileSync(join(space, "_agent", "agreement.md"), "---\nname: Agreement — Wide\nsummary: A fixture.\n---\nShort.\n");
+    // Fifty Notes whose summaries alone overflow the head: nothing to demote.
+    for (let i = 0; i < 50; i++) {
+      writeFileSync(
+        join(space, `note-${String(i).padStart(2, "0")}.md`),
+        `---\nsummary: ${"A summary long enough to fill the tree line by itself. ".repeat(4)}\n---\nBody.\n`,
+      );
+    }
+    git(space, "init", "-q", "-b", "main");
+    const changeFile = changeCachePath(home, space);
+    mkdirSync(join(changeFile, ".."), { recursive: true });
+    writeFileSync(changeFile, JSON.stringify({ change_id: "chg_keep-the-tail-0001", session_id: "session-cut", opened_at: Date.now() }));
+
+    const result = spawnSync("node", [HOOK], {
+      cwd: space,
+      env: { ...process.env, HOME: home, CLAUDE_PROJECT_DIR: space },
+      input: JSON.stringify({ session_id: "session-cut", cwd: space }),
+      encoding: "utf-8",
+    });
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.length).toBeLessThan(10_000);
+    expect(result.stdout).toContain("[Orientation cut here to fit the inline limit");
+    expect(result.stdout).toContain("State:");
+    expect(result.stdout.trimEnd().split("\n").at(-1)).toContain("Change open: chg_keep-the-tail-0001");
+  });
+
   it("names the convention an Agreement declares — agent, knowledge, or as written", () => {
     const home = tempDir("is-awareness-hook-kind-home-");
     const run = (space: string) =>

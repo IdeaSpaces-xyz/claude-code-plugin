@@ -39,7 +39,7 @@ import {
 import { changeCachePath, sessionIdCachePath } from "./session-path.js";
 import { parseChangeRecord, renderChangeLine } from "./change-line.js";
 import { renderKindLine } from "./kind-line.js";
-import { INLINE_BUDGET, cutToBudget, renderDemotedLine, summarizeContract } from "./inline-budget.js";
+import { INLINE_BUDGET, fitToBudget, renderDemotedLine, summarizeContract } from "./inline-budget.js";
 import { READING_LINE } from "./reading-line.js";
 import { readStdin } from "./stdin.js";
 
@@ -139,20 +139,21 @@ async function main(): Promise<void> {
       // The habitat's lines between head and tail: which convention the Space
       // declares, what that means in Claude Code, and how Notes are read here.
       const kind = renderKindLine(manifest) ?? "";
-      const compose = (head: string, demoted: string) =>
-        [head, demoted, kind, READING_LINE, tail].filter((part) => part.trim()).join("\n\n");
-      let text = compose(head, "");
+      const join = (...parts: string[]) => parts.filter((part) => part.trim()).join("\n\n");
+      const rest = join(kind, READING_LINE, tail);
+      let text = join(head, rest);
       // Over the inline limit the harness would show a 2 KB preview: bodies
-      // fall to summaries with a pointer before anything is cut.
+      // fall to summaries with a pointer before anything is cut, and a cut
+      // takes from the head, never the tail.
       if (text.length > INLINE_BUDGET) {
         const slim = summarizeContract(manifest);
-        if (slim.demoted.length) {
-          text = compose(
-            renderContentAwareness(slim.manifest, { placement: "head" }),
-            renderDemotedLine(slim.demoted, projectDir),
-          );
-        }
-        text = cutToBudget(text);
+        const slimHead = slim.demoted.length
+          ? join(
+              renderContentAwareness(slim.manifest, { placement: "head" }),
+              renderDemotedLine(slim.demoted, projectDir),
+            )
+          : head;
+        text = fitToBudget(slimHead, rest);
       }
       if (text) process.stdout.write(text + "\n");
 

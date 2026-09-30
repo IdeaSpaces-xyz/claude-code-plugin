@@ -9151,9 +9151,17 @@ function renderDemotedLine(paths, base) {
   const it = paths.length === 1 ? "it" : "each";
   return `Summarised to fit the inline limit: ${shown}. Read ${it} in full with Read before acting.`;
 }
+function fitToBudget(head, tail, budget = INLINE_BUDGET) {
+  const join7 = (a, b) => [a, b].filter((part) => part.trim()).join("\n\n");
+  const whole = join7(head, tail);
+  if (whole.length <= budget) return whole;
+  const room = budget - tail.length - 2;
+  if (room < 1e3) return cutToBudget(whole, budget);
+  return join7(cutToBudget(head, room), tail);
+}
 function cutToBudget(text, budget = INLINE_BUDGET) {
   if (text.length <= budget) return text;
-  const note = "\n\n[Orientation cut to fit the inline limit; is_navigate shows the rest.]";
+  const note = "\n\n[Orientation cut here to fit the inline limit; is_navigate shows the position in full.]";
   const room = budget - note.length;
   const end = text.lastIndexOf("\n", room);
   return text.slice(0, end > 0 ? end : room) + note;
@@ -9231,17 +9239,16 @@ async function main() {
       } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const kind = renderKindLine(manifest) ?? "";
-      const compose = (head2, demoted) => [head2, demoted, kind, READING_LINE, tail].filter((part) => part.trim()).join("\n\n");
-      let text = compose(head, "");
+      const join7 = (...parts) => parts.filter((part) => part.trim()).join("\n\n");
+      const rest = join7(kind, READING_LINE, tail);
+      let text = join7(head, rest);
       if (text.length > INLINE_BUDGET) {
         const slim = summarizeContract(manifest);
-        if (slim.demoted.length) {
-          text = compose(
-            renderContentAwareness(slim.manifest, { placement: "head" }),
-            renderDemotedLine(slim.demoted, projectDir)
-          );
-        }
-        text = cutToBudget(text);
+        const slimHead = slim.demoted.length ? join7(
+          renderContentAwareness(slim.manifest, { placement: "head" }),
+          renderDemotedLine(slim.demoted, projectDir)
+        ) : head;
+        text = fitToBudget(slimHead, rest);
       }
       if (text) process.stdout.write(text + "\n");
       if (manifest.position.repoRoot && manifest.git?.headSha) {
