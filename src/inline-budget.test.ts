@@ -32,7 +32,7 @@ describe("inline budget", () => {
 
   it("names demoted files relative to the project and the verbs that read them", () => {
     expect(renderDemotedLine(["/space/_agent/agreement.md"], "/space")).toBe(
-      "Summarised to fit the inline limit: _agent/agreement.md. Read it in full with Read before acting.",
+      "Summarised to fit the inline limit: _agent/agreement.md. Read it in full with the Read tool before acting.",
     );
   });
 });

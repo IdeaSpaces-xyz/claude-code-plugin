@@ -39,7 +39,7 @@ import {
 import { changeCachePath, sessionIdCachePath } from "./session-path.js";
 import { parseChangeRecord, renderChangeLine } from "./change-line.js";
 import { renderKindLine } from "./kind-line.js";
-import { INLINE_BUDGET, fitToBudget, renderDemotedLine, summarizeContract } from "./inline-budget.js";
+import { INLINE_BUDGET, fitToBudget, joinParts, renderDemotedLine, summarizeContract } from "./inline-budget.js";
 import { READING_LINE } from "./reading-line.js";
 import { readStdin } from "./stdin.js";
 
@@ -139,7 +139,7 @@ async function main(): Promise<void> {
       // The habitat's lines between head and tail: which convention the Space
       // declares, what that means in Claude Code, and how Notes are read here.
       const kind = renderKindLine(manifest) ?? "";
-      const join = (...parts: string[]) => parts.filter((part) => part.trim()).join("\n\n");
+      const join = joinParts;
       const rest = join(kind, READING_LINE, tail);
       let text = join(head, rest);
       // Over the inline limit the harness would show a 2 KB preview: bodies

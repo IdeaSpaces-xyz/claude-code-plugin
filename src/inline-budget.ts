@@ -36,16 +36,23 @@ export function summarizeContract(manifest: ContentAwarenessManifest): {
 export function renderDemotedLine(paths: string[], base: string): string {
   const shown = paths.map((path) => relative(base, path) || path).join(", ");
   const it = paths.length === 1 ? "it" : "each";
-  return `Summarised to fit the inline limit: ${shown}. Read ${it} in full with Read before acting.`;
+  return `Summarised to fit the inline limit: ${shown}. Read ${it} in full with the Read tool before acting.`;
+}
+
+/** Join render parts with a blank line, skipping empty ones. */
+export function joinParts(...parts: string[]): string {
+  return parts.filter((part) => part.trim()).join("\n\n");
 }
 
 /**
  * Join head and tail within the budget. When they do not fit, the head is cut
  * and the tail kept whole: State and the open Change are what the session acts
- * on, and the head's tree, contract and skills are one is_navigate away.
+ * on, and the head's tree, contract and skills are one is_navigate away. The
+ * one exception is a tail that alone leaves under 1,000 characters for the
+ * head; then the whole render is cut from the end like anything else.
  */
 export function fitToBudget(head: string, tail: string, budget = INLINE_BUDGET): string {
-  const join = (a: string, b: string) => [a, b].filter((part) => part.trim()).join("\n\n");
+  const join = joinParts;
   const whole = join(head, tail);
   if (whole.length <= budget) return whole;
   const room = budget - tail.length - 2;

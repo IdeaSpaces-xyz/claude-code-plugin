@@ -194,7 +194,7 @@ describe("shipped in-process awareness hook", () => {
     expect(longRun.stdout).not.toContain("LONG BODY SENTINEL");
     expect(longRun.stdout).toContain("agreement — LONG SUMMARY SENTINEL.");
     expect(longRun.stdout).toContain(
-      "Summarised to fit the inline limit: _agent/agreement.md. Read it in full with Read before acting.",
+      "Summarised to fit the inline limit: _agent/agreement.md. Read it in full with the Read tool before acting.",
     );
     expect(longRun.stdout).toContain("Reading: read Notes here with is_look or Read");
     expect(longRun.stdout).not.toContain("Orientation cut");

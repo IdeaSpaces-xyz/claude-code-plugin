@@ -9149,10 +9149,13 @@ function summarizeContract(manifest) {
 function renderDemotedLine(paths, base) {
   const shown = paths.map((path) => relative5(base, path) || path).join(", ");
   const it = paths.length === 1 ? "it" : "each";
-  return `Summarised to fit the inline limit: ${shown}. Read ${it} in full with Read before acting.`;
+  return `Summarised to fit the inline limit: ${shown}. Read ${it} in full with the Read tool before acting.`;
+}
+function joinParts(...parts) {
+  return parts.filter((part) => part.trim()).join("\n\n");
 }
 function fitToBudget(head, tail, budget = INLINE_BUDGET) {
-  const join7 = (a, b) => [a, b].filter((part) => part.trim()).join("\n\n");
+  const join7 = joinParts;
   const whole = join7(head, tail);
   if (whole.length <= budget) return whole;
   const room = budget - tail.length - 2;
@@ -9239,7 +9242,7 @@ async function main() {
       } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const kind = renderKindLine(manifest) ?? "";
-      const join7 = (...parts) => parts.filter((part) => part.trim()).join("\n\n");
+      const join7 = joinParts;
       const rest = join7(kind, READING_LINE, tail);
       let text = join7(head, rest);
       if (text.length > INLINE_BUDGET) {
