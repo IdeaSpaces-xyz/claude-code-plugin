@@ -2992,7 +2992,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve14.call(this, root, ref);
+      let _sch = resolve15.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3019,7 +3019,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve14(root, ref) {
+    function resolve15(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3849,7 +3849,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve14(baseURI, relativeURI, options) {
+    function resolve15(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -3882,49 +3882,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative7, options, skipNormalization) {
+    function resolveComponent(base, relative8, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative7 = parse3(serialize(relative7, options), options);
+        relative8 = parse3(serialize(relative8, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative7.scheme) {
-        target.scheme = relative7.scheme;
-        target.userinfo = relative7.userinfo;
-        target.host = relative7.host;
-        target.port = relative7.port;
-        target.path = removeDotSegments(relative7.path || "");
-        target.query = relative7.query;
+      if (!options.tolerant && relative8.scheme) {
+        target.scheme = relative8.scheme;
+        target.userinfo = relative8.userinfo;
+        target.host = relative8.host;
+        target.port = relative8.port;
+        target.path = removeDotSegments(relative8.path || "");
+        target.query = relative8.query;
       } else {
-        if (relative7.userinfo !== void 0 || relative7.host !== void 0 || relative7.port !== void 0) {
-          target.userinfo = relative7.userinfo;
-          target.host = relative7.host;
-          target.port = relative7.port;
-          target.path = removeDotSegments(relative7.path || "");
-          target.query = relative7.query;
+        if (relative8.userinfo !== void 0 || relative8.host !== void 0 || relative8.port !== void 0) {
+          target.userinfo = relative8.userinfo;
+          target.host = relative8.host;
+          target.port = relative8.port;
+          target.path = removeDotSegments(relative8.path || "");
+          target.query = relative8.query;
         } else {
-          if (!relative7.path) {
+          if (!relative8.path) {
             target.path = base.path;
-            if (relative7.query !== void 0) {
-              target.query = relative7.query;
+            if (relative8.query !== void 0) {
+              target.query = relative8.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative7.path[0] === "/") {
-              target.path = removeDotSegments(relative7.path);
+            if (relative8.path[0] === "/") {
+              target.path = removeDotSegments(relative8.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative7.path;
+                target.path = "/" + relative8.path;
               } else if (!base.path) {
-                target.path = relative7.path;
+                target.path = relative8.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative7.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative8.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative7.query;
+            target.query = relative8.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3932,7 +3932,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative7.fragment;
+      target.fragment = relative8.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -4218,7 +4218,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve14,
+      resolve: resolve15,
       resolveComponent,
       equal,
       serialize,
@@ -11170,10 +11170,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key: key2, sep: sep7, value } = collItem;
+        const { start, key: key2, sep: sep8, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key2 ?? sep7?.[0],
+          next: key2 ?? sep8?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -11187,7 +11187,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key2 && key2.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep7) {
+          if (!keyProps.anchor && !keyProps.tag && !sep8) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -11211,7 +11211,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep7 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep8 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -11227,7 +11227,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep7, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep8, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -11318,7 +11318,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep7 = "";
+        let sep8 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -11332,13 +11332,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep7 + cb;
-              sep7 = "";
+                comment += sep8 + cb;
+              sep8 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep7 += source;
+                sep8 += source;
               hasSpace = true;
               break;
             default:
@@ -11381,18 +11381,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key: key2, sep: sep7, value } = collItem;
+        const { start, key: key2, sep: sep8, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key2 ?? sep7?.[0],
+          next: key2 ?? sep8?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep7 && !value) {
+          if (!props.anchor && !props.tag && !sep8 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -11446,8 +11446,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep7 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep7, null, props, onError);
+        if (!isMap && !sep8 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep8, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -11459,7 +11459,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key2))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep7 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep8 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -11470,8 +11470,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep7)
-                for (const st of sep7) {
+              if (sep8)
+                for (const st of sep8) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -11488,7 +11488,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep7, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep8, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -11668,7 +11668,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep7 = "";
+      let sep8 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -11685,24 +11685,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep7 + indent.slice(trimIndent) + content;
-          sep7 = "\n";
+          value += sep8 + indent.slice(trimIndent) + content;
+          sep8 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep7 === " ")
-            sep7 = "\n";
-          else if (!prevMoreIndented && sep7 === "\n")
-            sep7 = "\n\n";
-          value += sep7 + indent.slice(trimIndent) + content;
-          sep7 = "\n";
+          if (sep8 === " ")
+            sep8 = "\n";
+          else if (!prevMoreIndented && sep8 === "\n")
+            sep8 = "\n\n";
+          value += sep8 + indent.slice(trimIndent) + content;
+          sep8 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep7 === "\n")
+          if (sep8 === "\n")
             value += "\n";
           else
-            sep7 = "\n";
+            sep8 = "\n";
         } else {
-          value += sep7 + content;
-          sep7 = " ";
+          value += sep8 + content;
+          sep8 = " ";
           prevMoreIndented = false;
         }
       }
@@ -11885,25 +11885,25 @@ var require_resolve_flow_scalar = __commonJS({
         trimBoth = /^[ \t]+|[ \t]+$/g;
       }
       let res = match[1].replace(trimEnd, "");
-      let sep7 = " ";
+      let sep8 = " ";
       let pos = line.lastIndex;
       while (match = line.exec(source)) {
         const lm = match[1].replace(trimBoth, "");
         if (lm === "") {
-          if (sep7 === "\n")
-            res += sep7;
+          if (sep8 === "\n")
+            res += sep8;
           else
-            sep7 = "\n";
+            sep8 = "\n";
         } else {
-          res += sep7 + lm;
-          sep7 = " ";
+          res += sep8 + lm;
+          sep8 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep7 + (match?.[1] ?? "");
+      return res + sep8 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -12713,14 +12713,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key: key2, sep: sep7, value }) {
+    function stringifyItem({ start, key: key2, sep: sep8, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key2)
         res += stringifyToken(key2);
-      if (sep7)
-        for (const st of sep7)
+      if (sep8)
+        for (const st of sep8)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -13887,18 +13887,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep7;
+          let sep8;
           if (scalar.end) {
-            sep7 = scalar.end;
-            sep7.push(this.sourceToken);
+            sep8 = scalar.end;
+            sep8.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep7 = [this.sourceToken];
+            sep8 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep7 }]
+            items: [{ start, key: scalar, sep: sep8 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -14051,15 +14051,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key2 = it.key;
-                  const sep7 = it.sep;
-                  sep7.push(this.sourceToken);
+                  const sep8 = it.sep;
+                  sep8.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key: key2, sep: sep7 }]
+                    items: [{ start: start2, key: key2, sep: sep8 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -14253,13 +14253,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep7 = fc.end.splice(1, fc.end.length);
-            sep7.push(this.sourceToken);
+            const sep8 = fc.end.splice(1, fc.end.length);
+            sep8.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep7 }]
+              items: [{ start, key: fc, sep: sep8 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -26628,7 +26628,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve14) => setTimeout(resolve14, pollInterval));
+        await new Promise((resolve15) => setTimeout(resolve15, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -26645,7 +26645,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve14, reject) => {
+    return new Promise((resolve15, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -26723,7 +26723,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve14(parseResult.data);
+            resolve15(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -26984,12 +26984,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve14, reject) => {
+    return new Promise((resolve15, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve14, interval);
+      const timeoutId = setTimeout(resolve15, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -28089,7 +28089,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve14) => setTimeout(resolve14, pollInterval));
+      await new Promise((resolve15) => setTimeout(resolve15, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -28738,21 +28738,21 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve14) => {
+    return new Promise((resolve15) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve14();
+        resolve15();
       } else {
-        this._stdout.once("drain", resolve14);
+        this._stdout.once("drain", resolve15);
       }
     });
   }
 };
 
 // src/index.ts
-import { spawn as spawn4 } from "node:child_process";
-import { dirname as dirname8, resolve as resolve13 } from "node:path";
-import { readFileSync as readFileSync2 } from "node:fs";
+import { spawn as spawn5 } from "node:child_process";
+import { dirname as dirname8, resolve as resolve14 } from "node:path";
+import { readFileSync as readFileSync3 } from "node:fs";
 
 // src/cli-executable.ts
 import { existsSync } from "node:fs";
@@ -29558,8 +29558,8 @@ function appendTrailers(message, add) {
   while (end >= 0 && lines[end].trim() === "")
     end--;
   const body = lines.slice(0, end + 1);
-  const sep7 = body.length > 0 ? [""] : [];
-  return [...body, ...sep7, ...additions].join("\n");
+  const sep8 = body.length > 0 ? [""] : [];
+  return [...body, ...sep8, ...additions].join("\n");
 }
 function findTrailerBlock(rawLines) {
   let end = rawLines.length - 1;
@@ -29928,14 +29928,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot, args) {
-  return new Promise((resolve14) => {
+  return new Promise((resolve15) => {
     const proc = spawn("git", ["-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve14({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve14({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve15({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve15({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -33054,21 +33054,147 @@ function threadPost(path, root) {
 }
 
 // src/collaborate.ts
+import { spawn as spawn4 } from "node:child_process";
+import { lstatSync as lstatSync3, realpathSync as realpathSync3 } from "node:fs";
+import { isAbsolute as isAbsolute6, join as join12, resolve as resolve13 } from "node:path";
+
+// src/pi-child-resources.ts
 import { spawn as spawn3 } from "node:child_process";
-import { randomUUID as randomUUID2 } from "node:crypto";
-import { lstatSync as lstatSync2, realpathSync as realpathSync2 } from "node:fs";
-import { isAbsolute as isAbsolute5, join as join11, resolve as resolve12 } from "node:path";
+import { lstatSync as lstatSync2, readFileSync as readFileSync2, realpathSync as realpathSync2 } from "node:fs";
+import { isAbsolute as isAbsolute5, join as join11, relative as relative7, resolve as resolve12, sep as sep7 } from "node:path";
+var REQUIRED = ["@ideaspaces/pi-is-space", "@ideaspaces/pi-local-context"];
+function contained(root, path) {
+  const rel = relative7(root, path);
+  return rel !== ".." && !rel.startsWith(`..${sep7}`) && !isAbsolute5(rel);
+}
+async function readUserPiPackages() {
+  const { command, argv } = cliInvocation(process.env.PI_BIN_PATH?.trim() || "pi", ["list", "--no-approve"]);
+  return new Promise((resolve15, reject) => {
+    let out = "", err = "", settled = false;
+    let child;
+    try {
+      child = spawn3(command, argv, { shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+    } catch (error2) {
+      reject(new Error(`Cannot start Pi package listing: ${String(error2)}`));
+      return;
+    }
+    const finish = (error2) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error2) reject(new Error(`Cannot read trusted user Pi packages (${error2}). Install the IdeaSpaces Pi connectors or use a reviewed plugin bundle.`));
+      else resolve15(out);
+    };
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish("pi list timed out after 15 seconds");
+    }, 15e3);
+    child.stdout?.setEncoding("utf8");
+    child.stderr?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk) => {
+      out += chunk;
+      if (Buffer.byteLength(out) > 1024 * 1024) {
+        child.kill("SIGKILL");
+        finish("pi list output exceeded 1 MiB");
+      }
+    });
+    child.stderr?.on("data", (chunk) => {
+      err = (err + chunk).slice(-4e3);
+    });
+    child.once("error", (error2) => finish(error2.message));
+    child.once("close", (code) => finish(code === 0 ? void 0 : err.trim() || `pi list exited ${code}`));
+  });
+}
+function installedPiChildResources(listOutput) {
+  return listOutput === void 0 ? readUserPiPackages().then(parsePiChildResources) : parsePiChildResources(listOutput);
+}
+function parsePiChildResources(text) {
+  if (!text.split(/\r?\n/).some((line) => line.trim() === "User packages:")) {
+    throw new Error("Unrecognized pi list --no-approve output; cannot verify user-installed connectors on this Pi version.");
+  }
+  const roots = [];
+  let userScope = false;
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim() === "User packages:") {
+      userScope = true;
+      continue;
+    }
+    if (/^[A-Za-z][^\s]* packages:$/u.test(line.trim()) && line.trim() !== "User packages:") {
+      userScope = false;
+      continue;
+    }
+    if (!userScope || !/^ {4}\S/u.test(line)) continue;
+    const path = line.trim();
+    if (!isAbsolute5(path)) throw new Error(`Unrecognized user Pi package path in pi list: ${path}`);
+    roots.push(path);
+  }
+  const found = /* @__PURE__ */ new Map();
+  for (const entry of roots) {
+    let root;
+    try {
+      root = realpathSync2(entry);
+    } catch {
+      throw new Error(`User Pi package listed at ${entry} is missing; repair the install before launching a child.`);
+    }
+    const manifestPath = join11(root, "package.json");
+    let pkg;
+    try {
+      const stat2 = lstatSync2(manifestPath);
+      if (!stat2.isFile() || stat2.isSymbolicLink() || stat2.size > 1024 * 1024) continue;
+      pkg = JSON.parse(readFileSync2(manifestPath, "utf8"));
+    } catch {
+      continue;
+    }
+    if (typeof pkg.name !== "string" || !REQUIRED.includes(pkg.name)) continue;
+    const resources = (paths, type) => {
+      if (!Array.isArray(paths) || !paths.length || paths.some((path) => typeof path !== "string" || !path.startsWith("./") || path.includes("\0"))) {
+        throw new Error(`Installed ${pkg.name} does not declare concrete Pi ${type} paths; reinstall a reviewed connector.`);
+      }
+      return paths.map((path) => {
+        const full = resolve12(root, path);
+        let real;
+        let stat2;
+        try {
+          real = realpathSync2(full);
+          stat2 = lstatSync2(real);
+        } catch {
+          throw new Error(`Installed ${pkg.name} ${type} path is missing: ${full}`);
+        }
+        if (real.includes(",")) throw new Error(`Installed ${pkg.name} ${type} path contains a comma, which CLI cannot forward exactly: ${real}`);
+        if (!contained(root, real) || (type === "skill" ? !stat2.isDirectory() : !stat2.isFile() && !stat2.isDirectory())) {
+          throw new Error(`Installed ${pkg.name} has an escaping or unsupported ${type} path; refusing child launch.`);
+        }
+        return real;
+      });
+    };
+    if (found.has(pkg.name)) throw new Error(`Multiple user Pi installations of ${pkg.name}; choose one reviewed source before launching a child.`);
+    found.set(pkg.name, {
+      root,
+      extensions: resources(pkg.pi?.extensions, "extension"),
+      skills: resources(pkg.pi?.skills, "skill")
+    });
+  }
+  const missing = REQUIRED.filter((name) => !found.has(name));
+  if (missing.length) throw new Error(`Missing trusted user Pi connectors: ${missing.join(", ")}. Install them with Pi or use a reviewed plugin bundle before launching a Pi child.`);
+  return {
+    extensionPaths: [...new Set(REQUIRED.flatMap((name) => found.get(name).extensions))],
+    skillPaths: [...new Set(REQUIRED.flatMap((name) => found.get(name).skills))]
+  };
+}
+
+// src/collaborate.ts
 var DEPTH_ENV = "IS_COLLABORATE_DEPTH";
 var DEFAULT_TIMEOUT_MS = 6e5;
 var MAX_EVENT_BYTES = 1024 * 1024;
 var MAX_OUTPUT_BYTES = 4 * 1024 * 1024;
 var MAX_REPLY_CHARS = 12e3;
 var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+var PI_ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/;
 var activeChildren = /* @__PURE__ */ new Set();
 function signalTree(child, signal) {
   if (!child.pid) return;
   try {
-    if (process.platform === "win32") spawn3("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+    if (process.platform === "win32") spawn4("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
     else process.kill(-child.pid, signal);
   } catch {
     try {
@@ -33111,13 +33237,16 @@ function untrackChild(child) {
 var spawnCli = (args, cwd) => new Promise((done) => {
   const { command, argv } = cliInvocation(resolveCli(), args);
   const timeoutMs = Number(process.env.IS_COLLABORATE_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS;
-  const child = spawn3(command, argv, {
+  const env = { ...process.env, [DEPTH_ENV]: "1" };
+  delete env.IDEASPACES_PI_EXTENSIONS;
+  delete env.IDEASPACES_PI_SKILLS;
+  const child = spawn4(command, argv, {
     cwd,
     shell: false,
     detached: true,
     windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, [DEPTH_ENV]: "1" }
+    env
   });
   trackChild(child);
   let out = "";
@@ -33157,21 +33286,22 @@ var spawnCli = (args, cwd) => new Promise((done) => {
   child.on("close", (code) => finish(code ?? 1));
 });
 function resolvePov(pov, cwd) {
-  const candidate = isAbsolute5(pov) ? pov : resolve12(cwd ?? process.cwd(), pov);
+  const candidate = isAbsolute6(pov) ? pov : resolve13(cwd ?? process.cwd(), pov);
   try {
-    const dir = realpathSync2(candidate);
-    const root = lstatSync2(dir);
-    const contract = lstatSync2(join11(dir, "_agent", "agreement.md"));
+    const dir = realpathSync3(candidate);
+    const root = lstatSync3(dir);
+    const contract = lstatSync3(join12(dir, "_agent", "agreement.md"));
     if (root.isDirectory() && contract.isFile() && !contract.isSymbolicLink()) return { dir };
   } catch {
   }
   return { error: `Not a local Agreement POV: ${candidate} (requires a regular _agent/agreement.md in the target repository)` };
 }
-function parseTurn(out, err, code, conversationId) {
+function parseTurn(out, err, code, expectedId, runtime) {
   if (err.startsWith("CLI output exceeded limit") || err.startsWith("CLI turn timed out")) return { ok: false, text: err };
   let reply = "";
   let complete = false;
   let failure2;
+  let conversationId;
   for (const line of out.split("\n")) {
     if (!line.trim()) continue;
     if (Buffer.byteLength(line) > MAX_EVENT_BYTES) return { ok: false, text: "CLI event exceeded limit" };
@@ -33181,8 +33311,10 @@ function parseTurn(out, err, code, conversationId) {
     } catch {
       return { ok: false, text: `Invalid CLI event: ${line.slice(0, 160)}` };
     }
-    if (event.type === "message_start" && event.conversation_id !== conversationId) {
-      return { ok: false, text: "CLI returned a different conversation id" };
+    if (event.type === "message_start") {
+      const id = event.conversation_id;
+      if (typeof id !== "string" || !PI_ID.test(id) || runtime === "claude" && !UUID.test(id) || expectedId && id !== expectedId || conversationId && id !== conversationId) return { ok: false, text: "CLI returned an invalid or different conversation id" };
+      conversationId = id;
     }
     if (event.type === "text_delta" && typeof event.delta === "string") reply = (reply + event.delta).slice(0, MAX_REPLY_CHARS);
     if (event.type === "turn_complete") {
@@ -33193,14 +33325,17 @@ function parseTurn(out, err, code, conversationId) {
     if (event.type === "error") failure2 = String(event.message ?? "Child failed").slice(0, 4e3);
     if (event.type === "cancelled") failure2 = "Child turn was cancelled";
   }
+  if (code === 0 && complete && !failure2 && !conversationId) {
+    return { ok: false, text: "CLI completed without a conversation id; refusing to invent a transcript handle." };
+  }
   if (code !== 0 || failure2 || !complete) {
     return { ok: false, text: (failure2 || err.trim() || `CLI exited ${code} without a successful turn_complete`).slice(0, 4e3) };
   }
-  return { ok: true, text: reply.trim() };
+  return { ok: true, text: reply.trim(), conversationId };
 }
-async function runCollaborate(input, run2 = spawnCli) {
+async function runCollaborate(input, run2 = spawnCli, resolvePiResources = installedPiChildResources) {
   if (input.action === "close") {
-    if (!input.handle || !UUID.test(input.handle)) return { ok: false, text: "A valid conversation handle is required for close." };
+    if (!input.handle || !(input.runtime === "pi" ? PI_ID : UUID).test(input.handle)) return { ok: false, text: "A valid conversation handle is required for close." };
     return { ok: true, text: JSON.stringify({
       conversation_id: input.handle,
       closed: false,
@@ -33210,26 +33345,37 @@ async function runCollaborate(input, run2 = spawnCli) {
   if (process.env[DEPTH_ENV]) return { ok: false, text: "Refusing to collaborate from inside a collaboration \u2014 nesting is disabled." };
   if (!input.pov || !input.message?.trim()) return { ok: false, text: "pov (local Agreement repo) and message are required." };
   if (Buffer.byteLength(input.message) > 8 * 1024) return { ok: false, text: "Launch message exceeds 8 KiB; provide a smaller instruction or point to a local Note." };
-  if (input.action === "say" && (!input.handle || !UUID.test(input.handle))) return { ok: false, text: "A valid conversation handle is required for say." };
   const selected = resolvePov(input.pov, input.cwd);
   if (!selected.dir) return { ok: false, text: selected.error };
   const runtime = input.runtime ?? "claude";
   if (runtime !== "pi" && runtime !== "claude") return { ok: false, text: "runtime must be pi or claude" };
+  if (input.action === "say" && (!input.handle || !(runtime === "pi" ? PI_ID : UUID).test(input.handle))) {
+    return { ok: false, text: "A valid conversation handle for the selected runtime is required for say." };
+  }
   if (runtime === "pi" && (input.effort || input.permission_mode || input.read_only === true)) {
     return { ok: false, text: "Claude effort, permission mode, and read-only tool policy are unavailable under Pi." };
   }
   if (runtime === "claude" && input.thinking) return { ok: false, text: "Pi thinking is unavailable under Claude; choose effort instead." };
+  let resources;
+  if (runtime === "pi") {
+    try {
+      resources = await resolvePiResources();
+    } catch (error2) {
+      return { ok: false, text: error2 instanceof Error ? error2.message : String(error2) };
+    }
+    if (!resources.extensionPaths.length) return { ok: false, text: "No trusted Pi connector set is available from the launching habitat; child not started." };
+  }
   const readOnly = runtime === "claude" && (input.read_only ?? true);
   if (readOnly && input.permission_mode === "bypassPermissions") return { ok: false, text: "Read-only cannot bypass permissions." };
   if (runtime === "pi" || readOnly || input.effort) {
     const help = await run2(["agent", "run", "--help"], selected.dir);
-    const marker = runtime === "pi" ? "--pi-trust" : readOnly ? "--read-only" : "--claude-effort";
+    const marker = runtime === "pi" ? "skill discovery is disabled" : readOnly ? "--read-only" : "--claude-effort";
     const usage = help.out + help.err;
-    if (help.code !== 0 || !usage.includes(marker) || input.effort && !usage.includes("--claude-effort")) {
-      return { ok: false, text: `CLI does not support ${marker}; update the IdeaSpaces CLI before this launch.` };
+    if (help.code !== 0 || !usage.includes(marker) || runtime === "pi" && ["--ext", "--skill", "--pi-trust"].some((flag) => !usage.includes(flag)) || input.effort && !usage.includes("--claude-effort")) {
+      return { ok: false, text: runtime === "pi" ? "CLI lacks Pi child skill isolation; update IdeaSpaces CLI to 0.2.1 or newer before this launch." : `CLI does not support ${marker}; update the IdeaSpaces CLI before this launch.` };
     }
   }
-  const id = input.action === "say" ? input.handle : randomUUID2();
+  const id = input.action === "say" ? input.handle : void 0;
   if (input.action === "say") {
     const prior = await run2([
       "--json",
@@ -33241,13 +33387,13 @@ async function runCollaborate(input, run2 = spawnCli) {
       "--context",
       selected.dir,
       "--conversation",
-      id
+      input.handle
     ], selected.dir);
     if (prior.code !== 0) return { ok: false, text: (prior.err || prior.out || "Could not check conversation").slice(0, 4e3) };
     if (Buffer.byteLength(prior.out) > MAX_OUTPUT_BYTES) return { ok: false, text: "Conversation history exceeds resume verification limit" };
     try {
       const detail3 = JSON.parse(prior.out);
-      const reported = typeof detail3.repo_id === "string" ? realpathSync2(detail3.repo_id) : "";
+      const reported = typeof detail3.repo_id === "string" ? realpathSync3(detail3.repo_id) : "";
       if (reported !== selected.dir || !Array.isArray(detail3.history) || detail3.history.length === 0) {
         return { ok: false, text: `No existing ${runtime} conversation ${id} at this Agreement POV; refusing to start a new transcript.` };
       }
@@ -33255,17 +33401,12 @@ async function runCollaborate(input, run2 = spawnCli) {
       return { ok: false, text: "Cannot verify conversation identity before resume" };
     }
   }
-  const args = [
-    "--json",
-    "agent",
-    "run",
-    selected.dir,
-    "--runtime",
-    runtime,
-    "--conversation",
-    id,
-    `--message=${input.message}`
-  ];
+  const args = ["--json", "agent", "run", selected.dir, "--runtime", runtime, `--message=${input.message}`];
+  if (id) args.push("--conversation", id);
+  if (resources) {
+    args.push("--ext", resources.extensionPaths.join(","));
+    if (resources.skillPaths.length) args.push("--skill", resources.skillPaths.join(","));
+  }
   if (input.model) args.push("--model", input.model);
   if (runtime === "pi") args.push("--pi-trust", "saved");
   if (input.thinking) args.push("--pi-thinking", input.thinking);
@@ -33275,11 +33416,11 @@ async function runCollaborate(input, run2 = spawnCli) {
     if (readOnly) args.push("--read-only");
   }
   const { out, err, code } = await run2(args, selected.dir);
-  const result = parseTurn(out, err, code, id);
+  const result = parseTurn(out, err, code, id, runtime);
   if (!result.ok) return result;
   return { ok: true, text: JSON.stringify({
-    conversation_id: id,
-    handle: id,
+    conversation_id: result.conversationId,
+    handle: result.conversationId,
     runtime,
     model: input.model ?? null,
     permission_mode: runtime === "claude" ? input.permission_mode ?? (readOnly ? "dontAsk" : "acceptEdits") : null,
@@ -33423,7 +33564,7 @@ var AUTHORED_TOOL_PARAMETERS = {
     action: external_exports.enum(["open", "say", "close"]).describe("open: start a CLI-backed local conversation. say: resume by conversation id. close: compatibility acknowledgement only; it changes no state."),
     pov: external_exports.string().optional().describe("For open/say: explicit local IdeaSpace repo path with its own _agent/agreement.md; relative to cwd or absolute."),
     message: external_exports.string().optional().describe("For open/say: the purpose and task, in your own words. Intent does not grant tools."),
-    handle: external_exports.string().optional().describe("For say/close: exact conversation_id returned by open; supply the same runtime on say."),
+    handle: external_exports.string().optional().describe("For say/close: exact conversation_id returned by open (Pi local id or Claude UUID); supply the same runtime on say/close."),
     runtime: external_exports.enum(["pi", "claude"]).optional().describe("Child harness, default claude. On say specify pi if open used pi."),
     model: external_exports.string().optional().describe("Model alias/id for the selected runtime."),
     thinking: external_exports.enum(["off", "minimal", "low", "medium", "high", "xhigh", "max"]).optional().describe("Pi thinking only."),
@@ -33444,9 +33585,9 @@ function hasAnyNonEmptyString(keys, values) {
 // src/index.ts
 var CLI = resolveCli();
 function cli(args, stdin, cwd) {
-  return new Promise((resolve14) => {
+  return new Promise((resolve15) => {
     const { command, argv } = cliInvocation(CLI, args);
-    const proc = spawn4(command, argv, {
+    const proc = spawn5(command, argv, {
       stdio: ["pipe", "pipe", "pipe"],
       // The MCP server starts in whatever cwd Claude Code launched it from
       // (the user's session-start dir). The agent may have `cd`-ed inside
@@ -33460,8 +33601,8 @@ function cli(args, stdin, cwd) {
     let err = "";
     proc.stdout.on("data", (d) => out += d);
     proc.stderr.on("data", (d) => err += d);
-    proc.on("close", (code) => resolve14({ out, err, code: code ?? 1 }));
-    proc.on("error", (e) => resolve14({ out: "", err: e.message, code: 1 }));
+    proc.on("close", (code) => resolve15({ out, err, code: code ?? 1 }));
+    proc.on("error", (e) => resolve15({ out: "", err: e.message, code: 1 }));
     if (stdin != null) proc.stdin.write(stdin);
     proc.stdin.end();
   });
@@ -33493,7 +33634,7 @@ function readSessionId() {
   const dir = process.env.CLAUDE_PROJECT_DIR?.trim();
   if (!dir) return void 0;
   try {
-    const id = readFileSync2(sessionIdCachePath(homedir(), dir), "utf-8").trim();
+    const id = readFileSync3(sessionIdCachePath(homedir(), dir), "utf-8").trim();
     return id || void 0;
   } catch {
     return void 0;
@@ -33661,7 +33802,7 @@ server.tool(
   "Read a Note \u2014 any Markdown file or Content directory in an ideaspace \u2014 so the conversation Map records it. Use it instead of cat, head or sed on a .md file: a Bash read is not recorded as a read. _threads/ posts also accept an authored pin and position (resolved via CLI, never HEAD). Read-only; never changes caller authority or working directory.",
   MCP_TOOL_PARAMETERS.is_look,
   async ({ path, depth, contract, cwd, pin, position }) => {
-    const target = resolve13(cwd || process.cwd(), path);
+    const target = resolve14(cwd || process.cwd(), path);
     const root = await resolveRepoRoot(cwd || process.cwd()) ?? cwd ?? process.cwd();
     const post = threadPost(target, root);
     if (post) {
@@ -33675,7 +33816,7 @@ server.tool(
           if (result2.code !== 0) return fail(result2.err.trim() || result2.out.trim());
           return ok(pinnedView(JSON.parse(result2.out), depth ?? "summary", { pin, position: post.position }));
         }
-        return ok(postView(readFileSync2(target, "utf8"), post.position, depth ?? "summary"));
+        return ok(postView(readFileSync3(target, "utf8"), post.position, depth ?? "summary"));
       } catch (error2) {
         return fail(`Cannot read ${target}: ${error2 instanceof Error ? error2.message : String(error2)}`);
       }

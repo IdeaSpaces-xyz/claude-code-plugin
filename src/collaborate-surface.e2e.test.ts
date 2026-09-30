@@ -38,17 +38,27 @@ const out=e=>console.log(JSON.stringify(e));out({type:'system',subtype:'init',se
 if(prompt.includes('login_fail')){out({type:'result',subtype:'error_during_execution',is_error:true,errors:['Login required']});return;}
 const slug=process.cwd().replace(/[^a-zA-Z0-9]/gu,'-'),file=path.join(process.env.CLAUDE_CONFIG_DIR,'projects',slug,id+'.jsonl');
 fs.mkdirSync(path.dirname(file),{recursive:true});
-fs.appendFileSync(file,JSON.stringify({type:'user',sessionId:id,message:{role:'user',content:prompt}})+'\\n');
+fs.appendFileSync(file,JSON.stringify({type:'user',sessionId:id,cwd:process.cwd(),message:{role:'user',content:prompt}})+'\\n');
 out({type:'stream_event',event:{type:'message_start'}});
 out({type:'stream_event',event:{type:'content_block_delta',index:0,delta:{type:'text_delta',text:'claude:'+prompt}}});
 out({type:'result',subtype:'success',is_error:false,result:'claude:'+prompt,session_id:id,num_turns:1});
 fs.appendFileSync(file,JSON.stringify({type:'assistant',sessionId:id,message:{id:'m'+Date.now(),role:'assistant',content:[{type:'text',text:'claude:'+prompt}]}})+'\\n');
 });
 `);
+    const connectors = ["pi-is-space", "pi-local-context"].map((name) => {
+      const dir = join(workspace, name);
+      mkdirSync(join(dir, "src"), { recursive: true });
+      mkdirSync(join(dir, "skills"));
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: `@ideaspaces/${name}`, pi: { extensions: ["./src/index.ts"], skills: ["./skills"] } }));
+      writeFileSync(join(dir, "src/index.ts"), "export default () => {};\n");
+      return dir;
+    });
     const piScript = join(bin, "fake-pi.cjs");
     const piLog = join(workspace, "pi-argv.jsonl");
     writeFileSync(piScript, `
-const fs=require('node:fs'),args=process.argv.slice(2);fs.appendFileSync(process.env.FAKE_PI_ARGV,JSON.stringify(args)+'\\n');
+const fs=require('node:fs'),args=process.argv.slice(2);
+if(args[0]==='list') { console.log('User packages:\\n  npm:@ideaspaces/pi-is-space\\n    '+process.env.FAKE_PI_SPACE+'\\n  npm:@ideaspaces/pi-local-context\\n    '+process.env.FAKE_PI_CONTEXT+'\\nProject packages:'); process.exit(0); }
+fs.appendFileSync(process.env.FAKE_PI_ARGV,JSON.stringify(args)+'\\n');
 let buf='';process.stdin.on('data',d=>{buf+=String(d);while(buf.includes('\\n')){
 const at=buf.indexOf('\\n'),line=buf.slice(0,at);buf=buf.slice(at+1);if(!line)continue;const c=JSON.parse(line);
 if(c.type==='get_state')console.log(JSON.stringify({type:'response',command:'get_state',success:true,data:{sessionName:'Existing'}}));
@@ -69,7 +79,8 @@ console.log(JSON.stringify({type:'agent_end'}));
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [server], cwd: workspace,
       env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}`, HOME: workspace, IS_CLI_PATH: cli,
         CLAUDE_CONFIG_DIR: join(workspace, "claude-config"), FAKE_CLAUDE_ARGV: argvLog,
-        FAKE_PI_ARGV: piLog, IDEASPACES_PI_EXTENSIONS: join(workspace, "dummy-ext"), IS_COLLABORATE_DEPTH: "" } }));
+        FAKE_PI_ARGV: piLog, FAKE_PI_SPACE: connectors[0], FAKE_PI_CONTEXT: connectors[1],
+        IDEASPACES_PI_EXTENSIONS: join(workspace, "dummy-ext"), IS_COLLABORATE_DEPTH: "" } }));
     const opened = await collaborate({ action: "open", pov, message: "first", runtime: "claude", model: "sonnet", effort: "high" });
     expect(opened.failed).toBe(false);
     const first = JSON.parse(opened.text);
@@ -80,8 +91,13 @@ console.log(JSON.stringify({type:'agent_end'}));
     expect(JSON.parse(second.text).answer).toBe("claude:again");
     expect(JSON.parse(readFileSync(argvLog, "utf8").trim().split("\n")[1])).toContain("--resume");
     const pi = await collaborate({ action: "open", pov, runtime: "pi", model: "fake/model", thinking: "high", message: "hello" });
+    expect(pi.failed, pi.text).toBe(false);
     expect(JSON.parse(pi.text)).toMatchObject({ runtime: "pi", answer: "pi:hello" });
-    expect(JSON.parse(readFileSync(piLog, "utf8").trim().split("\n")[0])).not.toContain("-a");
+    const piArgs = JSON.parse(readFileSync(piLog, "utf8").trim().split("\n")[0]) as string[];
+    expect(piArgs).not.toContain("-a");
+    expect(piArgs).toEqual(expect.arrayContaining(["--extension", join(connectors[0], "src/index.ts"),
+      "--extension", join(connectors[1], "src/index.ts"), "--no-extensions", "--no-skills"]));
+    expect(piArgs.join(" ")).not.toContain("dummy-ext");
     const failed = await collaborate({ action: "open", pov, message: "login_fail" });
     expect(failed.failed).toBe(true);
     expect(failed.text).toContain("Login required");
