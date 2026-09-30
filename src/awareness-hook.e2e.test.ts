@@ -157,6 +157,49 @@ describe("shipped in-process awareness hook", () => {
     expect(result.stdout).not.toContain("PURPOSE BODY SENTINEL");
   });
 
+  it("fits Claude Code's inline limit: a long Agreement falls to its summary and a pointer", () => {
+    const home = tempDir("is-awareness-hook-budget-home-");
+    const run = (space: string) =>
+      spawnSync("node", [HOOK], {
+        cwd: space,
+        env: { ...process.env, HOME: home, CLAUDE_PROJECT_DIR: space },
+        input: JSON.stringify({ session_id: "session-budget", cwd: space }),
+        encoding: "utf-8",
+      });
+    const agreement = (body: string) =>
+      `---\nname: Agreement — Long\nsummary: LONG SUMMARY SENTINEL.\n---\n# Agreement\n\n${body}\n`;
+
+    // Short: whole, as before, with the reading rule.
+    const short = tempDir("is-awareness-hook-budget-short-");
+    mkdirSync(join(short, "_agent"));
+    writeFileSync(join(short, "_agent", "agreement.md"), agreement("SHORT BODY SENTINEL"));
+    const shortRun = run(short);
+    expect(shortRun.status).toBe(0);
+    expect(shortRun.stdout).toContain("agreement [full]:");
+    expect(shortRun.stdout).not.toContain("Summarised to fit the inline limit");
+    expect(shortRun.stdout).toContain("Reading: read Notes here with is_look or Read");
+
+    // Long (≈12 K characters, the size that reached sessions as a 2 KB preview):
+    // summary and a pointer, under 10,000 characters, never cut.
+    const long = tempDir("is-awareness-hook-budget-long-");
+    mkdirSync(join(long, "_agent"));
+    writeFileSync(
+      join(long, "_agent", "agreement.md"),
+      agreement("LONG BODY SENTINEL\n\n" + "A line of Agreement prose that fills the body. \n".repeat(250)),
+    );
+    const longRun = run(long);
+    expect(longRun.status).toBe(0);
+    expect(longRun.stderr).toBe("");
+    expect(longRun.stdout.length).toBeLessThan(10_000);
+    expect(longRun.stdout).not.toContain("LONG BODY SENTINEL");
+    expect(longRun.stdout).toContain("agreement — LONG SUMMARY SENTINEL.");
+    expect(longRun.stdout).toContain(
+      "Summarised to fit the inline limit: _agent/agreement.md. Read it in full with Read before acting.",
+    );
+    expect(longRun.stdout).toContain("Reading: read Notes here with is_look or Read");
+    expect(longRun.stdout).not.toContain("Orientation cut");
+  });
+
   it("names the convention an Agreement declares — agent, knowledge, or as written", () => {
     const home = tempDir("is-awareness-hook-kind-home-");
     const run = (space: string) =>

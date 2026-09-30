@@ -5,13 +5,15 @@
  * its head — position, Now, tree, agent context, skills — then the habitat's
  * own line naming the convention the Space's Agreement declares (an agent is
  * inhabited, a knowledge space is oriented in, anything else is shown as
- * declared), followed by the protocol's one Content-tail composition: local State (branch, upstream,
+ * declared) and how Notes are read so the Map sees them, followed by the
+ * protocol's one Content-tail composition: local State (branch, upstream,
  * working tree, captures awaiting commit), since-last-session activity,
  * stale-doc drift, missing direction, and the open Change line last. The same
  * composer renders the CLI's `status` and Pi's post-breakpoint register, so
  * the three surfaces cannot order the tail differently. Claude Code exposes no
  * breakpoint-placement primitive, so head and tail ship as one deterministic
- * SessionStart render. The hook then advances the local seen ref for the next
+ * SessionStart render, kept under Claude Code's inline limit (inline-budget.ts)
+ * so it is never reduced to a preview. The hook then advances the local seen ref for the next
  * session; that ref write stays surface-owned.
  *
  * The session-id bridge and persisted open-Change record are Claude-harness
@@ -37,6 +39,8 @@ import {
 import { changeCachePath, sessionIdCachePath } from "./session-path.js";
 import { parseChangeRecord, renderChangeLine } from "./change-line.js";
 import { renderKindLine } from "./kind-line.js";
+import { INLINE_BUDGET, cutToBudget, renderDemotedLine, summarizeContract } from "./inline-budget.js";
+import { READING_LINE } from "./reading-line.js";
 import { readStdin } from "./stdin.js";
 
 /**
@@ -132,10 +136,24 @@ async function main(): Promise<void> {
             }
           : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
-      // The habitat's one line between head and tail: which convention the
-      // Space declares, and what that means in Claude Code.
+      // The habitat's lines between head and tail: which convention the Space
+      // declares, what that means in Claude Code, and how Notes are read here.
       const kind = renderKindLine(manifest) ?? "";
-      const text = [head, kind, tail].filter((part) => part.trim()).join("\n\n");
+      const compose = (head: string, demoted: string) =>
+        [head, demoted, kind, READING_LINE, tail].filter((part) => part.trim()).join("\n\n");
+      let text = compose(head, "");
+      // Over the inline limit the harness would show a 2 KB preview: bodies
+      // fall to summaries with a pointer before anything is cut.
+      if (text.length > INLINE_BUDGET) {
+        const slim = summarizeContract(manifest);
+        if (slim.demoted.length) {
+          text = compose(
+            renderContentAwareness(slim.manifest, { placement: "head" }),
+            renderDemotedLine(slim.demoted, projectDir),
+          );
+        }
+        text = cutToBudget(text);
+      }
       if (text) process.stdout.write(text + "\n");
 
       // Read-before-write ordering is load-bearing: this session rendered the
