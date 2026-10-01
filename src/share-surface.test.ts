@@ -73,7 +73,7 @@ describe("recipient-shaped Share distribution", () => {
     expect(share).toContain("| **Viewer** | `explore` |");
     expect(share).toContain("| **Allow copying** | `fork` |");
     expect(share).toContain("| **Editor** | `collaborate` |");
-    expect(share).toContain("never offer Explore, Fork or Collaborate as an\naccess level");
+    expect(share.replace(/\s+/g, " ")).toContain("never offer Explore, Fork or Collaborate as an access level");
     expect(share).not.toMatch(/\*\*(Explore|Fork|Collaborate)\*\*/);
   });
 

@@ -40,6 +40,8 @@ The CLI prints and refuses in its own names (`explore access`, `Choose explore o
 them with the table before the person reads them; never offer Explore, Fork or Collaborate as an
 access level.
 
+Visibility, separate from people and teams:
+
 - **Public** — anyone may View and materialize a local Fork without an account. Publishing that
   independent Space still requires sign-in. Source history, clone, and push remain private.
 - **Private** — disable public view and public Fork/Copy without changing named people or team access.
