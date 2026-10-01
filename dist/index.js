@@ -31191,7 +31191,25 @@ import { basename as basename3, dirname as dirname5, extname, join as join8, rel
 
 // node_modules/@ideaspaces/protocol/dist/maps.js
 var MAP_DEPTHS = ["name", "summary", "surface", "children", "full"];
+var SUBJECT_KINDS = [
+  "person",
+  "team",
+  "organisation",
+  "agent",
+  "public"
+];
+var CAPABILITY_LADDER = [
+  "view",
+  "read",
+  "history",
+  "copy",
+  "write",
+  "push",
+  "manage"
+];
 var DEPTHS = new Set(MAP_DEPTHS);
+var SUBJECT_KIND_SET = new Set(SUBJECT_KINDS);
+var CAPABILITY_SET = new Set(CAPABILITY_LADDER);
 var REVISION_PATTERN = /^n_(?:[0-9a-f]{12}|[0-9a-f]{24})$/;
 var ADDRESS_PATTERN = /^[a-z][a-z0-9_]*:.+$/;
 var PIN_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -31223,6 +31241,10 @@ function parseMap(value) {
     return { status: "absent" };
   return parseMapBlock(value);
 }
+var MAP_ROOT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+function isMapRootName(value) {
+  return typeof value === "string" && MAP_ROOT_NAME_PATTERN.test(value) && parseRootNodeId(value).status !== "valid";
+}
 function parseMapBlock(value) {
   if (!isRecord3(value)) {
     return { status: "invalid", issues: [{ path: "map", code: "invalid_map_type" }] };
@@ -31242,6 +31264,7 @@ function parseRoots(value, issues) {
     return [];
   }
   const roots = [];
+  const names = /* @__PURE__ */ new Set();
   for (let index = 0; index < value.length; index++) {
     const input = value[index];
     const base = `map.roots[${index}]`;
@@ -31280,6 +31303,15 @@ function parseRoots(value, issues) {
     }
     if (typeof input.sha !== "string" || !PIN_PATTERN.test(input.sha)) {
       issues.push({ path: `${base}.sha`, code: "invalid_pin" });
+    }
+    if (input.name !== void 0) {
+      if (!isMapRootName(input.name)) {
+        issues.push({ path: `${base}.name`, code: "invalid_root_name" });
+      } else if (names.has(input.name)) {
+        issues.push({ path: `${base}.name`, code: "duplicate_root_name" });
+      } else {
+        names.add(input.name);
+      }
     }
     const rootNodeId = declaredRootNodeId ?? repoRootNodeId;
     roots.push({
