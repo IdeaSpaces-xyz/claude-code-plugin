@@ -16,8 +16,8 @@ describe("recipient-shaped Share distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.6.1");
-    expect(plugin.version).toBe("0.6.1");
+    expect(pkg.version).toBe("0.6.2");
+    expect(plugin.version).toBe("0.6.2");
     expect(vendor.cli.commit).toBe("25fb22658adfe6c17452f3d82c49baf0449f2766");
     expect(vendor["mcp-server"].commit).toBe("39bd01a2e71df5c634cfe88b953fc9f14f93dba9");
     expect(vendor.cli.protocolPin).toBe(
@@ -64,5 +64,26 @@ describe("recipient-shaped Share distribution", () => {
     expect(fork).toContain("Publishing is the account boundary;\nFork itself is not");
     expect(push).toContain("Push is not access sharing");
     expect(push).toContain("belong to **is-share**");
+  });
+
+  it("speaks the agreed access words and maps each to its CLI grade once", () => {
+    const share = read("skills/is-share/SKILL.md");
+
+    expect(share).toContain("Access levels: Viewer (look around), Allow copying (take a copy home),");
+    expect(share).toContain("| **Viewer** | `explore` |");
+    expect(share).toContain("| **Allow copying** | `fork` |");
+    expect(share).toContain("| **Editor** | `collaborate` |");
+    expect(share.replace(/\s+/g, " ")).toContain("never offer Explore, Fork or Collaborate as an access level");
+    expect(share).not.toMatch(/\*\*(Explore|Fork|Collaborate)\*\*/);
+  });
+
+  it("names is-push and is-share as the next steps after publish", () => {
+    const publish = read("skills/is-publish/SKILL.md");
+
+    expect(publish).toContain("It's online and still private");
+    expect(publish).toContain("**is-push** sends it there");
+    expect(publish).toContain("use **is-share**");
+    expect(publish).toContain("- **is-push** — send new commits");
+    expect(publish).toContain("- **is-share** — let someone in");
   });
 });

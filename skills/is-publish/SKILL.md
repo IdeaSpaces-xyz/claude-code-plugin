@@ -162,6 +162,10 @@ On success, surface the remote URL and the local changes:
 
 > "Published `<name>` to `<remote_url>`. This folder's git identity is now `person:<username>@ideaspaces` locally, so server-side attribution works. The folder mapping is saved at `~/.ideaspaces/spaces.json`."
 
+Then name the next two steps, every time:
+
+> "It's online and still private. When you commit more, **is-push** sends it there. To let someone in, or to make it public, use **is-share**."
+
 ## Failure modes
 
 | Symptom | Likely cause | What to suggest |
@@ -182,6 +186,8 @@ Recovery posture: re-running publish is safe after repair. Preserve identity aut
 
 ## What comes next
 
+- **is-push** — send new commits to the Space just published
+- **is-share** — let someone in (Viewer, Allow copying, Editor), or make it public
 - **is-capture** — propose saving knowledge during work
 - **is-reflect** — propose updating direction when it drifts
 - **is-space** — navigation reference
