@@ -5,7 +5,8 @@ description: >
   everyone. Use when someone says let her see this, share this with my team,
   give them access, she needs to get up to speed on this, make it public, let
   people copy it — or asks who can see it, or to take someone's access away.
-  Access levels: Explore (look around), Fork (take a copy home), Collaborate.
+  Access levels: Viewer (look around), Allow copying (take a copy home),
+  Editor (work on it together).
   Not for sending committed work to the remote; that is is-push.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_auth Read Bash"
 ---
@@ -26,18 +27,25 @@ native `is_share` tool to discover or emulate with raw platform calls.
 
 ## Product choices
 
-Use only these user-facing choices:
+Use only these user-facing choices. The CLI keeps the server's grade names; this table is the one
+place they meet:
 
-- **Explore** — view the shared Content. No independent copy or Git access.
-- **Fork** — Explore plus an independent current-version copy. It does not expose source history.
-- **Collaborate** — Explore plus clone/fetch/push on the same Space, including source history. Bytes
-  already fetched cannot be revoked later.
+| Say | CLI `--grade` | What it gives |
+|---|---|---|
+| **Viewer** | `explore` | View the shared Content. No independent copy or Git access. |
+| **Allow copying** | `fork` | Viewer plus an independent current-version copy. It does not expose source history. |
+| **Editor** | `collaborate` | Viewer plus clone/fetch/push on the same Space, including source history. Bytes already fetched cannot be revoked later. |
+
+The CLI prints and refuses in its own names (`explore access`, `Choose explore or fork`). Translate
+them with the table before the person reads them; never offer Explore, Fork or Collaborate as an
+access level.
+
 - **Public** — anyone may View and materialize a local Fork without an account. Publishing that
   independent Space still requires sign-in. Source history, clone, and push remain private.
 - **Private** — disable public view and public Fork/Copy without changing named people or team access.
 
 Hosted history for a person is an optional, separately revocable trail; do not describe it as clone
-or Collaborate.
+or Editor.
 
 ## Choose the target
 
@@ -57,12 +65,12 @@ Quote every user-provided recipient, hostname, and URL when invoking Bash.
 ```bash
 CLI=(node "${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js")
 
-# Person: email or @handle
+# Person: email or @handle — Viewer, Allow copying, Editor with hosted history
 "${CLI[@]}" share person "someone@example.com" --grade explore
 "${CLI[@]}" share person "@someone" --grade fork
 "${CLI[@]}" share person "someone@example.com" --grade collaborate --history
 
-# Registered team hostname
+# Registered team hostname — Editor
 "${CLI[@]}" share team "acme.com" --grade collaborate
 
 # Combined people, invitations, and teams
@@ -100,7 +108,9 @@ with migration guidance.
 
 ## Report the result
 
-- Say who or which team changed, at which level, and whether hosted history was included.
+- Say who or which team changed, at which level (Viewer, Allow copying or Editor), and whether
+  hosted history was included. Someone invited who has no account yet is "Invited · hasn't joined
+  yet".
 - For resend, report delivery failure or the remaining cooldown without inventing a successful send.
 - For history, repeat that Content, Copy, and Git transport are unchanged.
 - After removal, preserve the CLI's distinction between removed direct access and access surviving
