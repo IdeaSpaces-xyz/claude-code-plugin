@@ -33,9 +33,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/yaml/dist/nodes/identity.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/identity.js
 var require_identity = __commonJS({
-  "node_modules/yaml/dist/nodes/identity.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/identity.js"(exports) {
     "use strict";
     var ALIAS = Symbol.for("yaml.alias");
     var DOC = Symbol.for("yaml.document");
@@ -90,9 +90,9 @@ var require_identity = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/visit.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/visit.js
 var require_visit = __commonJS({
-  "node_modules/yaml/dist/visit.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/visit.js"(exports) {
     "use strict";
     var identity = require_identity();
     var BREAK = Symbol("break visit");
@@ -248,9 +248,9 @@ var require_visit = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/doc/directives.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/doc/directives.js
 var require_directives = __commonJS({
-  "node_modules/yaml/dist/doc/directives.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/doc/directives.js"(exports) {
     "use strict";
     var identity = require_identity();
     var visit = require_visit();
@@ -419,9 +419,9 @@ var require_directives = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/doc/anchors.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/doc/anchors.js
 var require_anchors = __commonJS({
-  "node_modules/yaml/dist/doc/anchors.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/doc/anchors.js"(exports) {
     "use strict";
     var identity = require_identity();
     var visit = require_visit();
@@ -489,9 +489,9 @@ var require_anchors = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/doc/applyReviver.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/doc/applyReviver.js
 var require_applyReviver = __commonJS({
-  "node_modules/yaml/dist/doc/applyReviver.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/doc/applyReviver.js"(exports) {
     "use strict";
     function applyReviver(reviver, obj, key, val) {
       if (val && typeof val === "object") {
@@ -539,9 +539,9 @@ var require_applyReviver = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/nodes/toJS.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/toJS.js
 var require_toJS = __commonJS({
-  "node_modules/yaml/dist/nodes/toJS.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/toJS.js"(exports) {
     "use strict";
     var identity = require_identity();
     function toJS(value, arg, ctx) {
@@ -569,9 +569,9 @@ var require_toJS = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/nodes/Node.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Node.js
 var require_Node = __commonJS({
-  "node_modules/yaml/dist/nodes/Node.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Node.js"(exports) {
     "use strict";
     var applyReviver = require_applyReviver();
     var identity = require_identity();
@@ -610,9 +610,9 @@ var require_Node = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/nodes/Alias.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Alias.js
 var require_Alias = __commonJS({
-  "node_modules/yaml/dist/nodes/Alias.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Alias.js"(exports) {
     "use strict";
     var anchors = require_anchors();
     var visit = require_visit();
@@ -726,9 +726,9 @@ var require_Alias = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/nodes/Scalar.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Scalar.js
 var require_Scalar = __commonJS({
-  "node_modules/yaml/dist/nodes/Scalar.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Scalar.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Node = require_Node();
@@ -756,9 +756,9 @@ var require_Scalar = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/doc/createNode.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/doc/createNode.js
 var require_createNode = __commonJS({
-  "node_modules/yaml/dist/doc/createNode.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/doc/createNode.js"(exports) {
     "use strict";
     var Alias = require_Alias();
     var identity = require_identity();
@@ -831,9 +831,9 @@ var require_createNode = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/nodes/Collection.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Collection.js
 var require_Collection = __commonJS({
-  "node_modules/yaml/dist/nodes/Collection.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Collection.js"(exports) {
     "use strict";
     var createNode = require_createNode();
     var identity = require_identity();
@@ -974,9 +974,9 @@ var require_Collection = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/stringify/stringifyComment.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyComment.js
 var require_stringifyComment = __commonJS({
-  "node_modules/yaml/dist/stringify/stringifyComment.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyComment.js"(exports) {
     "use strict";
     var stringifyComment = (str) => str.replace(/^(?!$)(?: $)?/gm, "#");
     function indentComment(comment, indent) {
@@ -991,9 +991,9 @@ var require_stringifyComment = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/stringify/foldFlowLines.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/stringify/foldFlowLines.js
 var require_foldFlowLines = __commonJS({
-  "node_modules/yaml/dist/stringify/foldFlowLines.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/stringify/foldFlowLines.js"(exports) {
     "use strict";
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
@@ -1127,9 +1127,9 @@ ${indent}${text.slice(fold + 1, end2)}`;
   }
 });
 
-// node_modules/yaml/dist/stringify/stringifyString.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyString.js
 var require_stringifyString = __commonJS({
-  "node_modules/yaml/dist/stringify/stringifyString.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyString.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var foldFlowLines = require_foldFlowLines();
@@ -1410,9 +1410,9 @@ ${indent}`);
   }
 });
 
-// node_modules/yaml/dist/stringify/stringify.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringify.js
 var require_stringify = __commonJS({
-  "node_modules/yaml/dist/stringify/stringify.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringify.js"(exports) {
     "use strict";
     var anchors = require_anchors();
     var identity = require_identity();
@@ -1534,9 +1534,9 @@ ${ctx.indent}${str}`;
   }
 });
 
-// node_modules/yaml/dist/stringify/stringifyPair.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyPair.js
 var require_stringifyPair = __commonJS({
-  "node_modules/yaml/dist/stringify/stringifyPair.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyPair.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -1667,9 +1667,9 @@ ${ctx.indent}`;
   }
 });
 
-// node_modules/yaml/dist/log.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/log.js
 var require_log = __commonJS({
-  "node_modules/yaml/dist/log.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/log.js"(exports) {
     "use strict";
     var node_process = __require("process");
     function debug(logLevel, ...messages) {
@@ -1689,9 +1689,9 @@ var require_log = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/merge.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/merge.js
 var require_merge = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/merge.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/merge.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -1749,9 +1749,9 @@ var require_merge = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/nodes/addPairToJSMap.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/addPairToJSMap.js
 var require_addPairToJSMap = __commonJS({
-  "node_modules/yaml/dist/nodes/addPairToJSMap.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/addPairToJSMap.js"(exports) {
     "use strict";
     var log = require_log();
     var merge = require_merge();
@@ -1813,9 +1813,9 @@ var require_addPairToJSMap = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/nodes/Pair.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Pair.js
 var require_Pair = __commonJS({
-  "node_modules/yaml/dist/nodes/Pair.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/Pair.js"(exports) {
     "use strict";
     var createNode = require_createNode();
     var stringifyPair = require_stringifyPair();
@@ -1853,9 +1853,9 @@ var require_Pair = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/stringify/stringifyCollection.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyCollection.js
 var require_stringifyCollection = __commonJS({
-  "node_modules/yaml/dist/stringify/stringifyCollection.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyCollection.js"(exports) {
     "use strict";
     var identity = require_identity();
     var stringify = require_stringify();
@@ -2004,9 +2004,9 @@ ${indent}${end}`;
   }
 });
 
-// node_modules/yaml/dist/nodes/YAMLMap.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/YAMLMap.js
 var require_YAMLMap = __commonJS({
-  "node_modules/yaml/dist/nodes/YAMLMap.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/YAMLMap.js"(exports) {
     "use strict";
     var stringifyCollection = require_stringifyCollection();
     var addPairToJSMap = require_addPairToJSMap();
@@ -2148,9 +2148,9 @@ var require_YAMLMap = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/common/map.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/common/map.js
 var require_map = __commonJS({
-  "node_modules/yaml/dist/schema/common/map.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/common/map.js"(exports) {
     "use strict";
     var identity = require_identity();
     var YAMLMap = require_YAMLMap();
@@ -2170,9 +2170,9 @@ var require_map = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/nodes/YAMLSeq.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/nodes/YAMLSeq.js
 var require_YAMLSeq = __commonJS({
-  "node_modules/yaml/dist/nodes/YAMLSeq.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/nodes/YAMLSeq.js"(exports) {
     "use strict";
     var createNode = require_createNode();
     var stringifyCollection = require_stringifyCollection();
@@ -2286,9 +2286,9 @@ var require_YAMLSeq = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/common/seq.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/common/seq.js
 var require_seq = __commonJS({
-  "node_modules/yaml/dist/schema/common/seq.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/common/seq.js"(exports) {
     "use strict";
     var identity = require_identity();
     var YAMLSeq = require_YAMLSeq();
@@ -2308,9 +2308,9 @@ var require_seq = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/common/string.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/common/string.js
 var require_string = __commonJS({
-  "node_modules/yaml/dist/schema/common/string.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/common/string.js"(exports) {
     "use strict";
     var stringifyString = require_stringifyString();
     var string = {
@@ -2327,9 +2327,9 @@ var require_string = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/common/null.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/common/null.js
 var require_null = __commonJS({
-  "node_modules/yaml/dist/schema/common/null.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/common/null.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var nullTag = {
@@ -2345,9 +2345,9 @@ var require_null = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/core/bool.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/core/bool.js
 var require_bool = __commonJS({
-  "node_modules/yaml/dist/schema/core/bool.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/core/bool.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var boolTag = {
@@ -2369,9 +2369,9 @@ var require_bool = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/stringify/stringifyNumber.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyNumber.js
 var require_stringifyNumber = __commonJS({
-  "node_modules/yaml/dist/stringify/stringifyNumber.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyNumber.js"(exports) {
     "use strict";
     function stringifyNumber({ format, minFractionDigits, tag, value }) {
       if (typeof value === "bigint")
@@ -2396,9 +2396,9 @@ var require_stringifyNumber = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/core/float.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/core/float.js
 var require_float = __commonJS({
-  "node_modules/yaml/dist/schema/core/float.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/core/float.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var stringifyNumber = require_stringifyNumber();
@@ -2442,9 +2442,9 @@ var require_float = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/core/int.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/core/int.js
 var require_int = __commonJS({
-  "node_modules/yaml/dist/schema/core/int.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/core/int.js"(exports) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -2487,9 +2487,9 @@ var require_int = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/core/schema.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/core/schema.js
 var require_schema = __commonJS({
-  "node_modules/yaml/dist/schema/core/schema.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/core/schema.js"(exports) {
     "use strict";
     var map = require_map();
     var _null = require_null();
@@ -2515,9 +2515,9 @@ var require_schema = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/json/schema.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/json/schema.js
 var require_schema2 = __commonJS({
-  "node_modules/yaml/dist/schema/json/schema.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/json/schema.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var map = require_map();
@@ -2582,9 +2582,9 @@ var require_schema2 = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/binary.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/binary.js
 var require_binary = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/binary.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/binary.js"(exports) {
     "use strict";
     var node_buffer = __require("buffer");
     var Scalar = require_Scalar();
@@ -2648,9 +2648,9 @@ var require_binary = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/pairs.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/pairs.js
 var require_pairs = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/pairs.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/pairs.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Pair = require_Pair();
@@ -2726,9 +2726,9 @@ ${cn.comment}` : item.comment;
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/omap.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/omap.js
 var require_omap = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/omap.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/omap.js"(exports) {
     "use strict";
     var identity = require_identity();
     var toJS = require_toJS();
@@ -2804,9 +2804,9 @@ var require_omap = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/bool.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/bool.js
 var require_bool2 = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/bool.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/bool.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     function boolStringify({ value, source }, ctx) {
@@ -2836,9 +2836,9 @@ var require_bool2 = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/float.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/float.js
 var require_float2 = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/float.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/float.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var stringifyNumber = require_stringifyNumber();
@@ -2885,9 +2885,9 @@ var require_float2 = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/int.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/int.js
 var require_int2 = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/int.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/int.js"(exports) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -2964,9 +2964,9 @@ var require_int2 = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/set.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/set.js
 var require_set = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/set.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/set.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Pair = require_Pair();
@@ -3053,9 +3053,9 @@ var require_set = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
 var require_timestamp = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/timestamp.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/timestamp.js"(exports) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     function parseSexagesimal(str, asBigInt) {
@@ -3141,9 +3141,9 @@ var require_timestamp = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/schema.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/schema.js
 var require_schema3 = __commonJS({
-  "node_modules/yaml/dist/schema/yaml-1.1/schema.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/yaml-1.1/schema.js"(exports) {
     "use strict";
     var map = require_map();
     var _null = require_null();
@@ -3185,9 +3185,9 @@ var require_schema3 = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/tags.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/tags.js
 var require_tags = __commonJS({
-  "node_modules/yaml/dist/schema/tags.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/tags.js"(exports) {
     "use strict";
     var map = require_map();
     var _null = require_null();
@@ -3279,9 +3279,9 @@ var require_tags = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/schema/Schema.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/schema/Schema.js
 var require_Schema = __commonJS({
-  "node_modules/yaml/dist/schema/Schema.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/schema/Schema.js"(exports) {
     "use strict";
     var identity = require_identity();
     var map = require_map();
@@ -3311,9 +3311,9 @@ var require_Schema = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/stringify/stringifyDocument.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyDocument.js
 var require_stringifyDocument = __commonJS({
-  "node_modules/yaml/dist/stringify/stringifyDocument.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/stringify/stringifyDocument.js"(exports) {
     "use strict";
     var identity = require_identity();
     var stringify = require_stringify();
@@ -3391,9 +3391,9 @@ var require_stringifyDocument = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/doc/Document.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/doc/Document.js
 var require_Document = __commonJS({
-  "node_modules/yaml/dist/doc/Document.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/doc/Document.js"(exports) {
     "use strict";
     var Alias = require_Alias();
     var Collection = require_Collection();
@@ -3700,9 +3700,9 @@ var require_Document = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/errors.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/errors.js
 var require_errors = __commonJS({
-  "node_modules/yaml/dist/errors.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/errors.js"(exports) {
     "use strict";
     var YAMLError = class extends Error {
       constructor(name, pos, code, message) {
@@ -3765,9 +3765,9 @@ ${pointer}
   }
 });
 
-// node_modules/yaml/dist/compose/resolve-props.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-props.js
 var require_resolve_props = __commonJS({
-  "node_modules/yaml/dist/compose/resolve-props.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-props.js"(exports) {
     "use strict";
     function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
       let spaceBefore = false;
@@ -3899,9 +3899,9 @@ var require_resolve_props = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/util-contains-newline.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/util-contains-newline.js
 var require_util_contains_newline = __commonJS({
-  "node_modules/yaml/dist/compose/util-contains-newline.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/util-contains-newline.js"(exports) {
     "use strict";
     function containsNewline(key) {
       if (!key)
@@ -3941,9 +3941,9 @@ var require_util_contains_newline = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/util-flow-indent-check.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/util-flow-indent-check.js
 var require_util_flow_indent_check = __commonJS({
-  "node_modules/yaml/dist/compose/util-flow-indent-check.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/util-flow-indent-check.js"(exports) {
     "use strict";
     var utilContainsNewline = require_util_contains_newline();
     function flowIndentCheck(indent, fc, onError) {
@@ -3959,9 +3959,9 @@ var require_util_flow_indent_check = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/util-map-includes.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/util-map-includes.js
 var require_util_map_includes = __commonJS({
-  "node_modules/yaml/dist/compose/util-map-includes.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/util-map-includes.js"(exports) {
     "use strict";
     var identity = require_identity();
     function mapIncludes(ctx, items, search) {
@@ -3975,9 +3975,9 @@ var require_util_map_includes = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/resolve-block-map.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-block-map.js
 var require_resolve_block_map = __commonJS({
-  "node_modules/yaml/dist/compose/resolve-block-map.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-block-map.js"(exports) {
     "use strict";
     var Pair = require_Pair();
     var YAMLMap = require_YAMLMap();
@@ -4083,9 +4083,9 @@ var require_resolve_block_map = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/resolve-block-seq.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-block-seq.js
 var require_resolve_block_seq = __commonJS({
-  "node_modules/yaml/dist/compose/resolve-block-seq.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-block-seq.js"(exports) {
     "use strict";
     var YAMLSeq = require_YAMLSeq();
     var resolveProps = require_resolve_props();
@@ -4134,9 +4134,9 @@ var require_resolve_block_seq = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/resolve-end.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-end.js
 var require_resolve_end = __commonJS({
-  "node_modules/yaml/dist/compose/resolve-end.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-end.js"(exports) {
     "use strict";
     function resolveEnd(end, offset, reqSpace, onError) {
       let comment = "";
@@ -4177,9 +4177,9 @@ var require_resolve_end = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/resolve-flow-collection.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-flow-collection.js
 var require_resolve_flow_collection = __commonJS({
-  "node_modules/yaml/dist/compose/resolve-flow-collection.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-flow-collection.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Pair = require_Pair();
@@ -4371,9 +4371,9 @@ var require_resolve_flow_collection = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/compose-collection.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/compose-collection.js
 var require_compose_collection = __commonJS({
-  "node_modules/yaml/dist/compose/compose-collection.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/compose-collection.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -4436,9 +4436,9 @@ var require_compose_collection = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/resolve-block-scalar.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-block-scalar.js
 var require_resolve_block_scalar = __commonJS({
-  "node_modules/yaml/dist/compose/resolve-block-scalar.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-block-scalar.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     function resolveBlockScalar(ctx, scalar, onError) {
@@ -4619,9 +4619,9 @@ var require_resolve_block_scalar = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/resolve-flow-scalar.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-flow-scalar.js
 var require_resolve_flow_scalar = __commonJS({
-  "node_modules/yaml/dist/compose/resolve-flow-scalar.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/resolve-flow-scalar.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var resolveEnd = require_resolve_end();
@@ -4839,9 +4839,9 @@ var require_resolve_flow_scalar = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/compose-scalar.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/compose-scalar.js
 var require_compose_scalar = __commonJS({
-  "node_modules/yaml/dist/compose/compose-scalar.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/compose-scalar.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -4920,9 +4920,9 @@ var require_compose_scalar = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/util-empty-scalar-position.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/util-empty-scalar-position.js
 var require_util_empty_scalar_position = __commonJS({
-  "node_modules/yaml/dist/compose/util-empty-scalar-position.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/util-empty-scalar-position.js"(exports) {
     "use strict";
     function emptyScalarPosition(offset, before, pos) {
       if (before) {
@@ -4950,9 +4950,9 @@ var require_util_empty_scalar_position = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/compose-node.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/compose-node.js
 var require_compose_node = __commonJS({
-  "node_modules/yaml/dist/compose/compose-node.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/compose-node.js"(exports) {
     "use strict";
     var Alias = require_Alias();
     var identity = require_identity();
@@ -5056,9 +5056,9 @@ var require_compose_node = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/compose-doc.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/compose-doc.js
 var require_compose_doc = __commonJS({
-  "node_modules/yaml/dist/compose/compose-doc.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/compose-doc.js"(exports) {
     "use strict";
     var Document = require_Document();
     var composeNode = require_compose_node();
@@ -5099,9 +5099,9 @@ var require_compose_doc = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/compose/composer.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/compose/composer.js
 var require_composer = __commonJS({
-  "node_modules/yaml/dist/compose/composer.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/compose/composer.js"(exports) {
     "use strict";
     var node_process = __require("process");
     var directives = require_directives();
@@ -5307,9 +5307,9 @@ ${end.comment}` : end.comment;
   }
 });
 
-// node_modules/yaml/dist/parse/cst-scalar.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/parse/cst-scalar.js
 var require_cst_scalar = __commonJS({
-  "node_modules/yaml/dist/parse/cst-scalar.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/parse/cst-scalar.js"(exports) {
     "use strict";
     var resolveBlockScalar = require_resolve_block_scalar();
     var resolveFlowScalar = require_resolve_flow_scalar();
@@ -5492,9 +5492,9 @@ var require_cst_scalar = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/parse/cst-stringify.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/parse/cst-stringify.js
 var require_cst_stringify = __commonJS({
-  "node_modules/yaml/dist/parse/cst-stringify.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/parse/cst-stringify.js"(exports) {
     "use strict";
     var stringify = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
     function stringifyToken(token) {
@@ -5553,9 +5553,9 @@ var require_cst_stringify = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/parse/cst-visit.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/parse/cst-visit.js
 var require_cst_visit = __commonJS({
-  "node_modules/yaml/dist/parse/cst-visit.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/parse/cst-visit.js"(exports) {
     "use strict";
     var BREAK = Symbol("break visit");
     var SKIP = Symbol("skip children");
@@ -5615,9 +5615,9 @@ var require_cst_visit = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/parse/cst.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/parse/cst.js
 var require_cst = __commonJS({
-  "node_modules/yaml/dist/parse/cst.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/parse/cst.js"(exports) {
     "use strict";
     var cstScalar = require_cst_scalar();
     var cstStringify = require_cst_stringify();
@@ -5717,9 +5717,9 @@ var require_cst = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/parse/lexer.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/parse/lexer.js
 var require_lexer = __commonJS({
-  "node_modules/yaml/dist/parse/lexer.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/parse/lexer.js"(exports) {
     "use strict";
     var cst = require_cst();
     function isEmpty(ch) {
@@ -6306,9 +6306,9 @@ var require_lexer = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/parse/line-counter.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/parse/line-counter.js
 var require_line_counter = __commonJS({
-  "node_modules/yaml/dist/parse/line-counter.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/parse/line-counter.js"(exports) {
     "use strict";
     var LineCounter = class {
       constructor() {
@@ -6337,9 +6337,9 @@ var require_line_counter = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/parse/parser.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/parse/parser.js
 var require_parser = __commonJS({
-  "node_modules/yaml/dist/parse/parser.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/parse/parser.js"(exports) {
     "use strict";
     var node_process = __require("process");
     var cst = require_cst();
@@ -7211,9 +7211,9 @@ var require_parser = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/public-api.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/public-api.js
 var require_public_api = __commonJS({
-  "node_modules/yaml/dist/public-api.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/public-api.js"(exports) {
     "use strict";
     var composer = require_composer();
     var Document = require_Document();
@@ -7308,9 +7308,9 @@ var require_public_api = __commonJS({
   }
 });
 
-// node_modules/yaml/dist/index.js
+// ../../ideaspaces-plugin/node_modules/yaml/dist/index.js
 var require_dist = __commonJS({
-  "node_modules/yaml/dist/index.js"(exports) {
+  "../../ideaspaces-plugin/node_modules/yaml/dist/index.js"(exports) {
     "use strict";
     var composer = require_composer();
     var Document = require_Document();
@@ -7362,11 +7362,11 @@ var require_dist = __commonJS({
 
 // src/awareness-hook.ts
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname4 } from "node:path";
-import { homedir } from "node:os";
+import { homedir as homedir2 } from "node:os";
 
-// node_modules/@ideaspaces/protocol/dist/space.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/space.js
 import { promises as fs } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 var CONTRACT_FILES = [
@@ -7444,11 +7444,11 @@ async function composeContractAlongPath(position) {
   };
 }
 
-// node_modules/@ideaspaces/protocol/dist/agreement.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/agreement.js
 import { promises as fs2 } from "node:fs";
 import { basename, dirname as dirname2, join as join2, relative, resolve as resolve2, sep } from "node:path";
 
-// node_modules/@ideaspaces/protocol/dist/frontmatter.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
 var DELIM = "---";
 function stripFrontmatter(content) {
@@ -7564,7 +7564,7 @@ function frontmatterBlock(content) {
   return null;
 }
 
-// node_modules/@ideaspaces/protocol/dist/root-identity.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/root-identity.js
 var CURRENT_ROOT_NODE_ID_PATTERN = /^n_[0-9a-f]{24}$/;
 var ROOT_NODE_ID_PATTERN = /^n_(?:[0-9a-f]{12}|[0-9a-f]{24})$/;
 function parseRootNodeId(value) {
@@ -7582,7 +7582,7 @@ function parseRootNodeId(value) {
   };
 }
 
-// node_modules/@ideaspaces/protocol/dist/agreement.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/agreement.js
 async function composeAgreementAlongPath(position, repoRoot = null) {
   const start = resolve2(position);
   const boundary = repoRoot ? resolve2(repoRoot) : null;
@@ -7627,15 +7627,12 @@ async function composeAgreementAlongPath(position, repoRoot = null) {
     const files = await readLevelFiles(level, issues);
     stack.push({ dir: level.dir, agreementPath: level.agreementPath, files });
   }
-  const ceilingLevel = selected[0];
-  const agreementReference = ceilingLevel?.agreementReference;
   return {
     position: start,
     spaceRoot,
     stack,
     agreements: stack.flatMap((level) => level.files.filter((file) => file.name === "agreement")),
     ...rootNodeId ? { rootNodeId } : {},
-    ...agreementReference ? { agreementReference } : {},
     issues
   };
 }
@@ -7686,12 +7683,6 @@ async function scanLevel(dir) {
       });
     }
   }
-  let agreementReference;
-  if (frontmatter && "agreement" in frontmatter) {
-    if (typeof frontmatter.agreement === "string" && frontmatter.agreement.trim()) {
-      agreementReference = frontmatter.agreement.trim();
-    }
-  }
   const fullLoads = parseFullLoads(frontmatter, agreementPath, issues);
   return {
     dir,
@@ -7699,7 +7690,6 @@ async function scanLevel(dir) {
     agreementPath,
     agreementContent,
     ...rootNodeId ? { rootNodeId } : {},
-    ...agreementReference ? { agreementReference } : {},
     fullLoads,
     issues
   };
@@ -7834,12 +7824,12 @@ async function readRegularFile(path) {
   }
 }
 
-// node_modules/@ideaspaces/protocol/dist/awareness.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/awareness.js
 import { createHash } from "node:crypto";
 import { promises as fs5 } from "node:fs";
 import { basename as basename2, dirname as dirname3, join as join5, relative as relative4, resolve as resolve5, sep as sep3 } from "node:path";
 
-// node_modules/@ideaspaces/protocol/dist/markdown-inspection.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/markdown-inspection.js
 function summarizeMarkdown(content) {
   const summary = extractSummary(content);
   if (summary)
@@ -7854,7 +7844,7 @@ function summarizeMarkdown(content) {
   return null;
 }
 
-// node_modules/@ideaspaces/protocol/dist/repository-path.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/repository-path.js
 var AGENT_DIRECTORY = "_agent";
 function classifyRepositoryPath(path, kind) {
   if (kind !== "file" && kind !== "directory") {
@@ -7885,7 +7875,7 @@ function classifyRepositoryPath(path, kind) {
   return { status: "ok", role: "ordinary" };
 }
 
-// node_modules/@ideaspaces/protocol/dist/git.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 var FS = "";
 var REC = "";
@@ -8005,7 +7995,7 @@ async function recentActivity(repoRoot, sinceSha, limit = DEFAULT_COMMIT_LIMIT) 
   return { commits, changedFiles };
 }
 
-// node_modules/@ideaspaces/protocol/dist/path-context.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/path-context.js
 import { promises as fs3 } from "node:fs";
 import { isAbsolute, join as join3, relative as relative2, resolve as resolve3, sep as sep2 } from "node:path";
 function spaceRootLevel(ctx) {
@@ -8104,7 +8094,7 @@ async function readFileOrNull(path) {
   }
 }
 
-// node_modules/@ideaspaces/protocol/dist/stale-docs.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
 import { promises as fs4 } from "node:fs";
 import { join as join4, relative as relative3, resolve as resolve4 } from "node:path";
@@ -8239,14 +8229,14 @@ async function exists(path) {
   }
 }
 
-// node_modules/@ideaspaces/protocol/dist/surface-state.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/surface-state.js
 var SEEN_REF = "refs/ideaspaces/seen";
 async function readSeenRef(repoRoot) {
   const res = await runGit(repoRoot, ["rev-parse", "--verify", "--quiet", SEEN_REF]);
   return res.ok ? res.out.trim() || void 0 : void 0;
 }
 
-// node_modules/@ideaspaces/protocol/dist/filesystem.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/filesystem.js
 var DEFAULT_IGNORED_DIRECTORIES = [
   ".git",
   ".github",
@@ -8257,7 +8247,7 @@ var DEFAULT_IGNORED_DIRECTORIES = [
   "build"
 ];
 
-// node_modules/@ideaspaces/protocol/dist/map-projection.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/map-projection.js
 function projectContentTreeMembers(tree, root = 0) {
   const members = [];
   appendTreeEntries(tree.entries, root, "", 1, members);
@@ -8322,7 +8312,7 @@ function renderContentTreeProjection(projection) {
   return lines.join("\n");
 }
 
-// node_modules/@ideaspaces/protocol/dist/awareness.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/awareness.js
 var CONTENT_AWARENESS_SECTIONS = [
   "position",
   "now",
@@ -8398,7 +8388,6 @@ async function assembleContentAwareness(opts) {
     status: "ok",
     kind: "content",
     contractSource,
-    ...contractSource === "agreement" && agreement.agreementReference ? { agreementReference: agreement.agreementReference } : {},
     spaceRoot,
     position: { placement: "head", path: position, base, repoRoot, context },
     ...sections,
@@ -9016,7 +9005,7 @@ function renderDirectionDrift(missing) {
   return lines.length ? lines.join("\n") : null;
 }
 
-// node_modules/@ideaspaces/protocol/dist/content-state.js
+// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/content-state.js
 function renderContentState(state) {
   const { git, captures } = state;
   const lines = ["State:", `  branch: ${git.branch ?? "(detached)"}`];
@@ -9118,7 +9107,9 @@ function agreementStillPrompts(manifest) {
   return Boolean(entry?.content?.includes(PROMPTS_MARKER));
 }
 function renderKindLine(manifest) {
-  const reference = manifest.agreementReference?.trim();
+  const entry = manifest.contract.find((e) => e.name === "agreement" && e.content);
+  const front = entry?.content ? parseFrontmatter(entry.content) : void 0;
+  const reference = typeof front?.agreement === "string" ? front.agreement.trim() : manifest.agreementReference?.trim();
   if (!reference) return null;
   const kind = RECOGNISED[reference];
   const prompts = agreementStillPrompts(manifest) ? " Its sections are still prompts \u2014 the first conversation draws them out and replaces them." : "";
@@ -9155,12 +9146,12 @@ function joinParts(...parts) {
   return parts.filter((part) => part.trim()).join("\n\n");
 }
 function fitToBudget(head, tail, budget = INLINE_BUDGET) {
-  const join7 = joinParts;
-  const whole = join7(head, tail);
+  const join8 = joinParts;
+  const whole = join8(head, tail);
   if (whole.length <= budget) return whole;
   const room = budget - tail.length - 2;
   if (room < 1e3) return cutToBudget(whole, budget);
-  return join7(cutToBudget(head, room), tail);
+  return join8(cutToBudget(head, room), tail);
 }
 function cutToBudget(text, budget = INLINE_BUDGET) {
   if (text.length <= budget) return text;
@@ -9181,6 +9172,84 @@ async function readStdin() {
   return Buffer.concat(chunks).toString("utf-8");
 }
 
+// src/arrival-line.ts
+import { existsSync, readFileSync } from "node:fs";
+import { join as join7 } from "node:path";
+import { homedir } from "node:os";
+var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
+function loadAuthConfig() {
+  const envKey = process.env.IS_API_KEY?.trim();
+  if (envKey) {
+    return {
+      apiUrl: (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, ""),
+      apiKey: envKey
+    };
+  }
+  try {
+    const credPath = join7(homedir(), ".ideaspaces", "credentials.json");
+    if (!existsSync(credPath)) return null;
+    const creds = JSON.parse(readFileSync(credPath, "utf-8"));
+    if (!creds.api_key) return null;
+    return {
+      apiUrl: (process.env.IS_API_URL || creds.api_url || DEFAULT_API_URL).replace(/\/$/, ""),
+      apiKey: creds.api_key
+    };
+  } catch {
+    return null;
+  }
+}
+function formatArrivalLine(newMessages, newRequests) {
+  if (newMessages === 0 && newRequests === 0) return void 0;
+  const parts = [];
+  if (newMessages > 0) {
+    parts.push(`${newMessages} new thread message${newMessages === 1 ? "" : "s"}`);
+  }
+  if (newRequests > 0) {
+    parts.push(`${newRequests} access request${newRequests === 1 ? "" : "s"}`);
+  }
+  return `Hosted: ${parts.join(", ")}.`;
+}
+async function fetchArrivalCounts(config) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 1500);
+  try {
+    const res = await fetch(`${config.apiUrl}/api/v1/inbox`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        Accept: "application/json"
+      },
+      signal: controller.signal
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data.items)) return null;
+    let newMessages = 0;
+    let newRequests = 0;
+    for (const item of data.items) {
+      if (item.kind === "inquiry") {
+        if (typeof item.cursor === "number" && typeof item.latest_position === "number" && item.latest_position > item.cursor) {
+          newMessages += item.latest_position - item.cursor;
+        }
+      } else if (item.kind === "access_request") {
+        newRequests += 1;
+      }
+    }
+    return { newMessages, newRequests };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+async function renderArrivalLine() {
+  const config = loadAuthConfig();
+  if (!config) return void 0;
+  const counts = await fetchArrivalCounts(config);
+  if (!counts) return void 0;
+  return formatArrivalLine(counts.newMessages, counts.newRequests);
+}
+
 // src/awareness-hook.ts
 function captureSessionId(raw) {
   const fallbackDir = process.env.CLAUDE_PROJECT_DIR?.trim() || process.cwd();
@@ -9195,7 +9264,7 @@ function captureSessionId(raw) {
   const sessionId = input.session_id;
   if (typeof sessionId !== "string" || !sessionId) return { projectDir };
   try {
-    const file = sessionIdCachePath2(homedir(), projectDir);
+    const file = sessionIdCachePath2(homedir2(), projectDir);
     mkdirSync(dirname4(file), { recursive: true });
     writeFileSync(file, sessionId + "\n");
   } catch {
@@ -9204,7 +9273,7 @@ function captureSessionId(raw) {
 }
 function changeLine(sessionId, projectDir) {
   try {
-    const raw = readFileSync(changeCachePath2(homedir(), projectDir), "utf-8");
+    const raw = readFileSync2(changeCachePath2(homedir2(), projectDir), "utf-8");
     const rec = parseChangeRecord(raw);
     return rec ? renderChangeLine(rec, sessionId, Date.now()) : void 0;
   } catch {
@@ -9242,12 +9311,13 @@ async function main() {
       } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const kind = renderKindLine(manifest) ?? "";
-      const join7 = joinParts;
-      const rest = join7(kind, READING_LINE, tail);
-      let text = join7(head, rest);
+      const arrival = await renderArrivalLine();
+      const join8 = joinParts;
+      const rest = join8(kind, READING_LINE, arrival ?? "", tail);
+      let text = join8(head, rest);
       if (text.length > INLINE_BUDGET) {
         const slim = summarizeContract(manifest);
-        const slimHead = slim.demoted.length ? join7(
+        const slimHead = slim.demoted.length ? join8(
           renderContentAwareness(slim.manifest, { placement: "head" }),
           renderDemotedLine(slim.demoted, projectDir)
         ) : head;

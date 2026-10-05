@@ -38,7 +38,9 @@ function agreementStillPrompts(manifest: ContentAwarenessManifest): boolean {
  * Agreement declares none. Rendered between the protocol's head and tail.
  */
 export function renderKindLine(manifest: ContentAwarenessManifest): string | null {
-  const reference = manifest.agreementReference?.trim();
+  const entry = manifest.contract.find((e) => e.name === "agreement" && e.content);
+  const front = entry?.content ? parseFrontmatter(entry.content) : undefined;
+  const reference = typeof front?.agreement === "string" ? front.agreement.trim() : (manifest as { agreementReference?: string }).agreementReference?.trim();
   if (!reference) return null;
   const kind = RECOGNISED[reference];
   const prompts = agreementStillPrompts(manifest)

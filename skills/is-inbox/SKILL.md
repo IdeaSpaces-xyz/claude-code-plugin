@@ -73,25 +73,28 @@ coordinate already supplied by the user, Map, or hosted reader; never guess one 
 When the subject is not any Content — the tool itself, the service, the person — the honest target
 is the maker's public profile: a Thread about their Actor node, with no recipient, reaches them.
 Sending grants nothing: the recipient sees the message and the Map's legend, and reads a named Note
-only with access they already hold. Use **is-share** if they should be able to read it.
+only with access they already hold. Pass `--share <viewer|copying|editor>` to explicitly grant access
+to the Map's roots in the same flow.
 
 Before sending, state the target, the recipient (or that it goes to the owner), and the message.
 Ask for confirmation when any were inferred or composed beyond the user's request. A request that
 already names them counts as confirmation; do not ask twice.
 
-## Send and reply
+## Send, reply, and share access
 
 Quote every user-provided value. Pass longer Markdown through stdin rather than flattening it. Mint
 one stable send id per intended message and reuse that exact id only when retrying the same immutable
 send after an ambiguous network failure.
 
 ```bash
-"${CLI[@]}" inbox send "@owner" \
-  --about "n_0123456789abcdef01234567" \
-  --name "Question" \
-  --summary "One decision needs clarification" \
+# Send with a reviewed Map and explicitly grant Viewer access to its roots:
+"${CLI[@]}" inbox send "@colleague" \
+  --map "selection.json" \
+  --share "viewer" \
+  --name "Review proposal" \
+  --summary "One decision needs your review" \
   --send-id "<stable-send-id>" \
-  --message "What should happen next?"
+  --message "Please review the attached Map."
 
 # No person named: the Node's owner receives it.
 "${CLI[@]}" inbox send \
@@ -101,15 +104,28 @@ send after an ambiguous network failure.
   --send-id "<stable-send-id>" \
   --message "..."
 
-printf '%s\n' "# Answer" "" "Keep the boundary narrow." | \
+# Reply with an attached Map:
+printf '%s\n' "# Answer" "" "Here is the alternative approach." | \
   "${CLI[@]}" inbox reply "<thread-id>" \
-    --name "Answer" \
+    --map "counter-proposal.json" \
+    --name "Counter proposal" \
     --summary "A bounded answer" \
     --send-id "<stable-reply-id>"
 ```
 
 A reply needs no recipient or target: the original message fixes both. Never change the send id while
 retrying changed content; changed content is a new message and needs a new id.
+
+## Ask for access and decide
+
+When an expanded member returns "You need access", request access from the owner:
+
+```bash
+"${CLI[@]}" request "<node-id>" --grade viewer --reason "Need to review finding"
+"${CLI[@]}" request list --incoming
+"${CLI[@]}" request approve "<request-id>" --grade viewer
+"${CLI[@]}" request deny "<request-id>"
+```
 
 If authentication is required, offer `is_auth action="login"`, then retry the identical operation.
 

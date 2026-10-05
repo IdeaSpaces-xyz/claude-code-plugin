@@ -42,6 +42,7 @@ import { renderKindLine } from "./kind-line.js";
 import { INLINE_BUDGET, fitToBudget, joinParts, renderDemotedLine, summarizeContract } from "./inline-budget.js";
 import { READING_LINE } from "./reading-line.js";
 import { readStdin } from "./stdin.js";
+import { renderArrivalLine } from "./arrival-line.js";
 
 /**
  * Bridge the Claude Code session id to the MCP server. The server can't read it
@@ -139,8 +140,9 @@ async function main(): Promise<void> {
       // The habitat's lines between head and tail: which convention the Space
       // declares, what that means in Claude Code, and how Notes are read here.
       const kind = renderKindLine(manifest) ?? "";
+      const arrival = await renderArrivalLine();
       const join = joinParts;
-      const rest = join(kind, READING_LINE, tail);
+      const rest = join(kind, READING_LINE, arrival ?? "", tail);
       let text = join(head, rest);
       // Over the inline limit the harness would show a 2 KB preview: bodies
       // fall to summaries with a pointer before anything is cut, and a cut
