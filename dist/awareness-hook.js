@@ -7627,12 +7627,15 @@ async function composeAgreementAlongPath(position, repoRoot = null) {
     const files = await readLevelFiles(level, issues);
     stack.push({ dir: level.dir, agreementPath: level.agreementPath, files });
   }
+  const ceilingLevel = selected[0];
+  const agreementReference = ceilingLevel?.agreementReference;
   return {
     position: start,
     spaceRoot,
     stack,
     agreements: stack.flatMap((level) => level.files.filter((file) => file.name === "agreement")),
     ...rootNodeId ? { rootNodeId } : {},
+    ...agreementReference ? { agreementReference } : {},
     issues
   };
 }
@@ -7683,6 +7686,12 @@ async function scanLevel(dir) {
       });
     }
   }
+  let agreementReference;
+  if (frontmatter && "agreement" in frontmatter) {
+    if (typeof frontmatter.agreement === "string" && frontmatter.agreement.trim()) {
+      agreementReference = frontmatter.agreement.trim();
+    }
+  }
   const fullLoads = parseFullLoads(frontmatter, agreementPath, issues);
   return {
     dir,
@@ -7690,6 +7699,7 @@ async function scanLevel(dir) {
     agreementPath,
     agreementContent,
     ...rootNodeId ? { rootNodeId } : {},
+    ...agreementReference ? { agreementReference } : {},
     fullLoads,
     issues
   };
@@ -8388,6 +8398,7 @@ async function assembleContentAwareness(opts) {
     status: "ok",
     kind: "content",
     contractSource,
+    ...contractSource === "agreement" && agreement.agreementReference ? { agreementReference: agreement.agreementReference } : {},
     spaceRoot,
     position: { placement: "head", path: position, base, repoRoot, context },
     ...sections,
