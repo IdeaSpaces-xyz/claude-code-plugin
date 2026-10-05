@@ -7362,9 +7362,9 @@ var require_dist = __commonJS({
 
 // src/awareness-hook.ts
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname4 } from "node:path";
-import { homedir } from "node:os";
+import { homedir as homedir2 } from "node:os";
 
 // node_modules/@ideaspaces/protocol/dist/space.js
 import { promises as fs } from "node:fs";
@@ -9118,7 +9118,9 @@ function agreementStillPrompts(manifest) {
   return Boolean(entry?.content?.includes(PROMPTS_MARKER));
 }
 function renderKindLine(manifest) {
-  const reference = manifest.agreementReference?.trim();
+  const entry = manifest.contract.find((e) => e.name === "agreement" && e.content);
+  const front = entry?.content ? parseFrontmatter(entry.content) : void 0;
+  const reference = typeof front?.agreement === "string" ? front.agreement.trim() : manifest.agreementReference?.trim();
   if (!reference) return null;
   const kind = RECOGNISED[reference];
   const prompts = agreementStillPrompts(manifest) ? " Its sections are still prompts \u2014 the first conversation draws them out and replaces them." : "";
@@ -9155,12 +9157,12 @@ function joinParts(...parts) {
   return parts.filter((part) => part.trim()).join("\n\n");
 }
 function fitToBudget(head, tail, budget = INLINE_BUDGET) {
-  const join7 = joinParts;
-  const whole = join7(head, tail);
+  const join8 = joinParts;
+  const whole = join8(head, tail);
   if (whole.length <= budget) return whole;
   const room = budget - tail.length - 2;
   if (room < 1e3) return cutToBudget(whole, budget);
-  return join7(cutToBudget(head, room), tail);
+  return join8(cutToBudget(head, room), tail);
 }
 function cutToBudget(text, budget = INLINE_BUDGET) {
   if (text.length <= budget) return text;
@@ -9181,6 +9183,84 @@ async function readStdin() {
   return Buffer.concat(chunks).toString("utf-8");
 }
 
+// src/arrival-line.ts
+import { existsSync, readFileSync } from "node:fs";
+import { join as join7 } from "node:path";
+import { homedir } from "node:os";
+var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
+function loadAuthConfig() {
+  const envKey = process.env.IS_API_KEY?.trim();
+  if (envKey) {
+    return {
+      apiUrl: (process.env.IS_API_URL || DEFAULT_API_URL).replace(/\/$/, ""),
+      apiKey: envKey
+    };
+  }
+  try {
+    const credPath = join7(homedir(), ".ideaspaces", "credentials.json");
+    if (!existsSync(credPath)) return null;
+    const creds = JSON.parse(readFileSync(credPath, "utf-8"));
+    if (!creds.api_key) return null;
+    return {
+      apiUrl: (process.env.IS_API_URL || creds.api_url || DEFAULT_API_URL).replace(/\/$/, ""),
+      apiKey: creds.api_key
+    };
+  } catch {
+    return null;
+  }
+}
+function formatArrivalLine(newMessages, newRequests) {
+  if (newMessages === 0 && newRequests === 0) return void 0;
+  const parts = [];
+  if (newMessages > 0) {
+    parts.push(`${newMessages} new thread message${newMessages === 1 ? "" : "s"}`);
+  }
+  if (newRequests > 0) {
+    parts.push(`${newRequests} access request${newRequests === 1 ? "" : "s"}`);
+  }
+  return `Hosted: ${parts.join(", ")}.`;
+}
+async function fetchArrivalCounts(config) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 1500);
+  try {
+    const res = await fetch(`${config.apiUrl}/api/v1/inbox`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        Accept: "application/json"
+      },
+      signal: controller.signal
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data.items)) return null;
+    let newMessages = 0;
+    let newRequests = 0;
+    for (const item of data.items) {
+      if (item.kind === "inquiry") {
+        if (typeof item.cursor === "number" && typeof item.latest_position === "number" && item.latest_position > item.cursor) {
+          newMessages += item.latest_position - item.cursor;
+        }
+      } else if (item.kind === "access_request") {
+        newRequests += 1;
+      }
+    }
+    return { newMessages, newRequests };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+async function renderArrivalLine() {
+  const config = loadAuthConfig();
+  if (!config) return void 0;
+  const counts = await fetchArrivalCounts(config);
+  if (!counts) return void 0;
+  return formatArrivalLine(counts.newMessages, counts.newRequests);
+}
+
 // src/awareness-hook.ts
 function captureSessionId(raw) {
   const fallbackDir = process.env.CLAUDE_PROJECT_DIR?.trim() || process.cwd();
@@ -9195,7 +9275,7 @@ function captureSessionId(raw) {
   const sessionId = input.session_id;
   if (typeof sessionId !== "string" || !sessionId) return { projectDir };
   try {
-    const file = sessionIdCachePath2(homedir(), projectDir);
+    const file = sessionIdCachePath2(homedir2(), projectDir);
     mkdirSync(dirname4(file), { recursive: true });
     writeFileSync(file, sessionId + "\n");
   } catch {
@@ -9204,7 +9284,7 @@ function captureSessionId(raw) {
 }
 function changeLine(sessionId, projectDir) {
   try {
-    const raw = readFileSync(changeCachePath2(homedir(), projectDir), "utf-8");
+    const raw = readFileSync2(changeCachePath2(homedir2(), projectDir), "utf-8");
     const rec = parseChangeRecord(raw);
     return rec ? renderChangeLine(rec, sessionId, Date.now()) : void 0;
   } catch {
@@ -9242,12 +9322,13 @@ async function main() {
       } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const kind = renderKindLine(manifest) ?? "";
-      const join7 = joinParts;
-      const rest = join7(kind, READING_LINE, tail);
-      let text = join7(head, rest);
+      const arrival = await renderArrivalLine();
+      const join8 = joinParts;
+      const rest = join8(kind, READING_LINE, arrival ?? "", tail);
+      let text = join8(head, rest);
       if (text.length > INLINE_BUDGET) {
         const slim = summarizeContract(manifest);
-        const slimHead = slim.demoted.length ? join7(
+        const slimHead = slim.demoted.length ? join8(
           renderContentAwareness(slim.manifest, { placement: "head" }),
           renderDemotedLine(slim.demoted, projectDir)
         ) : head;
