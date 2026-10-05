@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname as dirname2 } from "node:path";
 
-// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/space.js
+// node_modules/@ideaspaces/protocol/dist/space.js
 import { promises as fs } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 var CONTRACT_FILES = [
@@ -53,7 +53,7 @@ async function readContract(agentDir) {
   return entries;
 }
 
-// ../../ideaspaces-plugin/node_modules/@ideaspaces/protocol/dist/git.js
+// node_modules/@ideaspaces/protocol/dist/git.js
 import { spawn } from "node:child_process";
 function runGit(repoRoot, args) {
   return new Promise((resolve3) => {
