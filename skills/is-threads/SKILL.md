@@ -1,13 +1,15 @@
 ---
 name: is-threads
 description: >
-  Use when another vantage needs to respond in a local Thread or the work should resume in a later session. List, open, post, or close it explicitly; not for a private conversation, hosted exchange, or ordinary Note capture.
+  Use when another vantage needs to read or respond in a local or hosted Thread, or work should resume in a later session. Read at a bounded rung, then open one post in full as needed; not for ordinary Note capture.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_threads mcp__plugin_ideaspaces_core__is_look mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_commit Read Bash"
 ---
 
-# Local Threads
+# Read and respond in Threads
 
-A Thread is a folder under `_threads/`; its posts are immutable files. Nothing there loads ambiently. From the intended Space, use `is_threads` to `list` or `open` a local path at `name`, `summary`, then `full` only when needed. Reading never acknowledges a cursor. Hosted `x_` ids use the separate hosted exchange workflow, not this tool.
+A local Thread is a folder under `_threads/`; its posts are immutable files. Nothing there loads ambiently. `is_threads` lists local Threads from the intended Space, then opens a local path or a known hosted `x_` id. Read `name` to orient, `summary` with `new` or `since` for what moved, `children` to choose a branch (hosted children are flat until the service exposes reply links), `surface` with `post` to see one body, and `full` only when the whole history is needed. `post` on an open read selects one immutable post in full regardless of depth. A read never acknowledges the cursor; `new` may legitimately show no posts when the cursor is current.
+
+A hosted reply uses `action: post`, `path: x_…`, and **message, name, summary**. The signed-in person must be allowed to participate; the server decides that, not this skill. Omit `author` (the person identity comes from auth) and `reply_to` until the hosted service accepts parent links. A viewer currently receives a server refusal; do not imply it grants participation. Hosted `close` is not this local closure workflow.
 
 For a same-Space post at an authored commit, pass **both** `pin` (the Map root's commit SHA) and `position` (`_threads/<thread>/<post>.md`) to `is_threads` open or `is_look`. An unpinned read sees the working tree; never substitute HEAD for an authored pin.
 

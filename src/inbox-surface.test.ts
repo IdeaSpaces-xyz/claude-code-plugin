@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
 const CLI = join(ROOT, "cli/bundle/ideaspaces.js");
-const CLI_COMMIT = "d4aac34bcf31e978c578d74222e67ccaa0033a4d";
+const CLI_COMMIT = "84e12f2ec55ac9f4bc14a6de6b77e54bb61b8e2e";
 
 function read(relative: string): string {
   return readFileSync(join(ROOT, relative), "utf-8");
@@ -17,8 +17,8 @@ describe("direct Inbox distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.6.4");
-    expect(plugin.version).toBe("0.6.4");
+    expect(pkg.version).toBe("0.6.5");
+    expect(plugin.version).toBe("0.6.5");
     expect(vendor.cli.commit).toBe(CLI_COMMIT);
   });
 
@@ -27,7 +27,7 @@ describe("direct Inbox distribution", () => {
     const help = `${result.stdout}${result.stderr}`;
 
     expect(result.status).toBe(0);
-    expect(help).toContain("inbox <list|read|send|reply|expand>");
+    expect(help).toContain("inbox <list|read|send|reply|add|close|rename|expand>");
     expect(help).toContain("inbox list --new --depth name");
     expect(help).toContain("inbox read x_example --new --depth full --ack");
     expect(help).toContain("inbox send @owner --about");

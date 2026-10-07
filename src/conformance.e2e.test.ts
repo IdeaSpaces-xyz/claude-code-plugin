@@ -123,11 +123,11 @@ process.stdin.on("data", (chunk) => {
       console.log(JSON.stringify({ type: "response", command: "get_state", success: true, data: { sessionName: "Plugin Map test" } }));
     }
     if (command.type === "prompt") {
-      const complete = orientation.includes('kind=position root=0 position="findings/map.md" depth=full');
+      const complete = orientation.includes('//findings/map.md — unreachable:');
       console.log(JSON.stringify({ type: "response", command: "prompt", success: true }));
       console.log(JSON.stringify({ type: "agent_start" }));
       console.log(JSON.stringify({ type: "turn_start" }));
-      console.log(JSON.stringify({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: complete ? "captured map available" : "map missing" } }));
+      console.log(JSON.stringify({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: complete ? "map reference present but root unreachable" : "map missing" } }));
       console.log(JSON.stringify({ type: "agent_end" }));
     }
   }
@@ -285,7 +285,7 @@ describe("write → commit conformance", () => {
       .split("\n")
       .filter(Boolean)
       .map((line) => JSON.parse(line));
-    expect(events).toContainEqual({ type: "text_delta", delta: "captured map available" });
+    expect(events).toContainEqual({ type: "text_delta", delta: "map reference present but root unreachable" });
     expect(events.some((event) => event.type === "turn_complete")).toBe(true);
     expect(existsSync(join(space, "Acme"))).toBe(false);
 
