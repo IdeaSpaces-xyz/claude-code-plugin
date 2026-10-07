@@ -3882,49 +3882,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative8, options, skipNormalization) {
+    function resolveComponent(base, relative9, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative8 = parse3(serialize(relative8, options), options);
+        relative9 = parse3(serialize(relative9, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative8.scheme) {
-        target.scheme = relative8.scheme;
-        target.userinfo = relative8.userinfo;
-        target.host = relative8.host;
-        target.port = relative8.port;
-        target.path = removeDotSegments(relative8.path || "");
-        target.query = relative8.query;
+      if (!options.tolerant && relative9.scheme) {
+        target.scheme = relative9.scheme;
+        target.userinfo = relative9.userinfo;
+        target.host = relative9.host;
+        target.port = relative9.port;
+        target.path = removeDotSegments(relative9.path || "");
+        target.query = relative9.query;
       } else {
-        if (relative8.userinfo !== void 0 || relative8.host !== void 0 || relative8.port !== void 0) {
-          target.userinfo = relative8.userinfo;
-          target.host = relative8.host;
-          target.port = relative8.port;
-          target.path = removeDotSegments(relative8.path || "");
-          target.query = relative8.query;
+        if (relative9.userinfo !== void 0 || relative9.host !== void 0 || relative9.port !== void 0) {
+          target.userinfo = relative9.userinfo;
+          target.host = relative9.host;
+          target.port = relative9.port;
+          target.path = removeDotSegments(relative9.path || "");
+          target.query = relative9.query;
         } else {
-          if (!relative8.path) {
+          if (!relative9.path) {
             target.path = base.path;
-            if (relative8.query !== void 0) {
-              target.query = relative8.query;
+            if (relative9.query !== void 0) {
+              target.query = relative9.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative8.path[0] === "/") {
-              target.path = removeDotSegments(relative8.path);
+            if (relative9.path[0] === "/") {
+              target.path = removeDotSegments(relative9.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative8.path;
+                target.path = "/" + relative9.path;
               } else if (!base.path) {
-                target.path = relative8.path;
+                target.path = relative9.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative8.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative9.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative8.query;
+            target.query = relative9.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3932,7 +3932,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative8.fragment;
+      target.fragment = relative9.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -11170,10 +11170,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key: key2, sep: sep8, value } = collItem;
+        const { start, key: key2, sep: sep9, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key2 ?? sep8?.[0],
+          next: key2 ?? sep9?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -11187,7 +11187,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key2 && key2.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep8) {
+          if (!keyProps.anchor && !keyProps.tag && !sep9) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -11211,7 +11211,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep8 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep9 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -11227,7 +11227,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep8, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep9, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -11318,7 +11318,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep8 = "";
+        let sep9 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -11332,13 +11332,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep8 + cb;
-              sep8 = "";
+                comment += sep9 + cb;
+              sep9 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep8 += source;
+                sep9 += source;
               hasSpace = true;
               break;
             default:
@@ -11381,18 +11381,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key: key2, sep: sep8, value } = collItem;
+        const { start, key: key2, sep: sep9, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key2 ?? sep8?.[0],
+          next: key2 ?? sep9?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep8 && !value) {
+          if (!props.anchor && !props.tag && !sep9 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -11446,8 +11446,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep8 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep8, null, props, onError);
+        if (!isMap && !sep9 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep9, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -11459,7 +11459,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key2))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep8 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep9 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -11470,8 +11470,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep8)
-                for (const st of sep8) {
+              if (sep9)
+                for (const st of sep9) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -11488,7 +11488,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep8, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep9, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -11668,7 +11668,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep8 = "";
+      let sep9 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -11685,24 +11685,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep8 + indent.slice(trimIndent) + content;
-          sep8 = "\n";
+          value += sep9 + indent.slice(trimIndent) + content;
+          sep9 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep8 === " ")
-            sep8 = "\n";
-          else if (!prevMoreIndented && sep8 === "\n")
-            sep8 = "\n\n";
-          value += sep8 + indent.slice(trimIndent) + content;
-          sep8 = "\n";
+          if (sep9 === " ")
+            sep9 = "\n";
+          else if (!prevMoreIndented && sep9 === "\n")
+            sep9 = "\n\n";
+          value += sep9 + indent.slice(trimIndent) + content;
+          sep9 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep8 === "\n")
+          if (sep9 === "\n")
             value += "\n";
           else
-            sep8 = "\n";
+            sep9 = "\n";
         } else {
-          value += sep8 + content;
-          sep8 = " ";
+          value += sep9 + content;
+          sep9 = " ";
           prevMoreIndented = false;
         }
       }
@@ -11885,25 +11885,25 @@ var require_resolve_flow_scalar = __commonJS({
         trimBoth = /^[ \t]+|[ \t]+$/g;
       }
       let res = match[1].replace(trimEnd, "");
-      let sep8 = " ";
+      let sep9 = " ";
       let pos = line.lastIndex;
       while (match = line.exec(source)) {
         const lm = match[1].replace(trimBoth, "");
         if (lm === "") {
-          if (sep8 === "\n")
-            res += sep8;
+          if (sep9 === "\n")
+            res += sep9;
           else
-            sep8 = "\n";
+            sep9 = "\n";
         } else {
-          res += sep8 + lm;
-          sep8 = " ";
+          res += sep9 + lm;
+          sep9 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep8 + (match?.[1] ?? "");
+      return res + sep9 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -12713,14 +12713,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key: key2, sep: sep8, value }) {
+    function stringifyItem({ start, key: key2, sep: sep9, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key2)
         res += stringifyToken(key2);
-      if (sep8)
-        for (const st of sep8)
+      if (sep9)
+        for (const st of sep9)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -13887,18 +13887,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep8;
+          let sep9;
           if (scalar.end) {
-            sep8 = scalar.end;
-            sep8.push(this.sourceToken);
+            sep9 = scalar.end;
+            sep9.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep8 = [this.sourceToken];
+            sep9 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep8 }]
+            items: [{ start, key: scalar, sep: sep9 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -14051,15 +14051,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key2 = it.key;
-                  const sep8 = it.sep;
-                  sep8.push(this.sourceToken);
+                  const sep9 = it.sep;
+                  sep9.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key: key2, sep: sep8 }]
+                    items: [{ start: start2, key: key2, sep: sep9 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -14253,13 +14253,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep8 = fc.end.splice(1, fc.end.length);
-            sep8.push(this.sourceToken);
+            const sep9 = fc.end.splice(1, fc.end.length);
+            sep9.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep8 }]
+              items: [{ start, key: fc, sep: sep9 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -28751,8 +28751,8 @@ var StdioServerTransport = class {
 
 // src/index.ts
 import { spawn as spawn5 } from "node:child_process";
-import { dirname as dirname8, resolve as resolve14 } from "node:path";
-import { readFileSync as readFileSync3 } from "node:fs";
+import { dirname as dirname8, relative as relative8, resolve as resolve14, sep as sep8 } from "node:path";
+import { readFileSync as readFileSync3, statSync } from "node:fs";
 
 // src/cli-executable.ts
 import { existsSync } from "node:fs";
@@ -29558,8 +29558,8 @@ function appendTrailers(message, add) {
   while (end >= 0 && lines[end].trim() === "")
     end--;
   const body = lines.slice(0, end + 1);
-  const sep8 = body.length > 0 ? [""] : [];
-  return [...body, ...sep8, ...additions].join("\n");
+  const sep9 = body.length > 0 ? [""] : [];
+  return [...body, ...sep9, ...additions].join("\n");
 }
 function findTrailerBlock(rawLines) {
   let end = rawLines.length - 1;
@@ -31301,7 +31301,7 @@ function parseRoots(value, issues) {
     if (repoRootNodeId !== void 0 && declaredRootNodeId !== void 0 && repoRootNodeId !== declaredRootNodeId) {
       issues.push({ path: base, code: "root_identity_mismatch" });
     }
-    if (typeof input.sha !== "string" || !PIN_PATTERN.test(input.sha)) {
+    if (input.sha !== void 0 && (typeof input.sha !== "string" || !PIN_PATTERN.test(input.sha))) {
       issues.push({ path: `${base}.sha`, code: "invalid_pin" });
     }
     if (input.name !== void 0) {
@@ -31318,7 +31318,7 @@ function parseRoots(value, issues) {
       ...input,
       ...repo === void 0 ? {} : { repo },
       ...rootNodeId === void 0 ? {} : { root_node_id: rootNodeId },
-      sha: typeof input.sha === "string" ? input.sha : ""
+      ...typeof input.sha === "string" ? { sha: input.sha } : {}
     });
   }
   return roots;
@@ -31374,7 +31374,7 @@ function parseMembers(value, rootCount, issues) {
     if (!isMapPosition(input.position)) {
       issues.push({ path: `${base}.position`, code: "invalid_position" });
     }
-    if (typeof input.depth !== "string" || !DEPTHS.has(input.depth)) {
+    if (input.depth !== void 0 && (typeof input.depth !== "string" || !DEPTHS.has(input.depth))) {
       issues.push({ path: `${base}.depth`, code: "invalid_depth" });
     }
     members.push(input);
@@ -32987,22 +32987,26 @@ import { relative as relative6, resolve as resolve11, sep as sep6 } from "node:p
 import { existsSync as existsSync3, lstatSync, readFileSync, realpathSync } from "node:fs";
 var import_yaml3 = __toESM(require_dist2(), 1);
 function threadArgs(input) {
-  const { action, path } = input;
+  const { action } = input;
+  const path = input.path?.trim();
   const selected = input.member !== void 0;
   if (input.checkout && !selected) throw new Error("checkout requires an authored map and member.");
   if (selected && (!input.map?.trim() || !Number.isSafeInteger(input.member) || input.member < 0)) {
     throw new Error("Selected Thread requires an authored map and zero-based member.");
   }
-  if (input.map && action === "open" && !selected) throw new Error("Pinned open with map requires a member; no HEAD fallback.");
+  if (input.map && action === "open" && !selected && !path?.startsWith("x_")) throw new Error("Pinned open with map requires a member; no HEAD fallback.");
   if ((selected || input.checkout) && action !== "open" && action !== "post") throw new Error("Selection is only available for open and post.");
   if (action === "list") {
-    if (path?.startsWith("x_")) throw new Error("is_threads is local-only; use a directory, not a hosted x_ id.");
+    if (path?.startsWith("x_")) throw new Error("is_threads list reads local Threads in the current folder. Open a known hosted x_ id directly; this tool does not enumerate hosted Threads.");
+    if (input.since || input.post || input.new) throw new Error("--since, --new and --post select an opened Thread, not a list.");
     return ["threads", "list", path || ".", "--depth", input.depth ?? "summary"];
   }
-  if (!path?.trim() || path.trim().startsWith("x_")) {
-    throw new Error("Provide a local Thread path, not a hosted x_ id.");
-  }
+  if (!path?.trim()) throw new Error("Provide a local Thread path or hosted x_ id.");
+  const hosted = path.startsWith("x_");
+  if (hosted && (input.pin || input.position || selected || input.checkout || input.map && action !== "post")) throw new Error("Hosted Threads cannot use local authored pin, Map member or checkout selection.");
+  if (input.new && input.since) throw new Error("Use --new or --since, not both.");
   if (action === "open") {
+    if ((selected || input.pin) && (input.new || input.since || input.post || input.depth === "children")) throw new Error("An authored pinned post cannot use --new, --since, --post or children; open the live Thread to traverse it.");
     if (input.pin && !input.position || input.position && !input.pin) throw new Error("Pinned open requires both authored pin and position; never substitute HEAD.");
     if (selected && (input.pin || input.position)) throw new Error("Use either authored map/member selection or pin/position, not both.");
     return [
@@ -33011,10 +33015,31 @@ function threadArgs(input) {
       path,
       "--depth",
       selected || input.pin ? "full" : input.depth ?? "summary",
+      ...input.new ? ["--new"] : [],
+      ...input.since ? ["--since", input.since] : [],
+      ...input.post ? ["--post", input.post] : [],
       ...selected ? ["--map", input.map, "--member", String(input.member), ...input.checkout ? ["--checkout", input.checkout] : []] : input.pin ? ["--pin", input.pin, "--position", input.position] : []
     ];
   }
-  if (input.pin || input.position || input.depth) throw new Error("Pin, position and depth apply to opening, not writing.");
+  if (input.pin || input.position || input.depth || input.new || input.since || input.post) throw new Error("Pin, position, depth, --new, --since and --post apply to opening, not writing.");
+  if (hosted) {
+    if (action !== "post") throw new Error("Hosted close is an owner-only lifecycle operation; use threads close x_id --yes after preview.");
+    if (input.author) throw new Error("Hosted replies use the logged-in person's identity; omit author.");
+    if (input.reply_to?.length) throw new Error("The hosted reply API cannot carry in_reply_to yet; omit reply_to until the server exposes reply parents.");
+    if (!input.message?.trim() || !input.name?.trim() || !input.summary?.trim()) throw new Error("Hosted reply needs message, name and summary. The server checks your participation grade.");
+    return [
+      "threads",
+      "reply",
+      path,
+      "--message",
+      input.message,
+      "--name",
+      input.name,
+      "--summary",
+      input.summary,
+      ...input.map ? ["--map", input.map] : []
+    ];
+  }
   if (selected && (input.author || !input.reply_to?.length)) throw new Error("Selected posts require an explicit reply_to and the caller's Agreement author; omit author.");
   if (!input.message?.trim()) throw new Error("A post or closure needs a nonempty message.");
   if (action === "close" && (input.reply_to?.length || input.name || input.summary || input.map)) throw new Error("Closure only accepts message and author; omit reply_to, name, summary and map.");
@@ -33401,7 +33426,7 @@ async function runCollaborate(input, run2 = spawnCli, resolvePiResources = insta
   if (readOnly && input.permission_mode === "bypassPermissions") return { ok: false, text: "Read-only cannot bypass permissions." };
   if (runtime === "pi" || readOnly || input.effort) {
     const help = await run2(["agent", "run", "--help"], selected.dir);
-    const marker = runtime === "pi" ? "skill discovery is disabled" : readOnly ? "--read-only" : "--claude-effort";
+    const marker = runtime === "pi" ? "--pi-trust" : readOnly ? "--read-only" : "--claude-effort";
     const usage = help.out + help.err;
     if (help.code !== 0 || !usage.includes(marker) || runtime === "pi" && ["--ext", "--skill", "--pi-trust"].some((flag) => !usage.includes(flag)) || input.effort && !usage.includes("--claude-effort")) {
       return { ok: false, text: runtime === "pi" ? "CLI lacks Pi child skill isolation; update IdeaSpaces CLI to 0.2.1 or newer before this launch." : `CLI does not support ${marker}; update the IdeaSpaces CLI before this launch.` };
@@ -33465,12 +33490,12 @@ async function runCollaborate(input, run2 = spawnCli, resolvePiResources = insta
 var mapRoot = external_exports.object({
   repo: external_exports.string().optional().describe("Canonical absolute repository URL: <web-origin>/repos/{root_node_id}"),
   root_node_id: external_exports.string().optional().describe("Portable root Node identity"),
-  sha: external_exports.string().describe("Full resolved Git commit object id")
+  sha: external_exports.string().optional().describe("Optional full Git commit pin; omit for a live Space Map root")
 }).passthrough();
 var mapPositionMember = external_exports.object({
   root: external_exports.number().int().optional().describe("Zero-based index into map.roots"),
   position: external_exports.string().describe("Portable repository-relative protocol position, or ."),
-  depth: external_exports.enum(["name", "summary", "surface", "children", "full"])
+  depth: external_exports.enum(["name", "summary", "surface", "children", "full"]).optional()
 }).passthrough();
 var mapAddressMember = external_exports.object({
   address: external_exports.string().describe("Open type:id address"),
@@ -33483,6 +33508,8 @@ var mapBlock = external_exports.object({
   members: external_exports.array(external_exports.union([mapPositionMember, mapAddressMember]))
 }).passthrough();
 var contentDepth = external_exports.enum(["name", "summary", "surface", "children", "full"]);
+var mapField = external_exports.string().optional().describe("Map note (*.map.md or a Note with a map block) an address is read against; relative to cwd or absolute. Defaults to the session's launch Map (IDEASPACES_MAP).");
+var atField = external_exports.enum(["pin", "head"]).optional().describe("Read an address at its root's pin or its checkout's HEAD. Defaults by the Map's kind: a Space's Map reads HEAD and shows drift, a Thread's Map reads the pin.");
 var cwdField = external_exports.string().optional().describe(
   "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
 );
@@ -33499,9 +33526,12 @@ var AUTHORED_TOOL_PARAMETERS = {
     action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
   },
   is_threads: {
-    action: external_exports.enum(["list", "open", "post", "close"]).describe("Explicit local Thread operation; no ambient or hosted read."),
-    path: external_exports.string().optional().describe("Local Thread path; omit for list in cwd. Hosted x_ ids are not supported."),
-    depth: external_exports.enum(["name", "summary", "full"]).optional().describe("List/open rung; defaults to summary."),
+    action: external_exports.enum(["list", "open", "post", "close"]).describe("Explicit local or hosted Thread operation; reading never acknowledges."),
+    path: external_exports.string().optional().describe("Local Thread path or hosted x_ id; omit for list in cwd."),
+    depth: external_exports.enum(["name", "summary", "children", "surface", "full"]).optional().describe("Open rung; surface requires post id. Hosted children is flat until reply links ship."),
+    new: external_exports.boolean().optional().describe("Only unseen posts after the followed cursor; open only."),
+    since: external_exports.string().optional().describe("ISO date, post id, or hosted numeric position to bound open."),
+    post: external_exports.string().optional().describe("Read exactly one post id in full on open."),
     message: external_exports.string().optional().describe("Body for an immutable post or closure"),
     reply_to: external_exports.array(external_exports.string()).optional().describe("Parent post ids"),
     author: external_exports.string().optional().describe("Legacy same-Space writer override only. Selected posts reject author and derive it from the caller's own Agreement."),
@@ -33555,15 +33585,21 @@ var AUTHORED_TOOL_PARAMETERS = {
   },
   is_change_close: {},
   is_look: {
-    path: external_exports.string().min(1).describe("Local Markdown file or Content directory: relative to cwd or absolute."),
+    path: external_exports.string().optional().describe("Local Markdown file or Content directory: relative to cwd or absolute. A path that is a Map address is read as one."),
+    address: external_exports.string().optional().describe("A Map member by address instead of a path: @<root name>//<position>, @<root_node_id>//<position>, or //<position> for your own root. Read against `map`, else the session's launch Map; works from any cwd."),
+    map: mapField,
+    at: atField,
     depth: contentDepth.default("summary").describe("How much to read: name (label only), summary (one line), children (a Note's headings or a directory's entries), surface (a Note's body or a directory's README), full (the same as surface for a Note; README plus entries for a directory). Start at summary or children; deepen when the text itself matters."),
     contract: external_exports.enum(["foundation", "agreement"]).optional().describe("Explicit target frame; otherwise the habitat prefers Agreement, then Foundation, then floor."),
     cwd: cwdField,
-    pin: external_exports.string().optional().describe("Authored commit pin for a _threads/ post; never inferred from HEAD"),
-    position: external_exports.string().optional().describe("Authored _threads/ post position paired with pin")
+    pin: external_exports.string().optional().describe("Authored full commit id to read this checkout at, paired with position; never inferred from HEAD"),
+    position: external_exports.string().optional().describe("Authored repository-relative position paired with pin; must name the same target as path")
   },
   is_navigate: {
-    path: external_exports.string().optional().describe('Target position: relative to cwd or absolute. Omit or "." to orient at the current directory.'),
+    path: external_exports.string().optional().describe('Target position: relative to cwd or absolute. Omit or "." to orient at the current directory. A path that is a Map address is read as one.'),
+    address: external_exports.string().optional().describe("A Map member directory by address instead of a path: @<root name>//<position>, @<root_node_id>//<position>, or //<position>. Read against `map`, else the session's launch Map."),
+    map: mapField,
+    at: atField,
     cwd: cwdField
   },
   is_pull: {
@@ -33718,7 +33754,7 @@ server.tool(
 );
 server.tool(
   "is_threads",
-  "List, open, post to or close a local Thread through the installed CLI. For another Space, supply an authored map, member and optional validated checkout from the caller's Agreement cwd. Selected reads verify the exact pin/position; selected posts require reply_to and use the caller's Agreement author. No hosted x_ id or ambient loading.",
+  "Read local or hosted Threads through the installed CLI at five rungs. Selected local reads use map/member/checkout with authored pins; selected posts require reply_to and derive author from the caller Agreement. Hosted x_ replies need message, name and summary and the person's participation grade. Reading never acknowledges; hosted children stays flat until reply links ship.",
   MCP_TOOL_PARAMETERS.is_threads,
   async (input) => {
     try {
@@ -33829,12 +33865,44 @@ server.tool(
     return ok(JSON.stringify({ ...JSON.parse(result.text), change }, null, 2));
   }
 );
+function isMapAddress(value) {
+  return !!value && (value.startsWith("//") || /^@[^/\s]+\/\//.test(value));
+}
+async function readThroughCli(args, cwd) {
+  const { out, err, code } = await cli(args, void 0, cwd);
+  if (code !== 0) return fail(err.trim() || out.trim() || `Exit ${code}`);
+  return ok(out.trim());
+}
+function addressArgs(verb, address, map, at) {
+  return [verb, address, ...map ? ["--map", map] : [], ...at ? ["--at", at] : []];
+}
 server.tool(
   "is_look",
-  "Read a Note \u2014 any Markdown file or Content directory in an ideaspace \u2014 so the conversation Map records it. Use it instead of cat, head or sed on a .md file: a Bash read is not recorded as a read. _threads/ posts also accept an authored pin and position (resolved via CLI, never HEAD). Read-only; never changes caller authority or working directory.",
+  "Read a Note, Content directory or local Thread folder at its disclosure rung \u2014 so the conversation Map records it. Use it instead of cat, head or sed on a .md file: a Bash read is not recorded as a read. Pass `address` (@<root>//<position>) to read a Map member at a commit with no filesystem path, against `map` or the session's launch Map, from any cwd. pin + position read this checkout at an authored commit, never HEAD. Read-only; never changes caller authority or working directory.",
   MCP_TOOL_PARAMETERS.is_look,
-  async ({ path, depth, contract, cwd, pin, position }) => {
+  async ({ path, address, map, at, depth, contract, cwd, pin, position }) => {
+    if (!address && isMapAddress(path)) {
+      address = path;
+      path = void 0;
+    }
+    if (address) {
+      if (path || pin || position) return fail("Give an address or a path, not both. An address takes its commit from the Map; use at: pin or head.");
+      return readThroughCli([...addressArgs("look", address, map, at), "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : []], cwd);
+    }
+    if (map || at) return fail("map and at read an address (@<root>//<position>); pass address, not path.");
+    if (!path) return fail("Give a path, or an address (@<root>//<position>) read through a Map.");
     const target = resolve14(cwd || process.cwd(), path);
+    if (/(?:^|[\\/])_threads[\\/][^\\/]+$/.test(target)) {
+      let directory = false;
+      try {
+        directory = statSync(target).isDirectory();
+      } catch {
+      }
+      if (directory) {
+        if (contract || pin || position) return fail("A Thread folder has its own Agreement and rungs; omit contract, pin and position.");
+        return readThroughCli(["look", target, "--depth", depth ?? "summary"], cwd);
+      }
+    }
     const root = await resolveRepoRoot(cwd || process.cwd()) ?? cwd ?? process.cwd();
     const post = threadPost(target, root);
     if (post) {
@@ -33853,16 +33921,33 @@ server.tool(
         return fail(`Cannot read ${target}: ${error2 instanceof Error ? error2.message : String(error2)}`);
       }
     }
-    if (pin || position) return fail("Pin and position are for _threads/ posts only.");
+    if (pin || position) {
+      if (!pin || !position) return fail("A pinned look requires both authored pin and position.");
+      const local = relative8(root, target).split(sep8).join("/") || ".";
+      if (local === ".." || local.startsWith("../") || /^[A-Za-z]:|^\//.test(local)) {
+        return fail(`${target} is outside the Space at ${root}; a pinned look reads this checkout only.`);
+      }
+      if (local !== position) return fail("Authored position does not match the requested path.");
+      return readThroughCli(["look", position, "--pin", pin, "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : []], root);
+    }
     const result = await readLook({ path, depth, contract, cwd });
     return result.ok ? ok(result.text) : fail(result.error);
   }
 );
 server.tool(
   "is_navigate",
-  "Read a position as bounded reference focus \u2014 its selected agent context, depth-one Content tree, and skills at history placement. The target contract is reference, never caller authority. Read-only: it does NOT change the working directory or operating frame; Read/Edit/Bash still take explicit paths.",
+  "Read a position as bounded reference focus \u2014 its selected agent context, depth-one Content tree, and skills at history placement. Pass `address` (@<root>//<position>) to focus on a Map member directory at a commit, against `map` or the session's launch Map. The target contract is reference, never caller authority. Read-only: it does NOT change the working directory or operating frame; Read/Edit/Bash still take explicit paths.",
   MCP_TOOL_PARAMETERS.is_navigate,
-  async ({ path, cwd }) => {
+  async ({ path, address, map, at, cwd }) => {
+    if (!address && isMapAddress(path)) {
+      address = path;
+      path = void 0;
+    }
+    if (address) {
+      if (path) return fail("Give an address or a path, not both.");
+      return readThroughCli(addressArgs("navigate", address, map, at), cwd);
+    }
+    if (map || at) return fail("map and at read an address (@<root>//<position>); pass address, not path.");
     const result = await readNavigate({ path, cwd });
     return result.ok ? ok(result.text) : fail(result.error);
   }

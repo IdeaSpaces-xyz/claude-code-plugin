@@ -40,6 +40,7 @@ describe("vendored Claude plugin cross-Space Threads", () => {
     const home = join(workspace, "home"); const agent = join(workspace, "agent");
     space(home, HOME_ID, "Home"); space(agent, AGENT_ID, "Claude Adapter");
     command(home, "new", "decision", "--about", "Home target");
+    const openingFiles = new Set(readdirSync(join(home, "_threads/decision")));
     const seed = command(home, "post", "decision", "--author", "Seed", "--message", "Pinned seed");
     git(home, "add", "_threads/decision"); git(home, "commit", "-qm", "Pin seed");
     const pin = git(home, "rev-parse", "HEAD");
@@ -47,6 +48,7 @@ describe("vendored Claude plugin cross-Space Threads", () => {
     const selection = (sha = pin, id = HOME_ID) => ({ roots: [{ root_node_id: id, sha }], members: [{ root: 0, position, depth: "full" }] });
     const map = join(agent, "selection.json"); writeFileSync(map, JSON.stringify({ map: selection() }));
     command(agent, "new", "decision", "--about", "Agent's own Thread");
+    const agentFiles = readdirSync(join(agent, "_threads/decision")).filter((name) => name.endsWith(".md"));
     client = new Client({ name: "plugin-selected-test", version: "1" });
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [server], cwd: agent,
       env: { ...process.env, HOME: workspace, IS_CLI_PATH: cli, CLAUDE_PROJECT_DIR: agent } }));
@@ -75,13 +77,13 @@ describe("vendored Claude plugin cross-Space Threads", () => {
     finally { writeFileSync(readme, original); }
     const posted = await thread({ action: "post", ...target, message: "Claude branch from seed", reply_to: [seed.id] });
     expect(posted.error, posted.text).toBe(false);
-    const added = files().filter((name) => name !== "README.md" && name !== basename(seed.path));
+    const added = files().filter((name) => !openingFiles.has(name) && name !== basename(seed.path));
     expect(added).toHaveLength(1);
     const body = readFileSync(join(home, "_threads/decision", added[0]), "utf8");
     expect(body).toContain("author: Claude Adapter");
     expect(body).toContain(seed.id);
     expect(body).toContain(pin);
-    expect(readdirSync(join(agent, "_threads/decision")).filter((name) => name.endsWith(".md"))).toEqual(["README.md"]);
+    expect(readdirSync(join(agent, "_threads/decision")).filter((name) => name.endsWith(".md"))).toEqual(agentFiles);
     expect(git(agent, "rev-parse", "--show-toplevel")).toBe(agent);
   }, 30_000);
 });
