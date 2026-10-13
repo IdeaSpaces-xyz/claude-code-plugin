@@ -123,7 +123,7 @@ process.stdin.on("data", (chunk) => {
       console.log(JSON.stringify({ type: "response", command: "get_state", success: true, data: { sessionName: "Plugin Map test" } }));
     }
     if (command.type === "prompt") {
-      const complete = orientation.includes('//findings/map.md — unreachable:');
+      const complete = orientation.includes('//findings/map.md') && orientation.includes('unreachable:');
       console.log(JSON.stringify({ type: "response", command: "prompt", success: true }));
       console.log(JSON.stringify({ type: "agent_start" }));
       console.log(JSON.stringify({ type: "turn_start" }));
