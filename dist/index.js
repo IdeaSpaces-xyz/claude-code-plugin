@@ -32990,6 +32990,8 @@ function threadArgs(input) {
   const { action } = input;
   const path = input.path?.trim();
   const selected = input.member !== void 0;
+  if (input.tags?.length && action !== "post") throw new Error("tags apply only to local posts.");
+  if (input.reply_to?.length && action !== "post") throw new Error("reply_to applies only to posts.");
   if (input.checkout && !selected) throw new Error("checkout requires an authored map and member.");
   if (selected && (!input.map?.trim() || !Number.isSafeInteger(input.member) || input.member < 0)) {
     throw new Error("Selected Thread requires an authored map and zero-based member.");
@@ -33005,24 +33007,34 @@ function threadArgs(input) {
   const hosted = path.startsWith("x_");
   if (hosted && (input.pin || input.position || selected || input.checkout || input.map && action !== "post")) throw new Error("Hosted Threads cannot use local authored pin, Map member or checkout selection.");
   if (input.new && input.since) throw new Error("Use --new or --since, not both.");
+  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1)) throw new Error("limit must be a positive integer.");
+  if (input.order !== void 0 && input.order !== "newer" && input.order !== "older") throw new Error("order must be newer or older.");
+  const paged = input.limit !== void 0 || input.order !== void 0;
+  if (paged && action !== "open") throw new Error("limit and order apply to opening, not writing.");
   if (action === "open") {
+    if (input.post && paged) throw new Error("One exact post needs no limit or order.");
+    if ((selected || input.pin) && paged) throw new Error("Pinned selection needs no limit or order.");
     if ((selected || input.pin) && (input.new || input.since || input.post || input.depth === "children")) throw new Error("An authored pinned post cannot use --new, --since, --post or children; open the live Thread to traverse it.");
     if (input.pin && !input.position || input.position && !input.pin) throw new Error("Pinned open requires both authored pin and position; never substitute HEAD.");
     if (selected && (input.pin || input.position)) throw new Error("Use either authored map/member selection or pin/position, not both.");
+    if (hosted && paged) throw new Error("limit and order on open are local-only for this release.");
     return [
       "threads",
       "open",
       path,
       "--depth",
-      selected || input.pin ? "full" : input.depth ?? "summary",
+      selected || input.pin ? "full" : input.depth ?? (hosted ? "summary" : "surface"),
       ...input.new ? ["--new"] : [],
       ...input.since ? ["--since", input.since] : [],
       ...input.post ? ["--post", input.post] : [],
+      ...input.limit ? ["--limit", String(input.limit)] : [],
+      ...input.order ? ["--order", input.order] : [],
       ...selected ? ["--map", input.map, "--member", String(input.member), ...input.checkout ? ["--checkout", input.checkout] : []] : input.pin ? ["--pin", input.pin, "--position", input.position] : []
     ];
   }
   if (input.pin || input.position || input.depth || input.new || input.since || input.post) throw new Error("Pin, position, depth, --new, --since and --post apply to opening, not writing.");
   if (hosted) {
+    if (input.tags?.length) throw new Error("tags on posts are local-only for this release.");
     if (action !== "post") throw new Error("Hosted close is an owner-only lifecycle operation; use threads close x_id --yes after preview.");
     if (input.author) throw new Error("Hosted replies use the logged-in person's identity; omit author.");
     if (input.reply_to?.length) throw new Error("The hosted reply API cannot carry in_reply_to yet; omit reply_to until the server exposes reply parents.");
@@ -33040,9 +33052,10 @@ function threadArgs(input) {
       ...input.map ? ["--map", input.map] : []
     ];
   }
+  if (input.tags?.some((tag) => !tag?.trim() || tag.includes(","))) throw new Error("tags must be non-empty and may not contain commas.");
   if (selected && (input.author || !input.reply_to?.length)) throw new Error("Selected posts require an explicit reply_to and the caller's Agreement author; omit author.");
   if (!input.message?.trim()) throw new Error("A post or closure needs a nonempty message.");
-  if (action === "close" && (input.reply_to?.length || input.name || input.summary || input.map)) throw new Error("Closure only accepts message and author; omit reply_to, name, summary and map.");
+  if (action === "close" && (input.reply_to?.length || input.name || input.summary || input.map || input.tags?.length)) throw new Error("Closure only accepts message and author; omit reply_to, name, summary, tags and map.");
   return [
     "threads",
     action,
@@ -33054,10 +33067,15 @@ function threadArgs(input) {
       ...input.reply_to?.length ? ["--reply-to", input.reply_to.join(",")] : [],
       ...input.name ? ["--name", input.name] : [],
       ...input.summary ? ["--summary", input.summary] : [],
+      ...input.tags?.length ? ["--tags", input.tags.join(",")] : [],
       ...input.map ? ["--map", input.map] : [],
       ...selected ? ["--member", String(input.member), ...input.checkout ? ["--checkout", input.checkout] : []] : []
     ] : []
   ];
+}
+function threadCliFailure(detail3) {
+  return /Unknown flag for threads (?:open|post)|--depth surface requires --post/i.test(detail3) ? `${detail3}
+This Thread tree tool requires IdeaSpaces CLI 0.2.21 or newer. Update the CLI (or plugin bundle) and retry.` : detail3;
 }
 function selectedPin(input, cwd) {
   if (input.map === void 0 || input.member === void 0) throw new Error("Selected Thread requires map and member.");
@@ -33528,12 +33546,15 @@ var AUTHORED_TOOL_PARAMETERS = {
   is_threads: {
     action: external_exports.enum(["list", "open", "post", "close"]).describe("Explicit local or hosted Thread operation; reading never acknowledges."),
     path: external_exports.string().optional().describe("Local Thread path or hosted x_ id; omit for list in cwd."),
-    depth: external_exports.enum(["name", "summary", "children", "surface", "full"]).optional().describe("Open rung; surface requires post id. Hosted children is flat until reply links ship."),
+    depth: external_exports.enum(["name", "summary", "children", "surface", "full"]).optional().describe("Open rung: name=frame, summary=parent/snapshot, children=branches/child Threads, surface=head and tail (local cold default), full=paged history. Hosted default is summary and children is flat."),
     new: external_exports.boolean().optional().describe("Only unseen posts after the followed cursor; open only."),
     since: external_exports.string().optional().describe("ISO date, post id, or hosted numeric position to bound open."),
-    post: external_exports.string().optional().describe("Read exactly one post id in full on open."),
+    post: external_exports.string().optional().describe("Read one post in full plus child Threads attached to it (local open)."),
+    limit: external_exports.number().int().positive().optional().describe("Live local open only: max posts or branches on this page; not for a pinned selection."),
+    order: external_exports.enum(["newer", "older"]).optional().describe("Live local open only: newer-first or older-first; not for a pinned selection."),
     message: external_exports.string().optional().describe("Body for an immutable post or closure"),
-    reply_to: external_exports.array(external_exports.string()).optional().describe("Parent post ids"),
+    reply_to: external_exports.array(external_exports.string()).optional().describe("Local parent post ids: reply to the post you answer. Omit to branch from the opening post; ['latest'] opts into newest. Hosted replies reject this field."),
+    tags: external_exports.array(external_exports.string()).optional().describe("Local post retrieval tags, e.g. ['friction']."),
     author: external_exports.string().optional().describe("Legacy same-Space writer override only. Selected posts reject author and derive it from the caller's own Agreement."),
     name: external_exports.string().optional().describe("Optional post name"),
     summary: external_exports.string().optional().describe("Optional post summary"),
@@ -33681,9 +33702,12 @@ function ok(t) {
 function fail(t) {
   return { content: [{ type: "text", text: t }], isError: true };
 }
-async function run(args, stdin, cwd) {
+async function run(args, stdin, cwd, explainError) {
   const { out, err, code } = await cli(["--json", ...args], stdin, cwd);
-  if (code !== 0) return fail(err.trim() || out.trim() || `Exit ${code}`);
+  if (code !== 0) {
+    const detail3 = err.trim() || out.trim() || `Exit ${code}`;
+    return fail(explainError ? explainError(detail3) : detail3);
+  }
   return ok(out.trim() || err.trim() || "Done");
 }
 var currentChangeId;
@@ -33754,7 +33778,7 @@ server.tool(
 );
 server.tool(
   "is_threads",
-  "Read local or hosted Threads through the installed CLI at five rungs. Selected local reads use map/member/checkout with authored pins; selected posts require reply_to and derive author from the caller Agreement. Hosted x_ replies need message, name and summary and the person's participation grade. Reading never acknowledges; hosted children stays flat until reply links ship.",
+  "Read Threads through the CLI at five rungs; a cold local read starts at the newest snapshot. Local limit/order page results, post reads one exact body plus child Threads, and tags label local posts. Reply to the post you answer; omitted reply_to branches from the opening post, while ['latest'] selects newest. Selected posts require an explicit parent and use the caller Agreement name. Hosted replies need message, name and summary; hosted children remains flat. Reading never acknowledges.",
   MCP_TOOL_PARAMETERS.is_threads,
   async (input) => {
     try {
@@ -33765,7 +33789,7 @@ server.tool(
         if (result.code !== 0) return fail(result.err.trim() || result.out.trim());
         return ok(pinnedView(JSON.parse(result.out), input.depth ?? "summary", expected));
       }
-      return run(args, void 0, input.cwd);
+      return run(args, void 0, input.cwd, threadCliFailure);
     } catch (error2) {
       return fail(error2 instanceof Error ? error2.message : String(error2));
     }
