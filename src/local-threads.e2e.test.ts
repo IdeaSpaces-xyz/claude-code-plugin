@@ -40,12 +40,14 @@ describe("installed Claude plugin local Threads", () => {
     await client.connect(new StdioClientTransport({ command: "node", args: [server], cwd: dir,
       env: { PATH: process.env.PATH ?? "", HOME: dir, IS_CLI_PATH: cli, CLAUDE_PROJECT_DIR: dir } }));
     expect(JSON.parse(await call("is_threads", { action: "list" })).threads[0].name).toBe("A local test");
-    for (const depth of ["name", "summary", "full"]) {
+    for (const depth of ["name", "summary", "children", "surface", "full"]) {
       const row = JSON.parse(await call("is_threads", { action: "open", path: "test", depth }));
       expect(row.thread.name).toBe("A local test");
     }
-    const first = JSON.parse(await call("is_threads", { action: "post", path: "test", message: "Initial decision", name: "One", summary: "Pinned decision", author: "Claude Agent" }));
+    const first = JSON.parse(await call("is_threads", { action: "post", path: "test", message: "Initial decision", name: "One", summary: "Pinned decision", author: "Claude Agent", tags: ["friction"] }));
     expect(readFileSync(first.path, "utf8")).toContain("author: Claude Agent");
+    expect(readFileSync(first.path, "utf8")).toContain("- friction");
+    expect(JSON.parse(await call("is_threads", { action: "open", path: "test" })).schema).toBe("ideaspaces.local-thread.open.v2");
     run("git", ["add", "_threads"]);
     run("git", ["commit", "-qm", "pin first post"]);
     const pin = run("git", ["rev-parse", "HEAD"]);
