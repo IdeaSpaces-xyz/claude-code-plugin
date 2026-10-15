@@ -9361,10 +9361,10 @@ async function main() {
         text = fitToBudget(slimHead, rest);
       }
       if (text) process.stdout.write(text + "\n");
-      if (sessionId) recordClaudeRun(sessionId, projectDir, ["--status", "running"]);
       if (manifest.position.repoRoot && manifest.git?.headSha) {
         markSeen(manifest.position.repoRoot, manifest.git.headSha);
       }
+      if (sessionId) recordClaudeRun(sessionId, projectDir, ["--status", "running"]);
       return;
     }
     if (manifest) {

@@ -4,9 +4,9 @@ const require = __isCreateRequire(import.meta.url);
 
 // src/agent-run.ts
 import { spawnSync } from "node:child_process";
-import { existsSync, openSync, readSync, closeSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, openSync, readSync, closeSync, statSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 var cli = join(dirname(fileURLToPath(import.meta.url)), "..", "cli", "bundle", "ideaspaces.js");
@@ -39,14 +39,26 @@ function recordClaudeRun(sessionId, agent, args) {
   if (process.env.IDEASPACES_DISABLE_RUN_RECORDS === "1") return false;
   return call(["agent", "record", "--run-id", sessionId, "--agent", agent, "--harness", "claude", "--conversation", sessionId, ...args]) !== null;
 }
-function hasTask(sessionId, agent) {
+function taskMarker(sessionId, agent) {
+  const key = createHash("sha256").update(`${homedir()}\0${agent}\0${sessionId}`).digest("hex");
+  return join(tmpdir(), `ideaspaces-claude-first-task-${key}`);
+}
+function recordFirstTask(sessionId, agent, message) {
+  const marker = taskMarker(sessionId, agent);
+  if (existsSync(marker)) return;
   const output = call(["agent", "runs", "--agent", agent, "--json"]);
-  if (!output) return true;
+  if (!output) return;
+  let hasTask;
   try {
     const runs = JSON.parse(output).runs;
-    return runs.some((run) => run.run_id === sessionId && !!run.task);
+    hasTask = runs.some((run) => run.run_id === sessionId && !!run.task);
   } catch {
-    return true;
+    return;
+  }
+  if (!hasTask && !recordClaudeRun(sessionId, agent, ["--message", message, "--status", "running"])) return;
+  try {
+    writeFileSync(marker, "", { flag: "wx", mode: 384 });
+  } catch {
   }
 }
 function claudeTranscript(sessionId, cwd, supplied) {
@@ -109,10 +121,10 @@ async function main() {
   const sessionId = input.session_id;
   if (typeof sessionId !== "string" || !sessionId) return;
   const cwd = process.env.CLAUDE_PROJECT_DIR?.trim() || input.cwd || process.cwd();
-  if (!isInsideIdeaspace(cwd)) return;
+  if (process.env.IDEASPACES_DISABLE_RUN_RECORDS === "1" || !isInsideIdeaspace(cwd)) return;
   if (input.hook_event_name === "UserPromptSubmit") {
-    if (typeof input.prompt === "string" && input.prompt.trim() && !hasTask(sessionId, cwd)) {
-      recordClaudeRun(sessionId, cwd, ["--message", input.prompt, "--status", "running"]);
+    if (typeof input.prompt === "string" && input.prompt.trim()) {
+      recordFirstTask(sessionId, cwd, input.prompt);
     }
   } else {
     const model = extractModelFromTranscriptTail(claudeTranscript(sessionId, cwd, input.transcript_path));

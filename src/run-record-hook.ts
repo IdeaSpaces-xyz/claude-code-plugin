@@ -1,5 +1,5 @@
 /** Claude prompt and session-end events. The CLI owns all persistent run records. */
-import { recordClaudeRun, hasTask, isInsideIdeaspace, claudeTranscript, extractModelFromTranscriptTail } from "./agent-run.js";
+import { recordClaudeRun, recordFirstTask, isInsideIdeaspace, claudeTranscript, extractModelFromTranscriptTail } from "./agent-run.js";
 import { readStdin } from "./stdin.js";
 
 async function main(): Promise<void> {
@@ -10,12 +10,12 @@ async function main(): Promise<void> {
   const sessionId = input.session_id;
   if (typeof sessionId !== "string" || !sessionId) return;
   const cwd = process.env.CLAUDE_PROJECT_DIR?.trim() || input.cwd || process.cwd();
-  if (!isInsideIdeaspace(cwd)) return;
+  if (process.env.IDEASPACES_DISABLE_RUN_RECORDS === "1" || !isInsideIdeaspace(cwd)) return;
 
   if (input.hook_event_name === "UserPromptSubmit") {
-    if (typeof input.prompt === "string" && input.prompt.trim() && !hasTask(sessionId, cwd)) {
-      // Only the first prompt supplies the task. CLI derives it from the message.
-      recordClaudeRun(sessionId, cwd, ["--message", input.prompt, "--status", "running"]);
+    if (typeof input.prompt === "string" && input.prompt.trim()) {
+      // Only the first prompt hits the CLI. The CLI derives and owns the task.
+      recordFirstTask(sessionId, cwd, input.prompt);
     }
   } else {
     const model = extractModelFromTranscriptTail(claudeTranscript(sessionId, cwd, input.transcript_path));

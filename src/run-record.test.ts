@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -36,6 +37,8 @@ describe("run lifecycle through the bundled CLI", () => {
       expect(run()).toMatchObject({ status: "running", harness: "claude", conversation_id: id, parent_id: null });
       hook(EVENT, "UserPromptSubmit", { prompt: "First task" });
       expect(run().task).toBe("First task");
+      const markerKey = createHash("sha256").update(`${home}\0${space}\0${id}`).digest("hex");
+      expect(existsSync(join(tmpdir(), `ideaspaces-claude-first-task-${markerKey}`))).toBe(true);
       hook(EVENT, "UserPromptSubmit", { prompt: "Private followup" });
       hook(EVENT, "Stop");
       expect(run()).toMatchObject({ status: "running", task: "First task", ended_at: null });
@@ -48,6 +51,19 @@ describe("run lifecycle through the bundled CLI", () => {
       const lines = readFileSync(join(home, ".ideaspaces", "agent-runs.jsonl"), "utf8").trim().split("\n");
       expect(lines).toHaveLength(3); // only CLI records start, first task and end
     } finally { rmSync(home, { recursive: true, force: true }); rmSync(space, { recursive: true, force: true }); }
+  });
+
+  it("never blocks the prompt if the CLI cannot write", () => {
+    const space = mkdtempSync(join(tmpdir(), "run-failure-"));
+    try {
+      mkdirSync(join(space, "_agent"));
+      writeFileSync(join(space, "_agent/agreement.md"), "# Agreement\n");
+      const env = { ...process.env, HOME: join(space, "_agent/agreement.md"), CLAUDE_PROJECT_DIR: space };
+      const res = spawnSync(process.execPath, [EVENT], { env, encoding: "utf8", input: JSON.stringify({ session_id: "failure-id", cwd: space, hook_event_name: "UserPromptSubmit", prompt: "test" }) });
+      expect(res.status).toBe(0);
+      expect(res.stdout).toBe("");
+      expect(res.stderr).toContain("run-record-hook: CLI record failed");
+    } finally { rmSync(space, { recursive: true, force: true }); }
   });
 
   it("does not write outside a Space, on unknown input, or with opt out", () => {

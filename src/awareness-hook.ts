@@ -160,13 +160,13 @@ async function main(): Promise<void> {
       }
       if (text) process.stdout.write(text + "\n");
 
-      if (sessionId) recordClaudeRun(sessionId, projectDir, ["--status", "running"]);
-
       // Read-before-write ordering is load-bearing: this session rendered the
       // previous baseline; only now may it become the next session's baseline.
+      // A slow CLI must not delay or skip this local ref update.
       if (manifest.position.repoRoot && manifest.git?.headSha) {
         markSeen(manifest.position.repoRoot, manifest.git.headSha);
       }
+      if (sessionId) recordClaudeRun(sessionId, projectDir, ["--status", "running"]);
       return;
     }
     if (manifest) {

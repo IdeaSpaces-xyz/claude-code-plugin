@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, openSync, readSync, closeSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, openSync, readSync, closeSync, statSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -38,15 +38,25 @@ export function recordClaudeRun(sessionId: string, agent: string, args: string[]
   return call(["agent", "record", "--run-id", sessionId, "--agent", agent, "--harness", "claude", "--conversation", sessionId, ...args]) !== null;
 }
 
-export function hasTask(sessionId: string, agent: string): boolean {
+function taskMarker(sessionId: string, agent: string): string {
+  // An empty, user-private fast path, never a second run-record writer. The
+  // CLI remains authoritative on the first prompt (including after restart).
+  const key = createHash("sha256").update(`${homedir()}\0${agent}\0${sessionId}`).digest("hex");
+  return join(tmpdir(), `ideaspaces-claude-first-task-${key}`);
+}
+
+export function recordFirstTask(sessionId: string, agent: string, message: string): void {
+  const marker = taskMarker(sessionId, agent);
+  if (existsSync(marker)) return;
   const output = call(["agent", "runs", "--agent", agent, "--json"]);
-  if (!output) return true; // Failed lookup must never overwrite the first task.
+  if (!output) return; // Failed lookup must never overwrite the first task.
+  let hasTask: boolean;
   try {
     const runs = JSON.parse(output).runs as Array<{ run_id: string; task?: string | null }>;
-    return runs.some((run) => run.run_id === sessionId && !!run.task);
-  } catch {
-    return true;
-  }
+    hasTask = runs.some((run) => run.run_id === sessionId && !!run.task);
+  } catch { return; }
+  if (!hasTask && !recordClaudeRun(sessionId, agent, ["--message", message, "--status", "running"])) return;
+  try { writeFileSync(marker, "", { flag: "wx", mode: 0o600 }); } catch { /* CLI remains authoritative */ }
 }
 
 export function claudeTranscript(sessionId: string, cwd: string, supplied?: string): string | undefined {
