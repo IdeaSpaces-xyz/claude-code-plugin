@@ -24,7 +24,7 @@ function call(args) {
   const result = spawnSync(process.execPath, [cli, ...args], {
     cwd: tmpdir(),
     encoding: "utf8",
-    timeout: 3e3,
+    timeout: 1200,
     maxBuffer: 8 * 1024 * 1024,
     env: { ...process.env, IDEASPACES_PARENT_RUN_ID: process.env.IDEASPACES_PARENT_RUN_ID || "" }
   });
@@ -46,19 +46,19 @@ function taskMarker(sessionId, agent) {
 function recordFirstTask(sessionId, agent, message) {
   const marker = taskMarker(sessionId, agent);
   if (existsSync(marker)) return;
-  const output = call(["agent", "runs", "--agent", agent, "--json"]);
-  if (!output) return;
-  let hasTask;
   try {
+    const output = call(["agent", "runs", "--agent", agent, "--json"]);
+    if (!output) return;
     const runs = JSON.parse(output).runs;
-    hasTask = runs.some((run) => run.run_id === sessionId && !!run.task);
+    if (!runs.some((run) => run.run_id === sessionId && !!run.task)) {
+      recordClaudeRun(sessionId, agent, ["--message", message, "--status", "running"]);
+    }
   } catch {
-    return;
-  }
-  if (!hasTask && !recordClaudeRun(sessionId, agent, ["--message", message, "--status", "running"])) return;
-  try {
-    writeFileSync(marker, "", { flag: "wx", mode: 384 });
-  } catch {
+  } finally {
+    try {
+      writeFileSync(marker, "", { flag: "wx", mode: 384 });
+    } catch {
+    }
   }
 }
 function claudeTranscript(sessionId, cwd, supplied) {

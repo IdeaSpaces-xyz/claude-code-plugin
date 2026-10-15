@@ -63,6 +63,15 @@ describe("run lifecycle through the bundled CLI", () => {
       expect(res.status).toBe(0);
       expect(res.stdout).toBe("");
       expect(res.stderr).toContain("run-record-hook: CLI record failed");
+      // A failed first attempt also creates an empty marker: later turns must
+      // not repeatedly pay the CLI timeout or replace the first task.
+      const again = spawnSync(process.execPath, [EVENT], { env, encoding: "utf8", input: JSON.stringify({ session_id: "failure-id", cwd: space, hook_event_name: "UserPromptSubmit", prompt: "later" }) });
+      expect(again.status).toBe(0);
+      expect(again.stdout).toBe("");
+      expect(again.stderr).toBe("");
+      const start = spawnSync(process.execPath, [START], { env, encoding: "utf8", input: JSON.stringify({ session_id: "start-failure", cwd: space }) });
+      expect(start.status).toBe(0);
+      expect(start.stderr).toContain("CLI record failed");
     } finally { rmSync(space, { recursive: true, force: true }); }
   });
 

@@ -9,6 +9,9 @@ import { fileURLToPath } from "node:url";
 const cli = join(dirname(fileURLToPath(import.meta.url)), "..", "cli", "bundle", "ideaspaces.js");
 
 export function isInsideIdeaspace(cwd: string): boolean {
+  // The full protocol manifest is assembled at SessionStart. On the prompt
+  // path, loading it again would read Git and Content on every turn: this is
+  // only a cheap contract-file gate, bounded by the first repository root.
   let cur = resolve(cwd);
   while (true) {
     if (existsSync(join(cur, "_agent", "agreement.md")) || existsSync(join(cur, "_agent", "foundation.md"))) return true;
@@ -23,7 +26,7 @@ function call(args: string[]): string | null {
   // A hook's cached session id is this run, not its parent. Run the CLI outside
   // the Space to avoid its cached-parent fallback; an explicit parent env remains.
   const result = spawnSync(process.execPath, [cli, ...args], {
-    cwd: tmpdir(), encoding: "utf8", timeout: 3000, maxBuffer: 8 * 1024 * 1024,
+    cwd: tmpdir(), encoding: "utf8", timeout: 1200, maxBuffer: 8 * 1024 * 1024,
     env: { ...process.env, IDEASPACES_PARENT_RUN_ID: process.env.IDEASPACES_PARENT_RUN_ID || "" },
   });
   if (result.status !== 0 || result.error) {
@@ -48,15 +51,19 @@ function taskMarker(sessionId: string, agent: string): string {
 export function recordFirstTask(sessionId: string, agent: string, message: string): void {
   const marker = taskMarker(sessionId, agent);
   if (existsSync(marker)) return;
-  const output = call(["agent", "runs", "--agent", agent, "--json"]);
-  if (!output) return; // Failed lookup must never overwrite the first task.
-  let hasTask: boolean;
   try {
+    const output = call(["agent", "runs", "--agent", agent, "--json"]);
+    if (!output) return; // Failed lookup must never overwrite the first task.
     const runs = JSON.parse(output).runs as Array<{ run_id: string; task?: string | null }>;
-    hasTask = runs.some((run) => run.run_id === sessionId && !!run.task);
-  } catch { return; }
-  if (!hasTask && !recordClaudeRun(sessionId, agent, ["--message", message, "--status", "running"])) return;
-  try { writeFileSync(marker, "", { flag: "wx", mode: 0o600 }); } catch { /* CLI remains authoritative */ }
+    if (!runs.some((run) => run.run_id === sessionId && !!run.task)) {
+      recordClaudeRun(sessionId, agent, ["--message", message, "--status", "running"]);
+    }
+  } catch { /* malformed CLI output; no task written */ }
+  finally {
+    // Even a failed first attempt must not make every subsequent prompt wait
+    // for a broken CLI. A future session without this tmp marker rechecks it.
+    try { writeFileSync(marker, "", { flag: "wx", mode: 0o600 }); } catch { /* best effort */ }
+  }
 }
 
 export function claudeTranscript(sessionId: string, cwd: string, supplied?: string): string | undefined {
