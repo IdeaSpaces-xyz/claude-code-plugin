@@ -9271,7 +9271,7 @@ function call(args) {
   const result = spawnSync(process.execPath, [cli, ...args], {
     cwd: tmpdir(),
     encoding: "utf8",
-    timeout: 3e3,
+    timeout: 1200,
     maxBuffer: 8 * 1024 * 1024,
     env: { ...process.env, IDEASPACES_PARENT_RUN_ID: process.env.IDEASPACES_PARENT_RUN_ID || "" }
   });
