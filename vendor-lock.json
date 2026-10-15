@@ -4,7 +4,7 @@
     "commit": "75efa91f01090ee9ac4dc61959bddaadf2737709",
     "sourceArtifact": "bundle/ideaspaces.js",
     "vendoredArtifact": "cli/bundle/ideaspaces.js",
-    "sha256": "0ee8d90f4748e54262b52fffbc110ee6c34f7bb9110f22f133d80ab8fbc744e2",
+    "sha256": "f3e41c8de1d6026490478ed9e3dfd7c3d616f56d0c2c2b87f4313bdb3bb59eed",
     "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#efc07df1deea04d1ab5c45e00f45f1c9045720b0",
     "rebuildInCi": true,
     "commands": [

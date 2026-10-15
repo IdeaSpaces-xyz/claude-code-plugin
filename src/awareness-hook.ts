@@ -43,6 +43,7 @@ import { INLINE_BUDGET, fitToBudget, joinParts, renderDemotedLine, summarizeCont
 import { READING_LINE } from "./reading-line.js";
 import { readStdin } from "./stdin.js";
 import { renderArrivalLine } from "./arrival-line.js";
+import { recordClaudeRun } from "./agent-run.js";
 
 /**
  * Bridge the Claude Code session id to the MCP server. The server can't read it
@@ -158,6 +159,8 @@ async function main(): Promise<void> {
         text = fitToBudget(slimHead, rest);
       }
       if (text) process.stdout.write(text + "\n");
+
+      if (sessionId) recordClaudeRun(sessionId, projectDir, ["--status", "running"]);
 
       // Read-before-write ordering is load-bearing: this session rendered the
       // previous baseline; only now may it become the next session's baseline.

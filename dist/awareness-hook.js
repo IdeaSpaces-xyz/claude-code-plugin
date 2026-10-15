@@ -7361,9 +7361,9 @@ var require_dist = __commonJS({
 });
 
 // src/awareness-hook.ts
-import { spawnSync } from "node:child_process";
+import { spawnSync as spawnSync2 } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync as readFileSync2 } from "node:fs";
-import { dirname as dirname4 } from "node:path";
+import { dirname as dirname5 } from "node:path";
 import { homedir as homedir2 } from "node:os";
 
 // node_modules/@ideaspaces/protocol/dist/space.js
@@ -7891,14 +7891,14 @@ var FS = "";
 var REC = "";
 var DEFAULT_COMMIT_LIMIT = 20;
 function runGit(repoRoot, args) {
-  return new Promise((resolve7) => {
+  return new Promise((resolve8) => {
     const proc = spawn("git", ["-C", repoRoot, ...args], {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let out = "";
     proc.stdout.on("data", (d) => out += d);
-    proc.on("close", (code) => resolve7({ ok: code === 0, out, code }));
-    proc.on("error", () => resolve7({ ok: false, out: "", code: null }));
+    proc.on("close", (code) => resolve8({ ok: code === 0, out, code }));
+    proc.on("error", () => resolve8({ ok: false, out: "", code: null }));
   });
 }
 async function resolveRepoRoot(cwd) {
@@ -9157,12 +9157,12 @@ function joinParts(...parts) {
   return parts.filter((part) => part.trim()).join("\n\n");
 }
 function fitToBudget(head, tail, budget = INLINE_BUDGET) {
-  const join8 = joinParts;
-  const whole = join8(head, tail);
+  const join9 = joinParts;
+  const whole = join9(head, tail);
   if (whole.length <= budget) return whole;
   const room = budget - tail.length - 2;
   if (room < 1e3) return cutToBudget(whole, budget);
-  return join8(cutToBudget(head, room), tail);
+  return join9(cutToBudget(head, room), tail);
 }
 function cutToBudget(text, budget = INLINE_BUDGET) {
   if (text.length <= budget) return text;
@@ -9261,6 +9261,32 @@ async function renderArrivalLine() {
   return formatArrivalLine(counts.newMessages, counts.newRequests);
 }
 
+// src/agent-run.ts
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { dirname as dirname4, join as join8, resolve as resolve7 } from "node:path";
+import { fileURLToPath } from "node:url";
+var cli = join8(dirname4(fileURLToPath(import.meta.url)), "..", "cli", "bundle", "ideaspaces.js");
+function call(args) {
+  const result = spawnSync(process.execPath, [cli, ...args], {
+    cwd: tmpdir(),
+    encoding: "utf8",
+    timeout: 3e3,
+    maxBuffer: 8 * 1024 * 1024,
+    env: { ...process.env, IDEASPACES_PARENT_RUN_ID: process.env.IDEASPACES_PARENT_RUN_ID || "" }
+  });
+  if (result.status !== 0 || result.error) {
+    process.stderr.write(`run-record-hook: CLI ${args[1]} failed: ${result.error?.message || result.stderr || result.status}
+`);
+    return null;
+  }
+  return result.stdout;
+}
+function recordClaudeRun(sessionId, agent, args) {
+  if (process.env.IDEASPACES_DISABLE_RUN_RECORDS === "1") return false;
+  return call(["agent", "record", "--run-id", sessionId, "--agent", agent, "--harness", "claude", "--conversation", sessionId, ...args]) !== null;
+}
+
 // src/awareness-hook.ts
 function captureSessionId(raw) {
   const fallbackDir = process.env.CLAUDE_PROJECT_DIR?.trim() || process.cwd();
@@ -9276,7 +9302,7 @@ function captureSessionId(raw) {
   if (typeof sessionId !== "string" || !sessionId) return { projectDir };
   try {
     const file = sessionIdCachePath2(homedir2(), projectDir);
-    mkdirSync(dirname4(file), { recursive: true });
+    mkdirSync(dirname5(file), { recursive: true });
     writeFileSync(file, sessionId + "\n");
   } catch {
   }
@@ -9293,7 +9319,7 @@ function changeLine(sessionId, projectDir) {
 }
 function markSeen(repoRoot, headSha) {
   try {
-    spawnSync("git", ["-C", repoRoot, "update-ref", SEEN_REF, headSha], {
+    spawnSync2("git", ["-C", repoRoot, "update-ref", SEEN_REF, headSha], {
       encoding: "utf-8"
     });
   } catch {
@@ -9323,18 +9349,19 @@ async function main() {
       const tail = renderContentTail(manifest, { state, change: openChange });
       const kind = renderKindLine(manifest) ?? "";
       const arrival = await renderArrivalLine();
-      const join8 = joinParts;
-      const rest = join8(kind, READING_LINE, arrival ?? "", tail);
-      let text = join8(head, rest);
+      const join9 = joinParts;
+      const rest = join9(kind, READING_LINE, arrival ?? "", tail);
+      let text = join9(head, rest);
       if (text.length > INLINE_BUDGET) {
         const slim = summarizeContract(manifest);
-        const slimHead = slim.demoted.length ? join8(
+        const slimHead = slim.demoted.length ? join9(
           renderContentAwareness(slim.manifest, { placement: "head" }),
           renderDemotedLine(slim.demoted, projectDir)
         ) : head;
         text = fitToBudget(slimHead, rest);
       }
       if (text) process.stdout.write(text + "\n");
+      if (sessionId) recordClaudeRun(sessionId, projectDir, ["--status", "running"]);
       if (manifest.position.repoRoot && manifest.git?.headSha) {
         markSeen(manifest.position.repoRoot, manifest.git.headSha);
       }
