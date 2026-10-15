@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, openSync, readSync, closeSync, statSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
+import { realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,11 +49,22 @@ export function hasTask(sessionId: string, agent: string): boolean {
   }
 }
 
+export function claudeTranscript(sessionId: string, cwd: string, supplied?: string): string | undefined {
+  if (supplied && existsSync(supplied)) return supplied;
+  let project = resolve(cwd);
+  try { project = realpathSync(project); } catch { /* use resolved path */ }
+  const config = process.env.CLAUDE_CONFIG_DIR?.trim() || join(homedir(), ".claude");
+  const file = join(config, "projects", project.replace(/[^a-zA-Z0-9]/gu, "-"), `${sessionId}.jsonl`);
+  return existsSync(file) ? file : undefined;
+}
+
 export function extractModelFromTranscriptTail(filePath?: string): string | undefined {
   if (!filePath || !existsSync(filePath)) return undefined;
   try {
     const size = statSync(filePath).size;
-    const bytes = Math.min(size, 16 * 1024);
+    // Claude can append >80 KiB attachments after its last assistant entry.
+    // Bound the read, but retain enough of the tail to find that model.
+    const bytes = Math.min(size, 256 * 1024);
     if (!bytes) return undefined;
     const buffer = Buffer.alloc(bytes);
     const fd = openSync(filePath, "r");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,9 +39,10 @@ describe("run lifecycle through the bundled CLI", () => {
       hook(EVENT, "UserPromptSubmit", { prompt: "Private followup" });
       hook(EVENT, "Stop");
       expect(run()).toMatchObject({ status: "running", task: "First task", ended_at: null });
-      const transcript = join(home, "transcript.jsonl");
-      writeFileSync(transcript, JSON.stringify({ type: "assistant", message: { model: "claude-opus-4-1" } }) + "\n");
-      hook(EVENT, "SessionEnd", { transcript_path: transcript });
+      const transcriptDir = join(home, ".claude", "projects", realpathSync(space).replace(/[^a-zA-Z0-9]/gu, "-"));
+      mkdirSync(transcriptDir, { recursive: true });
+      writeFileSync(join(transcriptDir, `${id}.jsonl`), JSON.stringify({ type: "assistant", message: { model: "claude-opus-4-1" } }) + "\n" + JSON.stringify({ type: "attachment", content: "x".repeat(90_000) }) + "\n");
+      hook(EVENT, "SessionEnd");
       expect(run()).toMatchObject({ status: "completed", task: "First task", model_observed: "claude-opus-4-1" });
       expect(run().ended_at).toBeTruthy();
       const lines = readFileSync(join(home, ".ideaspaces", "agent-runs.jsonl"), "utf8").trim().split("\n");

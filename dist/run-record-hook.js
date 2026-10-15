@@ -5,7 +5,8 @@ const require = __isCreateRequire(import.meta.url);
 // src/agent-run.ts
 import { spawnSync } from "node:child_process";
 import { existsSync, openSync, readSync, closeSync, statSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
+import { realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 var cli = join(dirname(fileURLToPath(import.meta.url)), "..", "cli", "bundle", "ideaspaces.js");
@@ -48,11 +49,22 @@ function hasTask(sessionId, agent) {
     return true;
   }
 }
+function claudeTranscript(sessionId, cwd, supplied) {
+  if (supplied && existsSync(supplied)) return supplied;
+  let project = resolve(cwd);
+  try {
+    project = realpathSync(project);
+  } catch {
+  }
+  const config = process.env.CLAUDE_CONFIG_DIR?.trim() || join(homedir(), ".claude");
+  const file = join(config, "projects", project.replace(/[^a-zA-Z0-9]/gu, "-"), `${sessionId}.jsonl`);
+  return existsSync(file) ? file : void 0;
+}
 function extractModelFromTranscriptTail(filePath) {
   if (!filePath || !existsSync(filePath)) return void 0;
   try {
     const size = statSync(filePath).size;
-    const bytes = Math.min(size, 16 * 1024);
+    const bytes = Math.min(size, 256 * 1024);
     if (!bytes) return void 0;
     const buffer = Buffer.alloc(bytes);
     const fd = openSync(filePath, "r");
@@ -103,7 +115,7 @@ async function main() {
       recordClaudeRun(sessionId, cwd, ["--message", input.prompt, "--status", "running"]);
     }
   } else {
-    const model = extractModelFromTranscriptTail(input.transcript_path);
+    const model = extractModelFromTranscriptTail(claudeTranscript(sessionId, cwd, input.transcript_path));
     recordClaudeRun(sessionId, cwd, ["--status", "completed", ...model ? ["--model-observed", model] : []]);
   }
 }

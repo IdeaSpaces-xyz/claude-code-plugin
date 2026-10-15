@@ -1,5 +1,5 @@
 /** Claude prompt and session-end events. The CLI owns all persistent run records. */
-import { recordClaudeRun, hasTask, isInsideIdeaspace, extractModelFromTranscriptTail } from "./agent-run.js";
+import { recordClaudeRun, hasTask, isInsideIdeaspace, claudeTranscript, extractModelFromTranscriptTail } from "./agent-run.js";
 import { readStdin } from "./stdin.js";
 
 async function main(): Promise<void> {
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
       recordClaudeRun(sessionId, cwd, ["--message", input.prompt, "--status", "running"]);
     }
   } else {
-    const model = extractModelFromTranscriptTail(input.transcript_path);
+    const model = extractModelFromTranscriptTail(claudeTranscript(sessionId, cwd, input.transcript_path));
     recordClaudeRun(sessionId, cwd, ["--status", "completed", ...(model ? ["--model-observed", model] : [])]);
   }
 }

@@ -7364,7 +7364,7 @@ var require_dist = __commonJS({
 import { spawnSync as spawnSync2 } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname5 } from "node:path";
-import { homedir as homedir2 } from "node:os";
+import { homedir as homedir3 } from "node:os";
 
 // node_modules/@ideaspaces/protocol/dist/space.js
 import { promises as fs } from "node:fs";
@@ -9263,7 +9263,7 @@ async function renderArrivalLine() {
 
 // src/agent-run.ts
 import { spawnSync } from "node:child_process";
-import { tmpdir } from "node:os";
+import { homedir as homedir2, tmpdir } from "node:os";
 import { dirname as dirname4, join as join8, resolve as resolve7 } from "node:path";
 import { fileURLToPath } from "node:url";
 var cli = join8(dirname4(fileURLToPath(import.meta.url)), "..", "cli", "bundle", "ideaspaces.js");
@@ -9301,7 +9301,7 @@ function captureSessionId(raw) {
   const sessionId = input.session_id;
   if (typeof sessionId !== "string" || !sessionId) return { projectDir };
   try {
-    const file = sessionIdCachePath2(homedir2(), projectDir);
+    const file = sessionIdCachePath2(homedir3(), projectDir);
     mkdirSync(dirname5(file), { recursive: true });
     writeFileSync(file, sessionId + "\n");
   } catch {
@@ -9310,7 +9310,7 @@ function captureSessionId(raw) {
 }
 function changeLine(sessionId, projectDir) {
   try {
-    const raw = readFileSync2(changeCachePath2(homedir2(), projectDir), "utf-8");
+    const raw = readFileSync2(changeCachePath2(homedir3(), projectDir), "utf-8");
     const rec = parseChangeRecord(raw);
     return rec ? renderChangeLine(rec, sessionId, Date.now()) : void 0;
   } catch {
