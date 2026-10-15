@@ -33259,7 +33259,6 @@ function parsePiChildResources(text) {
 
 // src/collaborate.ts
 var DEPTH_ENV = "IS_COLLABORATE_DEPTH";
-var DEFAULT_TIMEOUT_MS = 6e5;
 var MAX_EVENT_BYTES = 1024 * 1024;
 var MAX_OUTPUT_BYTES = 4 * 1024 * 1024;
 var MAX_REPLY_CHARS = 12e3;
@@ -33311,7 +33310,8 @@ function untrackChild(child) {
 }
 var spawnCli = (args, cwd) => new Promise((done) => {
   const { command, argv } = cliInvocation(resolveCli(), args);
-  const timeoutMs = Number(process.env.IS_COLLABORATE_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS;
+  const rawTimeout = Number(process.env.IS_COLLABORATE_TIMEOUT_MS);
+  const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout > 0 ? Math.min(Math.floor(rawTimeout), 2147483647) : 0;
   const env = { ...process.env, [DEPTH_ENV]: "1" };
   delete env.IDEASPACES_PI_EXTENSIONS;
   delete env.IDEASPACES_PI_SKILLS;
@@ -33329,19 +33329,22 @@ var spawnCli = (args, cwd) => new Promise((done) => {
   let settled = false;
   let timedOut = false;
   let overflow = false;
+  let timer;
   const finish = (code) => {
     if (settled) return;
     settled = true;
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
     untrackChild(child);
     const reason = overflow ? "CLI output exceeded limit" : timedOut ? `CLI turn timed out after ${timeoutMs}ms` : "";
     done({ out, err: (reason ? `${reason}${err ? `: ${err}` : ""}` : err).slice(0, 4e3), code: timedOut || overflow ? 1 : code });
   };
-  const timer = setTimeout(() => {
-    timedOut = true;
-    signalTree(child, "SIGTERM");
-    setTimeout(() => signalTree(child, "SIGKILL"), 2e3).unref();
-  }, timeoutMs);
+  if (timeoutMs > 0) {
+    timer = setTimeout(() => {
+      timedOut = true;
+      signalTree(child, "SIGTERM");
+      setTimeout(() => signalTree(child, "SIGKILL"), 2e3).unref();
+    }, timeoutMs);
+  }
   child.stdout?.setEncoding("utf8");
   child.stdout?.on("data", (chunk) => {
     out += chunk;
