@@ -1,6 +1,6 @@
 {
   "name": "ideaspaces-plugin",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "Ideaspace Protocol for Claude Code, Codex, and Cowork — durable awareness, deliberate capture, optional sync.",
   "private": true,
   "type": "module",
@@ -20,7 +20,7 @@
     "build:hook": "node build-hook.mjs",
     "build:reference": "node reference.mjs",
     "vendor": "node vendor.mjs",
-    "check:generated": "npm run build:reference && npm run build:hook && git diff --exit-code -- reference/ dist/awareness-hook.js dist/capture-nudge-hook.js",
+    "check:generated": "npm run build:reference && npm run build:hook && git diff --exit-code -- reference/ dist/awareness-hook.js dist/capture-nudge-hook.js dist/run-record-hook.js",
     "check:vendor": "node scripts/check-vendor.mjs",
     "lint:skills": "node scripts/lint-skills.mjs",
     "test": "vitest run",

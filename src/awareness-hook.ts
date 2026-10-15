@@ -43,6 +43,7 @@ import { INLINE_BUDGET, fitToBudget, joinParts, renderDemotedLine, summarizeCont
 import { READING_LINE } from "./reading-line.js";
 import { readStdin } from "./stdin.js";
 import { renderArrivalLine } from "./arrival-line.js";
+import { recordClaudeRun } from "./agent-run.js";
 
 /**
  * Bridge the Claude Code session id to the MCP server. The server can't read it
@@ -161,9 +162,11 @@ async function main(): Promise<void> {
 
       // Read-before-write ordering is load-bearing: this session rendered the
       // previous baseline; only now may it become the next session's baseline.
+      // A slow CLI must not delay or skip this local ref update.
       if (manifest.position.repoRoot && manifest.git?.headSha) {
         markSeen(manifest.position.repoRoot, manifest.git.headSha);
       }
+      if (sessionId) recordClaudeRun(sessionId, projectDir, ["--status", "running"]);
       return;
     }
     if (manifest) {

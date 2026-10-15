@@ -16,9 +16,9 @@ describe("recipient-shaped Share distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.6.6");
-    expect(plugin.version).toBe("0.6.6");
-    expect(vendor.cli.commit).toBe("75efa91f01090ee9ac4dc61959bddaadf2737709");
+    expect(pkg.version).toBe("0.6.7");
+    expect(plugin.version).toBe("0.6.7");
+    expect(vendor.cli.commit).toBe("ebb9138ec0c68b03c25ac91431eb7eee1ee2b6ba");
     expect(vendor["mcp-server"].commit).toBe("b051cb2155864fa6876c7988acf5d161600a71a4");
     expect(vendor.cli.protocolPin).toBe(
       "github:IdeaSpaces-xyz/ideaspace-protocol#efc07df1deea04d1ab5c45e00f45f1c9045720b0",
@@ -30,7 +30,7 @@ describe("recipient-shaped Share distribution", () => {
     const help = `${result.stdout}${result.stderr}`;
 
     expect(result.status).toBe(0);
-    expect(help).toContain("share <person|team|list|remove|resend|history|visibility>");
+    expect(help).toContain("share <status|log|person|team|list|remove|resend|history|visibility>");
     expect(help).toContain("--grade explore");
     expect(help).toContain("--grade fork");
     expect(help).toContain("--grade collaborate");

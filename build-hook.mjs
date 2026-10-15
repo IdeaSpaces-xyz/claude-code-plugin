@@ -8,7 +8,11 @@
 import * as esbuild from "esbuild";
 
 await esbuild.build({
-  entryPoints: ["src/awareness-hook.ts", "src/capture-nudge-hook.ts"],
+  entryPoints: [
+    "src/awareness-hook.ts",
+    "src/capture-nudge-hook.ts",
+    "src/run-record-hook.ts",
+  ],
   bundle: true,
   platform: "node",
   target: "node18",
