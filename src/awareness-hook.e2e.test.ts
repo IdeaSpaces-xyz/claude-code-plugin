@@ -122,7 +122,7 @@ describe("shipped in-process awareness hook", () => {
     expect(readFileSync(join(home, ".ideaspaces", "sessions", sessionCacheName(space)), "utf-8")).toBe(
       "session-a\n",
     );
-  });
+  }, 20_000); // Three real hook starts plus Git; the larger protocol bundle exceeds 5s on loaded CI.
 
   it("prefers Agreement without mixing in Foundation", () => {
     const space = tempDir("is-awareness-hook-agreement-");

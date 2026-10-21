@@ -1,7 +1,7 @@
 {
   "cli": {
     "repository": "https://github.com/IdeaSpaces-xyz/cli.git",
-    "commit": "766bdfc24a4ded6160b335784138276064903ed2",
+    "commit": "b28461d388960807e4241ecb755391da2e33720e",
     "sourceArtifact": "bundle/ideaspaces.js",
     "vendoredArtifact": "cli/bundle/ideaspaces.js",
     "sha256": "690432eccf689298eeedb7fedd9be9ba14b97994189facd05fd22dd287193c5a",
@@ -14,7 +14,7 @@
   },
   "mcp-server": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
-    "commit": "d261da4f744a59a871af47e2d4c35e141bccda03",
+    "commit": "af464d3947496546f035bc559cf0402a33fa078e",
     "sourceArtifact": "bundle/index.js",
     "vendoredArtifact": "dist/index.js",
     "sha256": "f0f09349718d9606a8452ade5d43b8d022138f7162700c172776868c936fd778",

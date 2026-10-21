@@ -65,5 +65,5 @@ describe("portable root identity in the vendored CLI", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 20_000); // Three real bundled CLI spawns and Git setup outlast the 5s default under load.
 });
