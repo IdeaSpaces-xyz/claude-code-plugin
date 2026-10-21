@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
 const CLI = join(ROOT, "cli/bundle/ideaspaces.js");
-const CLI_COMMIT = "74c95bb53c1d4c4a5f999b5acf2d553983b9db73";
+const CLI_COMMIT = "84e93cd32f135c1a9f985b9a4cd2b963a1b4e44f";
 
 function read(relative: string): string {
   return readFileSync(join(ROOT, relative), "utf-8");

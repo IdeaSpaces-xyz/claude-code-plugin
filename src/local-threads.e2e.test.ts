@@ -66,6 +66,12 @@ describe("installed Claude plugin local Threads", () => {
     writeFileSync(join(dir, "_threads", "test", "zz-map.md"), "---\nid: msg_bad_map\nmap: [broken]\n---\nStill readable");
     expect(await call("is_look", { path: join(dir, "_threads", "test", "zz-map.md"), depth: "summary" })).toContain("map: invalid_map_type");
     expect(JSON.parse(await call("is_threads", { action: "open", path: "test", depth: "name" })).thread.warnings).toContain("_threads/test/zz-map.md: map: invalid_map_type");
+    writeFileSync(join(dir, "_threads", "test", "zz-unreadable.md"), "---\nkind: closure\n---\nNo id");
+    const uncertain = JSON.parse(await call("is_threads", { action: "open", path: "test", depth: "name" }));
+    expect(uncertain.thread.closed).toBe("unknown");
+    expect(JSON.parse(await call("is_threads", { action: "list" })).local_complete).toBe(false);
+    expect(JSON.parse(await call("is_threads", { action: "list" })).threads.find((row: { slug: string }) => row.slug === "test").closed).toBe("unknown");
+    await call("is_threads", { action: "post", path: "test", message: "Still writable after unreadable later post", author: "Claude Agent" });
     for (const depth of ["surface", "full"]) {
       expect(JSON.parse(await call("is_threads", { action: "open", path: "test", post: first.id, depth })).thread.name).toBe("A local test");
     }
