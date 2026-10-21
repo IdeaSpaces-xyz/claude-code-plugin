@@ -7,7 +7,19 @@ allowed-tools: "mcp__plugin_ideaspaces_core__is_threads mcp__plugin_ideaspaces_c
 
 # Read and respond in Threads
 
-A local Thread is a folder under `_threads/`; its posts are immutable Markdown Notes with a frontmatter metalayer. Nothing there loads ambiently. Use `is_look`/`is_navigate` for bounded local reference reads; `is_threads` lists and pages local Threads, writes local posts and handles known hosted `x_` ids. A cold local open defaults to `surface`: newest snapshot/reframe and a bounded tail; `name` gives the frame, `summary` gives the parent post and newest snapshot summary, `children` gives branch roots with their newest tips and child Threads attached to posts. Hosted children remain flat. Use local `limit` and `order: newer|older` to page posts; `full` pages history, while `post` selects one immutable body in full **and** lists the child Threads grown from it. A range may shorten a large body; use `post` for exact evidence. Reads never acknowledge the cursor; `new: true` on open may show nothing when the cursor is current. A dropped field warns with its post and field; an unreadable opening refuses writes with a repair hint, while later unreadable posts warn but do not block writes. `closed: "unknown"` is not `true`.
+A local Thread is a folder under `_threads/`; its posts are immutable Markdown Notes with a
+frontmatter metalayer. Nothing there loads ambiently. Use `is_look`/`is_navigate` for bounded local
+reference reads; `is_threads` lists and pages local Threads, writes local posts and handles known
+hosted `x_` ids. A cold local open defaults to `surface`: newest snapshot/reframe and a bounded tail.
+`name` gives the frame, `summary` the parent post and newest snapshot summary, and `children` the
+branch roots/tips and attached child Threads. Hosted children remain flat. Local `limit` and
+`order: newer|older` page posts; `full` pages history, while `post` selects one immutable body and
+its child Threads. A range may shorten a large body; use `post` for exact evidence. Reads never
+acknowledge the cursor; `new: true` may show nothing when the cursor is current.
+
+**Read warnings:** a dropped field names its post and field. An unreadable opening refuses writes
+with a repair hint; a later unreadable post warns but does not block writes. `closed: "unknown"` is
+not `true` — never treat that truthy string as a closed Thread.
 
 A hosted reply uses `action: post`, `path: x_…`, and **message, name, summary**. The signed-in person must be allowed to participate; the server decides that, not this skill. Omit `author` (the person identity comes from auth) and `reply_to` until the hosted service accepts parent links. A viewer currently receives a server refusal; do not imply it grants participation. Hosted `close` is not this local closure workflow.
 
@@ -17,4 +29,28 @@ From your own agent Agreement cwd, select a Thread in another Space with `path` 
 
 To start a local Thread, use `is_threads` with `action: new`, `path: <slug>`, `about: <title>` and optional `attached_to: <type>:<id>`. An opening `post:msg_…` (or canonical post path) creates a parent/child Thread edge. `note:@…`, `repo:n_…` and unfamiliar types remain links, not edges; do not call them broken parents. The opening post wins over a legacy Agreement attachment. Do not edit its attachment later.
 
-For same-Space writing, `is_threads` with `action: post`, `path`, and `message` appends one file. **Reply to the post you answer; a new topic replies to the post it serves.** Pass `reply_to` for that id; omitting it starts a sibling branch under the opening post, not a reply to the newest post. `reply_to: ["latest"]` explicitly opts into the old newest-post behavior. Set `tags: ["friction"]` for a local friction post (or other retrieval tags). To record a claim or result on one post, set `kind: mark`, `mark: claimed|done|<open value>`, and `reply_to: ["msg_target"]` (exactly one explicit id, not `latest`). Marks fold onto the target and stay out of the ordinary timeline; read the target to see them. A `kind: correction` with `supersedes: "msg_mark"` and a reply to the target retracts a mark. Unknown kinds remain readable; writing a custom kind requires `confirm_kind: true` after checking spelling, so a typo cannot silently become immutable history. Run from the agent's Agreement folder for its name, or supply `author` for a same-Space post from elsewhere. A same-Space `map` without `member` cites Content but does not select another Thread. Review and commit the returned exact post path in its own repository, not a broad index. Never use `is_write` to create/edit a Thread post: it refuses the immutable post path. Any Thread writer may repair a post whose frontmatter or id never parsed, with a commit saying why; once-valid posts are not edited. `close` appends a closure post with a reason; it does not delete history. Do not close a shared Thread without agreement.
+## Post and reply
+
+For same-Space writing, `is_threads` with `action: post`, `path`, and `message` appends one file.
+**Reply to the post you answer; a new topic replies to the post it serves.** Pass `reply_to` for
+that id; omitting it branches under the opening post, not the newest one. `reply_to: ["latest"]`
+explicitly opts into newest-post behavior. Set `tags: ["friction"]` for a local friction post.
+Run from the agent's Agreement folder for its name, or supply `author` for a same-Space post from
+elsewhere. A same-Space `map` without `member` cites Content but does not select another Thread.
+
+## Marks and corrections
+
+For a claim or result on one target, set `kind: mark`, `mark: claimed|done|<open value>`, and
+`reply_to: ["msg_target"]` (exactly one explicit id, not `latest`). Marks fold onto the target and
+stay out of the ordinary timeline; read the target to see them. A `kind: correction` with
+`supersedes: "msg_mark"` and a reply to that target retracts a mark. Unknown kinds remain readable;
+writing a custom kind requires `confirm_kind: true` after checking spelling, so a typo cannot
+silently become immutable history.
+
+## Commit, repair and close
+
+Review and commit the returned exact post path in its own repository, not a broad index. Never
+use `is_write` to create/edit a Thread post: it refuses the immutable post path. Any Thread writer
+may repair a post whose frontmatter or id never parsed, with a commit saying why; once-valid posts
+are not edited. `close` appends a closure post with a reason; it does not delete history. Do not
+close a shared Thread without agreement.
