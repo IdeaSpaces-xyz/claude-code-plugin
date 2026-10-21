@@ -51,7 +51,7 @@ describe("run lifecycle through the bundled CLI", () => {
       const lines = readFileSync(join(home, ".ideaspaces", "agent-runs.jsonl"), "utf8").trim().split("\n");
       expect(lines).toHaveLength(3); // only CLI records start, first task and end
     } finally { rmSync(home, { recursive: true, force: true }); rmSync(space, { recursive: true, force: true }); }
-  });
+  }, 20_000); // Multiple real bundled CLI spawns; 0.4.0's larger bundle exceeds Vitest's 5s default.
 
   it("never blocks the prompt if the CLI cannot write", () => {
     const space = mkdtempSync(join(tmpdir(), "run-failure-"));

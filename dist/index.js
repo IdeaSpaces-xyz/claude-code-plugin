@@ -30489,7 +30489,8 @@ async function assembleContentTree(opts) {
     maxEntries: opts.maxEntries ?? (depth === "full" ? Infinity : 50),
     summaries: true,
     summaryLength: opts.summaryExcerptLength ?? 200,
-    strict: true
+    strict: true,
+    ...opts.page ? { page: opts.page } : {}
   });
 }
 async function assembleContentFocus(opts) {
@@ -31043,7 +31044,8 @@ async function buildTree(root, opts) {
     placement: "head",
     totalMarkdownFiles,
     entries: listed.entries,
-    ...listed.omitted ? { omittedEntries: listed.omitted } : {}
+    ...listed.omitted ? { omittedEntries: listed.omitted } : {},
+    ...listed.page ? { page: listed.page } : {}
   };
 }
 async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
@@ -31061,12 +31063,19 @@ async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
   const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => topLevel || entry.name !== "README.md").map((entry) => entry.name).sort();
   if (!dirs.length && !files.length)
     return null;
+  const page = topLevel ? opts.page : void 0;
   const all = [
     ...dirs.map((name) => ({ name, isDir: true })),
-    ...files.map((name) => ({ name, isDir: false }))
+    ...files.filter((name) => !(page?.excludeReadme && name === "README.md")).map((name) => ({ name, isDir: false }))
   ];
-  const shown = Number.isFinite(opts.maxEntries) ? all.slice(0, opts.maxEntries) : all;
-  const omitted = all.length - shown.length;
+  if (page?.order === "newer")
+    all.reverse();
+  const after = page?.cursor === void 0 ? -1 : all.findIndex((entry) => entry.name === page.cursor);
+  if (page?.cursor !== void 0 && after < 0)
+    throw new RangeError(`Child cursor ${JSON.stringify(page.cursor)} is not in ${dir}. Re-read the first page.`);
+  const start = after + 1;
+  const shown = Number.isFinite(opts.maxEntries) ? all.slice(start, start + opts.maxEntries) : all.slice(start);
+  const omitted = all.length - start - shown.length;
   const withSummaries = opts.summaries && (topLevel || opts.depth === "full");
   const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
     const path = join7(dir, name);
@@ -31088,7 +31097,16 @@ async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
     }
     return entry;
   }));
-  return { entries, omitted };
+  return {
+    entries,
+    omitted,
+    ...page ? { page: {
+      total: all.length,
+      shown: shown.length,
+      order: page.order ?? "older",
+      ...omitted && shown.length ? { nextCursor: shown.at(-1).name } : {}
+    } } : {}
+  };
 }
 async function countMarkdown(dir, strict = false) {
   let count = 0;
@@ -31457,6 +31475,14 @@ function parseThreadAttachment(value) {
 function isPostAttachmentTarget(value) {
   return /^msg_[A-Za-z0-9][A-Za-z0-9_-]*$/.test(value) || /^_threads\/[^/.][^/]*\/[^/.][^/]*\.md$/.test(value) && !value.endsWith("/README.md");
 }
+function resolveThreadPostById(id, posts) {
+  if (!/^msg_[A-Za-z0-9][A-Za-z0-9_-]*$/.test(id))
+    return { status: "unresolved" };
+  const candidates = posts.filter((post) => parseThreadAttachment(post.path)?.kind === "path");
+  const exact = candidates.filter((post) => post.id === id);
+  const matches = exact.length || !/^msg_[0-9a-f]{8}$/.test(id) ? exact : candidates.filter((post) => post.id.startsWith(`${id}-`));
+  return matches.length === 1 ? { status: "resolved", post: { ...matches[0] } } : { status: matches.length ? "ambiguous" : "unresolved" };
+}
 function validDay(day) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day))
     return false;
@@ -31637,6 +31663,15 @@ function parseThreadPost(content, path = "") {
 // node_modules/@ideaspaces/protocol/dist/content-look.js
 async function assembleContentLook(opts) {
   const depth = opts.depth ?? "summary";
+  if (opts.limit !== void 0 && opts.maxChildren !== void 0 && opts.limit !== opts.maxChildren) {
+    throw new RangeError("Use limit or maxChildren for a directory page, not conflicting caps.");
+  }
+  const cap = opts.limit ?? opts.maxChildren ?? 50;
+  if (!Number.isSafeInteger(cap) || cap < 0)
+    throw new RangeError(opts.limit === void 0 ? "Content look maxChildren must be a non-negative integer" : "Directory look limit must be a non-negative safe integer.");
+  if (opts.order !== void 0 && opts.order !== "older" && opts.order !== "newer")
+    throw new RangeError("Directory order must be older or newer.");
+  const cursor = opts.since;
   if (!MAP_DEPTHS.includes(depth)) {
     throw new RangeError(`Content look depth must be one of: ${MAP_DEPTHS.join(", ")}`);
   }
@@ -31662,7 +31697,32 @@ async function assembleContentLook(opts) {
   const position = portablePosition(base, path);
   if (!isLookTarget(position, kind, focused.position.repoRoot !== null))
     return null;
-  const target = kind === "markdown" ? await readMarkdownTarget(path, position, depth) : await readDirectoryTarget(path, position, depth, opts.maxChildren ?? 50, opts.summaryExcerptLength ?? 200);
+  if (opts.postId !== void 0) {
+    if (cursor !== void 0 || opts.order !== void 0 || opts.limit !== void 0 || opts.maxChildren !== void 0) {
+      throw new RangeError("One post-id look cannot also page directory children.");
+    }
+    const selected = await selectThreadPost(path, position, kind, opts.postId);
+    if (selected.status !== "resolved") {
+      return {
+        status: selected.status,
+        kind: "content-look",
+        contractRole: "reference",
+        postId: opts.postId,
+        position,
+        reason: selected.reason
+      };
+    }
+    return assembleContentLook({
+      position: selected.path,
+      depth,
+      ...opts.contractSource ? { contractSource: opts.contractSource } : {},
+      ...opts.summaryExcerptLength !== void 0 ? { summaryExcerptLength: opts.summaryExcerptLength } : {}
+    });
+  }
+  if ((cursor !== void 0 || opts.order !== void 0 || opts.limit !== void 0) && (kind !== "directory" || depth !== "children" && depth !== "full")) {
+    throw new RangeError("limit, since and order require a directory at children or full depth.");
+  }
+  const target = kind === "markdown" ? await readMarkdownTarget(path, position, depth) : await readDirectoryTarget(path, position, depth, cap, opts.summaryExcerptLength ?? 200, cursor, opts.order ?? "older");
   return {
     status: "ok",
     kind: "content-look",
@@ -31671,7 +31731,55 @@ async function assembleContentLook(opts) {
     target
   };
 }
+async function selectThreadPost(path, position, kind, postId) {
+  if (kind !== "directory" || !(isThreadFolderPosition(position) || position === "." || position === "_threads")) {
+    return { status: "invalid_post_scope", reason: "Select a Thread folder, _threads, or this repository root for a post id." };
+  }
+  const threadDirs = isThreadFolderPosition(position) ? [{ name: basename3(path), path }] : await fs5.readdir(position === "_threads" ? path : join8(path, "_threads"), { withFileTypes: true }).then((entries) => entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith(".")).map((entry) => ({ name: entry.name, path: join8(position === "_threads" ? path : join8(path, "_threads"), entry.name) }))).catch((error2) => {
+    if (error2.code === "ENOENT")
+      return [];
+    throw error2;
+  });
+  const candidates = [];
+  const paths = /* @__PURE__ */ new Map();
+  for (const dir of threadDirs) {
+    const entries = await fs5.readdir(dir.path, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || entry.name.startsWith(".") || entry.name === "README.md" || !entry.name.endsWith(".md"))
+        continue;
+      const file = join8(dir.path, entry.name);
+      const portable = `_threads/${dir.name}/${entry.name}`;
+      const parsed = parseThreadPost(await fs5.readFile(file, "utf8"), portable);
+      if (parsed.status === "valid") {
+        candidates.push({ path: portable, id: parsed.post.id });
+        paths.set(portable, file);
+      }
+    }
+  }
+  const selected = resolveThreadPostById(postId, candidates);
+  return selected.status === "resolved" ? { status: "resolved", path: paths.get(selected.post.path) } : { status: selected.status, reason: selected.status === "ambiguous" ? `${postId} names several posts in the selected root; use a full id or narrower Thread folder.` : `${postId} is not a readable post in the selected root or Thread.` };
+}
+function pageNames(names, limit, cursor, order) {
+  const ordered = order === "newer" ? [...names].reverse() : names;
+  const after = cursor === void 0 ? -1 : ordered.indexOf(cursor);
+  if (cursor !== void 0 && after < 0)
+    throw new RangeError(`Child cursor ${JSON.stringify(cursor)} is not in this directory. Re-read the first page.`);
+  const start = after + 1;
+  const shown = ordered.slice(start, start + limit);
+  const remaining = ordered.length - start - shown.length;
+  return { shown, remaining, page: {
+    total: ordered.length,
+    shown: shown.length,
+    order,
+    ...remaining && shown.length ? { nextCursor: shown.at(-1) } : {}
+  } };
+}
 function renderContentLook(result) {
+  if ("postId" in result) {
+    return `Look: ${result.position}
+  post: ${result.postId}
+  status: ${result.status} \u2014 ${result.reason}`;
+  }
   if (result.status !== "ok") {
     return renderContentFocus({ ...result, kind: "content-focus" });
   }
@@ -31714,7 +31822,7 @@ async function readMarkdownTarget(path, position, depth) {
   }
   return finishTarget(target);
 }
-async function readDirectoryTarget(path, position, depth, maxChildren, summaryExcerptLength) {
+async function readDirectoryTarget(path, position, depth, maxChildren, summaryExcerptLength, cursor, order = "older") {
   if (!Number.isInteger(maxChildren) || maxChildren < 0) {
     throw new RangeError("Content look maxChildren must be a non-negative integer");
   }
@@ -31747,9 +31855,10 @@ async function readDirectoryTarget(path, position, depth, maxChildren, summaryEx
       } catch {
       }
       const postFiles = entries.filter((e) => !e.isDir && e.name.endsWith(".md") && e.name !== "README.md" && !e.name.startsWith(".")).map((e) => e.name).sort();
+      const selected = pageNames(postFiles, maxChildren, cursor, order);
       const children = [];
       const warnings = [];
-      for (const fileName of postFiles) {
+      for (const fileName of selected.shown) {
         const postPath = join8(path, fileName);
         try {
           const content = await fs5.readFile(postPath, "utf-8");
@@ -31780,12 +31889,12 @@ async function readDirectoryTarget(path, position, depth, maxChildren, summaryEx
           });
         }
       }
-      target2.children = children.slice(0, maxChildren);
+      target2.children = children;
+      target2.page = selected.page;
       if (warnings.length)
         target2.warnings = warnings;
-      const omitted = Math.max(0, children.length - target2.children.length);
-      if (omitted)
-        target2.omittedChildren = omitted;
+      if (selected.remaining)
+        target2.omittedChildren = selected.remaining;
     }
     return finishTarget(target2);
   }
@@ -31805,9 +31914,12 @@ async function readDirectoryTarget(path, position, depth, maxChildren, summaryEx
         entries = dirents.map((e) => ({ name: e.name, isDir: e.isDirectory() }));
       } catch {
       }
-      const files = entries.filter((e) => !e.name.startsWith(".") && e.name !== "README.md").sort((a, b) => a.name.localeCompare(b.name));
+      const files = entries.filter((e) => !e.name.startsWith(".") && e.name !== "README.md").sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+      const selected = pageNames(files.map((entry) => entry.name), maxChildren, cursor, order);
+      const byName = new Map(files.map((entry) => [entry.name, entry]));
       const children = [];
-      for (const entry of files) {
+      for (const childName of selected.shown) {
+        const entry = byName.get(childName);
         const entryPath = join8(path, entry.name);
         if (entry.isDir) {
           children.push({
@@ -31817,28 +31929,28 @@ async function readDirectoryTarget(path, position, depth, maxChildren, summaryEx
           });
         } else {
           let childSummary2;
-          let childName = entry.name;
+          let childName2 = entry.name;
           if (entry.name.endsWith(".md")) {
             try {
               const content = await fs5.readFile(entryPath, "utf-8");
               const fm = parseFrontmatter(content);
-              childName = nonEmptyString(fm?.name) ?? basename3(entry.name, ".md");
+              childName2 = nonEmptyString(fm?.name) ?? basename3(entry.name, ".md");
               childSummary2 = (fm?.summary ? String(fm.summary) : summarizeMarkdown(content)) || void 0;
             } catch {
             }
           }
           children.push({
             kind: "markdown",
-            name: childName,
+            name: childName2,
             position: joinPortable(position, entry.name),
             ...childSummary2 ? { summary: childSummary2 } : {}
           });
         }
       }
-      target2.children = children.slice(0, maxChildren);
-      const omitted = Math.max(0, children.length - target2.children.length);
-      if (omitted)
-        target2.omittedChildren = omitted;
+      target2.children = children;
+      target2.page = selected.page;
+      if (selected.remaining)
+        target2.omittedChildren = selected.remaining;
     }
     return finishTarget(target2);
   }
@@ -31854,13 +31966,11 @@ async function readDirectoryTarget(path, position, depth, maxChildren, summaryEx
     const tree = await assembleContentTree({
       position: path,
       depth: 1,
-      // README is the directory surface, not one of its children. Pull one
-      // extra entry so filtering it cannot consume the caller's child budget.
-      maxEntries: maxChildren + 1,
-      summaryExcerptLength
+      maxEntries: maxChildren,
+      summaryExcerptLength,
+      page: { ...cursor !== void 0 ? { cursor } : {}, order, excludeReadme: true }
     });
-    const rawEntries = tree?.entries ?? [];
-    const entries = rawEntries.filter((entry) => entry.name !== "README.md").slice(0, maxChildren);
+    const entries = tree?.entries ?? [];
     target.children = entries.map((entry) => ({
       kind: entry.kind,
       name: entry.name,
@@ -31868,11 +31978,9 @@ async function readDirectoryTarget(path, position, depth, maxChildren, summaryEx
       ...entry.summary ? { summary: entry.summary } : {},
       ...entry.markdownFiles !== void 0 ? { markdownFiles: entry.markdownFiles } : {}
     }));
-    const rawTotal = rawEntries.length + (tree?.omittedEntries ?? 0);
-    const contentTotal = Math.max(0, rawTotal - (readme.exists ? 1 : 0));
-    const omitted = Math.max(0, contentTotal - target.children.length);
-    if (omitted)
-      target.omittedChildren = omitted;
+    target.page = tree?.page ?? { total: 0, shown: 0, order };
+    if (tree?.omittedEntries)
+      target.omittedChildren = tree.omittedEntries;
   }
   return finishTarget(target);
 }
@@ -31903,6 +32011,7 @@ function finishTarget(target) {
     ...target.surface !== void 0 ? { surface: target.surface } : {},
     ...target.children !== void 0 ? { children: target.children } : {},
     ...target.omittedChildren !== void 0 ? { omittedChildren: target.omittedChildren } : {},
+    ...target.page !== void 0 ? { page: target.page } : {},
     ...target.warnings !== void 0 ? { warnings: target.warnings } : {}
   };
   target.revision = contentRevision2(JSON.stringify(represented));
@@ -31949,6 +32058,8 @@ function renderTarget(target) {
   }
   if (target.children) {
     lines.push("", "Children:");
+    if (target.page)
+      lines.push(`  showing ${target.page.shown} of ${target.page.total} (${target.page.order})`);
     if (!target.children.length)
       lines.push("  (none)");
     for (const child of target.children) {
@@ -31963,6 +32074,8 @@ function renderTarget(target) {
     }
     if (target.omittedChildren)
       lines.push(`  \u2026 and ${target.omittedChildren} more`);
+    if (target.page?.nextCursor)
+      lines.push(`  next cursor: ${target.page.nextCursor}`);
   }
   return lines.join("\n");
 }
@@ -32908,7 +33021,11 @@ async function readLook(opts) {
     const request = {
       position: target,
       depth: opts.depth ?? "summary",
-      ...opts.contract ? { contractSource: opts.contract } : {}
+      ...opts.contract ? { contractSource: opts.contract } : {},
+      ...opts.limit !== void 0 ? { limit: opts.limit } : {},
+      ...opts.since ? { since: opts.since } : {},
+      ...opts.order ? { order: opts.order } : {},
+      ...opts.postId ? { postId: opts.postId } : {}
     };
     looked = await assembleContentLook(request);
     if (looked?.status === "contract_choice_required" && !opts.contract) {
@@ -33424,10 +33541,11 @@ function threadArgs(input) {
   if (!path?.trim()) throw new Error("Provide a local Thread path or hosted x_ id.");
   const hosted = path.startsWith("x_");
   if (action === "new") {
-    if (hosted || selected || input.map !== void 0 || input.checkout !== void 0 || input.pin !== void 0 || input.position !== void 0 || input.depth !== void 0 || input.new !== void 0 || input.since !== void 0 || input.post !== void 0 || input.limit !== void 0 || input.order !== void 0 || input.message !== void 0 || input.reply_to?.length || input.name !== void 0 || input.summary !== void 0 || input.author !== void 0) {
+    if (hosted || selected || input.checkout !== void 0 || input.pin !== void 0 || input.position !== void 0 || input.depth !== void 0 || input.new !== void 0 || input.since !== void 0 || input.post !== void 0 || input.limit !== void 0 || input.order !== void 0 || input.message !== void 0 || input.reply_to?.length || input.name !== void 0 || input.summary !== void 0 || input.author !== void 0) {
       throw new Error("threads new needs only a local slug, about and optional attached_to; omit read, post and pin options.");
     }
     if (!input.about?.trim()) throw new Error("threads new requires about (the opening title).");
+    if (input.map !== void 0 && !input.map.trim()) throw new Error("threads new --map requires a pinned Map note or inline selection.");
     if (input.attached_to !== void 0 && (!input.attached_to.includes(":") || !parseThreadAttachment(input.attached_to))) {
       throw new Error("attached_to requires a valid <type>:<id> link.");
     }
@@ -33437,7 +33555,8 @@ function threadArgs(input) {
       path,
       "--about",
       input.about,
-      ...input.attached_to ? ["--attached-to", input.attached_to] : []
+      ...input.attached_to ? ["--attached-to", input.attached_to] : [],
+      ...input.map ? ["--map", input.map] : []
     ];
   }
   if (hosted && (input.pin || input.position || selected || input.checkout || input.map && action !== "post")) throw new Error("Hosted Threads cannot use local authored pin, Map member or checkout selection.");
@@ -33523,7 +33642,27 @@ function threadArgs(input) {
     ] : []
   ];
 }
+function lookReaderArgs(input) {
+  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 0)) throw new Error("limit must be a non-negative integer.");
+  if (input.since !== void 0 && !input.since.trim()) throw new Error("since needs a child filename from nextCursor.");
+  if (input.post !== void 0 && !input.post.trim()) throw new Error("post needs a msg_ id.");
+  if (input.post && (input.limit !== void 0 || input.since || input.order)) throw new Error("post selects one id; omit limit, since and order.");
+  return [
+    ...input.limit !== void 0 ? ["--limit", String(input.limit)] : [],
+    ...input.since ? ["--since", input.since] : [],
+    ...input.order ? ["--order", input.order] : [],
+    ...input.post ? ["--post", input.post] : []
+  ];
+}
+function lookCliFailure(detail3) {
+  return /Unknown flag for look: --(?:limit|since|order|post)/i.test(detail3) ? `${detail3}
+Thread look paging and post-id selection require IdeaSpaces CLI 0.4.0 or newer. Update the CLI (or plugin bundle) and retry.` : detail3;
+}
 function threadCliFailure(detail3) {
+  if (/Unknown flag for threads new: --map/i.test(detail3)) {
+    return `${detail3}
+An opening-post Map requires IdeaSpaces CLI 0.4.0 or newer. Update the CLI (or plugin bundle) and retry.`;
+  }
   if (/Unknown flag for threads (?:new: --attached-to|post: --(?:mark|kind))/i.test(detail3)) {
     return `${detail3}
 Opening links and marks require IdeaSpaces CLI 0.3.1 or newer. Update the CLI (or plugin bundle) and retry.`;
@@ -33572,6 +33711,23 @@ function pinnedView(data, depth, expected) {
     throw new Error("CLI did not return the requested authored pin and position; refusing working-tree fallback.");
   }
   return postView(data.pinned, expected.position, depth);
+}
+function virtualThreadPost(path, root) {
+  const realRoot = realpathSync(root);
+  const position = relative6(resolve11(root), resolve11(root, path)).split(sep6).join("/");
+  const match = /^_threads\/([^/]+)\/(msg_[A-Za-z0-9][A-Za-z0-9_-]*)$/.exec(position);
+  if (!match) return null;
+  const thread = resolve11(root, "_threads", match[1]);
+  let actual;
+  try {
+    actual = realpathSync(thread);
+  } catch {
+    return { status: "invalid", reason: `Thread folder not found: ${thread}` };
+  }
+  if (relative6(realRoot, actual).split(sep6).join("/") !== `_threads/${match[1]}`) {
+    return { status: "invalid", reason: "Thread folder escapes the selected root." };
+  }
+  return { status: "ok", thread: actual, position, postId: match[2] };
 }
 function threadPost(path, root) {
   let realRoot;
@@ -34027,7 +34183,7 @@ var AUTHORED_TOOL_PARAMETERS = {
     author: external_exports.string().optional().describe("Legacy same-Space writer override only. Selected posts reject author and derive it from the caller's own Agreement."),
     name: external_exports.string().optional().describe("Optional post name"),
     summary: external_exports.string().optional().describe("Optional post summary"),
-    map: external_exports.string().optional().describe("Authored Map file or inline selection: with member selects a pinned local Thread for open/post; without member cites a same-Space post"),
+    map: external_exports.string().optional().describe("Authored Map file or inline selection: new writes a pinned Map on the opening post; with member selects a pinned local Thread for open/post; without member cites a same-Space post"),
     member: external_exports.number().int().nonnegative().optional().describe("Zero-based authored Map member selecting a pinned _threads/ post; pair with map"),
     checkout: external_exports.string().optional().describe("Explicit local Space root hint, validated against the selected Map root by the CLI; not a cwd override"),
     pin: external_exports.string().optional().describe("Authored commit pin for legacy same-Space open, paired with position; do not combine with map/member"),
@@ -34080,6 +34236,10 @@ var AUTHORED_TOOL_PARAMETERS = {
     map: mapField,
     at: atField,
     depth: contentDepth.default("summary").describe("How much to read: name (label only), summary (one line), children (a Note's headings or a directory's entries), surface (a Note's body or a directory's README), full (the same as surface for a Note; README plus entries for a directory). Start at summary or children; deepen when the text itself matters."),
+    limit: external_exports.number().int().nonnegative().optional().describe("Directory children/full: number of direct handles on this page (default 50)."),
+    since: external_exports.string().optional().describe("Directory children/full: exclusive child filename from the prior nextCursor; a stale cursor refuses."),
+    order: external_exports.enum(["older", "newer"]).optional().describe("Directory children/full order: older (default) or newer. Continue with since=<nextCursor>."),
+    post: external_exports.string().optional().describe("Select one msg_ post within a named Thread path/address, or alone with cwd set to a Space root. A unique eight-hex shorthand is accepted; duplicates refuse."),
     contract: external_exports.enum(["foundation", "agreement"]).optional().describe("Explicit target frame; otherwise the habitat prefers Agreement, then Foundation, then floor."),
     cwd: cwdField,
     pin: external_exports.string().optional().describe("Authored full commit id to read this checkout at, paired with position; never inferred from HEAD"),
@@ -34363,7 +34523,7 @@ function isMapAddress(value) {
 }
 async function readThroughCli(args, cwd) {
   const { out, err, code } = await cli(args, void 0, cwd);
-  if (code !== 0) return fail(err.trim() || out.trim() || `Exit ${code}`);
+  if (code !== 0) return fail(lookCliFailure(err.trim() || out.trim() || `Exit ${code}`));
   return ok(out.trim());
 }
 function addressArgs(verb, address, map, at) {
@@ -34371,19 +34531,30 @@ function addressArgs(verb, address, map, at) {
 }
 server.tool(
   "is_look",
-  "Read a Note, Content directory or local Thread folder at its disclosure rung \u2014 so the conversation Map records it. Use it instead of cat, head or sed on a .md file: a Bash read is not recorded as a read. Pass `address` (@<root>//<position>) to read a Map member at a commit with no filesystem path, against `map` or the session's launch Map, from any cwd. pin + position read this checkout at an authored commit, never HEAD. Read-only; never changes caller authority or working directory.",
+  "Read one Note, directory, Thread folder or post at a bounded rung \u2014 so the conversation Map records it. Use it instead of cat/head/sed: a Bash read is not recorded. At children/full, page a directory with limit, since=<nextCursor> and order; post selects a unique msg_ id within a Thread or supplied root. An address @root//_threads/<slug>/msg_\u2026 selects the post at the Map pin from any cwd, never replacing an authored pin with HEAD. Read-only; it never changes caller authority or working directory.",
   MCP_TOOL_PARAMETERS.is_look,
-  async ({ path, address, map, at, depth, contract, cwd, pin, position }) => {
+  async ({ path, address, map, at, depth, contract, cwd, pin, position, limit, since, order, post }) => {
+    let lookArgs;
+    try {
+      lookArgs = lookReaderArgs({ limit, since, order, post });
+    } catch (error2) {
+      return fail(error2 instanceof Error ? error2.message : String(error2));
+    }
     if (!address && isMapAddress(path)) {
       address = path;
       path = void 0;
     }
     if (address) {
       if (path || pin || position) return fail("Give an address or a path, not both. An address takes its commit from the Map; use at: pin or head.");
-      return readThroughCli([...addressArgs("look", address, map, at), "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : []], cwd);
+      return readThroughCli([...addressArgs("look", address, map, at), "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : [], ...lookArgs], cwd);
     }
     if (map || at) return fail("map and at read an address (@<root>//<position>); pass address, not path.");
-    if (!path) return fail("Give a path, or an address (@<root>//<position>) read through a Map.");
+    if (!path && post && !pin && !position) {
+      if (!cwd) return fail("A post id without a Thread path needs cwd set to the selected Space root; do not infer another root.");
+      const result2 = await readLook({ path: ".", postId: post, depth, contract, cwd });
+      return result2.ok ? ok(result2.text) : fail(result2.error);
+    }
+    if (!path) return fail("Give a path, a post id within the supplied cwd root, or an address (@<root>//<position>) read through a Map.");
     const target = resolve14(cwd || process.cwd(), path);
     if (/(?:^|[\\/])_threads[\\/][^\\/]+$/.test(target)) {
       let directory = false;
@@ -34393,23 +34564,33 @@ server.tool(
       }
       if (directory) {
         if (contract || pin || position) return fail("A Thread folder has its own Agreement and rungs; omit contract, pin and position.");
-        return readThroughCli(["look", target, "--depth", depth ?? "summary"], cwd);
+        return readThroughCli(["look", target, "--depth", depth ?? "summary", ...lookArgs], cwd);
       }
     }
     const root = await resolveRepoRoot(cwd || process.cwd()) ?? cwd ?? process.cwd();
-    const post = threadPost(target, root);
-    if (post) {
-      if (contract) return fail("Thread posts are extension payload, not Content under a contract frame; omit contract.");
+    const virtual = virtualThreadPost(target, root);
+    if (virtual) {
+      if (virtual.status === "invalid") return fail(virtual.reason);
+      if (contract) return fail("Thread posts are extension payload; omit contract.");
+      if (post || limit !== void 0 || since || order) return fail("A post-id path already selects one post; omit post, limit, since and order.");
       if (!!pin !== !!position) return fail("Pinned post look requires both authored pin and position.");
-      if (position && position !== post.position) return fail("Authored position does not match the requested post.");
+      if (position && position !== virtual.position) return fail("Authored position does not match the requested post selector.");
+      return readThroughCli(["look", virtual.thread, "--post", virtual.postId, "--depth", depth ?? "summary", ...pin ? ["--pin", pin] : []], root);
+    }
+    const postTarget = threadPost(target, root);
+    if (postTarget) {
+      if (contract) return fail("Thread posts are extension payload, not Content under a contract frame; omit contract.");
+      if (lookArgs.length) return fail("This path is already one post; page a Thread folder or select an id with post instead.");
+      if (!!pin !== !!position) return fail("Pinned post look requires both authored pin and position.");
+      if (position && position !== postTarget.position) return fail("Authored position does not match the requested post.");
       if (depth === "children") return fail("Thread posts support name, summary, surface and full rungs; not children.");
       try {
         if (pin) {
-          const result2 = await cli(["--json", ...threadArgs({ action: "open", path: post.thread, depth: "full", pin, position })], void 0, dirname8(dirname8(post.thread)));
+          const result2 = await cli(["--json", ...threadArgs({ action: "open", path: postTarget.thread, depth: "full", pin, position })], void 0, dirname8(dirname8(postTarget.thread)));
           if (result2.code !== 0) return fail(result2.err.trim() || result2.out.trim());
-          return ok(pinnedView(JSON.parse(result2.out), depth ?? "summary", { pin, position: post.position }));
+          return ok(pinnedView(JSON.parse(result2.out), depth ?? "summary", { pin, position: postTarget.position }));
         }
-        return ok(postView(readFileSync3(target, "utf8"), post.position, depth ?? "summary"));
+        return ok(postView(readFileSync3(target, "utf8"), postTarget.position, depth ?? "summary"));
       } catch (error2) {
         return fail(`Cannot read ${target}: ${error2 instanceof Error ? error2.message : String(error2)}`);
       }
@@ -34421,9 +34602,9 @@ server.tool(
         return fail(`${target} is outside the Space at ${root}; a pinned look reads this checkout only.`);
       }
       if (local !== position) return fail("Authored position does not match the requested path.");
-      return readThroughCli(["look", position, "--pin", pin, "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : []], root);
+      return readThroughCli(["look", position, "--pin", pin, "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : [], ...lookArgs], root);
     }
-    const result = await readLook({ path, depth, contract, cwd });
+    const result = await readLook({ path, depth, contract, cwd, limit, since, order, postId: post });
     return result.ok ? ok(result.text) : fail(result.error);
   }
 );

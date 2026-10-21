@@ -8875,7 +8875,8 @@ async function buildTree(root, opts) {
     placement: "head",
     totalMarkdownFiles,
     entries: listed.entries,
-    ...listed.omitted ? { omittedEntries: listed.omitted } : {}
+    ...listed.omitted ? { omittedEntries: listed.omitted } : {},
+    ...listed.page ? { page: listed.page } : {}
   };
 }
 async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
@@ -8893,12 +8894,19 @@ async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
   const files = raw.filter((entry) => !entry.isDir && entry.name.endsWith(".md")).filter((entry) => topLevel || entry.name !== "README.md").map((entry) => entry.name).sort();
   if (!dirs.length && !files.length)
     return null;
+  const page = topLevel ? opts.page : void 0;
   const all = [
     ...dirs.map((name) => ({ name, isDir: true })),
-    ...files.map((name) => ({ name, isDir: false }))
+    ...files.filter((name) => !(page?.excludeReadme && name === "README.md")).map((name) => ({ name, isDir: false }))
   ];
-  const shown = Number.isFinite(opts.maxEntries) ? all.slice(0, opts.maxEntries) : all;
-  const omitted = all.length - shown.length;
+  if (page?.order === "newer")
+    all.reverse();
+  const after = page?.cursor === void 0 ? -1 : all.findIndex((entry) => entry.name === page.cursor);
+  if (page?.cursor !== void 0 && after < 0)
+    throw new RangeError(`Child cursor ${JSON.stringify(page.cursor)} is not in ${dir}. Re-read the first page.`);
+  const start = after + 1;
+  const shown = Number.isFinite(opts.maxEntries) ? all.slice(start, start + opts.maxEntries) : all.slice(start);
+  const omitted = all.length - start - shown.length;
   const withSummaries = opts.summaries && (topLevel || opts.depth === "full");
   const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
     const path = join5(dir, name);
@@ -8920,7 +8928,16 @@ async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
     }
     return entry;
   }));
-  return { entries, omitted };
+  return {
+    entries,
+    omitted,
+    ...page ? { page: {
+      total: all.length,
+      shown: shown.length,
+      order: page.order ?? "older",
+      ...omitted && shown.length ? { nextCursor: shown.at(-1).name } : {}
+    } } : {}
+  };
 }
 async function countMarkdown(dir, strict = false) {
   let count = 0;

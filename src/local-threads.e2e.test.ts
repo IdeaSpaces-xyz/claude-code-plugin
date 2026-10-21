@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 
@@ -10,6 +10,7 @@ const root = process.cwd();
 const cli = join(root, "cli/bundle/ideaspaces.js");
 const server = join(root, "dist/index.js");
 let dir: string;
+let outside: string | undefined;
 let client: Client;
 function run(program: string, args: string[]): string {
   const result = spawnSync(program, args, { cwd: dir, encoding: "utf8", env: { ...process.env, HOME: dir } });
@@ -25,6 +26,7 @@ async function call(name: string, args: Record<string, unknown>): Promise<string
 afterEach(async () => {
   await client?.close();
   if (dir) rmSync(dir, { recursive: true, force: true });
+  if (outside) { rmSync(outside, { recursive: true, force: true }); outside = undefined; }
 });
 
 describe("installed Claude plugin local Threads", () => {
@@ -94,5 +96,53 @@ describe("installed Claude plugin local Threads", () => {
     const closed = JSON.parse(await call("is_threads", { action: "close", path: "test", message: "Resolved", author: "Claude Agent" }));
     expect(readFileSync(closed.path, "utf8")).toContain("kind: closure");
     expect(JSON.parse(await call("is_threads", { action: "open", path: "test", depth: "children" })).thread.closed).toBe(true);
+  }, 60_000);
+
+  it("pages beyond 50 by pinned address, opens the fix by id, and starts with a Map", async () => {
+    dir = realpathSync(mkdtempSync(join(tmpdir(), "is-claude-thread-page-")));
+    outside = realpathSync(mkdtempSync(join(tmpdir(), "is-claude-outside-")));
+    run("git", ["init", "-q", "-b", "main"]);
+    run("git", ["config", "user.name", "Test Agent"]);
+    run("git", ["config", "user.email", "test@example.org"]);
+    const rootId = "n_0123456789abcdef01234567";
+    mkdirSync(join(dir, "_agent"));
+    writeFileSync(join(dir, "_agent/agreement.md"), `---\nname: Fixture\nroot_node_id: ${rootId}\n---\n# Fixture\n`);
+    run("git", ["add", "_agent"]); run("git", ["commit", "-qm", "root identity"]);
+    const folder = join(dir, "_threads", "engine");
+    mkdirSync(join(folder, "_agent"), { recursive: true });
+    writeFileSync(join(folder, "README.md"), "# Engine\n");
+    writeFileSync(join(folder, "_agent/agreement.md"), "---\nname: Engine\n---\n# Terms\n");
+    const fixId = "msg_75cc2f37-e925-48e0-a801-c0ac7920c8be";
+    for (let i = 0; i < 58; i++) {
+      const id = i === 55 ? fixId : `msg_${String(i).padStart(8, "0")}-fixture`;
+      writeFileSync(join(folder, `${String(i).padStart(2, "0")}-post.md`),
+        `---\nid: ${id}\nname: ${i === 55 ? "Dev run fixed" : `Post ${i}`}\n---\n${i === 55 ? "The dev-run panic was fixed at a3cf9b2." : `Body ${i}`}\n`);
+    }
+    run("git", ["add", "_threads"]); run("git", ["commit", "-qm", "pinned Thread snapshot"]);
+    const pin = run("git", ["rev-parse", "HEAD"]);
+    const map = join(dir, "selection.map.md");
+    writeFileSync(map, `---\nname: Selection\nmap:\n  roots:\n    - root_node_id: ${rootId}\n      sha: ${pin}\n  members:\n    - root: 0\n      position: _threads/engine\n      depth: children\n    - root: 0\n      position: _threads/engine/msg_75cc2f37\n      depth: full\n---\nPinned moment\n`);
+    client = new Client({ name: "thread-page-e2e", version: "1" });
+    await client.connect(new StdioClientTransport({ command: process.execPath, args: [server], cwd: outside,
+      env: { ...process.env, HOME: outside, IS_CLI_PATH: cli, CLAUDE_PROJECT_DIR: outside } }));
+    const address = `@${rootId}//_threads/engine`;
+    const first = await call("is_look", { address, map, at: "pin", depth: "children", limit: 50 });
+    expect(first).toContain("showing 50 of 58 (older)");
+    const cursor = /next cursor: ([^\n]+)/.exec(first)?.[1];
+    expect(cursor).toBe("49-post.md");
+    const second = await call("is_look", { address, map, at: "pin", depth: "children", since: cursor, limit: 10 });
+    expect(second).toContain("showing 8 of 58 (older)");
+    expect(second).toContain("55-post.md");
+    const fixed = await call("is_look", { address: `@${rootId}//_threads/engine/msg_75cc2f37`, map, at: "pin", depth: "full" });
+    expect(fixed).toContain("The dev-run panic was fixed at a3cf9b2.");
+    expect(await call("is_look", { post: "msg_75cc2f37", cwd: dir, depth: "summary" })).toContain("Dev run fixed");
+    const child = JSON.parse(await call("is_threads", { action: "new", path: "child", about: "Map on opening", map,
+      attached_to: "post:msg_00000000-fixture", cwd: dir }));
+    expect(child.slug).toBe("child");
+    const opening = readdirSync(join(dir, "_threads", "child")).find((name) => name.endsWith(".md") && name !== "README.md")!;
+    const authored = readFileSync(join(dir, "_threads", "child", opening), "utf8");
+    expect(authored).toContain("attached_to: post:msg_00000000-fixture");
+    expect(authored).toContain("map:\n");
+    expect(authored).toContain(`sha: ${pin}`);
   }, 60_000);
 });
