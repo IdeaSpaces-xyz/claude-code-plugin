@@ -12,10 +12,20 @@ frontmatter metalayer. Nothing there loads ambiently. Use `is_look`/`is_navigate
 reference reads; `is_threads` lists and pages local Threads, writes local posts and handles known
 hosted `x_` ids. A cold local open defaults to `surface`: newest snapshot/reframe and a bounded tail.
 `name` gives the frame, `summary` the parent post and newest snapshot summary, and `children` the
-branch roots/tips and attached child Threads. Hosted children remain flat. Local `limit` and
-`order: newer|older` page posts; `full` pages history, while `post` selects one immutable body and
-its child Threads. A range may shorten a large body; use `post` for exact evidence. Reads never
-acknowledge the cursor; `new: true` may show nothing when the cursor is current.
+branch roots/tips and attached child Threads. Hosted children remain flat. `is_threads` local
+`limit`/`order: newer|older` page conversation posts; `full` pages history, while `post` selects
+one immutable body and its child Threads. A range may shorten a large body; use `post` for exact
+evidence. Reads never acknowledge the cursor; `new: true` may show nothing when it is current.
+
+**Stay in `is_look` for Content navigation.** A Thread folder (or any Content directory) at
+`depth: children|full` shows `total`, `shown` and `nextCursor`; pass `limit`, then
+`since: <nextCursor>` with the same `order: older|newer` to page past 50. A stale filename cursor
+refuses instead of restarting. To open a post already found by id, pass the named Thread folder
+as `path` and `post: msg_…` (full id or unique eight-hex shorthand). With `post` alone, explicitly
+set `cwd` to the selected Space root: the tool never scans another root. From outside that Space,
+use an authored Map address `@root//_threads/<slug>/msg_…` with `map` and `at: pin`; the id resolves
+inside that Thread at its pin, never HEAD. No id selector invents a `.md` file or chooses the first
+duplicate.
 
 **Read warnings:** a dropped field names its post and field. An unreadable opening refuses writes
 with a repair hint; a later unreadable post warns but does not block writes. `closed: "unknown"` is
@@ -27,7 +37,12 @@ For a same-Space post at an authored commit, pass **both** `pin` (the Map root's
 
 From your own agent Agreement cwd, select a Thread in another Space with `path` (Thread slug), an authored `map` file or inline selection, its zero-based `member`, and, if the target is not uniquely registered, an explicit `checkout` hint. The CLI checks that local checkout against the Map root and pin; `checkout` does not change your cwd or grant access to arbitrary paths. Selected open returns only the pinned post and verifies its exact pin/position. For a selected post give `message` and an explicit `reply_to` id present at the pin, **never** `author`: the CLI derives the name from your own Agreement (typed or untyped), not Home or git. A closed or changed live Thread, missing parent, wrong root/pin or ambiguous checkout without an explicit validated hint must refuse without writing. Do not close a Thread through cross-Space selection.
 
-To start a local Thread, use `is_threads` with `action: new`, `path: <slug>`, `about: <title>` and optional `attached_to: <type>:<id>`. An opening `post:msg_…` (or canonical post path) creates a parent/child Thread edge. `note:@…`, `repo:n_…` and unfamiliar types remain links, not edges; do not call them broken parents. The opening post wins over a legacy Agreement attachment. Do not edit its attachment later.
+To start a local Thread, use `is_threads` with `action: new`, `path: <slug>`, `about: <title>`,
+optional `attached_to: <type>:<id>`, and `map: <pinned Map note>` when the Thread starts with its
+pointers. `map` on `new` is an opening-post citation, not a selected cross-Space post: omit
+`member` and ensure every root has a commit pin and every position a depth ceiling. The CLI
+validates before making a folder. An opening `post:msg_…` (or canonical post path) creates a
+parent/child Thread edge. `note:@…`, `repo:n_…` and unfamiliar types remain links, not edges; do not call them broken parents. The opening post wins over a legacy Agreement attachment. Do not edit its attachment later.
 
 ## Post and reply
 
