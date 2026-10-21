@@ -33400,7 +33400,7 @@ function threadArgs(input) {
   if (input.tags?.length && action !== "post") throw new Error("tags apply only to local posts.");
   if (input.attached_to !== void 0 && action !== "new") throw new Error("attached_to belongs only on a new Thread's opening post.");
   if (input.about !== void 0 && action !== "new") throw new Error("about applies only to threads new.");
-  if ((input.kind !== void 0 || input.mark !== void 0) && action !== "post") throw new Error("kind and mark apply only to local posts.");
+  if ((input.kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) && action !== "post") throw new Error("kind, mark and supersedes apply only to local posts.");
   if (input.reply_to?.length && action !== "post") throw new Error("reply_to applies only to posts.");
   if (input.checkout && !selected) throw new Error("checkout requires an authored map and member.");
   if (selected && (!input.map?.trim() || !Number.isSafeInteger(input.member) || input.member < 0)) {
@@ -33461,7 +33461,7 @@ function threadArgs(input) {
   }
   if (input.pin || input.position || input.depth || input.new || input.since || input.post) throw new Error("Pin, position, depth, --new, --since and --post apply to opening, not writing.");
   if (hosted) {
-    if (input.tags?.length || input.kind !== void 0 || input.mark !== void 0) throw new Error("tags, kind and mark on posts are local-only for this release.");
+    if (input.tags?.length || input.kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) throw new Error("tags, kind, mark and supersedes on posts are local-only for this release.");
     if (action !== "post") throw new Error("Hosted close is an owner-only lifecycle operation; use threads close x_id --yes after preview.");
     if (input.author) throw new Error("Hosted replies use the logged-in person's identity; omit author.");
     if (input.reply_to?.length) throw new Error("The hosted reply API cannot carry in_reply_to yet; omit reply_to until the server exposes reply parents.");
@@ -33486,6 +33486,8 @@ function threadArgs(input) {
     throw new Error("kind: mark requires mark and reply_to with exactly one explicit target post id.");
   }
   if (input.mark !== void 0 && input.kind !== "mark") throw new Error("mark requires kind: mark.");
+  if (input.kind === "correction" && !input.supersedes?.trim()) throw new Error("kind: correction requires supersedes with the post id being corrected or retracted.");
+  if (input.supersedes !== void 0 && input.kind !== "correction") throw new Error("supersedes requires kind: correction.");
   if (action === "close" && (input.reply_to?.length || input.name || input.summary || input.map || input.tags?.length)) throw new Error("Closure only accepts message and author; omit reply_to, name, summary, tags and map.");
   return [
     "threads",
@@ -33498,6 +33500,7 @@ function threadArgs(input) {
       ...input.reply_to?.length ? ["--reply-to", input.reply_to.join(",")] : [],
       ...input.kind ? ["--kind", input.kind] : [],
       ...input.mark ? ["--mark", input.mark] : [],
+      ...input.supersedes ? ["--supersedes", input.supersedes] : [],
       ...input.name ? ["--name", input.name] : [],
       ...input.summary ? ["--summary", input.summary] : [],
       ...input.tags?.length ? ["--tags", input.tags.join(",")] : [],
@@ -34003,6 +34006,7 @@ var AUTHORED_TOOL_PARAMETERS = {
     attached_to: external_exports.string().optional().describe("Optional opening link for action=new: post:msg_\u2026 or note:@space//path. Only post: is a Thread tree edge; other types stay metadata."),
     kind: external_exports.string().optional().describe("Open post kind for local action=post; mark folds onto its target."),
     mark: external_exports.string().optional().describe("Open mark value with kind=mark; requires one explicit reply_to post id."),
+    supersedes: external_exports.string().optional().describe("Post id replaced by a correction; kind=correction can retract a mark."),
     reply_to: external_exports.array(external_exports.string()).optional().describe("Local parent post ids: reply to the post you answer. Omit to branch from the opening post; ['latest'] opts into newest. Hosted replies reject this field."),
     tags: external_exports.array(external_exports.string()).optional().describe("Local post retrieval tags, e.g. ['friction']."),
     author: external_exports.string().optional().describe("Legacy same-Space writer override only. Selected posts reject author and derive it from the caller's own Agreement."),
