@@ -57,6 +57,10 @@ describe("installed Claude plugin local Threads", () => {
     expect(viewed.posts[0].marks).toMatchObject([{ mark: "claimed", author: "Claude Agent" }]);
     await call("is_threads", { action: "post", path: "test", kind: "correction", supersedes: marked.id, reply_to: [first.id], message: "Retract", author: "Claude Agent" });
     expect(JSON.parse(await call("is_threads", { action: "open", path: "test", post: first.id })).posts[0].marks).toBeUndefined();
+    const typo = await client.callTool({ name: "is_threads", arguments: { action: "post", path: "test", kind: "snapshto", message: "Typo", author: "Claude Agent" } });
+    expect(typo.isError).toBe(true);
+    const custom = JSON.parse(await call("is_threads", { action: "post", path: "test", kind: "custom_signal", confirm_kind: true, message: "Intentional custom kind", author: "Claude Agent" }));
+    expect(custom.kind).toBe("custom_signal");
     const blockedWrite = await client.callTool({ name: "is_write", arguments: { path: first.path, content: "No edit" } });
     expect(blockedWrite.isError).toBe(true);
     writeFileSync(join(dir, "_threads", "test", "zz-map.md"), "---\nid: msg_bad_map\nmap: [broken]\n---\nStill readable");

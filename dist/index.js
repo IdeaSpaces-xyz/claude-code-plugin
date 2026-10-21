@@ -31427,6 +31427,14 @@ function isRecord3(value) {
 }
 
 // node_modules/@ideaspaces/protocol/dist/threads.js
+var THREAD_KINDS = [
+  "post",
+  "snapshot",
+  "reframe",
+  "correction",
+  "closure",
+  "mark"
+];
 function parseThreadAttachment(value) {
   if (typeof value !== "string" || !value.trim())
     return null;
@@ -33400,7 +33408,7 @@ function threadArgs(input) {
   if (input.tags?.length && action !== "post") throw new Error("tags apply only to local posts.");
   if (input.attached_to !== void 0 && action !== "new") throw new Error("attached_to belongs only on a new Thread's opening post.");
   if (input.about !== void 0 && action !== "new") throw new Error("about applies only to threads new.");
-  if ((input.kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) && action !== "post") throw new Error("kind, mark and supersedes apply only to local posts.");
+  if ((input.kind !== void 0 || input.confirm_kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) && action !== "post") throw new Error("kind, confirm_kind, mark and supersedes apply only to local posts.");
   if (input.reply_to?.length && action !== "post") throw new Error("reply_to applies only to posts.");
   if (input.checkout && !selected) throw new Error("checkout requires an authored map and member.");
   if (selected && (!input.map?.trim() || !Number.isSafeInteger(input.member) || input.member < 0)) {
@@ -33461,7 +33469,7 @@ function threadArgs(input) {
   }
   if (input.pin || input.position || input.depth || input.new || input.since || input.post) throw new Error("Pin, position, depth, --new, --since and --post apply to opening, not writing.");
   if (hosted) {
-    if (input.tags?.length || input.kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) throw new Error("tags, kind, mark and supersedes on posts are local-only for this release.");
+    if (input.tags?.length || input.kind !== void 0 || input.confirm_kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) throw new Error("tags, kind, confirm_kind, mark and supersedes on posts are local-only for this release.");
     if (action !== "post") throw new Error("Hosted close is an owner-only lifecycle operation; use threads close x_id --yes after preview.");
     if (input.author) throw new Error("Hosted replies use the logged-in person's identity; omit author.");
     if (input.reply_to?.length) throw new Error("The hosted reply API cannot carry in_reply_to yet; omit reply_to until the server exposes reply parents.");
@@ -33482,6 +33490,11 @@ function threadArgs(input) {
   if (input.tags?.some((tag) => !tag?.trim() || tag.includes(","))) throw new Error("tags must be non-empty and may not contain commas.");
   if (selected && (input.author || !input.reply_to?.length)) throw new Error("Selected posts require an explicit reply_to and the caller's Agreement author; omit author.");
   if (!input.message?.trim()) throw new Error("A post or closure needs a nonempty message.");
+  if (action === "post" && input.kind !== void 0 && !input.kind.trim()) throw new Error("kind must be a non-empty string.");
+  if (input.confirm_kind && !input.kind) throw new Error("confirm_kind requires an explicit kind.");
+  if (action === "post" && input.kind && !THREAD_KINDS.includes(input.kind) && !input.confirm_kind) {
+    throw new Error(`Unrecognised kind ${input.kind}; check spelling or pass confirm_kind: true to author an immutable custom kind.`);
+  }
   if (action === "post" && input.kind === "mark" && (!input.mark?.trim() || input.reply_to?.length !== 1 || input.reply_to[0] === "latest")) {
     throw new Error("kind: mark requires mark and reply_to with exactly one explicit target post id.");
   }
@@ -33499,6 +33512,7 @@ function threadArgs(input) {
     ...action === "post" ? [
       ...input.reply_to?.length ? ["--reply-to", input.reply_to.join(",")] : [],
       ...input.kind ? ["--kind", input.kind] : [],
+      ...input.confirm_kind ? ["--yes"] : [],
       ...input.mark ? ["--mark", input.mark] : [],
       ...input.supersedes ? ["--supersedes", input.supersedes] : [],
       ...input.name ? ["--name", input.name] : [],
@@ -34004,7 +34018,8 @@ var AUTHORED_TOOL_PARAMETERS = {
     message: external_exports.string().optional().describe("Body for an immutable post or closure"),
     about: external_exports.string().optional().describe("Title for action=new; written on the opening post."),
     attached_to: external_exports.string().optional().describe("Optional opening link for action=new: post:msg_\u2026 or note:@space//path. Only post: is a Thread tree edge; other types stay metadata."),
-    kind: external_exports.string().optional().describe("Open post kind for local action=post; mark folds onto its target."),
+    kind: external_exports.string().optional().describe("Open local post kind: post, snapshot, reframe, correction, closure, mark or a custom value. A typo cannot silently create an immutable post."),
+    confirm_kind: external_exports.boolean().optional().describe("Explicitly allow a custom kind on a local post; maps to CLI --yes. Not needed for standard kinds."),
     mark: external_exports.string().optional().describe("Open mark value with kind=mark; requires one explicit reply_to post id."),
     supersedes: external_exports.string().optional().describe("Post id replaced by a correction; kind=correction can retract a mark."),
     reply_to: external_exports.array(external_exports.string()).optional().describe("Local parent post ids: reply to the post you answer. Omit to branch from the opening post; ['latest'] opts into newest. Hosted replies reject this field."),

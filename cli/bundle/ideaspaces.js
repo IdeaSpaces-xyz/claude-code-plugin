@@ -13826,7 +13826,8 @@ __export(threads_exports, {
   resolveLocalThread: () => resolveLocalThread,
   resolveThreadParent: () => resolveThreadParent2,
   threadBase: () => threadBase,
-  threadsDirectory: () => threadsDirectory
+  threadsDirectory: () => threadsDirectory,
+  validateMarkOptions: () => validateMarkOptions
 });
 import { randomUUID as randomUUID6, createHash as createHash6 } from "node:crypto";
 import { spawnSync as spawnSync14 } from "node:child_process";
@@ -13957,11 +13958,14 @@ function listLocal(cwd = process.cwd(), onError) {
   }
   return rows.sort((a, b) => a.slug.localeCompare(b.slug));
 }
-function createThread(slug, about, cwd = process.cwd()) {
+function createThread(slug, about, cwd = process.cwd(), attachedTo) {
   if (!SLUG.test(slug))
     throw new Error("Thread slug must be lowercase letters, numbers and hyphens (1\u2013101 characters).");
   if (!about.trim() || /[\r\n]/.test(about) || about.length > 200)
     throw new Error("--about must be a single-line title of at most 200 characters.");
+  if (attachedTo !== void 0 && (!attachedTo.includes(":") || !parseThreadAttachment(attachedTo))) {
+    throw new Error("--attached-to requires a valid <type>:<id> value; invalid attached_to field. No Thread created.");
+  }
   const base = threadsDirectory(cwd);
   if (existsSync19(base))
     safeDirectory(base);
@@ -14134,6 +14138,16 @@ function computeBranches(posts2) {
   }
   return branches;
 }
+function validateMarkOptions(kind, mark, replyTo) {
+  if (kind === "mark" && (!mark?.trim() || /[\r\n]/.test(mark))) {
+    throw new Error("--kind mark requires --mark <non-empty single-line value>.");
+  }
+  if (mark !== void 0 && kind !== "mark")
+    throw new Error("--mark requires --kind mark.");
+  if (kind === "mark" && (replyTo?.length !== 1 || replyTo[0] === "latest")) {
+    throw new Error("--kind mark requires --reply-to <one explicit target post id>.");
+  }
+}
 function appendPost(dir, options) {
   const thread = loadThread(dir);
   if (thread.writeRefusal)
@@ -14160,14 +14174,7 @@ function appendPost(dir, options) {
       }
     }
   }
-  if (options.kind === "mark" && (!options.mark?.trim() || /[\r\n]/.test(options.mark))) {
-    throw new Error("--mark requires a non-empty single-line string for --kind mark.");
-  }
-  if (options.mark !== void 0 && options.kind !== "mark")
-    throw new Error("--mark requires --kind mark.");
-  if (options.attachedTo !== void 0 && (!options.attachedTo.includes(":") || !parseThreadAttachment(options.attachedTo))) {
-    throw new Error("--attached-to requires a valid <type>:<id> link; invalid attached_to field.");
-  }
+  validateMarkOptions(options.kind, options.mark, options.replyTo);
   if (options.attachedTo !== void 0 && thread.allPosts.length)
     throw new Error("--attached-to belongs only on the opening post; use threads new --attached-to.");
   const byId = new Map(thread.allPosts.map((post) => [post.id, post]));
@@ -14195,9 +14202,6 @@ function appendPost(dir, options) {
   }
   if (new Set(parentIds).size !== parentIds.length || parentIds.some((id2) => !byId.has(id2)))
     throw new Error("--reply-to must name distinct existing post ids in this Thread.");
-  if (options.kind === "mark" && (options.replyTo?.length !== 1 || options.replyTo[0] === "latest" || parentIds.length !== 1)) {
-    throw new Error("--kind mark requires --reply-to <one explicit target post id>.");
-  }
   const parents = parentIds.map((id2) => byId.get(id2));
   if (options.kind === "correction" && (!options.supersedes || !byId.has(options.supersedes)))
     throw new Error("A correction requires --supersedes <existing post id>.");
@@ -14206,7 +14210,7 @@ function appendPost(dir, options) {
   if (options.map !== void 0) {
     const map = parseMap(options.map);
     if (map.status !== "valid")
-      throw new Error("--map must contain a valid protocol Map block; no implicit HEAD pin is substituted.");
+      throw new Error(`--map must contain a valid protocol Map block: ${map.status === "invalid" ? map.issues.map((issue2) => `${issue2.path} (${issue2.code})`).join(", ") : "map is absent"}. Fix the named field; no implicit HEAD pin is substituted.`);
     if (!isPinnedMomentMap(map.map)) {
       for (const [index, root] of map.map.roots.entries()) {
         if (!root.sha)
@@ -23607,8 +23611,9 @@ function loadLocalThreadMap(input) {
   }
   if (value2 && typeof value2 === "object" && "map" in value2)
     value2 = value2.map;
-  if (parseMap(value2).status !== "valid")
-    throw new Error("--map must supply valid roots and members with authored pins.");
+  const parsed2 = parseMap(value2);
+  if (parsed2.status !== "valid")
+    throw new Error(`--map must supply valid roots and members: ${parsed2.status === "invalid" ? parsed2.issues.map((issue2) => `${issue2.path} (${issue2.code})`).join(", ") : "map is absent"}. Fix the named field before writing.`);
   return value2;
 }
 function selectPinnedThreadMember(value2, ordinal) {
@@ -28035,7 +28040,7 @@ var threadsCommand = {
     "ideaspaces threads read <local-slug|path> --json  # alias of open, includes post dates",
     "ideaspaces threads post <slug|path> --message 'Decision' [--reply-to id1,id2|latest] [--tags friction,ux]  # max 20 distinct tags, 200 chars each; no reply-to branches from opening",
     "ideaspaces threads post <slug> --kind mark --mark claimed --reply-to msg_target --message 'Claimed'  # folded onto target, off timeline",
-    "ideaspaces threads post <slug> --kind snapshot --message 'State'  # known: post, snapshot, reframe, correction, closure, mark; custom kinds warn but remain valid",
+    "ideaspaces threads post <slug> --kind snapshot --message 'State'  # standard: post, snapshot, reframe, correction, closure, mark; custom kinds require --yes",
     "ideaspaces threads post <slug> --message 'Decision' --map home.map.md --member 0 --reply-to msg_id [--checkout /absolute/space/root]",
     "ideaspaces threads open <slug|path> --map home.map.md --member 0  # same-Space authored pin",
     "ideaspaces threads open <slug> --map home.map.md --member 0 [--checkout /absolute/space/root]  # selected pin only",
@@ -28195,10 +28200,9 @@ Local Thread listing incomplete: ${localWarnings} unreadable item(s).` : "") + h
         if (rest.length !== 1 || !str(flags2, "about"))
           throw new Error("Usage: threads new <slug> --about <title> [--attached-to <type>:<id>]");
         const attachedTo = str(flags2, "attached-to");
-        if (flags2["attached-to"] !== void 0 && (!attachedTo?.includes(":") || !parseThreadAttachment(attachedTo))) {
-          throw new Error("--attached-to requires a valid <type>:<id> value; invalid attached_to field. No Thread created.");
-        }
-        const thread = createThread(rest[0], str(flags2, "about"));
+        if (flags2["attached-to"] === true)
+          throw new Error("--attached-to requires a <type>:<id> value. No Thread created.");
+        const thread = createThread(rest[0], str(flags2, "about"), process.cwd(), attachedTo);
         let opening;
         try {
           opening = appendPost(thread.path, { body: str(flags2, "about"), name: thread.name, summary: thread.summary, attachedTo });
@@ -28482,8 +28486,11 @@ Showing ${posts2.length} of ${totalMatching} matching posts. ${order === "newer"
         const kind = sub === "close" ? "closure" : str(flags2, "kind") ?? "post";
         if (!kind.trim() || /[\r\n]/.test(kind))
           throw new Error("--kind requires a non-empty single-line value (open kinds are supported).");
-        if (!KNOWN_POST_KINDS.has(kind))
-          output.log(`Unrecognised post kind ${kind}; open kinds are valid, but check spelling before writing an immutable post.`);
+        if (!KNOWN_POST_KINDS.has(kind)) {
+          if (!global2.yes)
+            throw new Error(`Unrecognised --kind ${kind}. Posts are immutable; check spelling, or pass --yes to author this custom kind deliberately.`);
+          output.log(`Authoring custom post kind ${kind} with --yes; this immutable kind is not one of the standard values.`);
+        }
         if (sub === "close" && (flags2.member !== void 0 || flags2.checkout !== void 0))
           throw new Error("Selected cross-Space close is not supported; use the local Space's close verb.");
         const map = str(flags2, "map") ? loadLocalThreadMap(str(flags2, "map")) : void 0;
@@ -28497,11 +28504,7 @@ Showing ${posts2.length} of ${totalMatching} matching posts. ${order === "newer"
         const parents = str(flags2, "reply-to")?.split(",").map((id) => id.trim());
         if (parents?.some((id) => !id))
           throw new Error("--reply-to must name non-empty post ids, separated by commas.");
-        if (kind === "mark" && (!str(flags2, "mark")?.trim() || parents?.length !== 1 || parents[0] === "latest")) {
-          throw new Error("--kind mark requires --mark <value> and --reply-to <one explicit target post id>.");
-        }
-        if (flags2.mark !== void 0 && kind !== "mark")
-          throw new Error("--mark requires --kind mark.");
+        validateMarkOptions(kind, str(flags2, "mark"), parents);
         if (selected && !parents?.length)
           throw new Error("Selected post requires explicit --reply-to <post-id> at the authored pin.");
         const target = selected ? selectLocalThreadTarget(rest[0], selected.root, selected.member, str(flags2, "checkout")) : void 0;
