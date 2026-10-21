@@ -30493,7 +30493,7 @@ async function assembleContentTree(opts) {
   });
 }
 async function assembleContentFocus(opts) {
-  const selected = await selectContentFrame(opts.position, opts.contractSource);
+  const selected = await selectContentFrame(opts.position, opts.contractSource, true);
   if (!selected)
     return null;
   if ("status" in selected)
@@ -30578,7 +30578,7 @@ function renderContentAwarenessDiagnostic(result) {
   }
   return lines.join("\n");
 }
-async function selectContentFrame(requested, requestedSource) {
+async function selectContentFrame(requested, requestedSource, allowExtensionsAndAgent = false) {
   const requestedPosition = resolve6(requested);
   const position = await fs4.realpath(requestedPosition).catch(() => requestedPosition);
   const repoRoot = await resolveRepoRoot(position);
@@ -30586,10 +30586,16 @@ async function selectContentFrame(requested, requestedSource) {
     const repositoryPath = relative3(repoRoot, position).split(sep3).join("/");
     if (repositoryPath) {
       const classification = classifyRepositoryPath(repositoryPath, "directory");
-      if (classification.status !== "ok" || classification.role !== "ordinary")
-        return null;
+      if (allowExtensionsAndAgent) {
+        if (classification.status !== "ok" || classification.role === "reserved" || classification.role === "extension" && classification.extension !== "_threads") {
+          return null;
+        }
+      } else {
+        if (classification.status !== "ok" || classification.role !== "ordinary")
+          return null;
+      }
     }
-  } else if (hasOpaqueFilesystemAncestor(position)) {
+  } else if (!allowExtensionsAndAgent && hasOpaqueFilesystemAncestor(position)) {
     return null;
   }
   const [foundation, agreement] = await Promise.all([
@@ -30638,8 +30644,14 @@ async function selectContentFrame(requested, requestedSource) {
     const spacePath = relative3(spaceRoot, position).split(sep3).join("/");
     if (spacePath) {
       const classification = classifyRepositoryPath(spacePath, "directory");
-      if (classification.status !== "ok" || classification.role !== "ordinary")
-        return null;
+      if (allowExtensionsAndAgent) {
+        if (classification.status !== "ok" || classification.role === "reserved" || classification.role === "extension" && classification.extension !== "_threads") {
+          return null;
+        }
+      } else {
+        if (classification.status !== "ok" || classification.role !== "ordinary")
+          return null;
+      }
     }
   }
   return {
@@ -31405,13 +31417,213 @@ function isMapPosition(value) {
     return false;
   }
   const segments = value.split("/");
-  return !segments.some((segment) => segment === "." || segment === ".." || segment.toLowerCase() === ".git" || segment.startsWith("_") && segment !== "_threads");
+  return !segments.some((segment) => segment === "." || segment === ".." || segment.toLowerCase() === ".git" || segment.startsWith("_") && segment !== "_threads" && segment !== "_agent");
 }
 function invalidRepo() {
   return { status: "invalid", code: "invalid_repo" };
 }
 function isRecord3(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+// node_modules/@ideaspaces/protocol/dist/threads.js
+function parseThreadAttachment(value) {
+  if (typeof value !== "string" || !value.trim())
+    return null;
+  const raw = value.trim();
+  const colon = raw.indexOf(":");
+  if (colon > 0) {
+    const type = raw.slice(0, colon);
+    const val = raw.slice(colon + 1);
+    if (/^[a-z][a-z0-9_]*$/.test(type) && val.length > 0 && (type !== "post" || isPostAttachmentTarget(val))) {
+      return { kind: type === "id" || type === "path" ? `typed:${type}` : type, value: val, raw };
+    }
+  }
+  if (/^msg_[A-Za-z0-9][A-Za-z0-9_-]*$/.test(raw))
+    return { kind: "id", value: raw, raw };
+  if (/^_threads\/[^/.][^/]*\/[^/.][^/]*\.md$/.test(raw) && !raw.endsWith("/README.md")) {
+    return { kind: "path", value: raw, raw };
+  }
+  return null;
+}
+function isPostAttachmentTarget(value) {
+  return /^msg_[A-Za-z0-9][A-Za-z0-9_-]*$/.test(value) || /^_threads\/[^/.][^/]*\/[^/.][^/]*\.md$/.test(value) && !value.endsWith("/README.md");
+}
+function validDay(day) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day))
+    return false;
+  const value = `${day}T00:00:00.000Z`;
+  return !Number.isNaN(Date.parse(value)) && new Date(value).toISOString() === value;
+}
+function authoredPostDate(value) {
+  if (value instanceof Date)
+    return Number.isNaN(value.getTime()) ? void 0 : value.toISOString();
+  if (typeof value !== "string")
+    return void 0;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value))
+    return validDay(value) ? value : void 0;
+  if (!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?(?:Z|[+-](?:0\d|1[0-4]):[0-5]\d)$/.test(value) || !validDay(value.slice(0, 10)) || Number.isNaN(Date.parse(value)))
+    return void 0;
+  return new Date(value).toISOString();
+}
+function dateFromFileName(path) {
+  const file = path.split(/[\\/]/).at(-1) ?? "";
+  const stamp = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})(?:-(\d{3}))?Z(?:-|\.md$)/.exec(file);
+  const minute = /^(\d{4}-\d{2}-\d{2})T(\d{2})(\d{2})(?:-|\.md$)/.exec(file);
+  const day = /^(\d{4}-\d{2}-\d{2})-/.exec(file);
+  const candidate = stamp ? `${stamp[1]}T${stamp[2]}:${stamp[3]}:${stamp[4]}.${stamp[5] ?? "000"}Z` : minute ? `${minute[1]}T${minute[2]}:${minute[3]}:00.000Z` : void 0;
+  if (!candidate)
+    return day && validDay(day[1]) ? day[1] : void 0;
+  if (!validDay(candidate.slice(0, 10)) || Number.isNaN(Date.parse(candidate)))
+    return void 0;
+  return new Date(candidate).toISOString() === candidate ? candidate : void 0;
+}
+function parseThreadPost(content, path = "") {
+  const fm = parseFrontmatter(content);
+  if (!fm) {
+    return { status: "invalid", issues: ["missing_or_malformed_frontmatter"] };
+  }
+  if (typeof fm.id !== "string" || fm.id.trim().length === 0) {
+    return { status: "invalid", issues: ["invalid_id"] };
+  }
+  const warnings = [];
+  const fileDate = dateFromFileName(path);
+  const authored = "date" in fm ? authoredPostDate(fm.date) : void 0;
+  const dateWarning = "date" in fm && !authored ? "invalid_date" : void 0;
+  if (dateWarning) {
+    warnings.push({ field: "date", warning: "invalid_date" });
+  }
+  const date3 = dateWarning ? void 0 : authored ?? fileDate;
+  let kind = "post";
+  if ("kind" in fm) {
+    if (typeof fm.kind === "string" && fm.kind.trim().length > 0) {
+      kind = fm.kind;
+    } else {
+      warnings.push({ field: "kind", warning: "invalid_kind" });
+    }
+  }
+  let mark;
+  if ("mark" in fm) {
+    if (typeof fm.mark === "string" && fm.mark.trim().length > 0) {
+      mark = fm.mark;
+    } else {
+      warnings.push({ field: "mark", warning: "invalid_mark" });
+    }
+  }
+  const inReplyTo = [];
+  if ("in_reply_to" in fm) {
+    let valid = true;
+    if (typeof fm.in_reply_to === "string") {
+      if (fm.in_reply_to.trim().length > 0) {
+        inReplyTo.push(fm.in_reply_to.trim());
+      } else {
+        valid = false;
+      }
+    } else if (Array.isArray(fm.in_reply_to)) {
+      for (const item of fm.in_reply_to) {
+        if (typeof item === "string" && item.trim().length > 0) {
+          inReplyTo.push(item.trim());
+        } else {
+          valid = false;
+          break;
+        }
+      }
+    } else {
+      valid = false;
+    }
+    if (!valid) {
+      inReplyTo.length = 0;
+      warnings.push({ field: "in_reply_to", warning: "invalid_in_reply_to" });
+    }
+  }
+  const references = [];
+  if ("references" in fm) {
+    let valid = true;
+    if (Array.isArray(fm.references)) {
+      for (const item of fm.references) {
+        if (typeof item === "string" && item.trim().length > 0) {
+          references.push(item.trim());
+        } else {
+          valid = false;
+          break;
+        }
+      }
+    } else {
+      valid = false;
+    }
+    if (!valid) {
+      references.length = 0;
+      warnings.push({ field: "references", warning: "invalid_references" });
+    }
+  }
+  if (kind === "mark") {
+    if (!mark && !("mark" in fm))
+      warnings.push({ field: "mark", warning: "missing_mark" });
+    if (inReplyTo.length !== 1 && !warnings.some((w) => w.field === "in_reply_to")) {
+      warnings.push({ field: "in_reply_to", warning: "mark_requires_one_target" });
+    }
+  }
+  let supersedes;
+  if ("supersedes" in fm) {
+    if (typeof fm.supersedes === "string" && fm.supersedes.trim().length > 0) {
+      supersedes = fm.supersedes.trim();
+    } else {
+      warnings.push({ field: "supersedes", warning: "invalid_supersedes" });
+    }
+  }
+  let attachedTo;
+  if ("attached_to" in fm) {
+    const parsed = parseThreadAttachment(fm.attached_to);
+    if (parsed) {
+      attachedTo = parsed;
+    } else {
+      warnings.push({ field: "attached_to", warning: "invalid_attached_to" });
+    }
+  }
+  let mapResult;
+  if ("map" in fm) {
+    const parsed = parseMap(fm.map);
+    if (parsed.status === "valid") {
+      mapResult = parsed;
+    } else if (parsed.status === "invalid") {
+      const members = fm.map?.members;
+      const badIndices = /* @__PURE__ */ new Set();
+      let onlyMembers = true;
+      for (const issue3 of parsed.issues) {
+        const match = /^map\.members\[(\d+)\](?:\.|$)/.exec(issue3.path);
+        if (match)
+          badIndices.add(Number(match[1]));
+        else
+          onlyMembers = false;
+        warnings.push({ field: issue3.path, warning: issue3.code });
+      }
+      if (onlyMembers && Array.isArray(members) && badIndices.size) {
+        const filtered = members.filter((_, i) => !badIndices.has(i));
+        const repaired = parseMap({ ...fm.map, members: filtered });
+        if (repaired.status === "valid")
+          mapResult = repaired;
+      }
+    }
+  }
+  const body = stripFrontmatter(content);
+  const post = {
+    id: fm.id,
+    path,
+    ...date3 ? { date: date3 } : {},
+    ...fileDate ? { fileDate } : {},
+    ...dateWarning ? { dateWarning } : {},
+    ...warnings.length > 0 ? { warnings } : {},
+    frontmatter: fm,
+    body,
+    inReplyTo,
+    references,
+    kind,
+    ...mark ? { mark } : {},
+    ...attachedTo ? { attachedTo } : {},
+    ...supersedes ? { supersedes } : {},
+    ...mapResult ? { mapResult } : {}
+  };
+  return { status: "valid", post };
 }
 
 // node_modules/@ideaspaces/protocol/dist/content-look.js
@@ -31440,7 +31652,7 @@ async function assembleContentLook(opts) {
     return { ...focused, kind: "content-look" };
   const base = focused.position.repoRoot ?? focused.spaceRoot;
   const position = portablePosition(base, path);
-  if (!isOrdinaryTarget(position, kind, focused.position.repoRoot !== null))
+  if (!isLookTarget(position, kind, focused.position.repoRoot !== null))
     return null;
   const target = kind === "markdown" ? await readMarkdownTarget(path, position, depth) : await readDirectoryTarget(path, position, depth, opts.maxChildren ?? 50, opts.summaryExcerptLength ?? 200);
   return {
@@ -31463,10 +31675,29 @@ ${target}` : target;
 }
 async function readMarkdownTarget(path, position, depth) {
   const source = await fs5.readFile(path, "utf-8");
+  const isPost = isThreadPostPosition(position);
   const frontmatter = parseFrontmatter(source);
-  const name = nonEmptyString(frontmatter?.name) ?? basename3(path, extname(path));
-  const summary = summarizeMarkdown(source);
+  let name;
+  let summary;
+  let warnings;
+  if (isPost) {
+    const postResult = parseThreadPost(source, position);
+    if (postResult.status === "valid") {
+      name = nonEmptyString(postResult.post.frontmatter.name) ?? nonEmptyString(postResult.post.id) ?? basename3(path, extname(path));
+      summary = nonEmptyString(postResult.post.frontmatter.summary) ?? summarizeMarkdown(source);
+      warnings = postResult.post.warnings?.map((warning) => ({ post: position, ...warning }));
+    } else {
+      name = nonEmptyString(frontmatter?.name) ?? basename3(path, extname(path));
+      summary = summarizeMarkdown(source);
+      warnings = postResult.issues.map((warning) => ({ post: position, field: "frontmatter", warning }));
+    }
+  } else {
+    name = nonEmptyString(frontmatter?.name) ?? basename3(path, extname(path));
+    summary = summarizeMarkdown(source);
+  }
   const target = baseTarget(path, position, "markdown", depth, name, summary);
+  if (warnings?.length)
+    target.warnings = warnings;
   if (depth === "surface" || depth === "full") {
     target.surface = stripFrontmatter(source);
   } else if (depth === "children") {
@@ -31478,6 +31709,130 @@ async function readMarkdownTarget(path, position, depth) {
 async function readDirectoryTarget(path, position, depth, maxChildren, summaryExcerptLength) {
   if (!Number.isInteger(maxChildren) || maxChildren < 0) {
     throw new RangeError("Content look maxChildren must be a non-negative integer");
+  }
+  const isThreadFolder = isThreadFolderPosition(position);
+  const isAgentDir = isAgentPosition(position);
+  if (isThreadFolder) {
+    const readme2 = await readDirectoryReadme(path);
+    const readmeFm = readme2.content === null ? null : parseFrontmatter(readme2.content);
+    const readmeSummary = readme2.content === null ? null : summarizeMarkdown(readme2.content);
+    let agreementFm = null;
+    let agreementSummary = null;
+    try {
+      const agreementPath = join8(path, "_agent", "agreement.md");
+      const agreementContent = await fs5.readFile(agreementPath, "utf-8");
+      agreementFm = parseFrontmatter(agreementContent);
+      agreementSummary = summarizeMarkdown(agreementContent);
+    } catch {
+    }
+    const name2 = nonEmptyString(readmeFm?.name) ?? nonEmptyString(agreementFm?.name)?.replace(/^(Agreement|Foundation)\s*[—–-]\s*/i, "").trim() ?? basename3(path);
+    const summary2 = (readme2.content !== null ? readmeSummary : null) ?? (agreementFm !== null ? nonEmptyString(agreementFm.summary) ?? agreementSummary : null);
+    const target2 = baseTarget(path, position, "directory", depth, name2, summary2);
+    if (depth === "surface" || depth === "full") {
+      target2.surface = readme2.content === null ? null : stripFrontmatter(readme2.content);
+    }
+    if (depth === "children" || depth === "full") {
+      let entries = [];
+      try {
+        const dirents = await fs5.readdir(path, { withFileTypes: true });
+        entries = dirents.map((e) => ({ name: e.name, isDir: e.isDirectory() }));
+      } catch {
+      }
+      const postFiles = entries.filter((e) => !e.isDir && e.name.endsWith(".md") && e.name !== "README.md" && !e.name.startsWith(".")).map((e) => e.name).sort();
+      const children = [];
+      const warnings = [];
+      for (const fileName of postFiles) {
+        const postPath = join8(path, fileName);
+        try {
+          const content = await fs5.readFile(postPath, "utf-8");
+          const postResult = parseThreadPost(content, joinPortable(position, fileName));
+          let postName;
+          let postSummary;
+          if (postResult.status === "valid") {
+            warnings.push(...(postResult.post.warnings ?? []).map((warning) => ({ post: joinPortable(position, fileName), ...warning })));
+            postName = nonEmptyString(postResult.post.frontmatter.name) ?? nonEmptyString(postResult.post.id) ?? basename3(fileName, ".md");
+            postSummary = nonEmptyString(postResult.post.frontmatter.summary) ?? (summarizeMarkdown(content) || void 0);
+          } else {
+            warnings.push(...postResult.issues.map((warning) => ({ post: joinPortable(position, fileName), field: "frontmatter", warning })));
+            const fm = parseFrontmatter(content);
+            postName = nonEmptyString(fm?.name) ?? basename3(fileName, ".md");
+            postSummary = (fm?.summary ? String(fm.summary) : summarizeMarkdown(content)) || void 0;
+          }
+          children.push({
+            kind: "markdown",
+            name: postName,
+            position: joinPortable(position, fileName),
+            ...postSummary ? { summary: postSummary } : {}
+          });
+        } catch {
+          children.push({
+            kind: "markdown",
+            name: basename3(fileName, ".md"),
+            position: joinPortable(position, fileName)
+          });
+        }
+      }
+      target2.children = children.slice(0, maxChildren);
+      if (warnings.length)
+        target2.warnings = warnings;
+      const omitted = Math.max(0, children.length - target2.children.length);
+      if (omitted)
+        target2.omittedChildren = omitted;
+    }
+    return finishTarget(target2);
+  }
+  if (isAgentDir) {
+    const readme2 = await readDirectoryReadme(path);
+    const frontmatter2 = readme2.content === null ? null : parseFrontmatter(readme2.content);
+    const name2 = nonEmptyString(frontmatter2?.name) ?? basename3(path);
+    const summary2 = readme2.content === null ? null : summarizeMarkdown(readme2.content);
+    const target2 = baseTarget(path, position, "directory", depth, name2, summary2);
+    if (depth === "surface" || depth === "full") {
+      target2.surface = readme2.content === null ? null : stripFrontmatter(readme2.content);
+    }
+    if (depth === "children" || depth === "full") {
+      let entries = [];
+      try {
+        const dirents = await fs5.readdir(path, { withFileTypes: true });
+        entries = dirents.map((e) => ({ name: e.name, isDir: e.isDirectory() }));
+      } catch {
+      }
+      const files = entries.filter((e) => !e.name.startsWith(".") && e.name !== "README.md").sort((a, b) => a.name.localeCompare(b.name));
+      const children = [];
+      for (const entry of files) {
+        const entryPath = join8(path, entry.name);
+        if (entry.isDir) {
+          children.push({
+            kind: "directory",
+            name: entry.name,
+            position: joinPortable(position, entry.name)
+          });
+        } else {
+          let childSummary2;
+          let childName = entry.name;
+          if (entry.name.endsWith(".md")) {
+            try {
+              const content = await fs5.readFile(entryPath, "utf-8");
+              const fm = parseFrontmatter(content);
+              childName = nonEmptyString(fm?.name) ?? basename3(entry.name, ".md");
+              childSummary2 = (fm?.summary ? String(fm.summary) : summarizeMarkdown(content)) || void 0;
+            } catch {
+            }
+          }
+          children.push({
+            kind: "markdown",
+            name: childName,
+            position: joinPortable(position, entry.name),
+            ...childSummary2 ? { summary: childSummary2 } : {}
+          });
+        }
+      }
+      target2.children = children.slice(0, maxChildren);
+      const omitted = Math.max(0, children.length - target2.children.length);
+      if (omitted)
+        target2.omittedChildren = omitted;
+    }
+    return finishTarget(target2);
   }
   const readme = await readDirectoryReadme(path);
   const frontmatter = readme.content === null ? null : parseFrontmatter(readme.content);
@@ -31539,7 +31894,8 @@ function finishTarget(target) {
     ...target.summary !== void 0 ? { summary: target.summary } : {},
     ...target.surface !== void 0 ? { surface: target.surface } : {},
     ...target.children !== void 0 ? { children: target.children } : {},
-    ...target.omittedChildren !== void 0 ? { omittedChildren: target.omittedChildren } : {}
+    ...target.omittedChildren !== void 0 ? { omittedChildren: target.omittedChildren } : {},
+    ...target.warnings !== void 0 ? { warnings: target.warnings } : {}
   };
   target.revision = contentRevision2(JSON.stringify(represented));
   return target;
@@ -31570,6 +31926,11 @@ function renderTarget(target) {
   ];
   if ("summary" in target)
     lines.push(`  summary: ${target.summary ?? "(none)"}`);
+  if (target.warnings?.length) {
+    lines.push("", "Warnings:");
+    for (const warning of target.warnings)
+      lines.push(`  ${warning.post}: ${warning.field}: ${warning.warning}`);
+  }
   if ("surface" in target) {
     lines.push("", "Surface:");
     if (target.surface === null)
@@ -31601,13 +31962,48 @@ function portablePosition(base, target) {
   const value = relative4(base, target).split(sep4).join("/");
   return value || ".";
 }
-function isOrdinaryTarget(position, kind, hasRepoRoot) {
+function isLookTarget(position, kind, hasRepoRoot) {
   if (!hasRepoRoot || position === ".")
     return true;
   const classified = classifyRepositoryPath(position, kind === "directory" ? "directory" : "file");
   if (classified.status !== "ok")
     return false;
-  return kind === "directory" ? classified.role === "ordinary" : classified.role === "knowledge";
+  if (classified.role === "reserved")
+    return false;
+  if (classified.role === "ordinary" || classified.role === "knowledge")
+    return true;
+  if (classified.role === "agent-context")
+    return true;
+  if (classified.role === "extension") {
+    return classified.extension === "_threads";
+  }
+  return false;
+}
+function isThreadPostPosition(position) {
+  const segments = position.split("/");
+  const threadsIdx = segments.indexOf("_threads");
+  if (threadsIdx === -1)
+    return false;
+  if (segments.length >= threadsIdx + 3) {
+    const fileName = segments[segments.length - 1];
+    if (fileName.toLowerCase() === "readme.md")
+      return false;
+    if (segments.includes("_agent"))
+      return false;
+    return fileName.endsWith(".md");
+  }
+  return false;
+}
+function isThreadFolderPosition(position) {
+  const segments = position.split("/");
+  const threadsIdx = segments.indexOf("_threads");
+  if (threadsIdx === -1)
+    return false;
+  return segments.length === threadsIdx + 2 && !segments[threadsIdx + 1].startsWith(".");
+}
+function isAgentPosition(position) {
+  const segments = position.split("/");
+  return segments.includes("_agent");
 }
 function joinPortable(parent, child) {
   return parent === "." ? child : `${parent}/${child}`;
@@ -32628,6 +33024,17 @@ async function runLocalWrite(input, deps) {
   const cwd = effectiveCwd(input.cwd, deps);
   const location = await rootAndPath("write_markdown", input.path, cwd, deps);
   if ("ok" in location) return location;
+  const segments = location.path.split("/");
+  const threadsAt = segments.indexOf("_threads");
+  if (threadsAt !== -1 && parseThreadAttachment(segments.slice(threadsAt).join("/"))?.kind === "path") {
+    return failure(localEffectError(
+      "write_markdown",
+      "invalid_request",
+      "preflight",
+      "A Thread post requires an id and immutable post semantics. Use is_threads action=post to append; repair a never-valid post deliberately with a commit explaining why, not is_write.",
+      location.path
+    ));
+  }
   const reviewed = await pathRevision(
     location.root,
     location.path,
@@ -32991,6 +33398,9 @@ function threadArgs(input) {
   const path = input.path?.trim();
   const selected = input.member !== void 0;
   if (input.tags?.length && action !== "post") throw new Error("tags apply only to local posts.");
+  if (input.attached_to !== void 0 && action !== "new") throw new Error("attached_to belongs only on a new Thread's opening post.");
+  if (input.about !== void 0 && action !== "new") throw new Error("about applies only to threads new.");
+  if ((input.kind !== void 0 || input.mark !== void 0) && action !== "post") throw new Error("kind and mark apply only to local posts.");
   if (input.reply_to?.length && action !== "post") throw new Error("reply_to applies only to posts.");
   if (input.checkout && !selected) throw new Error("checkout requires an authored map and member.");
   if (selected && (!input.map?.trim() || !Number.isSafeInteger(input.member) || input.member < 0)) {
@@ -33005,6 +33415,23 @@ function threadArgs(input) {
   }
   if (!path?.trim()) throw new Error("Provide a local Thread path or hosted x_ id.");
   const hosted = path.startsWith("x_");
+  if (action === "new") {
+    if (hosted || selected || input.map !== void 0 || input.checkout !== void 0 || input.pin !== void 0 || input.position !== void 0 || input.depth !== void 0 || input.new !== void 0 || input.since !== void 0 || input.post !== void 0 || input.limit !== void 0 || input.order !== void 0 || input.message !== void 0 || input.reply_to?.length || input.name !== void 0 || input.summary !== void 0 || input.author !== void 0) {
+      throw new Error("threads new needs only a local slug, about and optional attached_to; omit read, post and pin options.");
+    }
+    if (!input.about?.trim()) throw new Error("threads new requires about (the opening title).");
+    if (input.attached_to !== void 0 && (!input.attached_to.includes(":") || !parseThreadAttachment(input.attached_to))) {
+      throw new Error("attached_to requires a valid <type>:<id> link.");
+    }
+    return [
+      "threads",
+      "new",
+      path,
+      "--about",
+      input.about,
+      ...input.attached_to ? ["--attached-to", input.attached_to] : []
+    ];
+  }
   if (hosted && (input.pin || input.position || selected || input.checkout || input.map && action !== "post")) throw new Error("Hosted Threads cannot use local authored pin, Map member or checkout selection.");
   if (input.new && input.since) throw new Error("Use --new or --since, not both.");
   if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1)) throw new Error("limit must be a positive integer.");
@@ -33034,7 +33461,7 @@ function threadArgs(input) {
   }
   if (input.pin || input.position || input.depth || input.new || input.since || input.post) throw new Error("Pin, position, depth, --new, --since and --post apply to opening, not writing.");
   if (hosted) {
-    if (input.tags?.length) throw new Error("tags on posts are local-only for this release.");
+    if (input.tags?.length || input.kind !== void 0 || input.mark !== void 0) throw new Error("tags, kind and mark on posts are local-only for this release.");
     if (action !== "post") throw new Error("Hosted close is an owner-only lifecycle operation; use threads close x_id --yes after preview.");
     if (input.author) throw new Error("Hosted replies use the logged-in person's identity; omit author.");
     if (input.reply_to?.length) throw new Error("The hosted reply API cannot carry in_reply_to yet; omit reply_to until the server exposes reply parents.");
@@ -33055,6 +33482,10 @@ function threadArgs(input) {
   if (input.tags?.some((tag) => !tag?.trim() || tag.includes(","))) throw new Error("tags must be non-empty and may not contain commas.");
   if (selected && (input.author || !input.reply_to?.length)) throw new Error("Selected posts require an explicit reply_to and the caller's Agreement author; omit author.");
   if (!input.message?.trim()) throw new Error("A post or closure needs a nonempty message.");
+  if (action === "post" && input.kind === "mark" && (!input.mark?.trim() || input.reply_to?.length !== 1 || input.reply_to[0] === "latest")) {
+    throw new Error("kind: mark requires mark and reply_to with exactly one explicit target post id.");
+  }
+  if (input.mark !== void 0 && input.kind !== "mark") throw new Error("mark requires kind: mark.");
   if (action === "close" && (input.reply_to?.length || input.name || input.summary || input.map || input.tags?.length)) throw new Error("Closure only accepts message and author; omit reply_to, name, summary, tags and map.");
   return [
     "threads",
@@ -33065,6 +33496,8 @@ function threadArgs(input) {
     ...input.author ? ["--author", input.author] : [],
     ...action === "post" ? [
       ...input.reply_to?.length ? ["--reply-to", input.reply_to.join(",")] : [],
+      ...input.kind ? ["--kind", input.kind] : [],
+      ...input.mark ? ["--mark", input.mark] : [],
       ...input.name ? ["--name", input.name] : [],
       ...input.summary ? ["--summary", input.summary] : [],
       ...input.tags?.length ? ["--tags", input.tags.join(",")] : [],
@@ -33074,6 +33507,10 @@ function threadArgs(input) {
   ];
 }
 function threadCliFailure(detail3) {
+  if (/Unknown flag for threads (?:new: --attached-to|post: --(?:mark|kind))/i.test(detail3)) {
+    return `${detail3}
+Opening links and marks require IdeaSpaces CLI 0.3.1 or newer. Update the CLI (or plugin bundle) and retry.`;
+  }
   return /Unknown flag for threads (?:open|post)|--depth surface requires --post/i.test(detail3) ? `${detail3}
 This Thread tree tool requires IdeaSpaces CLI 0.2.21 or newer. Update the CLI (or plugin bundle) and retry.` : detail3;
 }
@@ -33104,8 +33541,14 @@ function selectedPin(input, cwd) {
 function postView(text, position, depth) {
   const fm = parseFrontmatter(text);
   const name = typeof fm?.name === "string" ? fm.name : position.split("/").at(-1).replace(/\.md$/, "");
-  return depth === "name" ? name : depth === "summary" ? `${name}
+  const view = depth === "name" ? name : depth === "summary" ? `${name}
 ${summarizeMarkdown(text) ?? ""}` : depth === "surface" ? stripFrontmatter(text) : text;
+  const parsed = parseThreadPost(text, position);
+  const warnings = parsed.status === "valid" ? (parsed.post.warnings ?? []).map((warning) => `${position}: ${warning.field}: ${warning.warning}`) : parsed.issues.map((warning) => `${position}: frontmatter: ${warning}`);
+  return warnings.length ? `${view.trimEnd()}
+
+Warnings:
+${warnings.map((warning) => `  ${warning}`).join("\n")}` : view;
 }
 function pinnedView(data, depth, expected) {
   if (!data.pinned || data.pin !== expected.pin || data.position !== expected.position) {
@@ -33547,7 +33990,7 @@ var AUTHORED_TOOL_PARAMETERS = {
     action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
   },
   is_threads: {
-    action: external_exports.enum(["list", "open", "post", "close"]).describe("Explicit local or hosted Thread operation; reading never acknowledges."),
+    action: external_exports.enum(["list", "open", "new", "post", "close"]).describe("Explicit local or hosted Thread operation; reading never acknowledges. new creates a local opening post."),
     path: external_exports.string().optional().describe("Local Thread path or hosted x_ id; omit for list in cwd."),
     depth: external_exports.enum(["name", "summary", "children", "surface", "full"]).optional().describe("Open rung: name=frame, summary=parent/snapshot, children=branches/child Threads, surface=head and tail (local cold default), full=paged history. Hosted default is summary and children is flat."),
     new: external_exports.boolean().optional().describe("Only unseen posts after the followed cursor; open only."),
@@ -33556,6 +33999,10 @@ var AUTHORED_TOOL_PARAMETERS = {
     limit: external_exports.number().int().positive().optional().describe("Live local open only: max posts or branches on this page; not for a pinned selection."),
     order: external_exports.enum(["newer", "older"]).optional().describe("Live local open only: newer-first or older-first; not for a pinned selection."),
     message: external_exports.string().optional().describe("Body for an immutable post or closure"),
+    about: external_exports.string().optional().describe("Title for action=new; written on the opening post."),
+    attached_to: external_exports.string().optional().describe("Optional opening link for action=new: post:msg_\u2026 or note:@space//path. Only post: is a Thread tree edge; other types stay metadata."),
+    kind: external_exports.string().optional().describe("Open post kind for local action=post; mark folds onto its target."),
+    mark: external_exports.string().optional().describe("Open mark value with kind=mark; requires one explicit reply_to post id."),
     reply_to: external_exports.array(external_exports.string()).optional().describe("Local parent post ids: reply to the post you answer. Omit to branch from the opening post; ['latest'] opts into newest. Hosted replies reject this field."),
     tags: external_exports.array(external_exports.string()).optional().describe("Local post retrieval tags, e.g. ['friction']."),
     author: external_exports.string().optional().describe("Legacy same-Space writer override only. Selected posts reject author and derive it from the caller's own Agreement."),
@@ -33781,7 +34228,7 @@ server.tool(
 );
 server.tool(
   "is_threads",
-  "Read Threads through the CLI at five rungs; a cold local read starts at the newest snapshot. Local limit/order page results, post reads one exact body plus child Threads, and tags label local posts. Reply to the post you answer; omitted reply_to branches from the opening post, while ['latest'] selects newest. Selected posts require an explicit parent and use the caller Agreement name. Hosted replies need message, name and summary; hosted children remains flat. Reading never acknowledges.",
+  "Read or write local Threads through the CLI. new writes an opening post with optional attached_to; post accepts an open kind, including a folded mark. CLI validation remains authoritative. A cold read starts at the newest snapshot; local limit/order page results and post reads one exact body plus child Threads. Reply to the post you answer; omitted reply_to branches from the opening post, while ['latest'] selects newest. Selected posts require an explicit parent and use the caller Agreement name. Hosted replies need message, name and summary; hosted children remain flat. Reading never acknowledges.",
   MCP_TOOL_PARAMETERS.is_threads,
   async (input) => {
     try {
@@ -33824,7 +34271,7 @@ function localToolDependencies() {
 }
 server.tool(
   "is_write",
-  "Create or update a Note in-process with Layer 1 frontmatter and an optional protocol-valid Map block; stages and tracks the exact path and returns its full revision plus content sha. Use for capture; native Write covers source code and config.",
+  "Create or update an ordinary Note in-process with Layer 1 frontmatter and an optional protocol-valid Map block; stages the exact path and returns its revision and content sha. Thread posts must be appended through is_threads, not is_write. Native Write covers code and config.",
   MCP_TOOL_PARAMETERS.is_write,
   async (input) => {
     const result = await runLocalWrite(input, localToolDependencies());
