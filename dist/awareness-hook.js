@@ -8425,7 +8425,7 @@ function renderContentAwarenessDiagnostic(result) {
   }
   return lines.join("\n");
 }
-async function selectContentFrame(requested, requestedSource) {
+async function selectContentFrame(requested, requestedSource, allowExtensionsAndAgent = false) {
   const requestedPosition = resolve5(requested);
   const position = await fs5.realpath(requestedPosition).catch(() => requestedPosition);
   const repoRoot = await resolveRepoRoot(position);
@@ -8433,10 +8433,16 @@ async function selectContentFrame(requested, requestedSource) {
     const repositoryPath = relative4(repoRoot, position).split(sep3).join("/");
     if (repositoryPath) {
       const classification = classifyRepositoryPath(repositoryPath, "directory");
-      if (classification.status !== "ok" || classification.role !== "ordinary")
-        return null;
+      if (allowExtensionsAndAgent) {
+        if (classification.status !== "ok" || classification.role === "reserved" || classification.role === "extension" && classification.extension !== "_threads") {
+          return null;
+        }
+      } else {
+        if (classification.status !== "ok" || classification.role !== "ordinary")
+          return null;
+      }
     }
-  } else if (hasOpaqueFilesystemAncestor(position)) {
+  } else if (!allowExtensionsAndAgent && hasOpaqueFilesystemAncestor(position)) {
     return null;
   }
   const [foundation, agreement] = await Promise.all([
@@ -8485,8 +8491,14 @@ async function selectContentFrame(requested, requestedSource) {
     const spacePath = relative4(spaceRoot, position).split(sep3).join("/");
     if (spacePath) {
       const classification = classifyRepositoryPath(spacePath, "directory");
-      if (classification.status !== "ok" || classification.role !== "ordinary")
-        return null;
+      if (allowExtensionsAndAgent) {
+        if (classification.status !== "ok" || classification.role === "reserved" || classification.role === "extension" && classification.extension !== "_threads") {
+          return null;
+        }
+      } else {
+        if (classification.status !== "ok" || classification.role !== "ordinary")
+          return null;
+      }
     }
   }
   return {

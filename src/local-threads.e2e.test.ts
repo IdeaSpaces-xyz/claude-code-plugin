@@ -45,6 +45,33 @@ describe("installed Claude plugin local Threads", () => {
       expect(row.thread.name).toBe("A local test");
     }
     const first = JSON.parse(await call("is_threads", { action: "post", path: "test", message: "Initial decision", name: "One", summary: "Pinned decision", author: "Claude Agent" }));
+    const child = JSON.parse(await call("is_threads", { action: "new", path: "child", about: "Child", attached_to: `post:${first.id}` }));
+    expect(child.attached_to).toBe(`post:${first.id}`);
+    const noteLinked = JSON.parse(await call("is_threads", { action: "new", path: "note-linked", about: "Note linked", attached_to: "note:@home//notes/topic.md" }));
+    expect(noteLinked.attached_to).toBe("note:@home//notes/topic.md");
+    expect(JSON.parse(await call("is_threads", { action: "open", path: "note-linked", depth: "name" })).thread.parent.status).toBe("none");
+    const marked = JSON.parse(await call("is_threads", { action: "post", path: "test", kind: "mark", mark: "claimed", reply_to: [first.id], message: "Claimed", author: "Claude Agent" }));
+    expect(marked.mark).toBe("claimed");
+    const viewed = JSON.parse(await call("is_threads", { action: "open", path: "test", post: first.id }));
+    expect(viewed.child_threads.map((row: { slug: string }) => row.slug)).toEqual(["child"]);
+    expect(viewed.posts[0].marks).toMatchObject([{ mark: "claimed", author: "Claude Agent" }]);
+    await call("is_threads", { action: "post", path: "test", kind: "correction", supersedes: marked.id, reply_to: [first.id], message: "Retract", author: "Claude Agent" });
+    expect(JSON.parse(await call("is_threads", { action: "open", path: "test", post: first.id })).posts[0].marks).toBeUndefined();
+    const typo = await client.callTool({ name: "is_threads", arguments: { action: "post", path: "test", kind: "snapshto", message: "Typo", author: "Claude Agent" } });
+    expect(typo.isError).toBe(true);
+    const custom = JSON.parse(await call("is_threads", { action: "post", path: "test", kind: "custom_signal", confirm_kind: true, message: "Intentional custom kind", author: "Claude Agent" }));
+    expect(custom.kind).toBe("custom_signal");
+    const blockedWrite = await client.callTool({ name: "is_write", arguments: { path: first.path, content: "No edit" } });
+    expect(blockedWrite.isError).toBe(true);
+    writeFileSync(join(dir, "_threads", "test", "zz-map.md"), "---\nid: msg_bad_map\nmap: [broken]\n---\nStill readable");
+    expect(await call("is_look", { path: join(dir, "_threads", "test", "zz-map.md"), depth: "summary" })).toContain("map: invalid_map_type");
+    expect(JSON.parse(await call("is_threads", { action: "open", path: "test", depth: "name" })).thread.warnings).toContain("_threads/test/zz-map.md: map: invalid_map_type");
+    writeFileSync(join(dir, "_threads", "test", "zz-unreadable.md"), "---\nkind: closure\n---\nNo id");
+    const uncertain = JSON.parse(await call("is_threads", { action: "open", path: "test", depth: "name" }));
+    expect(uncertain.thread.closed).toBe("unknown");
+    expect(JSON.parse(await call("is_threads", { action: "list" })).local_complete).toBe(false);
+    expect(JSON.parse(await call("is_threads", { action: "list" })).threads.find((row: { slug: string }) => row.slug === "test").closed).toBe("unknown");
+    await call("is_threads", { action: "post", path: "test", message: "Still writable after unreadable later post", author: "Claude Agent" });
     for (const depth of ["surface", "full"]) {
       expect(JSON.parse(await call("is_threads", { action: "open", path: "test", post: first.id, depth })).thread.name).toBe("A local test");
     }
@@ -67,5 +94,5 @@ describe("installed Claude plugin local Threads", () => {
     const closed = JSON.parse(await call("is_threads", { action: "close", path: "test", message: "Resolved", author: "Claude Agent" }));
     expect(readFileSync(closed.path, "utf8")).toContain("kind: closure");
     expect(JSON.parse(await call("is_threads", { action: "open", path: "test", depth: "children" })).thread.closed).toBe(true);
-  }, 30_000);
+  }, 60_000);
 });
