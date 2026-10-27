@@ -1,6 +1,6 @@
 {
   "name": "ideaspaces-plugin",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Ideaspace Protocol for Claude Code, Codex, and Cowork — durable awareness, deliberate capture, optional sync.",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "url": "https://github.com/IdeaSpaces-xyz/claude-code-plugin/issues"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "build:hook": "node build-hook.mjs",

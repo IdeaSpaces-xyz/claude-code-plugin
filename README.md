@@ -53,7 +53,7 @@ codex plugin add ideaspaces@ideaspaces-xyz
 
 ### Requirements
 
-**Node.js 18+** and **git** on your PATH. Claude Code's native installer does not put `node` on your PATH, so a machine that only has Claude Code may not have it. Ask your agent: *"set up my machine for IdeaSpaces"*. It finds what is missing and installs it for your OS. Then restart the agent.
+**Node.js 20+** and **git** on your PATH. Claude Code's native installer does not put `node` on your PATH, so a machine that only has Claude Code may not have it. Ask your agent: *"set up my machine for IdeaSpaces"*. It finds what is missing and installs it for your OS. Then restart the agent.
 
 ## First session
 
@@ -66,6 +66,12 @@ Open your agent in any folder and say one of these:
 From then on, just work. When something worth keeping lands, the agent offers to write it down. Say *"write this down"* to do it yourself. Say *"publish this space"* to host it, *"share this with alice@example.com"* to let someone in, *"check my inbox"* to read questions about what you shared.
 
 Type `/` to see the skills: `is-setup`, `is-guide`, `is-orient`, `is-capture`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-inbox`, `is-threads`, `is-push`, `is-pull`. Two more work on the agent's own initiative: `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how notes are written.
+
+## Optional sign-in
+
+Plugin 0.7.1 bundles CLI 0.5.0. `is_auth action="login"` signs in this CLI install through your browser (`client=cli`), with a loopback callback and rotating session credentials stored locally (0600 on POSIX; not OS-keychain storage). Manage it in the web's **Desktop sign-ins** list. No account is needed for local work.
+
+The bundled `status account --json` checks the session; offline is not signed out. `is_auth action="logout"` signs out on the server before clearing local credentials, keeping them for retry if it fails. Sign out before switching accounts or services. Existing authorized API keys still work; headless/CI uses an existing authorized key, and SSH sign-in requires explicit loopback forwarding. Never paste credentials into chat.
 
 ## What it installs
 

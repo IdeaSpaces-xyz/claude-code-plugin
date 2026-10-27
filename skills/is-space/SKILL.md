@@ -111,10 +111,11 @@ The default is the MCP server's launch directory.
 
 ## `is_auth` — sync state
 
-- `is_auth action="login"` — log in (opens browser for OAuth)
-- `is_auth action="logout"` — clear credentials
+- `is_auth action="login"` — sign in this CLI install through the browser (`client=cli`, loopback callback); stores short-lived access and rotating refresh locally. Manage it in the web's **Desktop sign-ins** list.
+- `is_auth action="logout"` — signs the session out on the server before clearing local credentials. Offline/failure keeps credentials for retry; never claim sign-out succeeded or manually delete them.
+- Bundled `status account --json` — check session state without reading secrets. A successful `logged_in: false` means offer login; a nonzero/offline check is not signed out. Existing authorized API-key mode remains supported (status does not online-validate every legacy key).
 
-Sync is opt-in. The plugin works locally without auth.
+Sync is opt-in. The plugin works locally without auth. Sign out before switching accounts/services. Never read or print credentials into chat. Headless/CI can use an existing authorized key; SSH browser sign-in requires explicit loopback forwarding.
 
 A shared Space created by the current CLI already carries portable `root_node_id` before login; private gitignored code-repo context remains unstamped. A public, copy-enabled Space can come home without an account through `ideaspaces fork <space-url> [dir]`: the CLI creates one independent unpublished commit with fresh identity, no source history, and no remote. To host either kind of local Space, use `/is-publish` or run `ideaspaces publish` from its root. First publish asks Keeper to adopt the committed declaration exactly, sets repo-local Git attribution, and pushes. Later publication reuses the same verified binding; drift refuses, and `--force` never forks or rekeys.
 
