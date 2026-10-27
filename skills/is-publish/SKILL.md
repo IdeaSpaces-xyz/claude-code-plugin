@@ -51,13 +51,13 @@ Otherwise, if output isn't `main`, ask before proceeding:
 
 In a non-interactive session there is nobody to answer — never rename on your own; stop with the question as the result. If yes, run `git branch -m main`. If the rename fails (most common cause: a local `main` branch already exists — perhaps stale or orphaned), surface git's error verbatim and stop with: *"You may already have a local `main` branch. Resolve manually (`git branch -d main` if it's stale, or `git checkout main` if it's the one you want) and re-run `/is-publish`."* On success, continue. If the user declines the rename, abort: *"Switch to `main` and re-run `/is-publish` when ready."* — don't try to push a non-main branch; `ideaspaces publish` refuses anyway.
 
-**Logged in?** Read the credentials file directly — its presence is the login signal:
+**Logged in?** Ask the bundled CLI; never read or print the credentials file:
 
 ```bash
-test -f ~/.ideaspaces/credentials.json && echo "yes" || echo "no"
+node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js status account --json
 ```
 
-If `no`, propose login. If `yes`, continue.
+On a successful command, `logged_in: true` means continue; `logged_in: false` means propose login. A nonzero exit (including an offline or uncertain session check) is **not** signed out: stop, surface the error, preserve credentials, and retry after the cause is resolved. Existing authorized API-key mode remains supported; this command does not online-validate every legacy key.
 
 **Already published?** Check the folder-keyed map, if present:
 
@@ -75,7 +75,7 @@ If non-null, this folder is already mapped to a remote. Re-publishing is fine �
 
 ## 2. Login if needed
 
-> "You'll need to log in first — that's how IdeaSpaces knows the space belongs to you. I'll open a browser; complete the OAuth flow there and credentials save locally. OK?"
+> "You'll need to sign in to this CLI install first. I'll open a browser; complete sign-in there. It saves a short-lived access token and rotating refresh locally, and you can manage this install in the web's Desktop sign-ins list. OK?"
 
 On confirm:
 
@@ -83,7 +83,9 @@ On confirm:
 node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js login
 ```
 
-If the user is in a remote shell or browser open fails, surface the CLI output and let them decide the next step.
+The bundled CLI uses `client=cli` with a loopback callback; do not copy tokens into chat. If the user is in a remote shell or browser open fails, surface the CLI output and let them decide the next step. SSH requires explicit loopback forwarding; headless/CI may use an existing authorized key. Sign out first before switching accounts or services.
+
+`is_auth action="logout"` (or bundled `power logout`) signs this session out on the server **before** clearing local credentials. If sign-out fails or is offline, credentials stay for retry; report the failure, never claim success or delete the file manually.
 
 ## 3. Plan — run publish without `--yes`
 
@@ -170,7 +172,7 @@ Then name the next two steps, every time:
 
 | Symptom | Likely cause | What to suggest |
 |---|---|---|
-| `Not logged in` | No stored credentials | Run `ideaspaces login`. |
+| `Not logged in` | No usable sign-in | Offer bundled `login`; do not infer this from a failed/offline status check. |
 | `Cannot publish yet: N tracked file(s) exceed the 200,000-byte server limit.` | CLI size preflight | See "Size-cap recovery" above — auto-handle known clutter, surface the rest. |
 | `Push failed: ... size cap` | Server-side cap (only if CLI preflight is bypassed) | Same as above; re-run `/is-publish` so the local preflight surfaces the offender list. |
 | `This folder is mapped to ... but that remote no longer exists or you no longer have access` | Hosted binding cannot be reached | Restore access/binding; a new Space requires explicit local Fork in a separate destination. |
