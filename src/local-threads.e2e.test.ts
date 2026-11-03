@@ -61,6 +61,9 @@ describe("installed Claude plugin local Threads", () => {
     expect(JSON.parse(await call("is_threads", { action: "open", path: "test", post: first.id })).posts[0].marks).toBeUndefined();
     const typo = await client.callTool({ name: "is_threads", arguments: { action: "post", path: "test", kind: "snapshto", message: "Typo", author: "Claude Agent" } });
     expect(typo.isError).toBe(true);
+    for (const kind of ["decision", "dispatch", "claim", "delivery", "verification", "question"]) {
+      expect(JSON.parse(await call("is_threads", { action: "post", path: "test", kind, message: `A ${kind}`, author: "Claude Agent" })).kind).toBe(kind);
+    }
     const custom = JSON.parse(await call("is_threads", { action: "post", path: "test", kind: "custom_signal", confirm_kind: true, message: "Intentional custom kind", author: "Claude Agent" }));
     expect(custom.kind).toBe("custom_signal");
     const blockedWrite = await client.callTool({ name: "is_write", arguments: { path: first.path, content: "No edit" } });

@@ -1,11 +1,11 @@
 {
   "cli": {
     "repository": "https://github.com/IdeaSpaces-xyz/cli.git",
-    "commit": "d402284f65b4642046777575ac5aadc0915d85f2",
+    "commit": "fdbcac10e823455444bdc493e4594c031c2ca25c",
     "sourceArtifact": "bundle/ideaspaces.js",
     "vendoredArtifact": "cli/bundle/ideaspaces.js",
-    "sha256": "8d248ace8b015a37424b2bfdc9eef1c03944036b585d120e0c2bf5260984d125",
-    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#f5a0f9e13e04e88bd670f45de9819789b5e650db",
+    "sha256": "721dbdb8e3b43ff8a33a6fd59ff7b530b77ca9b9019747879f12365bc4ffd311",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#0fdad8ecffc53453a72796b985ae559f43d1ae1c",
     "rebuildInCi": true,
     "commands": [
       "npm run build",
@@ -14,11 +14,11 @@
   },
   "mcp-server": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
-    "commit": "af464d3947496546f035bc559cf0402a33fa078e",
+    "commit": "f3e6082f01fe7dfbd4eba253e64406db758896eb",
     "sourceArtifact": "bundle/index.js",
     "vendoredArtifact": "dist/index.js",
-    "sha256": "f0f09349718d9606a8452ade5d43b8d022138f7162700c172776868c936fd778",
-    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#f5a0f9e13e04e88bd670f45de9819789b5e650db",
+    "sha256": "a1f1d050b293189041721afee3881a733611fc52afe2b4f33838fe937ac05529",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#0fdad8ecffc53453a72796b985ae559f43d1ae1c",
     "rebuildInCi": false,
     "commands": [
       "npm run bundle"

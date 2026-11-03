@@ -48,7 +48,7 @@ it("ships CLI 0.5.0 and MCP logout retains a failed session before a successful 
     writeFileSync(file, saved, { mode: 0o600 });
     const help = await promisify(execFile)(process.execPath, [cli, "login", "--help"], { env, cwd: home });
     expect(`${help.stdout}${help.stderr}`).toContain("Browser sign-in on this machine");
-    expect(JSON.parse(read("vendor-lock.json")).cli.commit).toBe("d402284f65b4642046777575ac5aadc0915d85f2");
+    expect(JSON.parse(read("vendor-lock.json")).cli.commit).toBe("fdbcac10e823455444bdc493e4594c031c2ca25c");
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, "dist/index.js")], cwd: home, env }));
     const failed = await client.callTool({ name: "is_auth", arguments: { action: "logout" } });
     expect(failed.isError).toBe(true);
