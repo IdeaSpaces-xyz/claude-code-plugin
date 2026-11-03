@@ -8984,6 +8984,10 @@ function renderContract(entries, levelBase) {
         lines.push(`    ${line}`);
     } else {
       lines.push(entry.summary ? `  ${name} \u2014 ${entry.summary}` : `  ${name}`);
+      if (entry.name === "agreement") {
+        const source = levelBase ? relative4(levelBase, entry.path) : entry.path;
+        lines.push(`    summary only \u2014 read ${source.split(sep3).join("/")} in full before writing here`);
+      }
     }
   }
   return lines.join("\n");

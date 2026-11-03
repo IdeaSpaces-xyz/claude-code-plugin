@@ -58,7 +58,9 @@ elsewhere. A same-Space `map` without `member` cites Content but does not select
 For a claim or result on one target, set `kind: mark`, `mark: claimed|done|<open value>`, and
 `reply_to: ["msg_target"]` (exactly one explicit id, not `latest`). Marks fold onto the target and
 stay out of the ordinary timeline; read the target to see them. A `kind: correction` with
-`supersedes: "msg_mark"` and a reply to that target retracts a mark. Unknown kinds remain readable;
+`supersedes: "msg_mark"` and a reply to that target retracts a mark. The standard kinds are `post`,
+`snapshot`, `reframe`, `correction`, `closure`, `mark`, `decision`, `dispatch`, `claim`, `delivery`,
+`verification` and `question`; they need no confirmation. Unknown kinds remain readable;
 writing a custom kind requires `confirm_kind: true` after checking spelling, so a typo cannot
 silently become immutable history.
 

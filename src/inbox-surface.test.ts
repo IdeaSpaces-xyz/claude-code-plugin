@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
 const CLI = join(ROOT, "cli/bundle/ideaspaces.js");
-const CLI_COMMIT = "d402284f65b4642046777575ac5aadc0915d85f2";
+const CLI_COMMIT = "fdbcac10e823455444bdc493e4594c031c2ca25c";
 
 function read(relative: string): string {
   return readFileSync(join(ROOT, relative), "utf-8");
@@ -17,8 +17,8 @@ describe("direct Inbox distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.7.1");
-    expect(plugin.version).toBe("0.7.1");
+    expect(pkg.version).toBe("0.7.2");
+    expect(plugin.version).toBe("0.7.2");
     expect(vendor.cli.commit).toBe(CLI_COMMIT);
   });
 

@@ -29022,6 +29022,7 @@ function parseRootNodeId(value) {
 }
 
 // node_modules/@ideaspaces/protocol/dist/agreement.js
+var CONTENT_REPRESENTATIONS = ["summary", "full"];
 async function composeAgreementAlongPath(position, repoRoot = null) {
   const start = resolve2(position);
   const boundary = repoRoot ? resolve2(repoRoot) : null;
@@ -30494,6 +30495,10 @@ async function assembleContentTree(opts) {
   });
 }
 async function assembleContentFocus(opts) {
+  const agreementRepresentation = opts.agreement ?? "summary";
+  if (!CONTENT_REPRESENTATIONS.includes(agreementRepresentation)) {
+    throw new RangeError(`Reference Agreement representation must be one of: ${CONTENT_REPRESENTATIONS.join(", ")}`);
+  }
   const selected = await selectContentFrame(opts.position, opts.contractSource, true);
   if (!selected)
     return null;
@@ -30519,7 +30524,10 @@ async function assembleContentFocus(opts) {
       ...common,
       contract: foundation.contract,
       stack: foundation.stack
-    }) : contractSource === "agreement" ? readAgreementAwarenessSections({ ...common, agreement }) : readFloorAwarenessSections(common)
+    }) : contractSource === "agreement" ? readAgreementAwarenessSections({
+      ...common,
+      agreement: referenceAgreement(agreement, agreementRepresentation)
+    }) : readFloorAwarenessSections(common)
   ]);
   return {
     status: "ok",
@@ -30538,6 +30546,18 @@ async function assembleContentFocus(opts) {
     tree: sections.tree ? toFocusTree(sections.tree) : null,
     contract: sections.contract.map((entry) => ({ ...entry, placement: "history" })),
     skills: sections.skills.map((skill) => ({ ...skill, placement: "history" }))
+  };
+}
+function referenceAgreement(agreement, representation) {
+  const nearest = [...agreement.stack].reverse().find((level) => level.agreementPath !== null);
+  const stack = agreement.stack.map((level) => representation === "full" && level === nearest ? level : {
+    ...level,
+    files: level.files.map((file) => ({ ...file, representation: "summary" }))
+  });
+  return {
+    ...agreement,
+    stack,
+    agreements: stack.flatMap((level) => level.files.filter((file) => file.name === "agreement"))
   };
 }
 function renderContentFocus(result) {
@@ -31153,6 +31173,10 @@ function renderContract(entries, levelBase) {
         lines.push(`    ${line}`);
     } else {
       lines.push(entry.summary ? `  ${name} \u2014 ${entry.summary}` : `  ${name}`);
+      if (entry.name === "agreement") {
+        const source = levelBase ? relative3(levelBase, entry.path) : entry.path;
+        lines.push(`    summary only \u2014 read ${source.split(sep3).join("/")} in full before writing here`);
+      }
     }
   }
   return lines.join("\n");
@@ -31451,7 +31475,13 @@ var THREAD_KINDS = [
   "reframe",
   "correction",
   "closure",
-  "mark"
+  "mark",
+  "decision",
+  "dispatch",
+  "claim",
+  "delivery",
+  "verification",
+  "question"
 ];
 function parseThreadAttachment(value) {
   if (typeof value !== "string" || !value.trim())
@@ -31685,6 +31715,7 @@ async function assembleContentLook(opts) {
   const focusOpts = {
     position: framePosition,
     ...opts.contractSource ? { contractSource: opts.contractSource } : {},
+    ...opts.agreement ? { agreement: opts.agreement } : {},
     ...opts.summaryExcerptLength !== void 0 ? { summaryExcerptLength: opts.summaryExcerptLength } : {},
     treeMaxEntries: 0
   };
@@ -31716,6 +31747,7 @@ async function assembleContentLook(opts) {
       position: selected.path,
       depth,
       ...opts.contractSource ? { contractSource: opts.contractSource } : {},
+      ...opts.agreement ? { agreement: opts.agreement } : {},
       ...opts.summaryExcerptLength !== void 0 ? { summaryExcerptLength: opts.summaryExcerptLength } : {}
     });
   }
@@ -34174,7 +34206,7 @@ var AUTHORED_TOOL_PARAMETERS = {
     message: external_exports.string().optional().describe("Body for an immutable post or closure"),
     about: external_exports.string().optional().describe("Title for action=new; written on the opening post."),
     attached_to: external_exports.string().optional().describe("Optional opening link for action=new: post:msg_\u2026 or note:@space//path. Only post: is a Thread tree edge; other types stay metadata."),
-    kind: external_exports.string().optional().describe("Open local post kind: post, snapshot, reframe, correction, closure, mark or a custom value. A typo cannot silently create an immutable post."),
+    kind: external_exports.string().optional().describe("Open local post kind: post, snapshot, reframe, correction, closure, mark, decision, dispatch, claim, delivery, verification, question or a custom value. A typo cannot silently create an immutable post."),
     confirm_kind: external_exports.boolean().optional().describe("Explicitly allow a custom kind on a local post; maps to CLI --yes. Not needed for standard kinds."),
     mark: external_exports.string().optional().describe("Open mark value with kind=mark; requires one explicit reply_to post id."),
     supersedes: external_exports.string().optional().describe("Post id replaced by a correction; kind=correction can retract a mark."),
