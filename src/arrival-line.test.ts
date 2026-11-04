@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ARRIVAL_BUDGET_MS, formatArrivalLine, fetchArrivalCounts, renderArrivalLine } from "./arrival-line.js";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { ARRIVAL_BUDGET_MS, formatArrivalLine, fetchArrivalCounts, loadAuthConfig, renderArrivalLine } from "./arrival-line.js";
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 describe("access-request arrival notice without Inbox polling", () => {
   it("formats pending requests only", () => {
@@ -57,5 +60,72 @@ describe("hard optional-network deadline", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ requests: [{}] }) }));
     expect(await fetchArrivalCounts({ apiUrl: "https://api.test", apiKey: "synthetic" })).toEqual({ newRequests: 1 });
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe("a stored credential belongs to its service", () => {
+  const SERVICE = "https://api.ideaspaces.test";
+  const ELSEWHERE = "http://127.0.0.1:4010";
+  const KEY = { api_url: SERVICE, api_key: "stored-key" };
+  const SESSION = { api_url: SERVICE, api_key: "stored-access", session: { id: "s", refresh_token: "stored-refresh" } };
+  const homes: string[] = [];
+
+  function store(credentials: object) {
+    const home = mkdtempSync(join(tmpdir(), "plugin-arrival-"));
+    homes.push(home);
+    mkdirSync(join(home, ".ideaspaces"));
+    writeFileSync(join(home, ".ideaspaces", "credentials.json"), JSON.stringify(credentials));
+    vi.stubEnv("HOME", home);
+    vi.stubEnv("USERPROFILE", home);
+    vi.stubEnv("IS_API_KEY", "");
+    vi.stubEnv("IS_API_URL", "");
+    vi.stubEnv("IDEASPACES_AUTH", "");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ requests: [{}] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+  afterEach(() => { for (const home of homes.splice(0)) rmSync(home, { recursive: true, force: true }); });
+
+  it.each([["key", KEY], ["session", SESSION]])("a stored %s with a different IS_API_URL makes no request and shows no line", async (_name, credentials) => {
+    const fetchMock = store(credentials);
+    vi.stubEnv("IS_API_URL", ELSEWHERE);
+
+    expect(loadAuthConfig()).toBeNull();
+    expect(await renderArrivalLine()).toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("a stored key with no api_url belongs to the default service", async () => {
+    const fetchMock = store({ api_key: "stored-key" });
+    vi.stubEnv("IS_API_URL", ELSEWHERE);
+
+    expect(await renderArrivalLine()).toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([["key", KEY], ["session", SESSION]])("a stored %s with a matching IS_API_URL still works, trailing slash or not", async (_name, credentials) => {
+    const fetchMock = store(credentials);
+    vi.stubEnv("IS_API_URL", `${SERVICE}/`);
+
+    expect(await renderArrivalLine()).toBe("Hosted: 1 access request.");
+    expect(fetchMock.mock.calls[0][0]).toBe(`${SERVICE}/api/v1/access-requests/incoming`);
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(`Bearer ${credentials.api_key}`);
+  });
+
+  it("with IS_API_URL unset, it goes to its own service", async () => {
+    const fetchMock = store(KEY);
+
+    expect(await renderArrivalLine()).toBe("Hosted: 1 access request.");
+    expect(fetchMock.mock.calls[0][0]).toBe(`${SERVICE}/api/v1/access-requests/incoming`);
+  });
+
+  it("IS_API_KEY stays as it is, because the caller supplied that pair", async () => {
+    const fetchMock = store(KEY);
+    vi.stubEnv("IS_API_URL", ELSEWHERE);
+    vi.stubEnv("IS_API_KEY", "caller-key");
+
+    expect(await renderArrivalLine()).toBe("Hosted: 1 access request.");
+    expect(fetchMock.mock.calls[0][0]).toBe(`${ELSEWHERE}/api/v1/access-requests/incoming`);
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe("Bearer caller-key");
   });
 });

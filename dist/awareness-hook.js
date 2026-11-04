@@ -9236,10 +9236,10 @@ function loadAuthConfig() {
     if (!existsSync(credPath)) return null;
     const creds = JSON.parse(readFileSync(credPath, "utf-8"));
     if (!creds.api_key) return null;
-    return {
-      apiUrl: (process.env.IS_API_URL || creds.api_url || DEFAULT_API_URL).replace(/\/$/, ""),
-      apiKey: creds.api_key
-    };
+    const service = (creds.api_url || DEFAULT_API_URL).replace(/\/$/, "");
+    const apiUrl = (process.env.IS_API_URL || service).replace(/\/$/, "");
+    if (apiUrl !== service) return null;
+    return { apiUrl, apiKey: creds.api_key };
   } catch {
     return null;
   }
