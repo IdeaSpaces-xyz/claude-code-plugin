@@ -31,7 +31,7 @@ describe("private conversation distribution", () => {
       expect(result.stderr).toContain(`conversation ${sub}`);
       expect(result.stderr).toContain("Conversations are private");
       expect(result.stderr).toContain("ideaspaces share person <email|@handle>");
-      expect(result.stderr).toContain("collaborate through Inbox");
+      expect(result.stderr).toContain("collaborate through Threads");
     },
   );
 });

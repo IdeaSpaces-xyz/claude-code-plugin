@@ -1,46 +1,31 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { formatArrivalLine, fetchArrivalCounts, type InboxItem } from "./arrival-line.js";
-
-describe("arrival line", () => {
-  it("formats arrival text with thread messages and access requests", () => {
-    expect(formatArrivalLine(1, 0)).toBe("Hosted: 1 new thread message.");
-    expect(formatArrivalLine(3, 0)).toBe("Hosted: 3 new thread messages.");
-    expect(formatArrivalLine(0, 1)).toBe("Hosted: 1 access request.");
-    expect(formatArrivalLine(0, 2)).toBe("Hosted: 2 access requests.");
-    expect(formatArrivalLine(2, 1)).toBe("Hosted: 2 new thread messages, 1 access request.");
-    expect(formatArrivalLine(0, 0)).toBeUndefined();
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { formatArrivalLine, fetchArrivalCounts, renderArrivalLine } from "./arrival-line.js";
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+describe("access-request arrival notice without Inbox polling", () => {
+  it("formats pending requests only", () => {
+    expect(formatArrivalLine(0)).toBeUndefined();
+    expect(formatArrivalLine(1)).toBe("Hosted: 1 access request.");
+    expect(formatArrivalLine(2)).toBe("Hosted: 2 access requests.");
   });
-
-  it("computes unread thread messages and pending requests from inbox payload", async () => {
-    const items: InboxItem[] = [
-      { kind: "inquiry", latest_position: 5, cursor: 3 }, // 2 new
-      { kind: "inquiry", latest_position: 2, cursor: 2 }, // 0 new (read)
-      { kind: "inquiry", latest_position: 1, cursor: null }, // unread/unfollowed
-      { kind: "access_request" }, // 1 request
-    ];
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ items }),
-    });
+  it("uses the access-request incoming route alone", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ requests: [{}, {}] }) });
     vi.stubGlobal("fetch", fetchMock);
-
-    const counts = await fetchArrivalCounts({ apiUrl: "https://api.test", apiKey: "token" });
-    expect(counts).toEqual({ newMessages: 2, newRequests: 1 });
-    expect(formatArrivalLine(counts!.newMessages, counts!.newRequests)).toBe(
-      "Hosted: 2 new thread messages, 1 access request.",
-    );
-
-    vi.unstubAllGlobals();
+    expect(await fetchArrivalCounts({ apiUrl: "https://api.test", apiKey: "synthetic" })).toEqual({ newRequests: 2 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.test/api/v1/access-requests/incoming");
   });
-
-  it("returns null on network failure without throwing", async () => {
-    const fetchMock = vi.fn().mockRejectedValue(new Error("network error"));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const counts = await fetchArrivalCounts({ apiUrl: "https://api.test", apiKey: "token" });
-    expect(counts).toBeNull();
-
-    vi.unstubAllGlobals();
+  it.each([null, {}, { requests: null }])("stays silent for malformed data %s", async data => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => data }));
+    expect(await fetchArrivalCounts({ apiUrl: "https://api.test", apiKey: "synthetic" })).toBeNull();
   });
+  it("stays silent on network failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    expect(await fetchArrivalCounts({ apiUrl: "https://api.test", apiKey: "synthetic" })).toBeNull();
+  });
+});
+
+it("does not spend terminal credentials from an app-owned host session", async () => {
+  vi.stubEnv("IDEASPACES_AUTH", "host"); vi.stubEnv("IS_API_KEY", "synthetic-should-not-be-spent");
+  const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
+  expect(await renderArrivalLine()).toBeUndefined(); expect(fetchMock).not.toHaveBeenCalled();
 });

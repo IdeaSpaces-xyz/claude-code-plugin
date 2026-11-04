@@ -10,6 +10,8 @@ interface StoredCredentials {
 }
 
 export function loadAuthConfig(): { apiUrl: string; apiKey: string } | null {
+  // An app-owned sign-in is never permission to read the terminal credential store.
+  if (process.env.IDEASPACES_AUTH === "host") return null;
   const envKey = process.env.IS_API_KEY?.trim();
   if (envKey) {
     return {
@@ -31,32 +33,19 @@ export function loadAuthConfig(): { apiUrl: string; apiKey: string } | null {
   }
 }
 
-export interface InboxItem {
-  kind: "inquiry" | "access_request";
-  latest_position?: number;
-  cursor?: number | null;
-}
-
-export function formatArrivalLine(newMessages: number, newRequests: number): string | undefined {
-  if (newMessages === 0 && newRequests === 0) return undefined;
-  const parts: string[] = [];
-  if (newMessages > 0) {
-    parts.push(`${newMessages} new thread message${newMessages === 1 ? "" : "s"}`);
-  }
-  if (newRequests > 0) {
-    parts.push(`${newRequests} access request${newRequests === 1 ? "" : "s"}`);
-  }
-  return `Hosted: ${parts.join(", ")}.`;
+/** Arrival only reports incoming access requests; Threads are listed explicitly. */
+export function formatArrivalLine(newRequests: number): string | undefined {
+  return newRequests > 0 ? `Hosted: ${newRequests} access request${newRequests === 1 ? "" : "s"}.` : undefined;
 }
 
 export async function fetchArrivalCounts(config: {
   apiUrl: string;
   apiKey: string;
-}): Promise<{ newMessages: number; newRequests: number } | null> {
+}): Promise<{ newRequests: number } | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 1500);
   try {
-    const res = await fetch(`${config.apiUrl}/api/v1/inbox`, {
+    const res = await fetch(`${config.apiUrl}/api/v1/access-requests/incoming`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${config.apiKey}`,
@@ -65,25 +54,9 @@ export async function fetchArrivalCounts(config: {
       signal: controller.signal,
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as { items?: InboxItem[] };
-    if (!Array.isArray(data.items)) return null;
-
-    let newMessages = 0;
-    let newRequests = 0;
-    for (const item of data.items) {
-      if (item.kind === "inquiry") {
-        if (
-          typeof item.cursor === "number" &&
-          typeof item.latest_position === "number" &&
-          item.latest_position > item.cursor
-        ) {
-          newMessages += item.latest_position - item.cursor;
-        }
-      } else if (item.kind === "access_request") {
-        newRequests += 1;
-      }
-    }
-    return { newMessages, newRequests };
+    const data = (await res.json()) as { requests?: unknown[] };
+    if (!Array.isArray(data.requests)) return null;
+    return { newRequests: data.requests.length };
   } catch {
     return null;
   } finally {
@@ -96,5 +69,5 @@ export async function renderArrivalLine(): Promise<string | undefined> {
   if (!config) return undefined;
   const counts = await fetchArrivalCounts(config);
   if (!counts) return undefined;
-  return formatArrivalLine(counts.newMessages, counts.newRequests);
+  return formatArrivalLine(counts.newRequests);
 }

@@ -9222,6 +9222,7 @@ import { join as join7 } from "node:path";
 import { homedir } from "node:os";
 var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
 function loadAuthConfig() {
+  if (process.env.IDEASPACES_AUTH === "host") return null;
   const envKey = process.env.IS_API_KEY?.trim();
   if (envKey) {
     return {
@@ -9242,22 +9243,14 @@ function loadAuthConfig() {
     return null;
   }
 }
-function formatArrivalLine(newMessages, newRequests) {
-  if (newMessages === 0 && newRequests === 0) return void 0;
-  const parts = [];
-  if (newMessages > 0) {
-    parts.push(`${newMessages} new thread message${newMessages === 1 ? "" : "s"}`);
-  }
-  if (newRequests > 0) {
-    parts.push(`${newRequests} access request${newRequests === 1 ? "" : "s"}`);
-  }
-  return `Hosted: ${parts.join(", ")}.`;
+function formatArrivalLine(newRequests) {
+  return newRequests > 0 ? `Hosted: ${newRequests} access request${newRequests === 1 ? "" : "s"}.` : void 0;
 }
 async function fetchArrivalCounts(config) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 1500);
   try {
-    const res = await fetch(`${config.apiUrl}/api/v1/inbox`, {
+    const res = await fetch(`${config.apiUrl}/api/v1/access-requests/incoming`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${config.apiKey}`,
@@ -9267,19 +9260,8 @@ async function fetchArrivalCounts(config) {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    if (!Array.isArray(data.items)) return null;
-    let newMessages = 0;
-    let newRequests = 0;
-    for (const item of data.items) {
-      if (item.kind === "inquiry") {
-        if (typeof item.cursor === "number" && typeof item.latest_position === "number" && item.latest_position > item.cursor) {
-          newMessages += item.latest_position - item.cursor;
-        }
-      } else if (item.kind === "access_request") {
-        newRequests += 1;
-      }
-    }
-    return { newMessages, newRequests };
+    if (!Array.isArray(data.requests)) return null;
+    return { newRequests: data.requests.length };
   } catch {
     return null;
   } finally {
@@ -9291,7 +9273,7 @@ async function renderArrivalLine() {
   if (!config) return void 0;
   const counts = await fetchArrivalCounts(config);
   if (!counts) return void 0;
-  return formatArrivalLine(counts.newMessages, counts.newRequests);
+  return formatArrivalLine(counts.newRequests);
 }
 
 // src/agent-run.ts
