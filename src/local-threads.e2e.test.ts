@@ -61,11 +61,16 @@ describe("installed Claude plugin local Threads", () => {
     expect(JSON.parse(await call("is_threads", { action: "open", path: "test", post: first.id })).posts[0].marks).toBeUndefined();
     const typo = await client.callTool({ name: "is_threads", arguments: { action: "post", path: "test", kind: "snapshto", message: "Typo", author: "Claude Agent" } });
     expect(typo.isError).toBe(true);
-    for (const kind of ["decision", "dispatch", "claim", "delivery", "verification", "question"]) {
-      expect(JSON.parse(await call("is_threads", { action: "post", path: "test", kind, message: `A ${kind}`, author: "Claude Agent" })).kind).toBe(kind);
+    for (const kind of ["delivery", "custom_signal"]) {
+      const label = await client.callTool({ name: "is_threads", arguments: { action: "post", path: "test", kind, message: `A ${kind}`, author: "Claude Agent" } });
+      expect(label.isError).toBe(true);
     }
-    const custom = JSON.parse(await call("is_threads", { action: "post", path: "test", kind: "custom_signal", confirm_kind: true, message: "Intentional custom kind", author: "Claude Agent" }));
-    expect(custom.kind).toBe("custom_signal");
+    const labelled = JSON.parse(await call("is_threads", { action: "post", path: "test", tags: ["delivery"], message: "Shipped", author: "Claude Agent" }));
+    expect(labelled.kind).toBe("post");
+    const moved = JSON.parse(await call("is_threads", { action: "recent" }));
+    expect(moved).toMatchObject({ schema: "ideaspaces.threads.recent.v1", baseline: true, threads: [] });
+    await call("is_threads", { action: "post", path: "test", message: "One more", author: "Claude Agent" });
+    expect(JSON.parse(await call("is_threads", { action: "recent", cursor: moved.cursor })).threads).toEqual([{ slug: "test", new_posts: 1 }]);
     const blockedWrite = await client.callTool({ name: "is_write", arguments: { path: first.path, content: "No edit" } });
     expect(blockedWrite.isError).toBe(true);
     writeFileSync(join(dir, "_threads", "test", "zz-map.md"), "---\nid: msg_bad_map\nmap: [broken]\n---\nStill readable");

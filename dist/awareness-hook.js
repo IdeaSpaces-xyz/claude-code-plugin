@@ -9220,6 +9220,7 @@ async function readStdin() {
 import { existsSync, readFileSync } from "node:fs";
 import { join as join7 } from "node:path";
 import { homedir } from "node:os";
+var ARRIVAL_BUDGET_MS = 100;
 var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
 function loadAuthConfig() {
   if (process.env.IDEASPACES_AUTH === "host") return null;
@@ -9248,22 +9249,33 @@ function formatArrivalLine(newRequests) {
 }
 async function fetchArrivalCounts(config) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 1500);
+  let timeoutId;
+  const deadline = new Promise((resolve8) => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      resolve8(null);
+    }, ARRIVAL_BUDGET_MS);
+  });
+  const request = (async () => {
+    try {
+      const res = await fetch(`${config.apiUrl}/api/v1/access-requests/incoming`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          Accept: "application/json"
+        },
+        signal: controller.signal
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!Array.isArray(data.requests)) return null;
+      return { newRequests: data.requests.length };
+    } catch {
+      return null;
+    }
+  })();
   try {
-    const res = await fetch(`${config.apiUrl}/api/v1/access-requests/incoming`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        Accept: "application/json"
-      },
-      signal: controller.signal
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!Array.isArray(data.requests)) return null;
-    return { newRequests: data.requests.length };
-  } catch {
-    return null;
+    return await Promise.race([request, deadline]);
   } finally {
     clearTimeout(timeoutId);
   }
@@ -9355,6 +9367,7 @@ async function main() {
       manifest = null;
     }
     if (manifest && manifest.status === "ok") {
+      const arrivalLine = renderArrivalLine();
       const head = renderContentAwareness(manifest, { placement: "head" });
       const state = manifest.position.repoRoot && manifest.git ? {
         placement: "tail",
@@ -9363,7 +9376,7 @@ async function main() {
       } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const kind = renderKindLine(manifest) ?? "";
-      const arrival = await renderArrivalLine();
+      const arrival = await arrivalLine;
       const join9 = joinParts;
       const rest = join9(kind, READING_LINE, arrival ?? "", tail);
       let text = join9(head, rest);
