@@ -21,6 +21,7 @@ describe("truthful Git detection in the vendored CLI", () => {
       chmodSync(git, 0o755);
       const env: NodeJS.ProcessEnv = { ...process.env, PATH: bin, HOME: root };
       delete env.IS_API_KEY;
+      delete env.IDEASPACES_GIT_BIN;
 
       const result = spawnSync(process.execPath, [CLI, "doctor", "--json"], {
         encoding: "utf-8",
@@ -60,10 +61,12 @@ describe("truthful Git detection in the vendored CLI", () => {
       );
       chmodSync(git, 0o755);
 
+      const env: NodeJS.ProcessEnv = { ...process.env, PATH: bin, HOME: root };
+      delete env.IDEASPACES_GIT_BIN;
       const result = spawnSync(process.execPath, [CLI, "create", "space", "--yes"], {
         cwd: root,
         encoding: "utf-8",
-        env: { ...process.env, PATH: bin },
+        env,
       });
       const output = `${result.stdout}${result.stderr}`;
 

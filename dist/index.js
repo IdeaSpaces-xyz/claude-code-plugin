@@ -31469,19 +31469,15 @@ function isRecord3(value) {
 }
 
 // node_modules/@ideaspaces/protocol/dist/threads.js
+var THREADS_DIRECTORY = "_threads";
+var HOSTED_THREAD_ID = /^x_[A-Za-z0-9_-]+$/;
 var THREAD_KINDS = [
   "post",
   "snapshot",
   "reframe",
   "correction",
   "closure",
-  "mark",
-  "decision",
-  "dispatch",
-  "claim",
-  "delivery",
-  "verification",
-  "question"
+  "mark"
 ];
 function parseThreadAttachment(value) {
   if (typeof value !== "string" || !value.trim())
@@ -33054,6 +33050,7 @@ async function readLook(opts) {
       position: target,
       depth: opts.depth ?? "summary",
       ...opts.contract ? { contractSource: opts.contract } : {},
+      ...opts.agreement ? { agreement: opts.agreement } : {},
       ...opts.limit !== void 0 ? { limit: opts.limit } : {},
       ...opts.since ? { since: opts.since } : {},
       ...opts.order ? { order: opts.order } : {},
@@ -33091,11 +33088,12 @@ async function readNavigate(opts = {}) {
   if (!targetStat.isDirectory()) {
     return { ok: false, error: `Not a directory: ${target}` };
   }
-  let focus = await assembleContentFocus({ position: target });
+  const focusOpts = { position: target, ...opts.agreement ? { agreement: opts.agreement } : {} };
+  let focus = await assembleContentFocus(focusOpts);
   if (focus?.status === "contract_choice_required") {
     const contractSource = focus.availableSources.includes("agreement") ? "agreement" : focus.availableSources[0];
     if (contractSource) {
-      focus = await assembleContentFocus({ position: target, contractSource });
+      focus = await assembleContentFocus({ ...focusOpts, contractSource });
     }
   }
   if (!focus) {
@@ -33547,17 +33545,25 @@ function planChangeClose(armed, persisted, hasCacheFile) {
 }
 
 // src/threads.ts
-import { relative as relative6, resolve as resolve11, sep as sep6 } from "node:path";
+import { join as join11, relative as relative6, resolve as resolve11, sep as sep6 } from "node:path";
 import { existsSync as existsSync3, lstatSync, readFileSync, realpathSync } from "node:fs";
 var import_yaml3 = __toESM(require_dist2(), 1);
+function isHostedRef(input) {
+  const path = input.path?.trim() ?? "";
+  return HOSTED_THREAD_ID.test(path) && !existsSync3(join11(resolve11(process.cwd(), input.cwd ?? "."), THREADS_DIRECTORY, path));
+}
 function threadArgs(input) {
+  if (input.action === "ack") throw new Error("Agent acknowledgement is held until a separate agent token exists; it must not move the person's Unread.");
+  if (input.action === "recent") return recentArgs(input);
+  if (input.hosted || isHostedRef(input)) return hostedArgs(input);
+  if (input.cursor !== void 0 || input.recipients !== void 0 || input.post_id !== void 0 || input.unread !== void 0) throw new Error("Hosted options require hosted: true or an x_ id.");
   const { action } = input;
   const path = input.path?.trim();
   const selected = input.member !== void 0;
-  if (input.tags?.length && action !== "post") throw new Error("tags apply only to local posts.");
+  if (input.tags?.length && action !== "post") throw new Error("tags apply only to posts.");
   if (input.attached_to !== void 0 && action !== "new") throw new Error("attached_to belongs only on a new Thread's opening post.");
   if (input.about !== void 0 && action !== "new") throw new Error("about applies only to threads new.");
-  if ((input.kind !== void 0 || input.confirm_kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) && action !== "post") throw new Error("kind, confirm_kind, mark and supersedes apply only to local posts.");
+  if ((input.kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) && action !== "post") throw new Error("kind, mark and supersedes apply only to local posts.");
   if (input.reply_to?.length && action !== "post") throw new Error("reply_to applies only to posts.");
   if (input.checkout && !selected) throw new Error("checkout requires an authored map and member.");
   if (selected && (!input.map?.trim() || !Number.isSafeInteger(input.member) || input.member < 0)) {
@@ -33566,14 +33572,13 @@ function threadArgs(input) {
   if (input.map && action === "open" && !selected && !path?.startsWith("x_")) throw new Error("Pinned open with map requires a member; no HEAD fallback.");
   if ((selected || input.checkout) && action !== "open" && action !== "post") throw new Error("Selection is only available for open and post.");
   if (action === "list") {
-    if (path?.startsWith("x_")) throw new Error("is_threads list reads local Threads in the current folder. Open a known hosted x_ id directly; this tool does not enumerate hosted Threads.");
+    if (input.limit !== void 0) throw new Error("List paging requires hosted: true; local list does not accept limit.");
     if (input.since || input.post || input.new) throw new Error("--since, --new and --post select an opened Thread, not a list.");
-    return ["threads", "list", path || ".", "--depth", input.depth ?? "summary"];
+    return ["threads", "list", ...path ? [path] : [], "--depth", input.depth ?? "summary"];
   }
   if (!path?.trim()) throw new Error("Provide a local Thread path or hosted x_ id.");
-  const hosted = path.startsWith("x_");
   if (action === "new") {
-    if (hosted || selected || input.checkout !== void 0 || input.pin !== void 0 || input.position !== void 0 || input.depth !== void 0 || input.new !== void 0 || input.since !== void 0 || input.post !== void 0 || input.limit !== void 0 || input.order !== void 0 || input.message !== void 0 || input.reply_to?.length || input.name !== void 0 || input.summary !== void 0 || input.author !== void 0) {
+    if (selected || input.checkout !== void 0 || input.pin !== void 0 || input.position !== void 0 || input.depth !== void 0 || input.new !== void 0 || input.since !== void 0 || input.post !== void 0 || input.limit !== void 0 || input.order !== void 0 || input.message !== void 0 || input.reply_to?.length || input.name !== void 0 || input.summary !== void 0 || input.author !== void 0) {
       throw new Error("threads new needs only a local slug, about and optional attached_to; omit read, post and pin options.");
     }
     if (!input.about?.trim()) throw new Error("threads new requires about (the opening title).");
@@ -33591,7 +33596,6 @@ function threadArgs(input) {
       ...input.map ? ["--map", input.map] : []
     ];
   }
-  if (hosted && (input.pin || input.position || selected || input.checkout || input.map && action !== "post")) throw new Error("Hosted Threads cannot use local authored pin, Map member or checkout selection.");
   if (input.new && input.since) throw new Error("Use --new or --since, not both.");
   if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1)) throw new Error("limit must be a positive integer.");
   if (input.order !== void 0 && input.order !== "newer" && input.order !== "older") throw new Error("order must be newer or older.");
@@ -33603,13 +33607,12 @@ function threadArgs(input) {
     if ((selected || input.pin) && (input.new || input.since || input.post || input.depth === "children")) throw new Error("An authored pinned post cannot use --new, --since, --post or children; open the live Thread to traverse it.");
     if (input.pin && !input.position || input.position && !input.pin) throw new Error("Pinned open requires both authored pin and position; never substitute HEAD.");
     if (selected && (input.pin || input.position)) throw new Error("Use either authored map/member selection or pin/position, not both.");
-    if (hosted && paged) throw new Error("limit and order on open are local-only for this release.");
     return [
       "threads",
       "open",
       path,
       "--depth",
-      selected || input.pin ? "full" : input.depth ?? (hosted ? "summary" : "surface"),
+      selected || input.pin ? "full" : input.depth ?? "surface",
       ...input.new ? ["--new"] : [],
       ...input.since ? ["--since", input.since] : [],
       ...input.post ? ["--post", input.post] : [],
@@ -33619,32 +33622,12 @@ function threadArgs(input) {
     ];
   }
   if (input.pin || input.position || input.depth || input.new || input.since || input.post) throw new Error("Pin, position, depth, --new, --since and --post apply to opening, not writing.");
-  if (hosted) {
-    if (input.tags?.length || input.kind !== void 0 || input.confirm_kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) throw new Error("tags, kind, confirm_kind, mark and supersedes on posts are local-only for this release.");
-    if (action !== "post") throw new Error("Hosted close is an owner-only lifecycle operation; use threads close x_id --yes after preview.");
-    if (input.author) throw new Error("Hosted replies use the logged-in person's identity; omit author.");
-    if (input.reply_to?.length) throw new Error("The hosted reply API cannot carry in_reply_to yet; omit reply_to until the server exposes reply parents.");
-    if (!input.message?.trim() || !input.name?.trim() || !input.summary?.trim()) throw new Error("Hosted reply needs message, name and summary. The server checks your participation grade.");
-    return [
-      "threads",
-      "reply",
-      path,
-      "--message",
-      input.message,
-      "--name",
-      input.name,
-      "--summary",
-      input.summary,
-      ...input.map ? ["--map", input.map] : []
-    ];
-  }
   if (input.tags?.some((tag) => !tag?.trim() || tag.includes(","))) throw new Error("tags must be non-empty and may not contain commas.");
   if (selected && (input.author || !input.reply_to?.length)) throw new Error("Selected posts require an explicit reply_to and the caller's Agreement author; omit author.");
   if (!input.message?.trim()) throw new Error("A post or closure needs a nonempty message.");
   if (action === "post" && input.kind !== void 0 && !input.kind.trim()) throw new Error("kind must be a non-empty string.");
-  if (input.confirm_kind && !input.kind) throw new Error("confirm_kind requires an explicit kind.");
-  if (action === "post" && input.kind && !THREAD_KINDS.includes(input.kind) && !input.confirm_kind) {
-    throw new Error(`Unrecognised kind ${input.kind}; check spelling or pass confirm_kind: true to author an immutable custom kind.`);
+  if (action === "post" && input.kind && !THREAD_KINDS.includes(input.kind)) {
+    throw new Error(`kind ${JSON.stringify(input.kind)} is not a kind: use ${THREAD_KINDS.join(", ")}. A label for a post goes in tags.`);
   }
   if (action === "post" && input.kind === "mark" && (!input.mark?.trim() || input.reply_to?.length !== 1 || input.reply_to[0] === "latest")) {
     throw new Error("kind: mark requires mark and reply_to with exactly one explicit target post id.");
@@ -33663,7 +33646,6 @@ function threadArgs(input) {
     ...action === "post" ? [
       ...input.reply_to?.length ? ["--reply-to", input.reply_to.join(",")] : [],
       ...input.kind ? ["--kind", input.kind] : [],
-      ...input.confirm_kind ? ["--yes"] : [],
       ...input.mark ? ["--mark", input.mark] : [],
       ...input.supersedes ? ["--supersedes", input.supersedes] : [],
       ...input.name ? ["--name", input.name] : [],
@@ -33698,6 +33680,10 @@ An opening-post Map requires IdeaSpaces CLI 0.4.0 or newer. Update the CLI (or p
   if (/Unknown flag for threads (?:new: --attached-to|post: --(?:mark|kind))/i.test(detail3)) {
     return `${detail3}
 Opening links and marks require IdeaSpaces CLI 0.3.1 or newer. Update the CLI (or plugin bundle) and retry.`;
+  }
+  if (/--tags is not supported by hosted threads/i.test(detail3)) {
+    return `${detail3}
+Tags on a hosted Thread require IdeaSpaces CLI 0.7.0 or newer. Update the CLI (or plugin bundle) and retry.`;
   }
   return /Unknown flag for threads (?:open|post)|--depth surface requires --post/i.test(detail3) ? `${detail3}
 This Thread tree tool requires IdeaSpaces CLI 0.2.21 or newer. Update the CLI (or plugin bundle) and retry.` : detail3;
@@ -33775,16 +33761,75 @@ function threadPost(path, root) {
   if (!match || match[2] === "README.md") return null;
   return { thread: resolve11(realRoot, "_threads", match[1]), position: rel };
 }
+function hostedArgs(input) {
+  const action = input.action;
+  const path = input.path?.trim();
+  const allowed = {
+    list: ["hosted", "limit", "cursor", "unread"],
+    new: ["hosted", "name", "summary", "message", "recipients", "map", "post_id", "tags"],
+    open: ["hosted", "path", "limit", "cursor"],
+    post: ["hosted", "path", "reply_to", "message", "name", "summary", "map", "post_id", "tags"]
+  };
+  if (!allowed[action]) throw new Error("Hosted close requires an explicit CLI preview and confirmation; use threads close x_id --message <why> then --yes.");
+  for (const [key2, value] of Object.entries(input)) {
+    if (key2 !== "action" && key2 !== "cwd" && value !== void 0 && !(Array.isArray(value) && value.length === 0) && !allowed[action].includes(key2)) throw new Error(`${key2} is local-only or unsupported for hosted ${action}; omit it.`);
+  }
+  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 200)) throw new Error("Hosted limit must be from 1 to 200.");
+  if (action === "list" || action === "new") {
+    if (path) throw new Error("Hosted list/new takes no path; use hosted: true.");
+  } else if (!HOSTED_THREAD_ID.test(path ?? "")) throw new Error("Hosted Thread id must match " + HOSTED_THREAD_ID.source + ".");
+  if (input.tags?.some((tag) => !tag?.trim() || tag.includes(","))) throw new Error("tags must be non-empty and may not contain commas.");
+  if (input.recipients?.some((r) => !r.trim() || r.includes(","))) throw new Error("Each recipients entry must be one selector, not a comma-separated list.");
+  if (input.post_id !== void 0 && !/^msg_[A-Za-z0-9_-]{1,60}$/.test(input.post_id)) throw new Error("post_id must be a msg_ id.");
+  if (action === "new" && (!input.name?.trim() || !input.summary?.trim())) throw new Error("Hosted new requires name and summary.");
+  if ((action === "new" || action === "post") && !input.message?.trim()) throw new Error("Hosted writes require message.");
+  if (action === "post" && (!input.reply_to?.length || input.reply_to.length > 16 || new Set(input.reply_to).size !== input.reply_to.length || input.reply_to.some((p) => !/^msg_[A-Za-z0-9_-]{1,60}$/.test(p)))) throw new Error("Hosted reply_to requires one to 16 distinct msg_ parent ids. Old n_ ids are not converted.");
+  return [
+    "threads",
+    action,
+    ...action === "list" || action === "new" ? ["--hosted"] : [path],
+    ...input.limit !== void 0 ? ["--limit", String(input.limit)] : [],
+    ...input.cursor !== void 0 ? ["--cursor", input.cursor] : [],
+    ...input.unread ? ["--unread"] : [],
+    ...input.reply_to ? ["--reply-to", input.reply_to.join(",")] : [],
+    ...input.message !== void 0 ? ["--message", input.message] : [],
+    ...input.name !== void 0 ? ["--name", input.name] : [],
+    ...input.summary !== void 0 ? ["--summary", input.summary] : [],
+    ...input.recipients !== void 0 ? ["--recipients", input.recipients.join(",")] : [],
+    ...input.map !== void 0 ? ["--map", input.map] : [],
+    ...input.tags?.length ? ["--tags", input.tags.join(",")] : [],
+    ...input.post_id !== void 0 ? ["--post-id", input.post_id] : []
+  ];
+}
+function recentArgs(input) {
+  for (const [key2, value] of Object.entries(input)) {
+    if (!["action", "cwd", "cursor", "limit"].includes(key2) && value !== void 0 && !(Array.isArray(value) && value.length === 0)) throw new Error(`${key2} does not apply to recent; it takes cursor and limit.`);
+  }
+  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 500)) throw new Error("recent limit must be from 1 to 500.");
+  return ["threads", "recent", ...input.cursor !== void 0 ? ["--cursor", input.cursor] : [], ...input.limit !== void 0 ? ["--limit", String(input.limit)] : []];
+}
+function recentCliFailure(detail3) {
+  return /^Usage: ideaspaces threads <(?!.*\brecent\b)/.test(detail3) ? `${detail3}
+threads recent requires IdeaSpaces CLI 0.7.0 or newer. Update the CLI (or plugin bundle) and retry.` : threadCliFailure(detail3);
+}
+function threadsOnlyCapability(value) {
+  if (!value || typeof value !== "object") return false;
+  const c = value;
+  return c.schema === "ideaspaces.threads.capabilities.v1" && c.transport === "/threads" && c.legacy_exchange_fallback === false;
+}
+function needsHostedThreads(input) {
+  return !!input.hosted || isHostedRef(input) || input.action === "list" && !input.path?.trim();
+}
 
 // src/collaborate.ts
 import { spawn as spawn4 } from "node:child_process";
 import { lstatSync as lstatSync3, realpathSync as realpathSync3 } from "node:fs";
-import { isAbsolute as isAbsolute6, join as join12, resolve as resolve13 } from "node:path";
+import { isAbsolute as isAbsolute6, join as join13, resolve as resolve13 } from "node:path";
 
 // src/pi-child-resources.ts
 import { spawn as spawn3 } from "node:child_process";
 import { lstatSync as lstatSync2, readFileSync as readFileSync2, realpathSync as realpathSync2 } from "node:fs";
-import { isAbsolute as isAbsolute5, join as join11, relative as relative7, resolve as resolve12, sep as sep7 } from "node:path";
+import { isAbsolute as isAbsolute5, join as join12, relative as relative7, resolve as resolve12, sep as sep7 } from "node:path";
 var REQUIRED = ["@ideaspaces/pi-is-space", "@ideaspaces/pi-local-context"];
 function contained(root, path) {
   const rel = relative7(root, path);
@@ -33859,7 +33904,7 @@ function parsePiChildResources(text) {
     } catch {
       throw new Error(`User Pi package listed at ${entry} is missing; repair the install before launching a child.`);
     }
-    const manifestPath = join11(root, "package.json");
+    const manifestPath = join12(root, "package.json");
     let pkg;
     try {
       const stat2 = lstatSync2(manifestPath);
@@ -34016,7 +34061,7 @@ function resolvePov(pov, cwd) {
   try {
     const dir = realpathSync3(candidate);
     const root = lstatSync3(dir);
-    const contract = lstatSync3(join12(dir, "_agent", "agreement.md"));
+    const contract = lstatSync3(join13(dir, "_agent", "agreement.md"));
     if (root.isDirectory() && contract.isFile() && !contract.isSymbolicLink()) return { dir };
   } catch {
   }
@@ -34179,6 +34224,7 @@ var mapBlock = external_exports.object({
 var contentDepth = external_exports.enum(["name", "summary", "surface", "children", "full"]);
 var mapField = external_exports.string().optional().describe("Map note (*.map.md or a Note with a map block) an address is read against; relative to cwd or absolute. Defaults to the session's launch Map (IDEASPACES_MAP).");
 var atField = external_exports.enum(["pin", "head"]).optional().describe("Read an address at its root's pin or its checkout's HEAD. Defaults by the Map's kind: a Space's Map reads HEAD and shows drift, a Thread's Map reads the pin.");
+var agreementField = external_exports.enum(["summary", "full"]).optional().describe("How another position's Agreement is read as reference. Default summary: each Agreement arrives as one line plus where to read it in full before writing there. full loads the target's own Agreement in full; ancestors stay summary. Your own Agreement is never affected.");
 var cwdField = external_exports.string().optional().describe(
   "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
 );
@@ -34195,23 +34241,27 @@ var AUTHORED_TOOL_PARAMETERS = {
     action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
   },
   is_threads: {
-    action: external_exports.enum(["list", "open", "new", "post", "close"]).describe("Explicit local or hosted Thread operation; reading never acknowledges. new creates a local opening post."),
-    path: external_exports.string().optional().describe("Local Thread path or hosted x_ id; omit for list in cwd."),
-    depth: external_exports.enum(["name", "summary", "children", "surface", "full"]).optional().describe("Open rung: name=frame, summary=parent/snapshot, children=branches/child Threads, surface=head and tail (local cold default), full=paged history. Hosted default is summary and children is flat."),
-    new: external_exports.boolean().optional().describe("Only unseen posts after the followed cursor; open only."),
-    since: external_exports.string().optional().describe("ISO date, post id, or hosted numeric position to bound open."),
+    action: external_exports.enum(["list", "open", "new", "post", "close", "recent"]).describe("Explicit Thread operation. hosted=true lists/starts through /threads. recent says which local Threads moved, ids and counts only; hold its cursor and pass it next time. Agent acknowledgement of the person's Unread is not exposed."),
+    hosted: external_exports.boolean().optional().describe("List or start a hosted Thread; omit path. Known x_ ids route hosted automatically."),
+    unread: external_exports.boolean().optional().describe("Hosted list: only Threads with the web's unread_count > 0; follow cursor for more pages."),
+    cursor: external_exports.string().optional().describe("Hosted list/open, or recent: opaque CLI cursor from the previous response."),
+    recipients: external_exports.array(external_exports.string()).max(16).optional().describe("Hosted new: @handles or email addresses; omit for solo."),
+    post_id: external_exports.string().optional().describe("Hosted new/post: stable msg_ id for an exact resend after uncertain delivery; no automatic retry."),
+    path: external_exports.string().optional().describe("Local Thread path or hosted x_ id. Omit for combined local/hosted list; use an explicit directory (e.g. .) for local-only."),
+    depth: external_exports.enum(["name", "summary", "children", "surface", "full"]).optional().describe("Open rung: name=frame, summary=parent/snapshot, children=branches/child Threads, surface=head and tail (local cold default), full=paged history. Local only; omit for hosted open."),
+    new: external_exports.boolean().optional().describe("Local open only: unseen posts after the private local read cursor."),
+    since: external_exports.string().optional().describe("Local open only: ISO date or post id. Hosted paging uses cursor."),
     post: external_exports.string().optional().describe("Read one post in full plus child Threads attached to it (local open)."),
-    limit: external_exports.number().int().positive().optional().describe("Live local open only: max posts or branches on this page; not for a pinned selection."),
+    limit: external_exports.number().int().positive().optional().describe("Local open, recent (max 500), or hosted list/open page size (hosted max 200); not for pinned selection."),
     order: external_exports.enum(["newer", "older"]).optional().describe("Live local open only: newer-first or older-first; not for a pinned selection."),
     message: external_exports.string().optional().describe("Body for an immutable post or closure"),
     about: external_exports.string().optional().describe("Title for action=new; written on the opening post."),
     attached_to: external_exports.string().optional().describe("Optional opening link for action=new: post:msg_\u2026 or note:@space//path. Only post: is a Thread tree edge; other types stay metadata."),
-    kind: external_exports.string().optional().describe("Open local post kind: post, snapshot, reframe, correction, closure, mark, decision, dispatch, claim, delivery, verification, question or a custom value. A typo cannot silently create an immutable post."),
-    confirm_kind: external_exports.boolean().optional().describe("Explicitly allow a custom kind on a local post; maps to CLI --yes. Not needed for standard kinds."),
+    kind: external_exports.string().optional().describe(`What a reader acts on, for a local post: ${THREAD_KINDS.join(", ")}. A label goes in tags.`),
     mark: external_exports.string().optional().describe("Open mark value with kind=mark; requires one explicit reply_to post id."),
     supersedes: external_exports.string().optional().describe("Post id replaced by a correction; kind=correction can retract a mark."),
-    reply_to: external_exports.array(external_exports.string()).optional().describe("Local parent post ids: reply to the post you answer. Omit to branch from the opening post; ['latest'] opts into newest. Hosted replies reject this field."),
-    tags: external_exports.array(external_exports.string()).optional().describe("Local post retrieval tags, e.g. ['friction']."),
+    reply_to: external_exports.array(external_exports.string()).optional().describe("Local parent post ids: reply to the post you answer. Omit to branch from the opening post; ['latest'] opts into newest. Hosted post requires explicit msg_ parents; no n_ conversion."),
+    tags: external_exports.array(external_exports.string()).optional().describe("Labels for a post, on any Thread, e.g. ['delivery'] or ['friction']."),
     author: external_exports.string().optional().describe("Legacy same-Space writer override only. Selected posts reject author and derive it from the caller's own Agreement."),
     name: external_exports.string().optional().describe("Optional post name"),
     summary: external_exports.string().optional().describe("Optional post summary"),
@@ -34221,12 +34271,6 @@ var AUTHORED_TOOL_PARAMETERS = {
     pin: external_exports.string().optional().describe("Authored commit pin for legacy same-Space open, paired with position; do not combine with map/member"),
     position: external_exports.string().optional().describe("Authored _threads/ post position, paired with pin"),
     cwd: cwdField
-  },
-  is_follow: {
-    action: external_exports.enum(["follow", "unfollow", "ack"]).default("follow").describe("Follow, unfollow, or explicitly acknowledge one source."),
-    source: external_exports.enum(["thread", "node", "repo"]).describe("The kind of source. Thread ids start x_; Node and repository roots use n_."),
-    id: external_exports.string().min(1).describe("The exact Thread, Node, or repository root id."),
-    position: external_exports.number().int().nonnegative().optional().describe("Required only for action=ack; the event position to acknowledge.")
   },
   is_write: {
     path: external_exports.string().describe("File path within the ideaspace"),
@@ -34273,6 +34317,7 @@ var AUTHORED_TOOL_PARAMETERS = {
     order: external_exports.enum(["older", "newer"]).optional().describe("Directory children/full order: older (default) or newer. Continue with since=<nextCursor>."),
     post: external_exports.string().optional().describe("Select one msg_ post within a named Thread path/address, or alone with cwd set to a Space root. A unique eight-hex shorthand is accepted; duplicates refuse."),
     contract: external_exports.enum(["foundation", "agreement"]).optional().describe("Explicit target frame; otherwise the habitat prefers Agreement, then Foundation, then floor."),
+    agreement: agreementField,
     cwd: cwdField,
     pin: external_exports.string().optional().describe("Authored full commit id to read this checkout at, paired with position; never inferred from HEAD"),
     position: external_exports.string().optional().describe("Authored repository-relative position paired with pin; must name the same target as path")
@@ -34282,6 +34327,7 @@ var AUTHORED_TOOL_PARAMETERS = {
     address: external_exports.string().optional().describe("A Map member directory by address instead of a path: @<root name>//<position>, @<root_node_id>//<position>, or //<position>. Read against `map`, else the session's launch Map."),
     map: mapField,
     at: atField,
+    agreement: agreementField,
     cwd: cwdField
   },
   is_pull: {
@@ -34439,36 +34485,39 @@ server.tool(
 );
 server.tool(
   "is_threads",
-  "Read or write local Threads through the CLI. new writes an opening post with optional attached_to; post accepts an open kind, including a folded mark. CLI validation remains authoritative. A cold read starts at the newest snapshot; local limit/order page results and post reads one exact body plus child Threads. Reply to the post you answer; omitted reply_to branches from the opening post, while ['latest'] selects newest. Selected posts require an explicit parent and use the caller Agreement name. Hosted replies need message, name and summary; hosted children remain flat. Reading never acknowledges.",
+  "Read and write local or hosted Threads through the CLI. action=recent says which local Threads moved since a cursor you hold. Default list is combined; path='.' is local-only. Local reads start at the newest snapshot; depth, limit/order and exact post select bounded local evidence. Reply to the post answered; omitted local reply_to branches from the opening post. Hosted list/new use hosted=true; open/post use an x_ id. Hosted reads use cursor, posts require explicit msg_ parents, Agents never acknowledge the person's Unread. A stale CLI cannot fall back to exchanges; a default-list fallback is explicitly labelled local-only.",
   MCP_TOOL_PARAMETERS.is_threads,
   async (input) => {
     try {
       const args = threadArgs(input);
+      if (needsHostedThreads(input)) {
+        const capability = await cli(["--json", "threads", "capabilities"], void 0, input.cwd);
+        let current = false;
+        try {
+          current = capability.code === 0 && threadsOnlyCapability(JSON.parse(capability.out));
+        } catch {
+        }
+        if (!current) {
+          const reason = "Hosted Threads require CLI 0.7.0 or newer with /threads-only support. Update the CLI (or plugin bundle); no hosted Thread request was sent." + (capability.code !== 0 && capability.err.trim() ? ` CLI capability check failed: ${capability.err.trim().slice(0, 500)}` : "");
+          if (input.action === "list" && !input.hosted && !input.path?.trim()) {
+            const local = await cli(["--json", ...threadArgs({ ...input, path: "." })], void 0, input.cwd);
+            if (local.code !== 0) return fail(local.err.trim() || local.out.trim());
+            const data = JSON.parse(local.out);
+            return ok(JSON.stringify({ ...data, hosted_checked: false, hosted_error: reason }, null, 2));
+          }
+          return fail(reason);
+        }
+      }
       if (input.action === "open" && (input.pin || input.member !== void 0)) {
         const expected = input.member !== void 0 ? selectedPin(input, input.cwd ?? process.cwd()) : { pin: input.pin, position: input.position };
         const result = await cli(["--json", ...args], void 0, input.cwd);
         if (result.code !== 0) return fail(result.err.trim() || result.out.trim());
         return ok(pinnedView(JSON.parse(result.out), input.depth ?? "summary", expected));
       }
-      return run(args, void 0, input.cwd, threadCliFailure);
+      return run(args, void 0, input.cwd, input.action === "recent" ? recentCliFailure : threadCliFailure);
     } catch (error2) {
       return fail(error2 instanceof Error ? error2.message : String(error2));
     }
-  }
-);
-server.tool(
-  "is_follow",
-  "Choose whether the logged-in person listens to a Thread, Node, or repository, or explicitly advance that source's event cursor. Reading never acknowledges. Requires person login; never substitutes an Agent credential.",
-  MCP_TOOL_PARAMETERS.is_follow,
-  async ({ action, source, id, position }) => {
-    if (action === "ack") {
-      if (position === void 0) return fail("action=ack requires `position`.");
-      return run(["follow", source, id, "--ack", String(position)]);
-    }
-    if (position !== void 0) {
-      return fail("`position` is valid only with action=ack.");
-    }
-    return run([action === "unfollow" ? "unfollow" : "follow", source, id]);
   }
 );
 function localToolDependencies() {
@@ -34558,6 +34607,9 @@ async function readThroughCli(args, cwd) {
   if (code !== 0) return fail(lookCliFailure(err.trim() || out.trim() || `Exit ${code}`));
   return ok(out.trim());
 }
+function agreementArgs(agreement) {
+  return agreement ? ["--agreement", agreement] : [];
+}
 function addressArgs(verb, address, map, at) {
   return [verb, address, ...map ? ["--map", map] : [], ...at ? ["--at", at] : []];
 }
@@ -34565,7 +34617,7 @@ server.tool(
   "is_look",
   "Read one Note, directory, Thread folder or post at a bounded rung \u2014 so the conversation Map records it. Use it instead of cat/head/sed: a Bash read is not recorded. At children/full, page a directory with limit, since=<nextCursor> and order; post selects a unique msg_ id within a Thread or supplied root. An address @root//_threads/<slug>/msg_\u2026 selects the post at the Map pin from any cwd, never replacing an authored pin with HEAD. Read-only; it never changes caller authority or working directory.",
   MCP_TOOL_PARAMETERS.is_look,
-  async ({ path, address, map, at, depth, contract, cwd, pin, position, limit, since, order, post }) => {
+  async ({ path, address, map, at, depth, contract, agreement, cwd, pin, position, limit, since, order, post }) => {
     let lookArgs;
     try {
       lookArgs = lookReaderArgs({ limit, since, order, post });
@@ -34578,12 +34630,12 @@ server.tool(
     }
     if (address) {
       if (path || pin || position) return fail("Give an address or a path, not both. An address takes its commit from the Map; use at: pin or head.");
-      return readThroughCli([...addressArgs("look", address, map, at), "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : [], ...lookArgs], cwd);
+      return readThroughCli([...addressArgs("look", address, map, at), "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : [], ...agreementArgs(agreement), ...lookArgs], cwd);
     }
     if (map || at) return fail("map and at read an address (@<root>//<position>); pass address, not path.");
     if (!path && post && !pin && !position) {
       if (!cwd) return fail("A post id without a Thread path needs cwd set to the selected Space root; do not infer another root.");
-      const result2 = await readLook({ path: ".", postId: post, depth, contract, cwd });
+      const result2 = await readLook({ path: ".", postId: post, depth, contract, agreement, cwd });
       return result2.ok ? ok(result2.text) : fail(result2.error);
     }
     if (!path) return fail("Give a path, a post id within the supplied cwd root, or an address (@<root>//<position>) read through a Map.");
@@ -34596,7 +34648,7 @@ server.tool(
       }
       if (directory) {
         if (contract || pin || position) return fail("A Thread folder has its own Agreement and rungs; omit contract, pin and position.");
-        return readThroughCli(["look", target, "--depth", depth ?? "summary", ...lookArgs], cwd);
+        return readThroughCli(["look", target, "--depth", depth ?? "summary", ...agreementArgs(agreement), ...lookArgs], cwd);
       }
     }
     const root = await resolveRepoRoot(cwd || process.cwd()) ?? cwd ?? process.cwd();
@@ -34607,7 +34659,7 @@ server.tool(
       if (post || limit !== void 0 || since || order) return fail("A post-id path already selects one post; omit post, limit, since and order.");
       if (!!pin !== !!position) return fail("Pinned post look requires both authored pin and position.");
       if (position && position !== virtual.position) return fail("Authored position does not match the requested post selector.");
-      return readThroughCli(["look", virtual.thread, "--post", virtual.postId, "--depth", depth ?? "summary", ...pin ? ["--pin", pin] : []], root);
+      return readThroughCli(["look", virtual.thread, "--post", virtual.postId, "--depth", depth ?? "summary", ...agreementArgs(agreement), ...pin ? ["--pin", pin] : []], root);
     }
     const postTarget = threadPost(target, root);
     if (postTarget) {
@@ -34618,11 +34670,12 @@ server.tool(
       if (depth === "children") return fail("Thread posts support name, summary, surface and full rungs; not children.");
       try {
         if (pin) {
-          const result2 = await cli(["--json", ...threadArgs({ action: "open", path: postTarget.thread, depth: "full", pin, position })], void 0, dirname8(dirname8(postTarget.thread)));
-          if (result2.code !== 0) return fail(result2.err.trim() || result2.out.trim());
-          return ok(pinnedView(JSON.parse(result2.out), depth ?? "summary", { pin, position: postTarget.position }));
+          const result3 = await cli(["--json", ...threadArgs({ action: "open", path: postTarget.thread, depth: "full", pin, position })], void 0, dirname8(dirname8(postTarget.thread)));
+          if (result3.code !== 0) return fail(result3.err.trim() || result3.out.trim());
+          return ok(pinnedView(JSON.parse(result3.out), depth ?? "summary", { pin, position: postTarget.position }));
         }
-        return ok(postView(readFileSync3(target, "utf8"), postTarget.position, depth ?? "summary"));
+        const result2 = await readLook({ path: target, depth, agreement, cwd });
+        return result2.ok ? ok(result2.text) : fail(result2.error);
       } catch (error2) {
         return fail(`Cannot read ${target}: ${error2 instanceof Error ? error2.message : String(error2)}`);
       }
@@ -34634,9 +34687,9 @@ server.tool(
         return fail(`${target} is outside the Space at ${root}; a pinned look reads this checkout only.`);
       }
       if (local !== position) return fail("Authored position does not match the requested path.");
-      return readThroughCli(["look", position, "--pin", pin, "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : [], ...lookArgs], root);
+      return readThroughCli(["look", position, "--pin", pin, "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : [], ...agreementArgs(agreement), ...lookArgs], root);
     }
-    const result = await readLook({ path, depth, contract, cwd, limit, since, order, postId: post });
+    const result = await readLook({ path, depth, contract, agreement, cwd, limit, since, order, postId: post });
     return result.ok ? ok(result.text) : fail(result.error);
   }
 );
@@ -34644,17 +34697,17 @@ server.tool(
   "is_navigate",
   "Read a position as bounded reference focus \u2014 its selected agent context, depth-one Content tree, and skills at history placement. Pass `address` (@<root>//<position>) to focus on a Map member directory at a commit, against `map` or the session's launch Map. The target contract is reference, never caller authority. Read-only: it does NOT change the working directory or operating frame; Read/Edit/Bash still take explicit paths.",
   MCP_TOOL_PARAMETERS.is_navigate,
-  async ({ path, address, map, at, cwd }) => {
+  async ({ path, address, map, at, agreement, cwd }) => {
     if (!address && isMapAddress(path)) {
       address = path;
       path = void 0;
     }
     if (address) {
       if (path) return fail("Give an address or a path, not both.");
-      return readThroughCli(addressArgs("navigate", address, map, at), cwd);
+      return readThroughCli([...addressArgs("navigate", address, map, at), ...agreementArgs(agreement)], cwd);
     }
     if (map || at) return fail("map and at read an address (@<root>//<position>); pass address, not path.");
-    const result = await readNavigate({ path, cwd });
+    const result = await readNavigate({ path, cwd, agreement });
     return result.ok ? ok(result.text) : fail(result.error);
   }
 );
@@ -34681,13 +34734,13 @@ server.tool(
 );
 server.tool(
   "is_spaces",
-  "List your remote spaces \u2014 slug, role, member count. Read-only; requires login (is_auth). Use before is_clone to choose one.",
+  "List your hosted Repos \u2014 slug, role, member count. Read-only; requires login (is_auth). Use before is_clone to choose one.",
   MCP_TOOL_PARAMETERS.is_spaces,
   async () => run(["repos"])
 );
 server.tool(
   "is_get",
-  "Bring a Space home, plan-first. Without mode: shows what clone (same identity, fetch/push truth, full history), fork (new identity, no source history), or link (bind a local clone) would do \u2014 nothing changes. With mode: runs that one, after the person chose. Returns the local path for clone and fork \u2014 pass it as cwd afterward. is_clone remains for legacy locators.",
+  "Bring a Repo home, plan-first. Without mode: shows what clone (same identity, fetch/push truth, full history), fork (new identity, no source history), or link (bind a local clone) would do \u2014 nothing changes. With mode: runs that one, after the person chose. Returns the local path for clone and fork \u2014 pass it as cwd afterward. is_clone remains for legacy locators.",
   MCP_TOOL_PARAMETERS.is_get,
   async ({ address, mode, dir, cwd }) => {
     const a = ["get", address];
@@ -34698,7 +34751,7 @@ server.tool(
 );
 server.tool(
   "is_clone",
-  "Clone one of your remote spaces into a local folder by a legacy locator (slug, namespace/slug, repo_id from is_spaces); for a canonical Space URL prefer is_get. Requires login + git. Returns the local path \u2014 pass it as cwd to work there afterward.",
+  "Clone one of your hosted Repos into a local folder by a legacy locator (slug, namespace/slug, repo_id from is_spaces); for a canonical Repo URL prefer is_get. Requires login + git. Returns the local path \u2014 pass it as cwd to work there afterward.",
   MCP_TOOL_PARAMETERS.is_clone,
   async ({ space, dir, cwd }) => {
     const a = ["clone", space];
