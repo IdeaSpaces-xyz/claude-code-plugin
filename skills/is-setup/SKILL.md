@@ -1,8 +1,8 @@
 ---
 name: is-setup
 description: >
-  Set up the place someone is describing — a space for their knowledge, an agent
-  with a role, or an existing remote space opened here. Use when someone names a
+  Set up the place someone is describing — a Repo for their knowledge, an agent
+  with a role, or an existing hosted Repo opened here. Use when someone names a
   thing they want to keep, track, or organize — a knowledge base, a vault for
   transcripts, a repository for the team's KPIs, notes on a topic, a small CRM —
   or a helper they want to work with: an assistant, a sales agent, a critique
@@ -11,16 +11,16 @@ description: >
   user with nothing local yet. Create talks first — what this place is, how
   work goes, what the agent does alone — then runs `ideaspaces create`
   (`--agent` for an agent) and writes what was agreed into the Agreement; Open
-  lists your remote spaces (`is_spaces`) and clones the chosen one (`is_clone`).
+  lists your hosted Repos (`is_spaces`) and clones the chosen one (`is_clone`).
   Not for building software — someone coding an app wants code, not a space.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_auth mcp__plugin_ideaspaces_core__is_spaces mcp__plugin_ideaspaces_core__is_clone mcp__plugin_ideaspaces_core__is_navigate Edit Read Write Glob Bash"
 ---
 
-# Setup an Ideaspace
+# Set Up a Repo or Agent
 
 **Goal:** look → talk → reflect back → `ideaspaces create` → write what was agreed into `_agent/agreement.md` → commit → offer publish.
 
-A space is one folder with one contract file, `_agent/agreement.md`, that says what the place is and how work goes here. The conversation is the work; the CLI is the scaffold writer. It lands the Agreement with every section as a **prompt**, and this skill's job is that no prompt is left standing.
+This setup creates a Repo or agent folder with a contract file, `_agent/agreement.md`, that says what the place is and how work goes here. It does not create a Space lens. A Space references content held in Repos; a Vault coordinates the wider work. The conversation is the work; the CLI is the scaffold writer. It lands the Agreement with every section as a **prompt**, and this skill's job is that no prompt is left standing.
 
 The CLI ships inside this plugin at `${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js`. Invoke via `Bash`. No separate install required.
 
@@ -30,11 +30,11 @@ Don't offer unprompted. Wait for a signal — "set up a space", "I want somewher
 
 Read the signal before proceeding:
 
-- **Create a space** — a place for knowledge: notes, decisions, research, a project's memory. Signals: "set up a space", "add ideaspaces here", "I want somewhere that keeps growing", a folder the user wants structured. → Follow [`create-a-space.md`](create-a-space.md).
+- **Create a Repo** — a place for knowledge: notes, decisions, research, a project's memory. Signals: "set up a space", "add ideaspaces here", "I want somewhere that keeps growing", a folder the user wants structured. → Follow [`create-a-space.md`](create-a-space.md).
 - **Create an agent** — a folder that *is* someone: "create an agent", "make me a research assistant", "something that does X for me". → Follow [`create-an-agent.md`](create-an-agent.md).
-- **Open existing** — the user already has spaces on the remote and wants one on this machine (new laptop, joining a team, "get me into my space", "clone my notes"). → **Open an existing space**, below. Requires login.
+- **Open existing** — the user already has hosted Repos and wants one on this machine (new laptop, joining a team, "get me into my space", "clone my notes"). → **Open an existing Repo**, below. Requires login.
 
-Ambiguous (logged in, has spaces, empty cwd)? Ask which they want — don't assume. Someone who says "assistant", "persona", or "personality" wants an agent; take the word they used, don't correct it.
+Ambiguous (logged in, has hosted Repos, empty cwd)? Ask which they want — don't assume. Someone who says "assistant", "persona", or "personality" wants an agent; take the word they used, don't correct it.
 
 ## What both create paths share
 
@@ -44,11 +44,11 @@ Both procedures run the same shape. The details — what to listen for, the ques
 
    | Found | It means |
    |---|---|
-   | `_agent/agreement.md` | Already an ideaspace. The CLI refuses; offer to edit the Agreement instead. |
+   | `_agent/agreement.md` | Already has agent instructions. The CLI refuses; offer to edit the Agreement instead. |
    | `_agent/foundation.md` | The older shape. It still loads; offer `${CLAUDE_PLUGIN_ROOT}/reference/migrate-to-agreement.md` rather than scaffolding beside it. |
    | `_agent/always.md` / `rules.md` / `soul.md` | Legacy. The CLI errors; the content moves into an Agreement by hand. |
    | Markdown files, no `_agent/` | Content already here. Read a few before asking — the story is partly in them. |
-   | `.github/`, `package.json`, `Cargo.toml`, … | A code repo. A space can sit beside code; the CLI keeps `_agent/` private (gitignored) unless `--shared`. An agent's folder is not a code repo — propose a sibling folder. |
+   | `.github/`, `package.json`, `Cargo.toml`, … | A code repo. Agent instructions can sit beside code; the CLI keeps `_agent/` private (gitignored) unless `--shared`. An agent's folder is not a code repo — propose a sibling folder. |
    | `CLAUDE.md`, `.gitignore` | The CLI won't overwrite either; it appends `.gitignore` defaults under a header. |
 
 2. **Draw out.** Open with a story or a task, not a form. Listen for what the Agreement needs; ask only for what is missing *and* needed before the first move. Cases, in their words.
@@ -62,7 +62,7 @@ Both procedures run the same shape. The details — what to listen for, the ques
    node ${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js create [<name>] [--agent] [--shared] --yes
    ```
 
-   The CLI writes `_agent/agreement.md` — referencing the knowledge kind, or the agent kind with `--agent` — plus a short `CLAUDE.md` (or `CLAUDE.local.md` in a private code repo), `.gitattributes`, and `.gitignore` defaults, then `git init -b main` and an exact-path initial commit as a **best-effort finalize**. If Git is unavailable the space still exists, unversioned, and the CLI prints the recovery commands. **Relay the CLI's own stdout; don't assume a commit happened.**
+   The CLI writes `_agent/agreement.md` — referencing the knowledge kind, or the agent kind with `--agent` — plus a short `CLAUDE.md` (or `CLAUDE.local.md` in a private code repo), `.gitattributes`, and `.gitignore` defaults, then `git init -b main` and an exact-path initial commit as a **best-effort finalize**. If Git is unavailable the folder still exists, unversioned, and the CLI prints the recovery commands. **Relay the CLI's own stdout; don't assume a commit happened.**
 
 5. **Replace the prompts.** Use native `Edit` on `_agent/agreement.md` — section by section, with what was agreed. Keep the frontmatter the CLI wrote; change only `name` and `summary` (two dense sentences). Show the file once more.
 
@@ -74,12 +74,12 @@ Both procedures run the same shape. The details — what to listen for, the ques
 
 Do **not** write `purpose.md`, `now.md`, or an empty `skills/`. They come when there is something real to put in them.
 
-## Open an existing space
+## Open an existing Repo
 
 1. **Ensure login.** If not logged in, run `is_auth` (login) first — `is_spaces` / `is_clone` need it.
-2. **List.** `is_spaces` — show the user's remote spaces (slug, role, members). Present plainly; let them pick.
-3. **Clone.** `is_clone` with the chosen space. It returns the local **path**.
-4. **Orient there.** MCP tools take `cwd` per call and don't persist a working dir, so after cloning, pass the returned path as `cwd` to what follows — orient with `is_navigate` (`cwd` = the clone path) or the **is-orient** skill, and confirm the user is now working *inside* the cloned space.
+2. **List.** `is_spaces` — show the user's hosted Repos (slug, role, members). Present plainly; let them pick.
+3. **Clone.** `is_clone` with the chosen Repo locator. It returns the local **path**.
+4. **Orient there.** MCP tools take `cwd` per call and don't persist a working dir, so after cloning, pass the returned path as `cwd` to what follows — orient with `is_navigate` (`cwd` = the clone path) or the **is-orient** skill, and confirm the user is now working *inside* the cloned Repo.
 
 **Cowork:** its sandbox may block the network that `is_spaces` / `is_clone` need. If they fail to reach the remote, tell the user to switch to **Claude Code view** for remote operations — local capture still works in Cowork.
 
@@ -106,7 +106,7 @@ Summarize what landed:
 
 ## What comes next
 
-- **`/is-publish`** — host this space remotely (login + provision + push)
+- **`/is-publish`** — host this Repo remotely (login + provision + push)
 - **is-capture** — propose saving knowledge during work
 - **is-reflect** — propose updating direction when it drifts
 - **is-writing** — writing standard for Notes
