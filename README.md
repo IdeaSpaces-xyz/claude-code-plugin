@@ -5,7 +5,9 @@
 
 > An agent is a folder. This plugin teaches yours to work in one.
 
-An ideaspace is a folder of Markdown under git that holds two things: **your knowledge**, and **how to work with it**. Open your agent inside one and that's who you're talking to. The instructions live in the folder, not in the model, so the same folder works in Claude Code today and in whatever you run next year.
+A Repo is a folder of Markdown under git that holds two things: **your knowledge**, and **how to work with it**. Open your agent inside one and that's who you're talking to. The instructions live in the folder, not in the model, so the same folder works in Claude Code today and in whatever you run next year.
+
+A **Space** is a lens: a view and a boundary around references to Repos, Notes, Threads, and agents. It holds no content and grants no access to that content. A **Vault** is the larger coordination layer. Grants on a Space govern what someone may do with the Space, such as add items or people; each content owner grants access separately. A reader without access can ask for it through a knock (not yet offered from every reference view). Local and remote Spaces are separate and update independently. Import and export make copies; they do not sync Spaces.
 
 The plugin does three things. On arrival it reads the folder's `_agent/` instructions, the tree, and what changed since last time. While you work it proposes writing down decisions and findings as plain Markdown, and commits only what you agreed to, with your name on it. When you want, it publishes, shares, pushes, or pulls. Everything stays on your machine until then.
 
@@ -61,9 +63,9 @@ Open your agent in any folder and say one of these:
 
 - *"set up an ideaspace here"* — looks at what is in the folder, draws out what the place is and how work goes, then writes that as `_agent/agreement.md`.
 - *"create an agent"* — a folder that *is* an agent; who it is is drawn out in conversation and written as its Agreement.
-- *"take this space home"* with a public space URL — a local copy, no account needed.
+- *"take this Repo home"* with a public Repo URL — a local copy, no account needed.
 
-From then on, just work. When something worth keeping lands, the agent offers to write it down. Say *"write this down"* to do it yourself. Say *"publish this space"* to host it, *"share this with alice@example.com"* to let someone in, *"show my unread Threads"* to read questions about what you shared.
+From then on, just work. When something worth keeping lands, the agent offers to write it down. Say *"write this down"* to do it yourself. Say *"publish this Repo"* to host the files, *"share this with alice@example.com"* to let someone in, *"show my unread Threads"* to read questions about what you shared.
 
 Type `/` to see the skills: `is-setup`, `is-guide`, `is-orient`, `is-capture`, `is-shape`, `is-space`, `is-fork`, `is-publish`, `is-share`, `is-threads`, `is-push`, `is-pull`. Two more work on the agent's own initiative: `is-reflect` offers to update direction when it drifts, and `is-writing` shapes how notes are written.
 

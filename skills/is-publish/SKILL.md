@@ -1,7 +1,7 @@
 ---
 name: is-publish
 description: >
-  Put this space online — host the current folder as a remote ideaspace, so it
+  Put this Repo online — host the current repository, so it
   outlives this machine and the team or another device can reach it. Use when
   someone says put it online, publish this, host it, back this up, get this on
   my other computer, or make it available to the team; or after `/is-setup`
@@ -11,7 +11,14 @@ description: >
 allowed-tools: "Read Bash"
 ---
 
-# Publish an Ideaspace
+# Publish a Repo
+
+Publishing hosts the Repo that holds the files. It does not publish or sync a Space lens.
+A Space is a view and a boundary, not a content container. Grants on it govern adding items
+or people; each owner grants access to their content separately. A reader without access
+can ask through a knock. Local and remote Spaces are separate and update independently;
+import and export make copies. The `spaces.json` filename below is a legacy Repo binding,
+not a Space-sync record.
 
 **Goal:** login check → plan (`publish` without `--yes`, zero mutations) → the user agrees → apply
 (`publish --yes`) → narrate result. The plan-then-apply split is the CLI's contract, not a
@@ -33,7 +40,7 @@ No separate install required.
 { test -f _agent/agreement.md || test -f _agent/foundation.md; } && test -d .git && echo "ok" || echo "missing"
 ```
 
-**Portable identity agrees?** Current shared scaffolds declare `root_node_id`; legacy Spaces may validly omit it. Never mint, edit, stage, or commit identity during publish. Run the bundled CLI's `status --json` and inspect `root_identity`: stop on `invalid`, `drift`, `ambiguous`, or `declaration.dirty`. Publish repeats this preflight against HEAD, index, worktree, canonical origin, and local registry before login or remote mutation.
+**Portable identity agrees?** Current shared scaffolds declare `root_node_id`; legacy Repos may validly omit it. Never mint, edit, stage, or commit identity during publish. Run the bundled CLI's `status --json` and inspect `root_identity`: stop on `invalid`, `drift`, `ambiguous`, or `declaration.dirty`. Publish repeats this preflight against HEAD, index, worktree, canonical origin, and local registry before login or remote mutation.
 
 **Markdown frontmatter parses?** The CLI preflights all tracked Markdown for YAML syntax. If it fails, surface the output and ask the user to fix and commit the reported YAML.
 
@@ -102,7 +109,7 @@ already said "publish this", the plan surfaces side effects they haven't seen (t
 an author rewrite) — one look before it happens is the agreement, not friction. Flag overrides:
 `--slug <name>`, `--name "<display>"`, `--hostname <host>` for org spaces (first publish only).
 
-For re-publish the plan says it reuses the existing Space identity — don't re-ask names.
+For re-publish the plan says it reuses the existing Repo identity — don't re-ask names.
 
 **Non-interactive sessions stop here.** With nobody to agree, the plan output *is* the honest
 result; never add `--yes` on the user's behalf.
@@ -120,9 +127,9 @@ The CLI:
 1. Evaluates the committed root contract (Agreement, or Foundation on the older shape) against index/worktree, canonical origin, and local registry evidence.
 2. Preflights tracked Markdown syntax and size before network work.
 3. Confirms login and asks Keeper to adopt the exact committed `root_node_id` on first publish.
-4. Creates or reuses the one matching hosted Space; `--force` cannot fork or rekey it.
+4. Creates or reuses the one matching hosted Repo; `--force` cannot fork or rekey it.
 5. Sets repo-local Git attribution, configures the matching canonical origin, and pushes `main`.
-6. Records the verified folder ↔ Space binding in `~/.ideaspaces/spaces.json`.
+6. Records the verified folder ↔ Repo binding in `~/.ideaspaces/spaces.json`.
 
 ### Size-cap recovery (oversized tracked files)
 
@@ -156,7 +163,7 @@ If the mapped remote is gone, inaccessible, or incompatible with the contract/or
 
 - restore access or the matching remote;
 - use `ideaspaces link` when the hosted identity is known and the local mapping alone is stale;
-- create an explicit local Fork in a separate destination when the user intends a new Space identity.
+- create an explicit local Fork in a separate destination when the user intends a new Repo identity.
 
 ## 5. Narrate result
 
@@ -175,7 +182,7 @@ Then name the next two steps, every time:
 | `Not logged in` | No usable sign-in | Offer bundled `login`; do not infer this from a failed/offline status check. |
 | `Cannot publish yet: N tracked file(s) exceed the 200,000-byte server limit.` | CLI size preflight | See "Size-cap recovery" above — auto-handle known clutter, surface the rest. |
 | `Push failed: ... size cap` | Server-side cap (only if CLI preflight is bypassed) | Same as above; re-run `/is-publish` so the local preflight surfaces the offender list. |
-| `This folder is mapped to ... but that remote no longer exists or you no longer have access` | Hosted binding cannot be reached | Restore access/binding; a new Space requires explicit local Fork in a separate destination. |
+| `This folder is mapped to ... but that remote no longer exists or you no longer have access` | Hosted binding cannot be reached | Restore access/binding; a new Repo requires explicit local Fork in a separate destination. |
 | `Push failed: ... attribution doesn't match` | Commit author doesn't match account | Re-run publish; it sets local `user.email`. Amend/recommit if needed. |
 | `Local branch is \`<x>\`; IdeaSpaces uses \`main\`` | Pre-flight didn't run / user invoked CLI directly | Rename via `git branch -m main` and retry, or use `/is-publish` which offers the rename. |
 | `Couldn't determine the current branch — is HEAD detached?` | Detached-HEAD state (rare; pre-flight catches via skill) | Check out a branch (`git checkout main`) and retry. |
@@ -184,11 +191,11 @@ Then name the next two steps, every time:
 | `publish --force cannot fork or rekey` | Existing hosted binding | Re-publish normally, or use explicit local Fork in a separate destination. |
 | `--name only apply on first publish` | Re-publish path | Drop the flag. A new name/identity requires explicit local Fork, not `--force`. |
 
-Recovery posture: re-running publish is safe after repair. Preserve identity authority: restore or explicitly link matching evidence, or create a separate local Fork when a new Space is intended.
+Recovery posture: re-running publish is safe after repair. Preserve identity authority: restore or explicitly link matching evidence, or create a separate local Fork when a new Repo is intended.
 
 ## What comes next
 
-- **is-push** — send new commits to the Space just published
+- **is-push** — send new commits to the Repo just published
 - **is-share** — let someone in (Viewer, Allow copying, Editor), or make it public
 - **is-capture** — propose saving knowledge during work
 - **is-reflect** — propose updating direction when it drifts
