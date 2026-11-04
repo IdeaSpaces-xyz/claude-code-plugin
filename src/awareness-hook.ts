@@ -127,7 +127,7 @@ async function main(): Promise<void> {
     if (manifest && manifest.status === "ok") {
       // Run beside local rendering/staged-path work, with a hard 100ms total
       // budget. Network latency must not consume the SessionStart allowance.
-      const arrivalLine = renderArrivalLine();
+      const arrivalLine = renderArrivalLine().catch(() => undefined);
       const head = renderContentAwareness(manifest, { placement: "head" });
       // State reuses the Git facts the manifest already read — one more read,
       // the staged captures, not a second status walk. Outside a repository

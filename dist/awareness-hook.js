@@ -9367,7 +9367,7 @@ async function main() {
       manifest = null;
     }
     if (manifest && manifest.status === "ok") {
-      const arrivalLine = renderArrivalLine();
+      const arrivalLine = renderArrivalLine().catch(() => void 0);
       const head = renderContentAwareness(manifest, { placement: "head" });
       const state = manifest.position.repoRoot && manifest.git ? {
         placement: "tail",
