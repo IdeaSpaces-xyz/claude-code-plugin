@@ -18,10 +18,10 @@ describe("recipient-shaped Share distribution", () => {
 
     expect(pkg.version).toBe("0.8.0");
     expect(plugin.version).toBe("0.8.0");
-    expect(vendor.cli.commit).toBe("4284a253098b2eabba1b917e13bbd16f1f26ee1b");
-    expect(vendor["mcp-server"].commit).toBe("f06f4d506232c7d49ee2d6f3a65764b934ef93df");
+    expect(vendor.cli.commit).toBe("cdf0b59004cb656ec6ad96239389f2f12c42647b");
+    expect(vendor["mcp-server"].commit).toBe("d8e4faf434a7d78a541a3ebc981729081c93d210");
     expect(vendor.cli.protocolPin).toBe(
-      "github:IdeaSpaces-xyz/ideaspace-protocol#0fdad8ecffc53453a72796b985ae559f43d1ae1c",
+      "github:IdeaSpaces-xyz/ideaspace-protocol#a4fd06e6fc7e9cfd75f4d08d67c7bc35841733bc",
     );
   });
 

@@ -31469,19 +31469,15 @@ function isRecord3(value) {
 }
 
 // node_modules/@ideaspaces/protocol/dist/threads.js
+var THREADS_DIRECTORY = "_threads";
+var HOSTED_THREAD_ID = /^x_[A-Za-z0-9_-]+$/;
 var THREAD_KINDS = [
   "post",
   "snapshot",
   "reframe",
   "correction",
   "closure",
-  "mark",
-  "decision",
-  "dispatch",
-  "claim",
-  "delivery",
-  "verification",
-  "question"
+  "mark"
 ];
 function parseThreadAttachment(value) {
   if (typeof value !== "string" || !value.trim())
@@ -33549,20 +33545,25 @@ function planChangeClose(armed, persisted, hasCacheFile) {
 }
 
 // src/threads.ts
-import { relative as relative6, resolve as resolve11, sep as sep6 } from "node:path";
+import { join as join11, relative as relative6, resolve as resolve11, sep as sep6 } from "node:path";
 import { existsSync as existsSync3, lstatSync, readFileSync, realpathSync } from "node:fs";
 var import_yaml3 = __toESM(require_dist2(), 1);
+function isHostedRef(input) {
+  const path = input.path?.trim() ?? "";
+  return HOSTED_THREAD_ID.test(path) && !existsSync3(join11(resolve11(process.cwd(), input.cwd ?? "."), THREADS_DIRECTORY, path));
+}
 function threadArgs(input) {
   if (input.action === "ack") throw new Error("Agent acknowledgement is held until a separate agent token exists; it must not move the person's Unread.");
-  if (input.hosted || /^x_[0-9a-f]+$/.test(input.path?.trim() ?? "")) return hostedArgs(input);
+  if (input.action === "recent") return recentArgs(input);
+  if (input.hosted || isHostedRef(input)) return hostedArgs(input);
   if (input.cursor !== void 0 || input.recipients !== void 0 || input.post_id !== void 0 || input.unread !== void 0) throw new Error("Hosted options require hosted: true or an x_ id.");
   const { action } = input;
   const path = input.path?.trim();
   const selected = input.member !== void 0;
-  if (input.tags?.length && action !== "post") throw new Error("tags apply only to local posts.");
+  if (input.tags?.length && action !== "post") throw new Error("tags apply only to posts.");
   if (input.attached_to !== void 0 && action !== "new") throw new Error("attached_to belongs only on a new Thread's opening post.");
   if (input.about !== void 0 && action !== "new") throw new Error("about applies only to threads new.");
-  if ((input.kind !== void 0 || input.confirm_kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) && action !== "post") throw new Error("kind, confirm_kind, mark and supersedes apply only to local posts.");
+  if ((input.kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) && action !== "post") throw new Error("kind, mark and supersedes apply only to local posts.");
   if (input.reply_to?.length && action !== "post") throw new Error("reply_to applies only to posts.");
   if (input.checkout && !selected) throw new Error("checkout requires an authored map and member.");
   if (selected && (!input.map?.trim() || !Number.isSafeInteger(input.member) || input.member < 0)) {
@@ -33625,9 +33626,8 @@ function threadArgs(input) {
   if (selected && (input.author || !input.reply_to?.length)) throw new Error("Selected posts require an explicit reply_to and the caller's Agreement author; omit author.");
   if (!input.message?.trim()) throw new Error("A post or closure needs a nonempty message.");
   if (action === "post" && input.kind !== void 0 && !input.kind.trim()) throw new Error("kind must be a non-empty string.");
-  if (input.confirm_kind && !input.kind) throw new Error("confirm_kind requires an explicit kind.");
-  if (action === "post" && input.kind && !THREAD_KINDS.includes(input.kind) && !input.confirm_kind) {
-    throw new Error(`Unrecognised kind ${input.kind}; check spelling or pass confirm_kind: true to author an immutable custom kind.`);
+  if (action === "post" && input.kind && !THREAD_KINDS.includes(input.kind)) {
+    throw new Error(`kind ${JSON.stringify(input.kind)} is not a kind: use ${THREAD_KINDS.join(", ")}. A label for a post goes in tags.`);
   }
   if (action === "post" && input.kind === "mark" && (!input.mark?.trim() || input.reply_to?.length !== 1 || input.reply_to[0] === "latest")) {
     throw new Error("kind: mark requires mark and reply_to with exactly one explicit target post id.");
@@ -33646,7 +33646,6 @@ function threadArgs(input) {
     ...action === "post" ? [
       ...input.reply_to?.length ? ["--reply-to", input.reply_to.join(",")] : [],
       ...input.kind ? ["--kind", input.kind] : [],
-      ...input.confirm_kind ? ["--yes"] : [],
       ...input.mark ? ["--mark", input.mark] : [],
       ...input.supersedes ? ["--supersedes", input.supersedes] : [],
       ...input.name ? ["--name", input.name] : [],
@@ -33681,6 +33680,10 @@ An opening-post Map requires IdeaSpaces CLI 0.4.0 or newer. Update the CLI (or p
   if (/Unknown flag for threads (?:new: --attached-to|post: --(?:mark|kind))/i.test(detail3)) {
     return `${detail3}
 Opening links and marks require IdeaSpaces CLI 0.3.1 or newer. Update the CLI (or plugin bundle) and retry.`;
+  }
+  if (/--tags is not supported by hosted threads/i.test(detail3)) {
+    return `${detail3}
+Tags on a hosted Thread require IdeaSpaces CLI 0.7.0 or newer. Update the CLI (or plugin bundle) and retry.`;
   }
   return /Unknown flag for threads (?:open|post)|--depth surface requires --post/i.test(detail3) ? `${detail3}
 This Thread tree tool requires IdeaSpaces CLI 0.2.21 or newer. Update the CLI (or plugin bundle) and retry.` : detail3;
@@ -33763,9 +33766,9 @@ function hostedArgs(input) {
   const path = input.path?.trim();
   const allowed = {
     list: ["hosted", "limit", "cursor", "unread"],
-    new: ["hosted", "name", "summary", "message", "recipients", "map", "post_id"],
+    new: ["hosted", "name", "summary", "message", "recipients", "map", "post_id", "tags"],
     open: ["hosted", "path", "limit", "cursor"],
-    post: ["hosted", "path", "reply_to", "message", "name", "summary", "map", "post_id"]
+    post: ["hosted", "path", "reply_to", "message", "name", "summary", "map", "post_id", "tags"]
   };
   if (!allowed[action]) throw new Error("Hosted close requires an explicit CLI preview and confirmation; use threads close x_id --message <why> then --yes.");
   for (const [key2, value] of Object.entries(input)) {
@@ -33774,7 +33777,8 @@ function hostedArgs(input) {
   if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 200)) throw new Error("Hosted limit must be from 1 to 200.");
   if (action === "list" || action === "new") {
     if (path) throw new Error("Hosted list/new takes no path; use hosted: true.");
-  } else if (!/^x_(?:[0-9a-f]{24}|[0-9a-f]{32})$/.test(path ?? "")) throw new Error("Hosted Thread id must be x_ followed by 24 or 32 hex digits.");
+  } else if (!HOSTED_THREAD_ID.test(path ?? "")) throw new Error("Hosted Thread id must match " + HOSTED_THREAD_ID.source + ".");
+  if (input.tags?.some((tag) => !tag?.trim() || tag.includes(","))) throw new Error("tags must be non-empty and may not contain commas.");
   if (input.recipients?.some((r) => !r.trim() || r.includes(","))) throw new Error("Each recipients entry must be one selector, not a comma-separated list.");
   if (input.post_id !== void 0 && !/^msg_[A-Za-z0-9_-]{1,60}$/.test(input.post_id)) throw new Error("post_id must be a msg_ id.");
   if (action === "new" && (!input.name?.trim() || !input.summary?.trim())) throw new Error("Hosted new requires name and summary.");
@@ -33793,8 +33797,20 @@ function hostedArgs(input) {
     ...input.summary !== void 0 ? ["--summary", input.summary] : [],
     ...input.recipients !== void 0 ? ["--recipients", input.recipients.join(",")] : [],
     ...input.map !== void 0 ? ["--map", input.map] : [],
+    ...input.tags?.length ? ["--tags", input.tags.join(",")] : [],
     ...input.post_id !== void 0 ? ["--post-id", input.post_id] : []
   ];
+}
+function recentArgs(input) {
+  for (const [key2, value] of Object.entries(input)) {
+    if (!["action", "cwd", "cursor", "limit"].includes(key2) && value !== void 0 && !(Array.isArray(value) && value.length === 0)) throw new Error(`${key2} does not apply to recent; it takes cursor and limit.`);
+  }
+  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 500)) throw new Error("recent limit must be from 1 to 500.");
+  return ["threads", "recent", ...input.cursor !== void 0 ? ["--cursor", input.cursor] : [], ...input.limit !== void 0 ? ["--limit", String(input.limit)] : []];
+}
+function recentCliFailure(detail3) {
+  return /^Usage: ideaspaces threads <(?!.*\brecent\b)/.test(detail3) ? `${detail3}
+threads recent requires IdeaSpaces CLI 0.7.0 or newer. Update the CLI (or plugin bundle) and retry.` : threadCliFailure(detail3);
 }
 function threadsOnlyCapability(value) {
   if (!value || typeof value !== "object") return false;
@@ -33802,18 +33818,18 @@ function threadsOnlyCapability(value) {
   return c.schema === "ideaspaces.threads.capabilities.v1" && c.transport === "/threads" && c.legacy_exchange_fallback === false;
 }
 function needsHostedThreads(input) {
-  return !!input.hosted || /^x_[0-9a-f]+$/.test(input.path?.trim() ?? "") || input.action === "list" && !input.path?.trim();
+  return !!input.hosted || isHostedRef(input) || input.action === "list" && !input.path?.trim();
 }
 
 // src/collaborate.ts
 import { spawn as spawn4 } from "node:child_process";
 import { lstatSync as lstatSync3, realpathSync as realpathSync3 } from "node:fs";
-import { isAbsolute as isAbsolute6, join as join12, resolve as resolve13 } from "node:path";
+import { isAbsolute as isAbsolute6, join as join13, resolve as resolve13 } from "node:path";
 
 // src/pi-child-resources.ts
 import { spawn as spawn3 } from "node:child_process";
 import { lstatSync as lstatSync2, readFileSync as readFileSync2, realpathSync as realpathSync2 } from "node:fs";
-import { isAbsolute as isAbsolute5, join as join11, relative as relative7, resolve as resolve12, sep as sep7 } from "node:path";
+import { isAbsolute as isAbsolute5, join as join12, relative as relative7, resolve as resolve12, sep as sep7 } from "node:path";
 var REQUIRED = ["@ideaspaces/pi-is-space", "@ideaspaces/pi-local-context"];
 function contained(root, path) {
   const rel = relative7(root, path);
@@ -33888,7 +33904,7 @@ function parsePiChildResources(text) {
     } catch {
       throw new Error(`User Pi package listed at ${entry} is missing; repair the install before launching a child.`);
     }
-    const manifestPath = join11(root, "package.json");
+    const manifestPath = join12(root, "package.json");
     let pkg;
     try {
       const stat2 = lstatSync2(manifestPath);
@@ -34045,7 +34061,7 @@ function resolvePov(pov, cwd) {
   try {
     const dir = realpathSync3(candidate);
     const root = lstatSync3(dir);
-    const contract = lstatSync3(join12(dir, "_agent", "agreement.md"));
+    const contract = lstatSync3(join13(dir, "_agent", "agreement.md"));
     if (root.isDirectory() && contract.isFile() && !contract.isSymbolicLink()) return { dir };
   } catch {
   }
@@ -34225,10 +34241,10 @@ var AUTHORED_TOOL_PARAMETERS = {
     action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
   },
   is_threads: {
-    action: external_exports.enum(["list", "open", "new", "post", "close"]).describe("Explicit Thread operation. hosted=true lists/starts through /threads; Agent acknowledgement of the person's Unread is not exposed."),
+    action: external_exports.enum(["list", "open", "new", "post", "close", "recent"]).describe("Explicit Thread operation. hosted=true lists/starts through /threads. recent says which local Threads moved, ids and counts only; hold its cursor and pass it next time. Agent acknowledgement of the person's Unread is not exposed."),
     hosted: external_exports.boolean().optional().describe("List or start a hosted Thread; omit path. Known x_ ids route hosted automatically."),
     unread: external_exports.boolean().optional().describe("Hosted list: only Threads with the web's unread_count > 0; follow cursor for more pages."),
-    cursor: external_exports.string().optional().describe("Hosted list/open: opaque CLI cursor from the previous response."),
+    cursor: external_exports.string().optional().describe("Hosted list/open, or recent: opaque CLI cursor from the previous response."),
     recipients: external_exports.array(external_exports.string()).max(16).optional().describe("Hosted new: @handles or email addresses; omit for solo."),
     post_id: external_exports.string().optional().describe("Hosted new/post: stable msg_ id for an exact resend after uncertain delivery; no automatic retry."),
     path: external_exports.string().optional().describe("Local Thread path or hosted x_ id. Omit for combined local/hosted list; use an explicit directory (e.g. .) for local-only."),
@@ -34236,17 +34252,16 @@ var AUTHORED_TOOL_PARAMETERS = {
     new: external_exports.boolean().optional().describe("Local open only: unseen posts after the private local read cursor."),
     since: external_exports.string().optional().describe("Local open only: ISO date or post id. Hosted paging uses cursor."),
     post: external_exports.string().optional().describe("Read one post in full plus child Threads attached to it (local open)."),
-    limit: external_exports.number().int().positive().optional().describe("Local open or hosted list/open page size (hosted max 200); not for pinned selection."),
+    limit: external_exports.number().int().positive().optional().describe("Local open, recent (max 500), or hosted list/open page size (hosted max 200); not for pinned selection."),
     order: external_exports.enum(["newer", "older"]).optional().describe("Live local open only: newer-first or older-first; not for a pinned selection."),
     message: external_exports.string().optional().describe("Body for an immutable post or closure"),
     about: external_exports.string().optional().describe("Title for action=new; written on the opening post."),
     attached_to: external_exports.string().optional().describe("Optional opening link for action=new: post:msg_\u2026 or note:@space//path. Only post: is a Thread tree edge; other types stay metadata."),
-    kind: external_exports.string().optional().describe("Open local post kind: post, snapshot, reframe, correction, closure, mark, decision, dispatch, claim, delivery, verification, question or a custom value. A typo cannot silently create an immutable post."),
-    confirm_kind: external_exports.boolean().optional().describe("Explicitly allow a custom kind on a local post; maps to CLI --yes. Not needed for standard kinds."),
+    kind: external_exports.string().optional().describe(`What a reader acts on, for a local post: ${THREAD_KINDS.join(", ")}. A label goes in tags.`),
     mark: external_exports.string().optional().describe("Open mark value with kind=mark; requires one explicit reply_to post id."),
     supersedes: external_exports.string().optional().describe("Post id replaced by a correction; kind=correction can retract a mark."),
     reply_to: external_exports.array(external_exports.string()).optional().describe("Local parent post ids: reply to the post you answer. Omit to branch from the opening post; ['latest'] opts into newest. Hosted post requires explicit msg_ parents; no n_ conversion."),
-    tags: external_exports.array(external_exports.string()).optional().describe("Local post retrieval tags, e.g. ['friction']."),
+    tags: external_exports.array(external_exports.string()).optional().describe("Labels for a post, on any Thread, e.g. ['delivery'] or ['friction']."),
     author: external_exports.string().optional().describe("Legacy same-Space writer override only. Selected posts reject author and derive it from the caller's own Agreement."),
     name: external_exports.string().optional().describe("Optional post name"),
     summary: external_exports.string().optional().describe("Optional post summary"),
@@ -34476,7 +34491,7 @@ server.tool(
 );
 server.tool(
   "is_threads",
-  "Read and write local or hosted Threads through the CLI. Default list is combined; path='.' is local-only. Local reads start at the newest snapshot; depth, limit/order and exact post select bounded local evidence. Reply to the post answered; omitted local reply_to branches from the opening post. Hosted list/new use hosted=true; open/post use an x_ id. Hosted reads use cursor, posts require explicit msg_ parents, Agents never acknowledge the person's Unread. A stale CLI cannot fall back to exchanges; a default-list fallback is explicitly labelled local-only.",
+  "Read and write local or hosted Threads through the CLI. action=recent says which local Threads moved since a cursor you hold. Default list is combined; path='.' is local-only. Local reads start at the newest snapshot; depth, limit/order and exact post select bounded local evidence. Reply to the post answered; omitted local reply_to branches from the opening post. Hosted list/new use hosted=true; open/post use an x_ id. Hosted reads use cursor, posts require explicit msg_ parents, Agents never acknowledge the person's Unread. A stale CLI cannot fall back to exchanges; a default-list fallback is explicitly labelled local-only.",
   MCP_TOOL_PARAMETERS.is_threads,
   async (input) => {
     try {
@@ -34505,7 +34520,7 @@ server.tool(
         if (result.code !== 0) return fail(result.err.trim() || result.out.trim());
         return ok(pinnedView(JSON.parse(result.out), input.depth ?? "summary", expected));
       }
-      return run(args, void 0, input.cwd, threadCliFailure);
+      return run(args, void 0, input.cwd, input.action === "recent" ? recentCliFailure : threadCliFailure);
     } catch (error2) {
       return fail(error2 instanceof Error ? error2.message : String(error2));
     }
