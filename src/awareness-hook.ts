@@ -125,6 +125,9 @@ async function main(): Promise<void> {
       manifest = null;
     }
     if (manifest && manifest.status === "ok") {
+      // Run beside local rendering/staged-path work, with a hard 100ms total
+      // budget. Network latency must not consume the SessionStart allowance.
+      const arrivalLine = renderArrivalLine();
       const head = renderContentAwareness(manifest, { placement: "head" });
       // State reuses the Git facts the manifest already read — one more read,
       // the staged captures, not a second status walk. Outside a repository
@@ -141,7 +144,7 @@ async function main(): Promise<void> {
       // The habitat's lines between head and tail: which convention the Space
       // declares, what that means in Claude Code, and how Notes are read here.
       const kind = renderKindLine(manifest) ?? "";
-      const arrival = await renderArrivalLine();
+      const arrival = await arrivalLine;
       const join = joinParts;
       const rest = join(kind, READING_LINE, arrival ?? "", tail);
       let text = join(head, rest);

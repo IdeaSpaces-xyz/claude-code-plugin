@@ -19,6 +19,12 @@ describe("Threads distribution without the Inbox", () => {
     const bytes = readFileSync(cli, "utf8");
     expect(bytes).not.toContain("/api/v1/inbox");
     expect(bytes).not.toContain("/exchanges/");
+    expect(bytes).not.toContain("/subscriptions");
+    for (const command of ["follow", "unfollow"]) {
+      const refused = run(command, "node", "n_" + "a".repeat(24), "--ack", "42");
+      expect(refused.status).toBe(1);
+      expect(refused.stderr).toContain("No request was sent");
+    }
   });
   it("teaches explicit hosted listing, opening, starting, replying and the person-Unread boundary", () => {
     expect(existsSync(join(root, "skills/is-inbox/SKILL.md"))).toBe(false);
