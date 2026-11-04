@@ -18,11 +18,17 @@ describe("recipient-shaped Share distribution", () => {
 
     expect(pkg.version).toBe("0.8.1");
     expect(plugin.version).toBe("0.8.1");
-    expect(vendor.cli.commit).toBe("34fa06f1598b27ea9b611a658e7ae47309b4949b");
+    expect(vendor.cli.commit).toBe("372c9933a37d97c19f7ce203d47fd2104a09cf18");
     expect(vendor["mcp-server"].commit).toBe("0fe338596401397a4bb7614478dfd316f86f5667");
     expect(vendor.cli.protocolPin).toBe(
       "github:IdeaSpaces-xyz/ideaspace-protocol#a4fd06e6fc7e9cfd75f4d08d67c7bc35841733bc",
     );
+  });
+
+  it("ships a CLI that reports its version", () => {
+    const version = spawnSync(process.execPath, [CLI, "--version"], { encoding: "utf-8" });
+    expect(version.status).toBe(0);
+    expect(version.stdout.trim()).toBe("0.8.1");
   });
 
   it("ships the people, teams, and visibility help through the bundled CLI", () => {
