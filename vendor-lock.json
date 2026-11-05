@@ -1,7 +1,7 @@
 {
   "cli": {
     "repository": "https://github.com/IdeaSpaces-xyz/cli.git",
-    "commit": "ace7691486b47f1ce2840eb69391bb9670176708",
+    "commit": "e021d0e8e07387e56dacee16475c0cf1ed30a744",
     "sourceArtifact": "bundle/ideaspaces.js",
     "vendoredArtifact": "cli/bundle/ideaspaces.js",
     "sha256": "21be1af2a639d7f8e2955ef671fb179d2fa1203ad1bdcd55a4e2cd8a51cfb461",

@@ -18,7 +18,7 @@ describe("recipient-shaped Share distribution", () => {
 
     expect(pkg.version).toBe("0.8.2");
     expect(plugin.version).toBe("0.8.2");
-    expect(vendor.cli.commit).toBe("ace7691486b47f1ce2840eb69391bb9670176708");
+    expect(vendor.cli.commit).toBe("e021d0e8e07387e56dacee16475c0cf1ed30a744");
     expect(vendor["mcp-server"].commit).toBe("0fe338596401397a4bb7614478dfd316f86f5667");
     expect(vendor.cli.protocolPin).toBe(
       "github:IdeaSpaces-xyz/ideaspace-protocol#a4fd06e6fc7e9cfd75f4d08d67c7bc35841733bc",
