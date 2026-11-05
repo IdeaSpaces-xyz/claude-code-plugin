@@ -29,10 +29,10 @@ describe("Threads distribution without the Inbox", () => {
   it("teaches explicit hosted listing, opening, starting, replying and the person-Unread boundary", () => {
     expect(existsSync(join(root, "skills/is-inbox/SKILL.md"))).toBe(false);
     const skill = read("skills/is-threads/SKILL.md");
-    for (const text of ["hosted: true", "unread: true", "recipients:", "reply_to:", "Agent-facing acknowledgement is held", "Old `n_`", "does not grant access"]) expect(skill).toContain(text);
+    for (const text of ["hosted: true", "unread: true", "recipients:", "reply_to:", "Agent-facing acknowledgement is held", "reach: \"knocked\"", "message_stored", "Old `n_`", "does not grant access"]) expect(skill).toContain(text);
   });
 });
 it("keeps plugin and package versions in agreement", () => {
-  expect(JSON.parse(read("package.json")).version).toBe("0.8.1");
-  expect(JSON.parse(read(".claude-plugin/plugin.json")).version).toBe("0.8.1");
+  expect(JSON.parse(read("package.json")).version).toBe("0.8.2");
+  expect(JSON.parse(read(".claude-plugin/plugin.json")).version).toBe("0.8.2");
 });
