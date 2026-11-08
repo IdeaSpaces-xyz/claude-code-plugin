@@ -33,6 +33,6 @@ describe("Threads distribution without the Inbox", () => {
   });
 });
 it("keeps plugin and package versions in agreement", () => {
-  expect(JSON.parse(read("package.json")).version).toBe("0.8.2");
-  expect(JSON.parse(read(".claude-plugin/plugin.json")).version).toBe("0.8.2");
+  expect(JSON.parse(read("package.json")).version).toBe("0.9.0");
+  expect(JSON.parse(read(".claude-plugin/plugin.json")).version).toBe("0.9.0");
 });
