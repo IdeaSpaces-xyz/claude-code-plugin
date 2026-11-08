@@ -69,7 +69,7 @@ Type `/` to see the skills: `is-setup`, `is-guide`, `is-orient`, `is-capture`, `
 
 ## Optional sign-in
 
-Plugin 0.8.2 bundles CLI 0.8.2. `is_auth action="login"` signs in this CLI install through your browser (`client=cli`), with a loopback callback and rotating session credentials stored locally (0600 on POSIX; not OS-keychain storage). Manage it in the web's **Desktop sign-ins** list. No account is needed for local work.
+Plugin 0.9.0 bundles CLI 0.9.0. `is_auth action="login"` signs in this CLI install through your browser (`client=cli`), with a loopback callback and rotating session credentials stored locally (0600 on POSIX; not OS-keychain storage). Manage it in the web's **Desktop sign-ins** list. No account is needed for local work.
 
 The bundled `status account --json` checks the session; offline is not signed out. `is_auth action="logout"` signs out on the server before clearing local credentials, keeping them for retry if it fails. Sign out before switching accounts or services. Existing authorized API keys still work; headless/CI uses an existing authorized key, and SSH sign-in requires explicit loopback forwarding. Never paste credentials into chat.
 
