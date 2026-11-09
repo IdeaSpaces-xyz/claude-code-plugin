@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -16,4 +17,17 @@ it("routes named hosted Maps and Thread placement to the installed CLI workflow"
     expect(workflow).toContain(boundary);
   }
   expect(workflow).toContain("not new native MCP or Pi tools");
+});
+
+it("the installed CLI actually advertises the documented Space and placement flags", () => {
+  const cli = join(process.cwd(), "cli/bundle/ideaspaces.js");
+  const help = (command: string) => {
+    const result = spawnSync(process.execPath, [cli, command, "--help"], { encoding: "utf8" });
+    expect(result.status).toBe(0);
+    return result.stdout + result.stderr;
+  };
+  const spaces = help("spaces");
+  for (const verb of ["list", "open", "new", "add", "remove", "import", "export"]) expect(spaces).toContain(verb);
+  for (const flag of ["--hosted", "--vault", "--if-match", "--command-id"]) expect(spaces).toContain(flag);
+  expect(help("threads")).toContain("--home map:<id>");
 });
