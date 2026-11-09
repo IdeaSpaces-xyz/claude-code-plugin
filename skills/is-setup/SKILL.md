@@ -76,6 +76,11 @@ Do **not** write `purpose.md`, `now.md`, or an empty `skills/`. They come when t
 
 ## Open an existing space
 
+For a hosted **named Map**, do not clone it: use
+[Hosted Spaces](../is-space/hosted-spaces.md) via the host helper in is-space.
+The clone flow below is the existing Repo/content workflow, not Map sync.
+
+
 1. **Ensure login.** If not logged in, run `is_auth` (login) first — `is_spaces` / `is_clone` need it.
 2. **List.** `is_spaces` — show the user's remote spaces (slug, role, members). Present plainly; let them pick.
 3. **Clone.** `is_clone` with the chosen space. It returns the local **path**.

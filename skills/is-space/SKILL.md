@@ -3,7 +3,7 @@ name: is-space
 description: >
   Reference for working in an ideaspace — the five-file `_agent/` contract,
   Two Roles convention, and Claude plugin tool surface. Use when the agent
-  needs the contract or tool-surface details mid-work. For explaining
+  needs the contract or tool-surface details mid-work, or works with hosted Spaces (named Maps). For explaining
   IdeaSpaces to a person, prefer is-guide; for active intents, prefer
   is-orient, is-capture, is-threads, is-share, is-push, is-pull, is-reflect, and is-shape.
 allowed-tools: "mcp__plugin_ideaspaces_core__is_navigate mcp__plugin_ideaspaces_core__is_look mcp__plugin_ideaspaces_core__is_threads mcp__plugin_ideaspaces_core__is_write mcp__plugin_ideaspaces_core__is_status mcp__plugin_ideaspaces_core__is_commit mcp__plugin_ideaspaces_core__is_push mcp__plugin_ideaspaces_core__is_pull mcp__plugin_ideaspaces_core__is_auth Read Glob Grep Edit Write Bash"
@@ -32,6 +32,22 @@ You have two working surfaces:
 - **Tools** — low-level primitives (`is_navigate`, `is_look`, `is_threads`, `is_status`, `is_write`, `is_commit`, `is_push`, `is_pull`, `is_auth`). Skills choose the mechanism; don't make backend choice the user's problem.
 
 Native `Read`, `Glob`, `Grep`, `Edit`, `Write`, and `Bash` remain the default for navigation, search, source-code work, and ordinary doc edits.
+
+## Hosted Spaces (named Maps)
+
+For listing, opening, creating, editing or copying a hosted Space, read
+[Hosted Spaces through the CLI](hosted-spaces.md). It also covers placing a hosted
+Thread with `--home map:<id>`. Define this helper in each shell call that uses that workflow:
+
+```bash
+is_cli() { node "${CLAUDE_PLUGIN_ROOT}/cli/bundle/ideaspaces.js" "$@"; }
+```
+
+This uses the installed consumer's CLI. No native Spaces tool is added. Legacy
+`is_spaces`/clone operations are not a way to read a named Map or synchronize it.
+Local and hosted Spaces remain independent; the shared workflow names the owner,
+reviewed-head, retry and copy boundaries. For Repo publication or access, keep
+using is-publish/is-share instead.
 
 ## Start here
 
