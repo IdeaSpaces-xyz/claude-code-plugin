@@ -36,6 +36,15 @@ duplicate.
 with a repair hint; a later unreadable post warns but does not block writes. `closed: "unknown"` is
 not `true` — never treat that truthy string as a closed Thread.
 
+## Place a hosted Thread in a Space
+
+For `--home map:<id>`, use the installed CLI workflow in
+[Hosted Spaces](../is-space/hosted-spaces.md), with the host helper from
+[is-space](../is-space/SKILL.md#hosted-spaces-named-maps). The native Thread tool
+has no new `home` parameter. Placement grants no access and adds no Map member;
+local Threads refuse it. Confirm the destination/opening and relay the actual
+Thread-or-knock result rather than assuming delivery.
+
 ## Hosted Threads
 
 Use `is_threads` with `action: list`, `hosted: true`, optional `unread: true`, `limit` and
