@@ -22,7 +22,7 @@ it("teaches session-aware status and server-first sign-out", () => {
   expect(read("skills/is-space/SKILL.md")).toContain("Offline/failure keeps credentials for retry");
 });
 
-it("ships CLI 0.9.1 and MCP logout retains a failed session before a successful server revoke", async () => {
+it("ships CLI 0.10.0 and MCP logout retains a failed session before a successful server revoke", async () => {
   const home = mkdtempSync(join(tmpdir(), "plugin-auth-"));
   const file = join(home, ".ideaspaces/credentials.json");
   // Explicit allowlist: never inherit installed account or model credentials.
@@ -48,7 +48,7 @@ it("ships CLI 0.9.1 and MCP logout retains a failed session before a successful 
     writeFileSync(file, saved, { mode: 0o600 });
     const help = await promisify(execFile)(process.execPath, [cli, "login", "--help"], { env, cwd: home });
     expect(`${help.stdout}${help.stderr}`).toContain("Browser sign-in on this machine");
-    expect(JSON.parse(read("vendor-lock.json")).cli.commit).toBe("f3530924ae38eeb4c95533eb80b1f9b4a9eb48cb");
+    expect(JSON.parse(read("vendor-lock.json")).cli.commit).toBe("1f9b4e705e1d89b072908c28e5b1e68843005a5e");
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(root, "dist/index.js")], cwd: home, env }));
     const failed = await client.callTool({ name: "is_auth", arguments: { action: "logout" } });
     expect(failed.isError).toBe(true);

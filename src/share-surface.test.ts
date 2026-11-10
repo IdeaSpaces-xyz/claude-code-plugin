@@ -16,19 +16,19 @@ describe("recipient-shaped Share distribution", () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.9.1");
-    expect(plugin.version).toBe("0.9.1");
-    expect(vendor.cli.commit).toBe("f3530924ae38eeb4c95533eb80b1f9b4a9eb48cb");
-    expect(vendor["mcp-server"].commit).toBe("0fe338596401397a4bb7614478dfd316f86f5667");
+    expect(pkg.version).toBe("0.10.0");
+    expect(plugin.version).toBe("0.10.0");
+    expect(vendor.cli.commit).toBe("1f9b4e705e1d89b072908c28e5b1e68843005a5e");
+    expect(vendor["mcp-server"].commit).toBe("1cd9f3dd93f21343a79b0a1badd228d58b1fefbb");
     expect(vendor.cli.protocolPin).toBe(
-      "github:IdeaSpaces-xyz/ideaspace-protocol#a4fd06e6fc7e9cfd75f4d08d67c7bc35841733bc",
+      "github:IdeaSpaces-xyz/ideaspace-protocol#5d5db8ab1a30154930b407afe16bd8d905286975",
     );
   });
 
   it("ships a CLI that reports its version", () => {
     const version = spawnSync(process.execPath, [CLI, "--version"], { encoding: "utf-8" });
     expect(version.status).toBe(0);
-    expect(version.stdout.trim()).toBe("0.9.1");
+    expect(version.stdout.trim()).toBe("0.10.0");
   });
 
   it("ships the people, teams, and visibility help through the bundled CLI", () => {
