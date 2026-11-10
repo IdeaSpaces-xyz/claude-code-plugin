@@ -58,7 +58,9 @@ try {
     const checkout = join(temp, name);
     run("git", ["init", "--quiet", checkout], temp);
     run("git", ["-C", checkout, "remote", "add", "origin", entry.repository], temp);
-    run("git", ["-C", checkout, "fetch", "--quiet", "--depth", "1", "origin", entry.commit], temp);
+    // Full history of the pinned commit, not depth 1: the CLI's catalog records the last commit that
+    // touched its sources (`git log -1 -- src …`), so a shallow checkout rebuilds a different bundle.
+    run("git", ["-C", checkout, "fetch", "--quiet", "origin", entry.commit], temp);
     run("git", ["-C", checkout, "checkout", "--quiet", "--detach", "FETCH_HEAD"], temp);
 
     // The recorded pin is asserted at vendor time; for repos we clone we can
