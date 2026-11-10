@@ -1,46 +1,13 @@
 name: CI
 
+# Required checks must report for every PR and merge group, including workflow-only changes.
 on:
+  merge_group:
+    types: [checks_requested]
   pull_request:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'hooks/**'
-      - 'dist/**'
-      - 'cli/bundle/**'
-      - 'reference/**'
-      - 'skills/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tsconfig.json'
-      - 'build-hook.mjs'
-      - 'reference.mjs'
-      - 'vendor.mjs'
-      - 'vendor-lock.json'
-      - '.mcp.json'
-      - '.claude-plugin/**'
-      - '.github/workflows/ci.yml'
   push:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'hooks/**'
-      - 'dist/**'
-      - 'cli/bundle/**'
-      - 'reference/**'
-      - 'skills/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tsconfig.json'
-      - 'build-hook.mjs'
-      - 'reference.mjs'
-      - 'vendor.mjs'
-      - 'vendor-lock.json'
-      - '.mcp.json'
-      - '.claude-plugin/**'
-      - '.github/workflows/ci.yml'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -67,6 +34,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Test merge queue verdict gate
+        run: node --test .github/scripts/slc-queue-gate.node.mjs
 
       - name: Typecheck
         run: npm run typecheck
