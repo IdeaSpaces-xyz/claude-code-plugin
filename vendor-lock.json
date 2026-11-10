@@ -1,10 +1,10 @@
 {
   "cli": {
     "repository": "https://github.com/IdeaSpaces-xyz/cli.git",
-    "commit": "1f9b4e705e1d89b072908c28e5b1e68843005a5e",
+    "commit": "06ec7f81da393f8c3b0fe5b59d0d6ce9a95d2548",
     "sourceArtifact": "bundle/ideaspaces.js",
     "vendoredArtifact": "cli/bundle/ideaspaces.js",
-    "sha256": "10f0bd9efd056da985d86bd0fd412ff44a2ca0b6f02210a91b9065df0b943e2e",
+    "sha256": "33c32ad2d1815a1e7c6dbeabd58937d97e7376f2620bf459bb7a761c2ea8c73a",
     "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#5d5db8ab1a30154930b407afe16bd8d905286975",
     "rebuildInCi": true,
     "commands": [
