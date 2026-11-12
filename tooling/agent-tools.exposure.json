@@ -1,0 +1,516 @@
+{
+  "is_auth": {
+    "entries": [
+      "login",
+      "logout"
+    ],
+    "aliases": {},
+    "required": [],
+    "omit": {},
+    "add": {
+      "action": {
+        "schema": {
+          "type": "string",
+          "enum": [
+            "login",
+            "logout"
+          ],
+          "description": "login: open browser OAuth and save credentials. logout: clear credentials."
+        },
+        "reason": "Host action selector over the explicitly exposed commands."
+      }
+    },
+    "narrow": {},
+    "host_parameters": {}
+  },
+  "is_threads": {
+    "entries": [
+      "threads.list",
+      "threads.open",
+      "threads.new",
+      "threads.post",
+      "threads.close",
+      "threads.recent"
+    ],
+    "aliases": {
+      "thread": "path"
+    },
+    "required": [
+      "action"
+    ],
+    "omit": {
+      "space": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI.",
+      "open": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI.",
+      "reader": "Reader identity is supplied by the host environment, not by a model.",
+      "ack": "Reader acknowledgement remains host-owned and unexposed; never move the person's Unread.",
+      "agreement": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI.",
+      "home": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI.",
+      "no_check_links": "This host always validates links; bypass stays unexposed.",
+      "yes": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI."
+    },
+    "add": {
+      "action": {
+        "schema": {
+          "type": "string",
+          "enum": [
+            "list",
+            "open",
+            "new",
+            "post",
+            "close",
+            "recent"
+          ],
+          "description": "Explicit Thread operation. hosted=true lists/starts through /threads. recent says which local Threads moved, ids and counts only; hold its cursor and pass it next time. Agent acknowledgement of the person's Unread is not exposed."
+        },
+        "reason": "Host action selector over the explicitly exposed commands."
+      },
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      }
+    },
+    "narrow": {
+      "depth": {
+        "enum": [
+          "name",
+          "summary",
+          "children",
+          "surface",
+          "full"
+        ]
+      },
+      "order": {
+        "enum": [
+          "newer",
+          "older"
+        ]
+      },
+      "recipients": {
+        "maxItems": 16
+      }
+    },
+    "host_parameters": {}
+  },
+  "is_write": {
+    "entries": [
+      "write"
+    ],
+    "aliases": {},
+    "required": [
+      "path",
+      "content"
+    ],
+    "omit": {
+      "stage": "Capture always stages its exact path and records host revision ownership; unstaged writes are not this tool."
+    },
+    "add": {
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      }
+    },
+    "narrow": {},
+    "host_parameters": {
+      "map": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "roots": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "repo": {
+                    "type": "string",
+                    "description": "Canonical absolute repository URL: <web-origin>/repos/{root_node_id}"
+                  },
+                  "root_node_id": {
+                    "type": "string",
+                    "description": "Portable root Node identity"
+                  },
+                  "sha": {
+                    "type": "string",
+                    "description": "Optional full Git commit pin; omit for a live Space Map root"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "members": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "root": {
+                        "type": "integer",
+                        "description": "Zero-based index into map.roots"
+                      },
+                      "position": {
+                        "type": "string",
+                        "description": "Portable repository-relative protocol position, or ."
+                      },
+                      "depth": {
+                        "type": "string",
+                        "enum": [
+                          "name",
+                          "summary",
+                          "surface",
+                          "children",
+                          "full"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "position"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "address": {
+                        "type": "string",
+                        "description": "Open type:id address"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "summary": {
+                        "type": "string"
+                      },
+                      "depth": {
+                        "type": "string",
+                        "enum": [
+                          "name",
+                          "summary"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "address"
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "roots",
+            "members"
+          ],
+          "additionalProperties": true,
+          "description": "Portable Map block for deliberately capturing this Note as a map-note"
+        },
+        "reason": "Host-owned structured Map value; local-effects parser validates shape, not the CLI file/string input."
+      }
+    }
+  },
+  "is_status": {
+    "entries": [
+      "session.status"
+    ],
+    "aliases": {},
+    "required": [],
+    "omit": {},
+    "add": {
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      }
+    },
+    "narrow": {},
+    "host_parameters": {}
+  },
+  "is_commit": {
+    "entries": [
+      "commit"
+    ],
+    "aliases": {},
+    "required": [
+      "message"
+    ],
+    "omit": {
+      "author_name": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them.",
+      "author_email": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them.",
+      "change_id": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them.",
+      "conversation": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them.",
+      "co_author": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them."
+    },
+    "add": {
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      }
+    },
+    "narrow": {
+      "op": {
+        "enum": [
+          "create",
+          "update",
+          "move",
+          "delete",
+          "restructure",
+          "capture"
+        ]
+      }
+    },
+    "host_parameters": {
+      "all": {
+        "schema": {
+          "type": "boolean",
+          "description": "Commit only paths captured by this MCP server session. Never adopts other staged knowledge from the shared index."
+        },
+        "reason": "Host-owned session capture ledger: all means only this process's captures, never every staged file."
+      }
+    },
+    "host_text": {
+      "reason": "Session capture ownership is stricter than CLI commit.",
+      "text": {
+        "does": "Commit the exact named staged paths, or this MCP process's captured paths with all.",
+        "use_when": "Save agreed captures explicitly; never adopt unrelated staged knowledge.",
+        "check": "The session ledger, revisions, assisting agent, Conversation and open Change stay host-owned. Check the returned commit SHA.",
+        "bound": "One commit; explicit paths or session-owned all, never both."
+      }
+    }
+  },
+  "is_change_open": {
+    "entries": [
+      "change.open"
+    ],
+    "aliases": {},
+    "required": [],
+    "omit": {},
+    "add": {},
+    "narrow": {},
+    "host_parameters": {}
+  },
+  "is_change_close": {
+    "entries": [
+      "change.close"
+    ],
+    "aliases": {},
+    "required": [],
+    "omit": {},
+    "add": {},
+    "narrow": {},
+    "host_parameters": {}
+  },
+  "is_look": {
+    "entries": [
+      "look"
+    ],
+    "aliases": {},
+    "required": [],
+    "omit": {},
+    "add": {
+      "address": {
+        "schema": {
+          "type": "string",
+          "description": "A Map member by address instead of a path: @<root name>//<position>, @<root_node_id>//<position>, or //<position> for your own root. Read against `map`, else the session's launch Map; works from any cwd."
+        },
+        "reason": "Named Map-address input alias; CLI resolves its authored pin."
+      },
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      },
+      "position": {
+        "schema": {
+          "type": "string",
+          "description": "Authored repository-relative position paired with pin; must name the same target as path"
+        },
+        "reason": "Host authored-position consistency check; never infer a pin."
+      }
+    },
+    "narrow": {},
+    "host_parameters": {}
+  },
+  "is_navigate": {
+    "entries": [
+      "navigate"
+    ],
+    "aliases": {},
+    "required": [],
+    "omit": {
+      "focus": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement.",
+      "contract": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement.",
+      "depth": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement.",
+      "mark_seen": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement.",
+      "workspace": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement.",
+      "mount": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement.",
+      "pullable": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement.",
+      "no_git": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement."
+    },
+    "add": {
+      "address": {
+        "schema": {
+          "type": "string",
+          "description": "A Map member directory by address instead of a path: @<root name>//<position>, @<root_node_id>//<position>, or //<position>. Read against `map`, else the session's launch Map."
+        },
+        "reason": "Named Map-address input alias; CLI resolves its authored pin."
+      },
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      }
+    },
+    "narrow": {
+      "agreement": {
+        "enum": [
+          "summary",
+          "full"
+        ]
+      },
+      "at": {
+        "enum": [
+          "pin",
+          "head"
+        ]
+      }
+    },
+    "host_parameters": {}
+  },
+  "is_pull": {
+    "entries": [
+      "pull"
+    ],
+    "aliases": {},
+    "required": [],
+    "omit": {},
+    "add": {
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      }
+    },
+    "narrow": {},
+    "host_parameters": {}
+  },
+  "is_push": {
+    "entries": [
+      "push"
+    ],
+    "aliases": {},
+    "required": [],
+    "omit": {},
+    "add": {
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      }
+    },
+    "narrow": {},
+    "host_parameters": {}
+  },
+  "is_spaces": {
+    "entries": [
+      "repos"
+    ],
+    "aliases": {},
+    "required": [],
+    "omit": {},
+    "add": {},
+    "narrow": {},
+    "host_parameters": {}
+  },
+  "is_get": {
+    "entries": [
+      "get"
+    ],
+    "aliases": {
+      "source": "address",
+      "destination": "dir",
+      "as": "mode"
+    },
+    "required": [
+      "address"
+    ],
+    "omit": {
+      "name": "The host exposes plan-first mode plus destination; applying yes is derived from the explicit mode, with no separate naming override.",
+      "yes": "The host exposes plan-first mode plus destination; applying yes is derived from the explicit mode, with no separate naming override."
+    },
+    "add": {
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      }
+    },
+    "narrow": {
+      "mode": {
+        "enum": [
+          "clone",
+          "fork",
+          "link"
+        ]
+      }
+    },
+    "host_parameters": {}
+  },
+  "is_clone": {
+    "entries": [
+      "clone"
+    ],
+    "aliases": {
+      "source": "space",
+      "destination": "dir"
+    },
+    "required": [
+      "space"
+    ],
+    "omit": {},
+    "add": {
+      "cwd": {
+        "schema": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "reason": "Host working-directory resolution; never an authority or reach grant."
+      }
+    },
+    "narrow": {},
+    "host_parameters": {}
+  },
+  "is_collaborate": {
+    "entries": [
+      "mcp.collaborate"
+    ],
+    "aliases": {},
+    "required": [
+      "action"
+    ],
+    "omit": {},
+    "add": {},
+    "narrow": {},
+    "host_parameters": {}
+  }
+}

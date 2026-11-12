@@ -24,6 +24,8 @@
  * Bundled with `npm run build:hook`; the committed dist artifact ships pre-built.
  */
 
+import { renderAgentSurfaceLine } from "./agent-surface-line.js";
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -146,7 +148,7 @@ async function main(): Promise<void> {
       const kind = renderKindLine(manifest) ?? "";
       const arrival = await arrivalLine;
       const join = joinParts;
-      const rest = join(kind, READING_LINE, arrival ?? "", tail);
+      const rest = join(kind, READING_LINE, renderAgentSurfaceLine(process.env.CLAUDE_PLUGIN_ROOT || dirname(dirname(fileURLToPath(import.meta.url)))), arrival ?? "", tail);
       let text = join(head, rest);
       // Over the inline limit the harness would show a 2 KB preview: bodies
       // fall to summaries with a pointer before anything is cut, and a cut

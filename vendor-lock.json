@@ -1,11 +1,12 @@
 {
   "cli": {
     "repository": "https://github.com/IdeaSpaces-xyz/cli.git",
-    "commit": "06ec7f81da393f8c3b0fe5b59d0d6ce9a95d2548",
+    "version": "0.10.1",
+    "commit": "e2f1c100f58525ef8883b4d450abcb37c715dade",
     "sourceArtifact": "bundle/ideaspaces.js",
     "vendoredArtifact": "cli/bundle/ideaspaces.js",
-    "sha256": "33c32ad2d1815a1e7c6dbeabd58937d97e7376f2620bf459bb7a761c2ea8c73a",
-    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#5d5db8ab1a30154930b407afe16bd8d905286975",
+    "sha256": "47cb51225367c4efd038a18c3733d4ffb048c4570b88cfc65b1fa057500d9b10",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
     "rebuildInCi": true,
     "commands": [
       "npm run build",
@@ -14,14 +15,93 @@
   },
   "mcp-server": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
-    "commit": "1cd9f3dd93f21343a79b0a1badd228d58b1fefbb",
+    "version": "0.1.36",
+    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
     "sourceArtifact": "bundle/index.js",
     "vendoredArtifact": "dist/index.js",
-    "sha256": "564a9a877482e0f0d79d30aec6049b96cb2356af20ed5ef00bf35432de250c7d",
-    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#5d5db8ab1a30154930b407afe16bd8d905286975",
+    "sha256": "80cbccb8009fc2b3efc59ceecf8d77c9737a93e6a0aad10d966cd9aa266eff0f",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
     "rebuildInCi": false,
     "commands": [
       "npm run bundle"
+    ]
+  },
+  "cli-catalog": {
+    "repository": "https://github.com/IdeaSpaces-xyz/cli.git",
+    "version": "0.10.1",
+    "commit": "e2f1c100f58525ef8883b4d450abcb37c715dade",
+    "sourceArtifact": "bundle/agent-tools.json",
+    "vendoredArtifact": "cli/bundle/agent-tools.json",
+    "sha256": "d66a630d0a8d3062875d6779c21ead871e717f6b2571484ff505a77531d30c7c",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
+    "rebuildInCi": true,
+    "commands": [
+      "npm run build"
+    ]
+  },
+  "cli-catalog-schema": {
+    "repository": "https://github.com/IdeaSpaces-xyz/cli.git",
+    "version": "0.10.1",
+    "commit": "e2f1c100f58525ef8883b4d450abcb37c715dade",
+    "sourceArtifact": "bundle/agent-tools.schema.json",
+    "vendoredArtifact": "cli/bundle/agent-tools.schema.json",
+    "sha256": "8cd0f9287ea45f5763a4020e337f6f426669801c8fe44cc5d420bd0bbe1288c9",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
+    "rebuildInCi": true,
+    "commands": [
+      "npm run build"
+    ]
+  },
+  "mcp-exposure": {
+    "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
+    "version": "0.1.36",
+    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
+    "sourceArtifact": "agent-tools.exposure.json",
+    "vendoredArtifact": "tooling/agent-tools.exposure.json",
+    "sha256": "2e5e7847da13eeb5e73d0cc77c72abfb35b6468cd15b83850b748dc1d329b52e",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
+    "rebuildInCi": false,
+    "commands": [
+      "npm run generate:tools"
+    ]
+  },
+  "mcp-host": {
+    "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
+    "version": "0.1.36",
+    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
+    "sourceArtifact": "agent-tools.host.json",
+    "vendoredArtifact": "tooling/agent-tools.host.json",
+    "sha256": "86b4cf03e7490fcf8da4c26ccce48ee41e6f7d93c9b925a6c27d4222d74fdf38",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
+    "rebuildInCi": false,
+    "commands": [
+      "npm run generate:tools"
+    ]
+  },
+  "mcp-generator": {
+    "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
+    "version": "0.1.36",
+    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
+    "sourceArtifact": "scripts/generate-tools.mjs",
+    "vendoredArtifact": "tooling/generate-tools.mjs",
+    "sha256": "8f07df171de779b6999253fb81aa3f038e0d78819394333a815564e6e5125d8b",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
+    "rebuildInCi": false,
+    "commands": [
+      "npm run generate:tools"
+    ]
+  },
+  "mcp-generator-types": {
+    "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
+    "version": "0.1.36",
+    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
+    "sourceArtifact": "scripts/generate-tools.d.mts",
+    "vendoredArtifact": "tooling/generate-tools.d.mts",
+    "sha256": "ae1bc0b42093de9540bbb3844332feba76e834588f1d06eebebc6eb4a2e6fd4e",
+    "protocolPin": "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
+    "rebuildInCi": false,
+    "commands": [
+      "npm run generate:tools"
     ]
   }
 }

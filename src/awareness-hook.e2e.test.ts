@@ -50,7 +50,7 @@ describe("shipped in-process awareness hook", () => {
     writeFileSync(join(space, "_agent", "now.md"), "# Now\n\nFirst state.\n");
     writeFileSync(
       fakeCli,
-      `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "called");\nprocess.exit(99);\n`,
+      `import { writeFileSync } from "node:fs";\nif(process.argv[2] === "capabilities"){console.log("{}");process.exit(0);}\nwriteFileSync(${JSON.stringify(marker)}, "called");\nprocess.exit(99);\n`,
     );
 
     git(space, "init", "-q", "-b", "main");

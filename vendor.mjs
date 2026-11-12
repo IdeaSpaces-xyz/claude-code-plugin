@@ -39,12 +39,70 @@ const VENDOR = [
     rebuildInCi: false,
     commands: ["npm run bundle"],
   },
+  {
+    name: "cli-catalog",
+    repository: "https://github.com/IdeaSpaces-xyz/cli.git",
+    repo: "../cli",
+    sourceArtifact: "bundle/agent-tools.json",
+    vendoredArtifact: "cli/bundle/agent-tools.json",
+    rebuildInCi: true,
+    commands: ["npm run build"],
+  },
+  {
+    name: "cli-catalog-schema",
+    repository: "https://github.com/IdeaSpaces-xyz/cli.git",
+    repo: "../cli",
+    sourceArtifact: "bundle/agent-tools.schema.json",
+    vendoredArtifact: "cli/bundle/agent-tools.schema.json",
+    rebuildInCi: true,
+    commands: ["npm run build"],
+  },
+  {
+    name: "mcp-exposure",
+    repository: "https://github.com/IdeaSpaces-xyz/mcp-server.git",
+    repo: "../mcp-server",
+    sourceArtifact: "agent-tools.exposure.json",
+    vendoredArtifact: "tooling/agent-tools.exposure.json",
+    rebuildInCi: false,
+    commands: ["npm run generate:tools"],
+  },
+  {
+    name: "mcp-host",
+    repository: "https://github.com/IdeaSpaces-xyz/mcp-server.git",
+    repo: "../mcp-server",
+    sourceArtifact: "agent-tools.host.json",
+    vendoredArtifact: "tooling/agent-tools.host.json",
+    rebuildInCi: false,
+    commands: ["npm run generate:tools"],
+  },
+  {
+    name: "mcp-generator",
+    repository: "https://github.com/IdeaSpaces-xyz/mcp-server.git",
+    repo: "../mcp-server",
+    sourceArtifact: "scripts/generate-tools.mjs",
+    vendoredArtifact: "tooling/generate-tools.mjs",
+    rebuildInCi: false,
+    commands: ["npm run generate:tools"],
+  },
+  {
+    name: "mcp-generator-types",
+    repository: "https://github.com/IdeaSpaces-xyz/mcp-server.git",
+    repo: "../mcp-server",
+    sourceArtifact: "scripts/generate-tools.d.mts",
+    vendoredArtifact: "tooling/generate-tools.d.mts",
+    rebuildInCi: false,
+    commands: ["npm run generate:tools"],
+  },
 ];
 
 /** The `@ideaspaces/protocol` pin declared by a package.json, from either dep block. */
 async function protocolPin(pkgPath) {
   const pkg = JSON.parse(await readFile(pkgPath, "utf8"));
-  return pkg.dependencies?.["@ideaspaces/protocol"] ?? pkg.devDependencies?.["@ideaspaces/protocol"] ?? null;
+  return (
+    pkg.dependencies?.["@ideaspaces/protocol"] ??
+    pkg.devDependencies?.["@ideaspaces/protocol"] ??
+    null
+  );
 }
 
 // Preflight: every input must be built against the same protocol.
@@ -65,16 +123,22 @@ for (const entry of VENDOR) {
 
 const distinct = new Set(Object.values(pins));
 if (distinct.size !== 1) {
-  console.error("✗ protocol pin disagreement — inputs would ship different protocol versions:\n");
+  console.error(
+    "✗ protocol pin disagreement — inputs would ship different protocol versions:\n",
+  );
   for (const [name, pin] of Object.entries(pins)) {
     console.error(`    ${name.padEnd(12)} ${pin ?? "(none declared)"}`);
   }
-  console.error("\n  Bring every input onto one protocol commit, rebuild the sibling bundles, and re-run.");
+  console.error(
+    "\n  Bring every input onto one protocol commit, rebuild the sibling bundles, and re-run.",
+  );
   console.error("  Nothing was copied; vendor-lock.json is unchanged.");
   process.exit(1);
 }
 const protocol = pins.plugin;
-console.log(`✓ protocol agreement: all ${Object.keys(pins).length} inputs at ${protocol.split("#")[1]?.slice(0, 7) ?? protocol}`);
+console.log(
+  `✓ protocol agreement: all ${Object.keys(pins).length} inputs at ${protocol.split("#")[1]?.slice(0, 7) ?? protocol}`,
+);
 
 const lock = {};
 
@@ -85,18 +149,26 @@ for (const entry of VENDOR) {
   try {
     await access(src);
   } catch {
-    console.error(`✗ missing source: ${entry.repo}/${entry.sourceArtifact} — build the sibling repo first.`);
+    console.error(
+      `✗ missing source: ${entry.repo}/${entry.sourceArtifact} — build the sibling repo first.`,
+    );
     process.exitCode = 1;
     continue;
   }
 
-  const commit = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-  const sha256 = createHash("sha256").update(await readFile(src)).digest("hex");
+  const commit = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
+    encoding: "utf8",
+  }).trim();
+  const sha256 = createHash("sha256")
+    .update(await readFile(src))
+    .digest("hex");
 
   await mkdir(dirname(dst), { recursive: true });
   await copyFile(src, dst);
   lock[entry.name] = {
     repository: entry.repository,
+    version: JSON.parse(await readFile(join(repo, "package.json"), "utf8"))
+      .version,
     commit,
     sourceArtifact: entry.sourceArtifact,
     vendoredArtifact: entry.vendoredArtifact,
@@ -105,10 +177,16 @@ for (const entry of VENDOR) {
     rebuildInCi: entry.rebuildInCi,
     commands: entry.commands,
   };
-  console.log(`✓ vendored ${entry.vendoredArtifact} ← ${entry.name}@${commit.slice(0, 7)}`);
+  console.log(
+    `✓ vendored ${entry.vendoredArtifact} ← ${entry.name}@${commit.slice(0, 7)}`,
+  );
 }
 
 if (Object.keys(lock).length === VENDOR.length) {
-  await writeFile(join(root, "vendor-lock.json"), `${JSON.stringify(lock, null, 2)}\n`, "utf8");
+  await writeFile(
+    join(root, "vendor-lock.json"),
+    `${JSON.stringify(lock, null, 2)}\n`,
+    "utf8",
+  );
   console.log("✓ updated vendor-lock.json");
 }
