@@ -16,7 +16,7 @@
   "mcp-server": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
     "version": "0.1.36",
-    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
+    "commit": "8b1d3402124a68d9453c5a3db6e9b1fb734c5d36",
     "sourceArtifact": "bundle/index.js",
     "vendoredArtifact": "dist/index.js",
     "sha256": "80cbccb8009fc2b3efc59ceecf8d77c9737a93e6a0aad10d966cd9aa266eff0f",
@@ -55,7 +55,7 @@
   "mcp-exposure": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
     "version": "0.1.36",
-    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
+    "commit": "8b1d3402124a68d9453c5a3db6e9b1fb734c5d36",
     "sourceArtifact": "agent-tools.exposure.json",
     "vendoredArtifact": "tooling/agent-tools.exposure.json",
     "sha256": "2e5e7847da13eeb5e73d0cc77c72abfb35b6468cd15b83850b748dc1d329b52e",
@@ -68,7 +68,7 @@
   "mcp-host": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
     "version": "0.1.36",
-    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
+    "commit": "8b1d3402124a68d9453c5a3db6e9b1fb734c5d36",
     "sourceArtifact": "agent-tools.host.json",
     "vendoredArtifact": "tooling/agent-tools.host.json",
     "sha256": "86b4cf03e7490fcf8da4c26ccce48ee41e6f7d93c9b925a6c27d4222d74fdf38",
@@ -81,7 +81,7 @@
   "mcp-generator": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
     "version": "0.1.36",
-    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
+    "commit": "8b1d3402124a68d9453c5a3db6e9b1fb734c5d36",
     "sourceArtifact": "scripts/generate-tools.mjs",
     "vendoredArtifact": "tooling/generate-tools.mjs",
     "sha256": "8f07df171de779b6999253fb81aa3f038e0d78819394333a815564e6e5125d8b",
@@ -94,7 +94,7 @@
   "mcp-generator-types": {
     "repository": "https://github.com/IdeaSpaces-xyz/mcp-server.git",
     "version": "0.1.36",
-    "commit": "2b770dbccde4af9c38c3e911adee71a220a751c8",
+    "commit": "8b1d3402124a68d9453c5a3db6e9b1fb734c5d36",
     "sourceArtifact": "scripts/generate-tools.d.mts",
     "vendoredArtifact": "tooling/generate-tools.d.mts",
     "sha256": "ae1bc0b42093de9540bbb3844332feba76e834588f1d06eebebc6eb4a2e6fd4e",
