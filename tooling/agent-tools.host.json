@@ -1,0 +1,114 @@
+[
+  {
+    "id": "mcp.collaborate",
+    "owner": "host",
+    "implemented_by": [
+      "mcp"
+    ],
+    "status": "active",
+    "job": "J11",
+    "effect": "launch",
+    "reach": "local",
+    "confirm": "none",
+    "requires": {
+      "cli": ">=0.9.0"
+    },
+    "bound": "n/a",
+    "calls": [
+      "agent.run",
+      "conversation.get"
+    ],
+    "text": {
+      "does": "Launch or resume a local Agreement POV on Pi or Claude; close acknowledges only.",
+      "use_when": "Ask a fellow POV to work from its own Agreement, with an explicit purpose.",
+      "check": "No nesting. Claude defaults to read-only; writes and permissions must be explicit. Pi read-only is unavailable. A failed child is a failed call.",
+      "bound": "One local turn, at most 12000 reply characters. Missing runtime usage is unknown, not zero."
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "open",
+            "say",
+            "close"
+          ],
+          "description": "open: start a CLI-backed local conversation. say: resume by conversation id. close: compatibility acknowledgement only; it changes no state."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+        },
+        "effort": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "description": "Claude effort only, if the installed Claude Code supports --effort."
+        },
+        "handle": {
+          "type": "string",
+          "description": "For say/close: exact conversation_id returned by open (Pi local id or Claude UUID); supply the same runtime on say/close."
+        },
+        "message": {
+          "type": "string",
+          "description": "For open/say: the purpose and task, in your own words. Intent does not grant tools."
+        },
+        "model": {
+          "type": "string",
+          "description": "Model alias/id for the selected runtime."
+        },
+        "permission_mode": {
+          "type": "string",
+          "enum": [
+            "acceptEdits",
+            "auto",
+            "bypassPermissions",
+            "manual",
+            "dontAsk",
+            "plan"
+          ],
+          "description": "Claude permission mode. bypassPermissions requires read_only=false explicitly."
+        },
+        "pov": {
+          "type": "string",
+          "description": "For open/say: explicit local IdeaSpace repo path with its own _agent/agreement.md; relative to cwd or absolute."
+        },
+        "read_only": {
+          "type": "boolean",
+          "description": "Claude-only restricted Read/Grep/Glob and no plugin MCP servers. Default true on Claude; pass false deliberately to allow writes."
+        },
+        "runtime": {
+          "type": "string",
+          "enum": [
+            "pi",
+            "claude"
+          ],
+          "description": "Child harness, default claude. On say specify pi if open used pi."
+        },
+        "thinking": {
+          "type": "string",
+          "enum": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "description": "Pi thinking only."
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    }
+  }
+]

@@ -11,17 +11,17 @@ function read(relative: string): string {
 }
 
 describe("recipient-shaped Share distribution", () => {
-  it("keeps the plugin release and vendored runtime coordinates explicit", () => {
+  it("keeps the staged plugin and vendored source coordinates explicit", () => {
     const pkg = JSON.parse(read("package.json"));
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
     const vendor = JSON.parse(read("vendor-lock.json"));
 
-    expect(pkg.version).toBe("0.10.1");
-    expect(plugin.version).toBe("0.10.1");
-    expect(vendor.cli.commit).toBe("06ec7f81da393f8c3b0fe5b59d0d6ce9a95d2548");
-    expect(vendor["mcp-server"].commit).toBe("1cd9f3dd93f21343a79b0a1badd228d58b1fefbb");
+    expect(pkg.version).toBe("0.10.2");
+    expect(plugin.version).toBe("0.10.2");
+    expect(vendor.cli.commit).toBe("e2f1c100f58525ef8883b4d450abcb37c715dade");
+    expect(vendor["mcp-server"].commit).toBe("8b1d3402124a68d9453c5a3db6e9b1fb734c5d36");
     expect(vendor.cli.protocolPin).toBe(
-      "github:IdeaSpaces-xyz/ideaspace-protocol#5d5db8ab1a30154930b407afe16bd8d905286975",
+      "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
     );
   });
 

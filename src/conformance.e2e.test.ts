@@ -88,7 +88,7 @@ async function call(
   args: Record<string, unknown>,
   opts: { allowError?: boolean } = {},
 ): Promise<{ text: string; isError: boolean }> {
-  const res = (await client.callTool({ name, arguments: { ...args, cwd: space } })) as {
+  const res = (await client.callTool({ name, arguments: { ...args, ...(name.startsWith("is_change_") ? {} : {cwd:space}) } })) as {
     content: Array<{ type: string; text?: string }>;
     isError?: boolean;
   };
@@ -168,7 +168,7 @@ beforeAll(async () => {
   failingCli = join(home, "failing-platform-cli.mjs");
   writeFileSync(
     failingCli,
-    `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(cliMarker)}, "invoked\\n");\nprocess.exit(73);\n`,
+    `import { writeFileSync } from "node:fs";\nif(process.argv[2] === "capabilities"){console.log("{}");process.exit(0);}\nwriteFileSync(${JSON.stringify(cliMarker)}, "invoked\\n");\nprocess.exit(73);\n`,
   );
 
   client = new Client({ name: "conformance-e2e", version: "0.0.0" });
@@ -501,7 +501,7 @@ describe("Change persistence across server restarts (shipped artifacts)", () => 
   }
 
   async function pcall(c: Client, name: string, args: Record<string, unknown> = {}) {
-    const res = (await c.callTool({ name, arguments: { ...args, cwd: pspace } })) as {
+    const res = (await c.callTool({ name, arguments: { ...args, ...(name.startsWith("is_change_") ? {} : {cwd:pspace}) } })) as {
       content: Array<{ type: string; text?: string }>;
       isError?: boolean;
     };

@@ -7360,15 +7360,74 @@ var require_dist = __commonJS({
   }
 });
 
+// src/agent-surface-line.ts
+import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+var CATALOG_BUDGET_MS = 1200;
+function observeCli(cli2) {
+  return new Promise((resolve8) => {
+    let child;
+    let settled = false;
+    const finish = (runtime) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve8(runtime);
+    };
+    const timer = setTimeout(() => {
+      child?.kill("SIGKILL");
+      child?.stdin?.destroy();
+      child?.stdout?.destroy();
+      child?.stderr?.destroy();
+      finish();
+    }, CATALOG_BUDGET_MS);
+    try {
+      const script = /\.(?:[cm]?js)$/.test(cli2);
+      child = execFile(
+        script ? process.execPath : cli2,
+        script ? [cli2, "capabilities", "--json"] : ["capabilities", "--json"],
+        { encoding: "utf8", maxBuffer: 1024 * 1024, killSignal: "SIGKILL", windowsHide: true },
+        (error, stdout) => {
+          try {
+            const data = error ? void 0 : JSON.parse(stdout);
+            finish(typeof data?.digest === "string" && typeof data?.cli?.version === "string" ? data : void 0);
+          } catch {
+            finish();
+          }
+        }
+      );
+      child.stdin?.end();
+    } catch {
+      finish();
+    }
+  });
+}
+async function renderAgentSurfaceLine(root) {
+  try {
+    const read = (p) => JSON.parse(readFileSync(join(root, p), "utf8"));
+    const catalog = read("cli/bundle/agent-tools.json");
+    const lock = read("vendor-lock.json");
+    const pkg = read("package.json");
+    const runtime = await observeCli(process.env.IS_CLI_PATH?.trim() || join(root, "cli/bundle/ideaspaces.js"));
+    const short = (digest) => digest.replace(/^sha256:/, "").slice(0, 8);
+    const catalogText = runtime && runtime.digest !== catalog.digest ? `catalog differs (built ${short(catalog.digest)}, running ${short(runtime.digest)}); tools keep working. Update the plugin to match.` : `catalog ${short(catalog.digest)}.`;
+    return `Agent tools: plugin ${pkg.version} \xB7 MCP ${lock["mcp-server"].version} \xB7 CLI ${runtime?.cli.version ?? "unknown (no answer in 1.2 s)"} \xB7 ${catalogText}`;
+  } catch {
+    return "";
+  }
+}
+
 // src/awareness-hook.ts
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { mkdirSync, writeFileSync, readFileSync as readFileSync2 } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync as readFileSync3 } from "node:fs";
 import { dirname as dirname5 } from "node:path";
 import { homedir as homedir3 } from "node:os";
 
 // node_modules/@ideaspaces/protocol/dist/space.js
 import { promises as fs } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join as join2, resolve } from "node:path";
 var CONTRACT_FILES = [
   "foundation",
   "guide",
@@ -7387,7 +7446,7 @@ async function isDirectory(path) {
 async function readContract(agentDir) {
   const entries = {};
   await Promise.all(CONTRACT_FILES.map(async (name) => {
-    const path = join(agentDir, `${name}.md`);
+    const path = join2(agentDir, `${name}.md`);
     try {
       const content = await fs.readFile(path, "utf-8");
       entries[name] = { path, content };
@@ -7402,7 +7461,7 @@ async function composeContractAlongPath(position) {
   let spaceRoot = null;
   let dir = start;
   while (true) {
-    const agentDir = join(dir, "_agent");
+    const agentDir = join2(dir, "_agent");
     if (await isDirectory(agentDir)) {
       const contract2 = await readContract(agentDir);
       found.push({ dir, contract: contract2 });
@@ -7446,7 +7505,7 @@ async function composeContractAlongPath(position) {
 
 // node_modules/@ideaspaces/protocol/dist/agreement.js
 import { promises as fs2 } from "node:fs";
-import { basename, dirname as dirname2, join as join2, relative, resolve as resolve2, sep } from "node:path";
+import { basename, dirname as dirname2, join as join3, relative, resolve as resolve2, sep } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/frontmatter.js
 var import_yaml = __toESM(require_dist(), 1);
@@ -7640,10 +7699,10 @@ async function composeAgreementAlongPath(position, repoRoot = null) {
   };
 }
 async function scanLevel(dir) {
-  const agentDir = join2(dir, "_agent");
+  const agentDir = join3(dir, "_agent");
   if (!await isDirectory2(agentDir))
     return null;
-  const agreementPath = join2(agentDir, "agreement.md");
+  const agreementPath = join3(agentDir, "agreement.md");
   const agreementContent = await readRegularFile(agreementPath);
   if (agreementContent === null) {
     return {
@@ -7777,7 +7836,7 @@ async function readLevelFiles(level, issues) {
   for (const name of level.fullLoads) {
     if (!available.has(name)) {
       issues.push({
-        path: join2(level.agentDir, name),
+        path: join3(level.agentDir, name),
         code: "missing_full_load",
         detail: `declared full load does not exist as a regular file: ${name}`
       });
@@ -7786,11 +7845,11 @@ async function readLevelFiles(level, issues) {
   for (const name of regularMarkdown) {
     if (name === "agreement.md" || name === "foundation.md")
       continue;
-    const content = await readRegularFile(join2(level.agentDir, name));
+    const content = await readRegularFile(join3(level.agentDir, name));
     if (content === null) {
       if (level.fullLoads.includes(name)) {
         issues.push({
-          path: join2(level.agentDir, name),
+          path: join3(level.agentDir, name),
           code: "missing_full_load",
           detail: `declared full load became unavailable while reading: ${name}`
         });
@@ -7799,7 +7858,7 @@ async function readLevelFiles(level, issues) {
     }
     files.push({
       name: basename(name, ".md"),
-      path: join2(level.agentDir, name),
+      path: join3(level.agentDir, name),
       sourcePosition: level.dir,
       content,
       representation: level.fullLoads.includes(name) ? "full" : "summary"
@@ -7837,7 +7896,7 @@ async function readRegularFile(path) {
 // node_modules/@ideaspaces/protocol/dist/awareness.js
 import { createHash } from "node:crypto";
 import { promises as fs5 } from "node:fs";
-import { basename as basename2, dirname as dirname3, join as join5, relative as relative4, resolve as resolve5, sep as sep3 } from "node:path";
+import { basename as basename2, dirname as dirname3, join as join6, relative as relative4, resolve as resolve5, sep as sep3 } from "node:path";
 
 // node_modules/@ideaspaces/protocol/dist/markdown-inspection.js
 function summarizeMarkdown(content) {
@@ -8007,7 +8066,7 @@ async function recentActivity(repoRoot, sinceSha, limit = DEFAULT_COMMIT_LIMIT) 
 
 // node_modules/@ideaspaces/protocol/dist/path-context.js
 import { promises as fs3 } from "node:fs";
-import { isAbsolute, join as join3, relative as relative2, resolve as resolve3, sep as sep2 } from "node:path";
+import { isAbsolute, join as join4, relative as relative2, resolve as resolve3, sep as sep2 } from "node:path";
 function spaceRootLevel(ctx) {
   return ctx.levels.find((l) => l.foundation) ?? null;
 }
@@ -8049,11 +8108,11 @@ async function walkPathContext(repoRoot, currentPath, opts = {}) {
   return { position, levels };
 }
 async function readLevel(root, relPath, includeContent) {
-  const absPath = relPath ? join3(root, relPath) : root;
-  const agentDir = join3(absPath, "_agent");
+  const absPath = relPath ? join4(root, relPath) : root;
+  const agentDir = join4(absPath, "_agent");
   const [hasAgent, readme] = await Promise.all([
     isDirectory3(agentDir),
-    readFileOrNull(join3(absPath, "README.md"))
+    readFileOrNull(join4(absPath, "README.md"))
   ]);
   let contract = {};
   if (hasAgent)
@@ -8107,7 +8166,7 @@ async function readFileOrNull(path) {
 // node_modules/@ideaspaces/protocol/dist/stale-docs.js
 var import_yaml2 = __toESM(require_dist(), 1);
 import { promises as fs4 } from "node:fs";
-import { join as join4, relative as relative3, resolve as resolve4 } from "node:path";
+import { join as join5, relative as relative3, resolve as resolve4 } from "node:path";
 var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", "dist", "build"]);
 async function collectDocDependencies(repoRoot, docDir) {
   const root = resolve4(repoRoot);
@@ -8132,7 +8191,7 @@ async function collectDocDependencies(repoRoot, docDir) {
     for (const entry of entries) {
       if (entry.name.startsWith("."))
         continue;
-      const abs = join4(dir, entry.name);
+      const abs = join5(dir, entry.name);
       const path = relative3(root, abs).replace(/\\/g, "/");
       if (entry.isDir) {
         if (SKIP_DIRS.has(entry.name))
@@ -8164,7 +8223,7 @@ async function staleDocSignals(repoRoot, docs) {
   for (const { path, codePaths } of docs) {
     const missing = [];
     for (const code of codePaths) {
-      if (!await exists(join4(root, code)))
+      if (!await exists(join5(root, code)))
         missing.push(code);
     }
     if (missing.length)
@@ -8523,7 +8582,7 @@ function contractIdentityConflict(foundation, agreement) {
   if (parsed.status !== "valid" || parsed.rootNodeId === agreement.rootNodeId)
     return null;
   return {
-    path: join5(foundation.spaceRoot, "_agent"),
+    path: join6(foundation.spaceRoot, "_agent"),
     code: "root_node_id_conflict",
     detail: "foundation.md and agreement.md declare different root_node_id values"
   };
@@ -8739,7 +8798,7 @@ function buildStackedContractEntries(stack, max) {
 async function discoverSkillEntries(levels) {
   const byName = /* @__PURE__ */ new Map();
   for (const dir of levels) {
-    const skillsDir = join5(dir, "_agent", "skills");
+    const skillsDir = join6(dir, "_agent", "skills");
     let dirents;
     try {
       dirents = await fs5.readdir(skillsDir, { withFileTypes: true });
@@ -8749,11 +8808,11 @@ async function discoverSkillEntries(levels) {
     const flat = dirents.filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "README.md").map((e) => e.name).sort();
     for (const file of flat) {
       const name = file.replace(/\.md$/, "");
-      byName.set(name, { name, path: join5(skillsDir, file), level: dir });
+      byName.set(name, { name, path: join6(skillsDir, file), level: dir });
     }
     const skillDirs = dirents.filter((e) => e.isDirectory()).map((e) => e.name).sort();
     for (const name of skillDirs) {
-      const path = join5(skillsDir, name, "SKILL.md");
+      const path = join6(skillsDir, name, "SKILL.md");
       try {
         if ((await fs5.stat(path)).isFile()) {
           byName.set(name, { name, path, level: dir });
@@ -8860,7 +8919,7 @@ function normalizeContentTreeDepth(depth) {
 }
 async function childSummary(path, isDir, max) {
   try {
-    const source = isDir ? join5(path, "README.md") : path;
+    const source = isDir ? join6(path, "README.md") : path;
     return describeFile(await fs5.readFile(source, "utf-8"), max);
   } catch {
     return null;
@@ -8909,7 +8968,7 @@ async function listTreeLevel(dir, opts, levelsLeft, topLevel) {
   const omitted = all.length - start - shown.length;
   const withSummaries = opts.summaries && (topLevel || opts.depth === "full");
   const entries = await Promise.all(shown.map(async ({ name, isDir }) => {
-    const path = join5(dir, name);
+    const path = join6(dir, name);
     const entry = isDir ? { name, placement: "head", kind: "directory", markdownFiles: await countMarkdown(path, opts.strict) } : { name, placement: "head", kind: "markdown" };
     if (withSummaries) {
       const summary = await childSummary(path, isDir, opts.summaryLength);
@@ -8956,7 +9015,7 @@ async function countMarkdown(dir, strict = false) {
     if (entry.isDirectory()) {
       if (!isContentDirectoryName(entry.name))
         continue;
-      count += await countMarkdown(join5(dir, entry.name), strict);
+      count += await countMarkdown(join6(dir, entry.name), strict);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       count += 1;
     }
@@ -9091,14 +9150,14 @@ function renderContentTail(manifest, opts = {}) {
 
 // src/session-path.ts
 import { createHash as createHash2 } from "node:crypto";
-import { join as join6, resolve as resolve6 } from "node:path";
+import { join as join7, resolve as resolve6 } from "node:path";
 function sessionIdCachePath2(homeDir, projectDir) {
   const key = createHash2("sha256").update(resolve6(projectDir)).digest("hex").slice(0, 16);
-  return join6(homeDir, ".ideaspaces", "sessions", key);
+  return join7(homeDir, ".ideaspaces", "sessions", key);
 }
 function changeCachePath2(homeDir, projectDir) {
   const key = createHash2("sha256").update(resolve6(projectDir)).digest("hex").slice(0, 16);
-  return join6(homeDir, ".ideaspaces", "changes", key);
+  return join7(homeDir, ".ideaspaces", "changes", key);
 }
 
 // src/change-line.ts
@@ -9190,12 +9249,12 @@ function joinParts(...parts) {
   return parts.filter((part) => part.trim()).join("\n\n");
 }
 function fitToBudget(head, tail, budget = INLINE_BUDGET) {
-  const join9 = joinParts;
-  const whole = join9(head, tail);
+  const join10 = joinParts;
+  const whole = join10(head, tail);
   if (whole.length <= budget) return whole;
   const room = budget - tail.length - 2;
   if (room < 1e3) return cutToBudget(whole, budget);
-  return join9(cutToBudget(head, room), tail);
+  return join10(cutToBudget(head, room), tail);
 }
 function cutToBudget(text, budget = INLINE_BUDGET) {
   if (text.length <= budget) return text;
@@ -9217,8 +9276,8 @@ async function readStdin() {
 }
 
 // src/arrival-line.ts
-import { existsSync, readFileSync } from "node:fs";
-import { join as join7 } from "node:path";
+import { existsSync, readFileSync as readFileSync2 } from "node:fs";
+import { join as join8 } from "node:path";
 import { homedir } from "node:os";
 var ARRIVAL_BUDGET_MS = 100;
 var DEFAULT_API_URL = "https://api.ideaspaces.xyz";
@@ -9232,9 +9291,9 @@ function loadAuthConfig() {
     };
   }
   try {
-    const credPath = join7(homedir(), ".ideaspaces", "credentials.json");
+    const credPath = join8(homedir(), ".ideaspaces", "credentials.json");
     if (!existsSync(credPath)) return null;
-    const creds = JSON.parse(readFileSync(credPath, "utf-8"));
+    const creds = JSON.parse(readFileSync2(credPath, "utf-8"));
     if (!creds.api_key) return null;
     const service = (creds.api_url || DEFAULT_API_URL).replace(/\/$/, "");
     const apiUrl = (process.env.IS_API_URL || service).replace(/\/$/, "");
@@ -9291,9 +9350,9 @@ async function renderArrivalLine() {
 // src/agent-run.ts
 import { spawnSync } from "node:child_process";
 import { homedir as homedir2, tmpdir } from "node:os";
-import { dirname as dirname4, join as join8, resolve as resolve7 } from "node:path";
+import { dirname as dirname4, join as join9, resolve as resolve7 } from "node:path";
 import { fileURLToPath } from "node:url";
-var cli = join8(dirname4(fileURLToPath(import.meta.url)), "..", "cli", "bundle", "ideaspaces.js");
+var cli = join9(dirname4(fileURLToPath(import.meta.url)), "..", "cli", "bundle", "ideaspaces.js");
 function call(args) {
   const result = spawnSync(process.execPath, [cli, ...args], {
     cwd: tmpdir(),
@@ -9337,7 +9396,7 @@ function captureSessionId(raw) {
 }
 function changeLine(sessionId, projectDir) {
   try {
-    const raw = readFileSync2(changeCachePath2(homedir3(), projectDir), "utf-8");
+    const raw = readFileSync3(changeCachePath2(homedir3(), projectDir), "utf-8");
     const rec = parseChangeRecord(raw);
     return rec ? renderChangeLine(rec, sessionId, Date.now()) : void 0;
   } catch {
@@ -9368,6 +9427,9 @@ async function main() {
     }
     if (manifest && manifest.status === "ok") {
       const arrivalLine = renderArrivalLine().catch(() => void 0);
+      const surfaceLine = renderAgentSurfaceLine(
+        process.env.CLAUDE_PLUGIN_ROOT || dirname5(dirname5(fileURLToPath2(import.meta.url)))
+      ).catch(() => "");
       const head = renderContentAwareness(manifest, { placement: "head" });
       const state = manifest.position.repoRoot && manifest.git ? {
         placement: "tail",
@@ -9376,13 +9438,13 @@ async function main() {
       } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const kind = renderKindLine(manifest) ?? "";
-      const arrival = await arrivalLine;
-      const join9 = joinParts;
-      const rest = join9(kind, READING_LINE, arrival ?? "", tail);
-      let text = join9(head, rest);
+      const [arrival, surface] = await Promise.all([arrivalLine, surfaceLine]);
+      const join10 = joinParts;
+      const rest = join10(kind, READING_LINE, surface, arrival ?? "", tail);
+      let text = join10(head, rest);
       if (text.length > INLINE_BUDGET) {
         const slim = summarizeContract(manifest);
-        const slimHead = slim.demoted.length ? join9(
+        const slimHead = slim.demoted.length ? join10(
           renderContentAwareness(slim.manifest, { placement: "head" }),
           renderDemotedLine(slim.demoted, projectDir)
         ) : head;

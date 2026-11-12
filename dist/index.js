@@ -1152,9 +1152,9 @@ var require_util = __commonJS({
       }
     }
     exports.eachItem = eachItem;
-    function makeMergeEvaluated({ mergeNames, mergeToName, mergeValues: mergeValues3, resultToName }) {
+    function makeMergeEvaluated({ mergeNames, mergeToName, mergeValues: mergeValues2, resultToName }) {
       return (gen, from, to, toName) => {
-        const res = to === void 0 ? from : to instanceof codegen_1.Name ? (from instanceof codegen_1.Name ? mergeNames(gen, from, to) : mergeToName(gen, from, to), to) : from instanceof codegen_1.Name ? (mergeToName(gen, to, from), from) : mergeValues3(from, to);
+        const res = to === void 0 ? from : to instanceof codegen_1.Name ? (from instanceof codegen_1.Name ? mergeNames(gen, from, to) : mergeToName(gen, from, to), to) : from instanceof codegen_1.Name ? (mergeToName(gen, to, from), from) : mergeValues2(from, to);
         return toName === codegen_1.Name && !(res instanceof codegen_1.Name) ? resultToName(gen, res) : res;
       };
     }
@@ -4353,7 +4353,7 @@ var require_core = __commonJS({
       constructor(opts = {}) {
         this.schemas = {};
         this.refs = {};
-        this.formats = {};
+        this.formats = /* @__PURE__ */ Object.create(null);
         this._compilations = /* @__PURE__ */ new Set();
         this._loading = {};
         this._cache = /* @__PURE__ */ new Map();
@@ -7207,6 +7207,830 @@ var require_dist = __commonJS({
   }
 });
 
+// node_modules/ajv/dist/vocabularies/dynamic/dynamicAnchor.js
+var require_dynamicAnchor = __commonJS({
+  "node_modules/ajv/dist/vocabularies/dynamic/dynamicAnchor.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.dynamicAnchor = void 0;
+    var codegen_1 = require_codegen();
+    var names_1 = require_names();
+    var compile_1 = require_compile();
+    var ref_1 = require_ref();
+    var def = {
+      keyword: "$dynamicAnchor",
+      schemaType: "string",
+      code: (cxt) => dynamicAnchor(cxt, cxt.schema)
+    };
+    function dynamicAnchor(cxt, anchor) {
+      const { gen, it } = cxt;
+      it.schemaEnv.root.dynamicAnchors[anchor] = true;
+      const v = (0, codegen_1._)`${names_1.default.dynamicAnchors}${(0, codegen_1.getProperty)(anchor)}`;
+      const validate = it.errSchemaPath === "#" ? it.validateName : _getValidate(cxt);
+      gen.if((0, codegen_1._)`!${v}`, () => gen.assign(v, validate));
+    }
+    exports.dynamicAnchor = dynamicAnchor;
+    function _getValidate(cxt) {
+      const { schemaEnv, schema, self } = cxt.it;
+      const { root, baseId, localRefs, meta } = schemaEnv.root;
+      const { schemaId } = self.opts;
+      const sch = new compile_1.SchemaEnv({ schema, schemaId, root, baseId, localRefs, meta });
+      compile_1.compileSchema.call(self, sch);
+      return (0, ref_1.getValidate)(cxt, sch);
+    }
+    exports.default = def;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/dynamic/dynamicRef.js
+var require_dynamicRef = __commonJS({
+  "node_modules/ajv/dist/vocabularies/dynamic/dynamicRef.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.dynamicRef = void 0;
+    var codegen_1 = require_codegen();
+    var names_1 = require_names();
+    var ref_1 = require_ref();
+    var def = {
+      keyword: "$dynamicRef",
+      schemaType: "string",
+      code: (cxt) => dynamicRef(cxt, cxt.schema)
+    };
+    function dynamicRef(cxt, ref) {
+      const { gen, keyword, it } = cxt;
+      if (ref[0] !== "#")
+        throw new Error(`"${keyword}" only supports hash fragment reference`);
+      const anchor = ref.slice(1);
+      if (it.allErrors) {
+        _dynamicRef();
+      } else {
+        const valid = gen.let("valid", false);
+        _dynamicRef(valid);
+        cxt.ok(valid);
+      }
+      function _dynamicRef(valid) {
+        if (it.schemaEnv.root.dynamicAnchors[anchor]) {
+          const v = gen.let("_v", (0, codegen_1._)`${names_1.default.dynamicAnchors}${(0, codegen_1.getProperty)(anchor)}`);
+          gen.if(v, _callRef(v, valid), _callRef(it.validateName, valid));
+        } else {
+          _callRef(it.validateName, valid)();
+        }
+      }
+      function _callRef(validate, valid) {
+        return valid ? () => gen.block(() => {
+          (0, ref_1.callRef)(cxt, validate);
+          gen.let(valid, true);
+        }) : () => (0, ref_1.callRef)(cxt, validate);
+      }
+    }
+    exports.dynamicRef = dynamicRef;
+    exports.default = def;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/dynamic/recursiveAnchor.js
+var require_recursiveAnchor = __commonJS({
+  "node_modules/ajv/dist/vocabularies/dynamic/recursiveAnchor.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var dynamicAnchor_1 = require_dynamicAnchor();
+    var util_1 = require_util();
+    var def = {
+      keyword: "$recursiveAnchor",
+      schemaType: "boolean",
+      code(cxt) {
+        if (cxt.schema)
+          (0, dynamicAnchor_1.dynamicAnchor)(cxt, "");
+        else
+          (0, util_1.checkStrictMode)(cxt.it, "$recursiveAnchor: false is ignored");
+      }
+    };
+    exports.default = def;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/dynamic/recursiveRef.js
+var require_recursiveRef = __commonJS({
+  "node_modules/ajv/dist/vocabularies/dynamic/recursiveRef.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var dynamicRef_1 = require_dynamicRef();
+    var def = {
+      keyword: "$recursiveRef",
+      schemaType: "string",
+      code: (cxt) => (0, dynamicRef_1.dynamicRef)(cxt, cxt.schema)
+    };
+    exports.default = def;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/dynamic/index.js
+var require_dynamic = __commonJS({
+  "node_modules/ajv/dist/vocabularies/dynamic/index.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var dynamicAnchor_1 = require_dynamicAnchor();
+    var dynamicRef_1 = require_dynamicRef();
+    var recursiveAnchor_1 = require_recursiveAnchor();
+    var recursiveRef_1 = require_recursiveRef();
+    var dynamic = [dynamicAnchor_1.default, dynamicRef_1.default, recursiveAnchor_1.default, recursiveRef_1.default];
+    exports.default = dynamic;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/validation/dependentRequired.js
+var require_dependentRequired = __commonJS({
+  "node_modules/ajv/dist/vocabularies/validation/dependentRequired.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var dependencies_1 = require_dependencies();
+    var def = {
+      keyword: "dependentRequired",
+      type: "object",
+      schemaType: "object",
+      error: dependencies_1.error,
+      code: (cxt) => (0, dependencies_1.validatePropertyDeps)(cxt)
+    };
+    exports.default = def;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/applicator/dependentSchemas.js
+var require_dependentSchemas = __commonJS({
+  "node_modules/ajv/dist/vocabularies/applicator/dependentSchemas.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var dependencies_1 = require_dependencies();
+    var def = {
+      keyword: "dependentSchemas",
+      type: "object",
+      schemaType: "object",
+      code: (cxt) => (0, dependencies_1.validateSchemaDeps)(cxt)
+    };
+    exports.default = def;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/validation/limitContains.js
+var require_limitContains = __commonJS({
+  "node_modules/ajv/dist/vocabularies/validation/limitContains.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var util_1 = require_util();
+    var def = {
+      keyword: ["maxContains", "minContains"],
+      type: "array",
+      schemaType: "number",
+      code({ keyword, parentSchema, it }) {
+        if (parentSchema.contains === void 0) {
+          (0, util_1.checkStrictMode)(it, `"${keyword}" without "contains" is ignored`);
+        }
+      }
+    };
+    exports.default = def;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/next.js
+var require_next = __commonJS({
+  "node_modules/ajv/dist/vocabularies/next.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var dependentRequired_1 = require_dependentRequired();
+    var dependentSchemas_1 = require_dependentSchemas();
+    var limitContains_1 = require_limitContains();
+    var next = [dependentRequired_1.default, dependentSchemas_1.default, limitContains_1.default];
+    exports.default = next;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/unevaluated/unevaluatedProperties.js
+var require_unevaluatedProperties = __commonJS({
+  "node_modules/ajv/dist/vocabularies/unevaluated/unevaluatedProperties.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var codegen_1 = require_codegen();
+    var util_1 = require_util();
+    var names_1 = require_names();
+    var error2 = {
+      message: "must NOT have unevaluated properties",
+      params: ({ params }) => (0, codegen_1._)`{unevaluatedProperty: ${params.unevaluatedProperty}}`
+    };
+    var def = {
+      keyword: "unevaluatedProperties",
+      type: "object",
+      schemaType: ["boolean", "object"],
+      trackErrors: true,
+      error: error2,
+      code(cxt) {
+        const { gen, schema, data, errsCount, it } = cxt;
+        if (!errsCount)
+          throw new Error("ajv implementation error");
+        const { allErrors, props } = it;
+        if (props instanceof codegen_1.Name) {
+          gen.if((0, codegen_1._)`${props} !== true`, () => gen.forIn("key", data, (key2) => gen.if(unevaluatedDynamic(props, key2), () => unevaluatedPropCode(key2))));
+        } else if (props !== true) {
+          gen.forIn("key", data, (key2) => props === void 0 ? unevaluatedPropCode(key2) : gen.if(unevaluatedStatic(props, key2), () => unevaluatedPropCode(key2)));
+        }
+        it.props = true;
+        cxt.ok((0, codegen_1._)`${errsCount} === ${names_1.default.errors}`);
+        function unevaluatedPropCode(key2) {
+          if (schema === false) {
+            cxt.setParams({ unevaluatedProperty: key2 });
+            cxt.error();
+            if (!allErrors)
+              gen.break();
+            return;
+          }
+          if (!(0, util_1.alwaysValidSchema)(it, schema)) {
+            const valid = gen.name("valid");
+            cxt.subschema({
+              keyword: "unevaluatedProperties",
+              dataProp: key2,
+              dataPropType: util_1.Type.Str
+            }, valid);
+            if (!allErrors)
+              gen.if((0, codegen_1.not)(valid), () => gen.break());
+          }
+        }
+        function unevaluatedDynamic(evaluatedProps, key2) {
+          return (0, codegen_1._)`!${evaluatedProps} || !${evaluatedProps}[${key2}]`;
+        }
+        function unevaluatedStatic(evaluatedProps, key2) {
+          const ps = [];
+          for (const p in evaluatedProps) {
+            if (evaluatedProps[p] === true)
+              ps.push((0, codegen_1._)`${key2} !== ${p}`);
+          }
+          return (0, codegen_1.and)(...ps);
+        }
+      }
+    };
+    exports.default = def;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/unevaluated/unevaluatedItems.js
+var require_unevaluatedItems = __commonJS({
+  "node_modules/ajv/dist/vocabularies/unevaluated/unevaluatedItems.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var codegen_1 = require_codegen();
+    var util_1 = require_util();
+    var error2 = {
+      message: ({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`,
+      params: ({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`
+    };
+    var def = {
+      keyword: "unevaluatedItems",
+      type: "array",
+      schemaType: ["boolean", "object"],
+      error: error2,
+      code(cxt) {
+        const { gen, schema, data, it } = cxt;
+        const items = it.items || 0;
+        if (items === true)
+          return;
+        const len = gen.const("len", (0, codegen_1._)`${data}.length`);
+        if (schema === false) {
+          cxt.setParams({ len: items });
+          cxt.fail((0, codegen_1._)`${len} > ${items}`);
+        } else if (typeof schema == "object" && !(0, util_1.alwaysValidSchema)(it, schema)) {
+          const valid = gen.var("valid", (0, codegen_1._)`${len} <= ${items}`);
+          gen.if((0, codegen_1.not)(valid), () => validateItems(valid, items));
+          cxt.ok(valid);
+        }
+        it.items = true;
+        function validateItems(valid, from) {
+          gen.forRange("i", from, len, (i) => {
+            cxt.subschema({ keyword: "unevaluatedItems", dataProp: i, dataPropType: util_1.Type.Num }, valid);
+            if (!it.allErrors)
+              gen.if((0, codegen_1.not)(valid), () => gen.break());
+          });
+        }
+      }
+    };
+    exports.default = def;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/unevaluated/index.js
+var require_unevaluated = __commonJS({
+  "node_modules/ajv/dist/vocabularies/unevaluated/index.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var unevaluatedProperties_1 = require_unevaluatedProperties();
+    var unevaluatedItems_1 = require_unevaluatedItems();
+    var unevaluated = [unevaluatedProperties_1.default, unevaluatedItems_1.default];
+    exports.default = unevaluated;
+  }
+});
+
+// node_modules/ajv/dist/vocabularies/draft2020.js
+var require_draft2020 = __commonJS({
+  "node_modules/ajv/dist/vocabularies/draft2020.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var core_1 = require_core2();
+    var validation_1 = require_validation();
+    var applicator_1 = require_applicator();
+    var dynamic_1 = require_dynamic();
+    var next_1 = require_next();
+    var unevaluated_1 = require_unevaluated();
+    var format_1 = require_format2();
+    var metadata_1 = require_metadata();
+    var draft2020Vocabularies = [
+      dynamic_1.default,
+      core_1.default,
+      validation_1.default,
+      (0, applicator_1.default)(true),
+      format_1.default,
+      metadata_1.metadataVocabulary,
+      metadata_1.contentVocabulary,
+      next_1.default,
+      unevaluated_1.default
+    ];
+    exports.default = draft2020Vocabularies;
+  }
+});
+
+// node_modules/ajv/dist/refs/json-schema-2020-12/schema.json
+var require_schema = __commonJS({
+  "node_modules/ajv/dist/refs/json-schema-2020-12/schema.json"(exports, module) {
+    module.exports = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://json-schema.org/draft/2020-12/schema",
+      $vocabulary: {
+        "https://json-schema.org/draft/2020-12/vocab/core": true,
+        "https://json-schema.org/draft/2020-12/vocab/applicator": true,
+        "https://json-schema.org/draft/2020-12/vocab/unevaluated": true,
+        "https://json-schema.org/draft/2020-12/vocab/validation": true,
+        "https://json-schema.org/draft/2020-12/vocab/meta-data": true,
+        "https://json-schema.org/draft/2020-12/vocab/format-annotation": true,
+        "https://json-schema.org/draft/2020-12/vocab/content": true
+      },
+      $dynamicAnchor: "meta",
+      title: "Core and Validation specifications meta-schema",
+      allOf: [
+        { $ref: "meta/core" },
+        { $ref: "meta/applicator" },
+        { $ref: "meta/unevaluated" },
+        { $ref: "meta/validation" },
+        { $ref: "meta/meta-data" },
+        { $ref: "meta/format-annotation" },
+        { $ref: "meta/content" }
+      ],
+      type: ["object", "boolean"],
+      $comment: "This meta-schema also defines keywords that have appeared in previous drafts in order to prevent incompatible extensions as they remain in common use.",
+      properties: {
+        definitions: {
+          $comment: '"definitions" has been replaced by "$defs".',
+          type: "object",
+          additionalProperties: { $dynamicRef: "#meta" },
+          deprecated: true,
+          default: {}
+        },
+        dependencies: {
+          $comment: '"dependencies" has been split and replaced by "dependentSchemas" and "dependentRequired" in order to serve their differing semantics.',
+          type: "object",
+          additionalProperties: {
+            anyOf: [{ $dynamicRef: "#meta" }, { $ref: "meta/validation#/$defs/stringArray" }]
+          },
+          deprecated: true,
+          default: {}
+        },
+        $recursiveAnchor: {
+          $comment: '"$recursiveAnchor" has been replaced by "$dynamicAnchor".',
+          $ref: "meta/core#/$defs/anchorString",
+          deprecated: true
+        },
+        $recursiveRef: {
+          $comment: '"$recursiveRef" has been replaced by "$dynamicRef".',
+          $ref: "meta/core#/$defs/uriReferenceString",
+          deprecated: true
+        }
+      }
+    };
+  }
+});
+
+// node_modules/ajv/dist/refs/json-schema-2020-12/meta/applicator.json
+var require_applicator2 = __commonJS({
+  "node_modules/ajv/dist/refs/json-schema-2020-12/meta/applicator.json"(exports, module) {
+    module.exports = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://json-schema.org/draft/2020-12/meta/applicator",
+      $vocabulary: {
+        "https://json-schema.org/draft/2020-12/vocab/applicator": true
+      },
+      $dynamicAnchor: "meta",
+      title: "Applicator vocabulary meta-schema",
+      type: ["object", "boolean"],
+      properties: {
+        prefixItems: { $ref: "#/$defs/schemaArray" },
+        items: { $dynamicRef: "#meta" },
+        contains: { $dynamicRef: "#meta" },
+        additionalProperties: { $dynamicRef: "#meta" },
+        properties: {
+          type: "object",
+          additionalProperties: { $dynamicRef: "#meta" },
+          default: {}
+        },
+        patternProperties: {
+          type: "object",
+          additionalProperties: { $dynamicRef: "#meta" },
+          propertyNames: { format: "regex" },
+          default: {}
+        },
+        dependentSchemas: {
+          type: "object",
+          additionalProperties: { $dynamicRef: "#meta" },
+          default: {}
+        },
+        propertyNames: { $dynamicRef: "#meta" },
+        if: { $dynamicRef: "#meta" },
+        then: { $dynamicRef: "#meta" },
+        else: { $dynamicRef: "#meta" },
+        allOf: { $ref: "#/$defs/schemaArray" },
+        anyOf: { $ref: "#/$defs/schemaArray" },
+        oneOf: { $ref: "#/$defs/schemaArray" },
+        not: { $dynamicRef: "#meta" }
+      },
+      $defs: {
+        schemaArray: {
+          type: "array",
+          minItems: 1,
+          items: { $dynamicRef: "#meta" }
+        }
+      }
+    };
+  }
+});
+
+// node_modules/ajv/dist/refs/json-schema-2020-12/meta/unevaluated.json
+var require_unevaluated2 = __commonJS({
+  "node_modules/ajv/dist/refs/json-schema-2020-12/meta/unevaluated.json"(exports, module) {
+    module.exports = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://json-schema.org/draft/2020-12/meta/unevaluated",
+      $vocabulary: {
+        "https://json-schema.org/draft/2020-12/vocab/unevaluated": true
+      },
+      $dynamicAnchor: "meta",
+      title: "Unevaluated applicator vocabulary meta-schema",
+      type: ["object", "boolean"],
+      properties: {
+        unevaluatedItems: { $dynamicRef: "#meta" },
+        unevaluatedProperties: { $dynamicRef: "#meta" }
+      }
+    };
+  }
+});
+
+// node_modules/ajv/dist/refs/json-schema-2020-12/meta/content.json
+var require_content = __commonJS({
+  "node_modules/ajv/dist/refs/json-schema-2020-12/meta/content.json"(exports, module) {
+    module.exports = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://json-schema.org/draft/2020-12/meta/content",
+      $vocabulary: {
+        "https://json-schema.org/draft/2020-12/vocab/content": true
+      },
+      $dynamicAnchor: "meta",
+      title: "Content vocabulary meta-schema",
+      type: ["object", "boolean"],
+      properties: {
+        contentEncoding: { type: "string" },
+        contentMediaType: { type: "string" },
+        contentSchema: { $dynamicRef: "#meta" }
+      }
+    };
+  }
+});
+
+// node_modules/ajv/dist/refs/json-schema-2020-12/meta/core.json
+var require_core3 = __commonJS({
+  "node_modules/ajv/dist/refs/json-schema-2020-12/meta/core.json"(exports, module) {
+    module.exports = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://json-schema.org/draft/2020-12/meta/core",
+      $vocabulary: {
+        "https://json-schema.org/draft/2020-12/vocab/core": true
+      },
+      $dynamicAnchor: "meta",
+      title: "Core vocabulary meta-schema",
+      type: ["object", "boolean"],
+      properties: {
+        $id: {
+          $ref: "#/$defs/uriReferenceString",
+          $comment: "Non-empty fragments not allowed.",
+          pattern: "^[^#]*#?$"
+        },
+        $schema: { $ref: "#/$defs/uriString" },
+        $ref: { $ref: "#/$defs/uriReferenceString" },
+        $anchor: { $ref: "#/$defs/anchorString" },
+        $dynamicRef: { $ref: "#/$defs/uriReferenceString" },
+        $dynamicAnchor: { $ref: "#/$defs/anchorString" },
+        $vocabulary: {
+          type: "object",
+          propertyNames: { $ref: "#/$defs/uriString" },
+          additionalProperties: {
+            type: "boolean"
+          }
+        },
+        $comment: {
+          type: "string"
+        },
+        $defs: {
+          type: "object",
+          additionalProperties: { $dynamicRef: "#meta" }
+        }
+      },
+      $defs: {
+        anchorString: {
+          type: "string",
+          pattern: "^[A-Za-z_][-A-Za-z0-9._]*$"
+        },
+        uriString: {
+          type: "string",
+          format: "uri"
+        },
+        uriReferenceString: {
+          type: "string",
+          format: "uri-reference"
+        }
+      }
+    };
+  }
+});
+
+// node_modules/ajv/dist/refs/json-schema-2020-12/meta/format-annotation.json
+var require_format_annotation = __commonJS({
+  "node_modules/ajv/dist/refs/json-schema-2020-12/meta/format-annotation.json"(exports, module) {
+    module.exports = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://json-schema.org/draft/2020-12/meta/format-annotation",
+      $vocabulary: {
+        "https://json-schema.org/draft/2020-12/vocab/format-annotation": true
+      },
+      $dynamicAnchor: "meta",
+      title: "Format vocabulary meta-schema for annotation results",
+      type: ["object", "boolean"],
+      properties: {
+        format: { type: "string" }
+      }
+    };
+  }
+});
+
+// node_modules/ajv/dist/refs/json-schema-2020-12/meta/meta-data.json
+var require_meta_data = __commonJS({
+  "node_modules/ajv/dist/refs/json-schema-2020-12/meta/meta-data.json"(exports, module) {
+    module.exports = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://json-schema.org/draft/2020-12/meta/meta-data",
+      $vocabulary: {
+        "https://json-schema.org/draft/2020-12/vocab/meta-data": true
+      },
+      $dynamicAnchor: "meta",
+      title: "Meta-data vocabulary meta-schema",
+      type: ["object", "boolean"],
+      properties: {
+        title: {
+          type: "string"
+        },
+        description: {
+          type: "string"
+        },
+        default: true,
+        deprecated: {
+          type: "boolean",
+          default: false
+        },
+        readOnly: {
+          type: "boolean",
+          default: false
+        },
+        writeOnly: {
+          type: "boolean",
+          default: false
+        },
+        examples: {
+          type: "array",
+          items: true
+        }
+      }
+    };
+  }
+});
+
+// node_modules/ajv/dist/refs/json-schema-2020-12/meta/validation.json
+var require_validation2 = __commonJS({
+  "node_modules/ajv/dist/refs/json-schema-2020-12/meta/validation.json"(exports, module) {
+    module.exports = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://json-schema.org/draft/2020-12/meta/validation",
+      $vocabulary: {
+        "https://json-schema.org/draft/2020-12/vocab/validation": true
+      },
+      $dynamicAnchor: "meta",
+      title: "Validation vocabulary meta-schema",
+      type: ["object", "boolean"],
+      properties: {
+        type: {
+          anyOf: [
+            { $ref: "#/$defs/simpleTypes" },
+            {
+              type: "array",
+              items: { $ref: "#/$defs/simpleTypes" },
+              minItems: 1,
+              uniqueItems: true
+            }
+          ]
+        },
+        const: true,
+        enum: {
+          type: "array",
+          items: true
+        },
+        multipleOf: {
+          type: "number",
+          exclusiveMinimum: 0
+        },
+        maximum: {
+          type: "number"
+        },
+        exclusiveMaximum: {
+          type: "number"
+        },
+        minimum: {
+          type: "number"
+        },
+        exclusiveMinimum: {
+          type: "number"
+        },
+        maxLength: { $ref: "#/$defs/nonNegativeInteger" },
+        minLength: { $ref: "#/$defs/nonNegativeIntegerDefault0" },
+        pattern: {
+          type: "string",
+          format: "regex"
+        },
+        maxItems: { $ref: "#/$defs/nonNegativeInteger" },
+        minItems: { $ref: "#/$defs/nonNegativeIntegerDefault0" },
+        uniqueItems: {
+          type: "boolean",
+          default: false
+        },
+        maxContains: { $ref: "#/$defs/nonNegativeInteger" },
+        minContains: {
+          $ref: "#/$defs/nonNegativeInteger",
+          default: 1
+        },
+        maxProperties: { $ref: "#/$defs/nonNegativeInteger" },
+        minProperties: { $ref: "#/$defs/nonNegativeIntegerDefault0" },
+        required: { $ref: "#/$defs/stringArray" },
+        dependentRequired: {
+          type: "object",
+          additionalProperties: {
+            $ref: "#/$defs/stringArray"
+          }
+        }
+      },
+      $defs: {
+        nonNegativeInteger: {
+          type: "integer",
+          minimum: 0
+        },
+        nonNegativeIntegerDefault0: {
+          $ref: "#/$defs/nonNegativeInteger",
+          default: 0
+        },
+        simpleTypes: {
+          enum: ["array", "boolean", "integer", "null", "number", "object", "string"]
+        },
+        stringArray: {
+          type: "array",
+          items: { type: "string" },
+          uniqueItems: true,
+          default: []
+        }
+      }
+    };
+  }
+});
+
+// node_modules/ajv/dist/refs/json-schema-2020-12/index.js
+var require_json_schema_2020_12 = __commonJS({
+  "node_modules/ajv/dist/refs/json-schema-2020-12/index.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var metaSchema = require_schema();
+    var applicator = require_applicator2();
+    var unevaluated = require_unevaluated2();
+    var content = require_content();
+    var core = require_core3();
+    var format = require_format_annotation();
+    var metadata = require_meta_data();
+    var validation = require_validation2();
+    var META_SUPPORT_DATA = ["/properties"];
+    function addMetaSchema2020($data) {
+      ;
+      [
+        metaSchema,
+        applicator,
+        unevaluated,
+        content,
+        core,
+        with$data(this, format),
+        metadata,
+        with$data(this, validation)
+      ].forEach((sch) => this.addMetaSchema(sch, void 0, false));
+      return this;
+      function with$data(ajv, sch) {
+        return $data ? ajv.$dataMetaSchema(sch, META_SUPPORT_DATA) : sch;
+      }
+    }
+    exports.default = addMetaSchema2020;
+  }
+});
+
+// node_modules/ajv/dist/2020.js
+var require__ = __commonJS({
+  "node_modules/ajv/dist/2020.js"(exports, module) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv2020 = void 0;
+    var core_1 = require_core();
+    var draft2020_1 = require_draft2020();
+    var discriminator_1 = require_discriminator();
+    var json_schema_2020_12_1 = require_json_schema_2020_12();
+    var META_SCHEMA_ID = "https://json-schema.org/draft/2020-12/schema";
+    var Ajv20202 = class extends core_1.default {
+      constructor(opts = {}) {
+        super({
+          ...opts,
+          dynamicRef: true,
+          next: true,
+          unevaluated: true
+        });
+      }
+      _addVocabularies() {
+        super._addVocabularies();
+        draft2020_1.default.forEach((v) => this.addVocabulary(v));
+        if (this.opts.discriminator)
+          this.addKeyword(discriminator_1.default);
+      }
+      _addDefaultMetaSchema() {
+        super._addDefaultMetaSchema();
+        const { $data, meta } = this.opts;
+        if (!meta)
+          return;
+        json_schema_2020_12_1.default.call(this, $data);
+        this.refs["http://json-schema.org/schema"] = META_SCHEMA_ID;
+      }
+      defaultMeta() {
+        return this.opts.defaultMeta = super.defaultMeta() || (this.getSchema(META_SCHEMA_ID) ? META_SCHEMA_ID : void 0);
+      }
+    };
+    exports.Ajv2020 = Ajv20202;
+    module.exports = exports = Ajv20202;
+    module.exports.Ajv2020 = Ajv20202;
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = Ajv20202;
+    var validate_1 = require_validate();
+    Object.defineProperty(exports, "KeywordCxt", { enumerable: true, get: function() {
+      return validate_1.KeywordCxt;
+    } });
+    var codegen_1 = require_codegen();
+    Object.defineProperty(exports, "_", { enumerable: true, get: function() {
+      return codegen_1._;
+    } });
+    Object.defineProperty(exports, "str", { enumerable: true, get: function() {
+      return codegen_1.str;
+    } });
+    Object.defineProperty(exports, "stringify", { enumerable: true, get: function() {
+      return codegen_1.stringify;
+    } });
+    Object.defineProperty(exports, "nil", { enumerable: true, get: function() {
+      return codegen_1.nil;
+    } });
+    Object.defineProperty(exports, "Name", { enumerable: true, get: function() {
+      return codegen_1.Name;
+    } });
+    Object.defineProperty(exports, "CodeGen", { enumerable: true, get: function() {
+      return codegen_1.CodeGen;
+    } });
+    var validation_error_1 = require_validation_error();
+    Object.defineProperty(exports, "ValidationError", { enumerable: true, get: function() {
+      return validation_error_1.default;
+    } });
+    var ref_error_1 = require_ref_error();
+    Object.defineProperty(exports, "MissingRefError", { enumerable: true, get: function() {
+      return ref_error_1.default;
+    } });
+  }
+});
+
 // node_modules/yaml/dist/nodes/identity.js
 var require_identity = __commonJS({
   "node_modules/yaml/dist/nodes/identity.js"(exports) {
@@ -7504,8 +8328,8 @@ var require_directives = __commonJS({
               this.yaml.version = version2;
               return true;
             } else {
-              const isValid2 = /^\d+\.\d+$/.test(version2);
-              onError(6, `Unsupported YAML version ${version2}`, isValid2);
+              const isValid = /^\d+\.\d+$/.test(version2);
+              onError(6, `Unsupported YAML version ${version2}`, isValid);
               return false;
             }
           }
@@ -9664,7 +10488,7 @@ var require_int = __commonJS({
 });
 
 // node_modules/yaml/dist/schema/core/schema.js
-var require_schema = __commonJS({
+var require_schema2 = __commonJS({
   "node_modules/yaml/dist/schema/core/schema.js"(exports) {
     "use strict";
     var map = require_map();
@@ -9692,7 +10516,7 @@ var require_schema = __commonJS({
 });
 
 // node_modules/yaml/dist/schema/json/schema.js
-var require_schema2 = __commonJS({
+var require_schema3 = __commonJS({
   "node_modules/yaml/dist/schema/json/schema.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
@@ -10318,7 +11142,7 @@ var require_timestamp = __commonJS({
 });
 
 // node_modules/yaml/dist/schema/yaml-1.1/schema.js
-var require_schema3 = __commonJS({
+var require_schema4 = __commonJS({
   "node_modules/yaml/dist/schema/yaml-1.1/schema.js"(exports) {
     "use strict";
     var map = require_map();
@@ -10372,13 +11196,13 @@ var require_tags = __commonJS({
     var bool = require_bool();
     var float = require_float();
     var int2 = require_int();
-    var schema = require_schema();
-    var schema$1 = require_schema2();
+    var schema = require_schema2();
+    var schema$1 = require_schema3();
     var binary = require_binary();
     var merge2 = require_merge();
     var omap = require_omap();
     var pairs = require_pairs();
-    var schema$2 = require_schema3();
+    var schema$2 = require_schema4();
     var set = require_set();
     var timestamp = require_timestamp();
     var schemas = /* @__PURE__ */ new Map([
@@ -10899,7 +11723,7 @@ var require_errors2 = __commonJS({
         super("YAMLWarning", pos, code, message);
       }
     };
-    var prettifyError2 = (src, lc) => (error2) => {
+    var prettifyError = (src, lc) => (error2) => {
       if (error2.pos[0] === -1)
         return;
       error2.linePos = error2.pos.map((pos) => lc.linePos(pos));
@@ -10937,7 +11761,7 @@ ${pointer}
     exports.YAMLError = YAMLError;
     exports.YAMLParseError = YAMLParseError;
     exports.YAMLWarning = YAMLWarning;
-    exports.prettifyError = prettifyError2;
+    exports.prettifyError = prettifyError;
   }
 });
 
@@ -14537,4049 +15361,8 @@ var require_dist2 = __commonJS({
   }
 });
 
-// node_modules/zod/v3/external.js
-var external_exports = {};
-__export(external_exports, {
-  BRAND: () => BRAND,
-  DIRTY: () => DIRTY,
-  EMPTY_PATH: () => EMPTY_PATH,
-  INVALID: () => INVALID,
-  NEVER: () => NEVER,
-  OK: () => OK,
-  ParseStatus: () => ParseStatus,
-  Schema: () => ZodType,
-  ZodAny: () => ZodAny,
-  ZodArray: () => ZodArray,
-  ZodBigInt: () => ZodBigInt,
-  ZodBoolean: () => ZodBoolean,
-  ZodBranded: () => ZodBranded,
-  ZodCatch: () => ZodCatch,
-  ZodDate: () => ZodDate,
-  ZodDefault: () => ZodDefault,
-  ZodDiscriminatedUnion: () => ZodDiscriminatedUnion,
-  ZodEffects: () => ZodEffects,
-  ZodEnum: () => ZodEnum,
-  ZodError: () => ZodError,
-  ZodFirstPartyTypeKind: () => ZodFirstPartyTypeKind,
-  ZodFunction: () => ZodFunction,
-  ZodIntersection: () => ZodIntersection,
-  ZodIssueCode: () => ZodIssueCode,
-  ZodLazy: () => ZodLazy,
-  ZodLiteral: () => ZodLiteral,
-  ZodMap: () => ZodMap,
-  ZodNaN: () => ZodNaN,
-  ZodNativeEnum: () => ZodNativeEnum,
-  ZodNever: () => ZodNever,
-  ZodNull: () => ZodNull,
-  ZodNullable: () => ZodNullable,
-  ZodNumber: () => ZodNumber,
-  ZodObject: () => ZodObject,
-  ZodOptional: () => ZodOptional,
-  ZodParsedType: () => ZodParsedType,
-  ZodPipeline: () => ZodPipeline,
-  ZodPromise: () => ZodPromise,
-  ZodReadonly: () => ZodReadonly,
-  ZodRecord: () => ZodRecord,
-  ZodSchema: () => ZodType,
-  ZodSet: () => ZodSet,
-  ZodString: () => ZodString,
-  ZodSymbol: () => ZodSymbol,
-  ZodTransformer: () => ZodEffects,
-  ZodTuple: () => ZodTuple,
-  ZodType: () => ZodType,
-  ZodUndefined: () => ZodUndefined,
-  ZodUnion: () => ZodUnion,
-  ZodUnknown: () => ZodUnknown,
-  ZodVoid: () => ZodVoid,
-  addIssueToContext: () => addIssueToContext,
-  any: () => anyType,
-  array: () => arrayType,
-  bigint: () => bigIntType,
-  boolean: () => booleanType,
-  coerce: () => coerce,
-  custom: () => custom,
-  date: () => dateType,
-  datetimeRegex: () => datetimeRegex,
-  defaultErrorMap: () => en_default,
-  discriminatedUnion: () => discriminatedUnionType,
-  effect: () => effectsType,
-  enum: () => enumType,
-  function: () => functionType,
-  getErrorMap: () => getErrorMap,
-  getParsedType: () => getParsedType,
-  instanceof: () => instanceOfType,
-  intersection: () => intersectionType,
-  isAborted: () => isAborted,
-  isAsync: () => isAsync,
-  isDirty: () => isDirty,
-  isValid: () => isValid,
-  late: () => late,
-  lazy: () => lazyType,
-  literal: () => literalType,
-  makeIssue: () => makeIssue,
-  map: () => mapType,
-  nan: () => nanType,
-  nativeEnum: () => nativeEnumType,
-  never: () => neverType,
-  null: () => nullType,
-  nullable: () => nullableType,
-  number: () => numberType,
-  object: () => objectType,
-  objectUtil: () => objectUtil,
-  oboolean: () => oboolean,
-  onumber: () => onumber,
-  optional: () => optionalType,
-  ostring: () => ostring,
-  pipeline: () => pipelineType,
-  preprocess: () => preprocessType,
-  promise: () => promiseType,
-  quotelessJson: () => quotelessJson,
-  record: () => recordType,
-  set: () => setType,
-  setErrorMap: () => setErrorMap,
-  strictObject: () => strictObjectType,
-  string: () => stringType,
-  symbol: () => symbolType,
-  transformer: () => effectsType,
-  tuple: () => tupleType,
-  undefined: () => undefinedType,
-  union: () => unionType,
-  unknown: () => unknownType,
-  util: () => util,
-  void: () => voidType
-});
-
-// node_modules/zod/v3/helpers/util.js
-var util;
-(function(util2) {
-  util2.assertEqual = (_) => {
-  };
-  function assertIs2(_arg) {
-  }
-  util2.assertIs = assertIs2;
-  function assertNever2(_x) {
-    throw new Error();
-  }
-  util2.assertNever = assertNever2;
-  util2.arrayToEnum = (items) => {
-    const obj = {};
-    for (const item of items) {
-      obj[item] = item;
-    }
-    return obj;
-  };
-  util2.getValidEnumValues = (obj) => {
-    const validKeys = util2.objectKeys(obj).filter((k) => typeof obj[obj[k]] !== "number");
-    const filtered = {};
-    for (const k of validKeys) {
-      filtered[k] = obj[k];
-    }
-    return util2.objectValues(filtered);
-  };
-  util2.objectValues = (obj) => {
-    return util2.objectKeys(obj).map(function(e) {
-      return obj[e];
-    });
-  };
-  util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object3) => {
-    const keys = [];
-    for (const key2 in object3) {
-      if (Object.prototype.hasOwnProperty.call(object3, key2)) {
-        keys.push(key2);
-      }
-    }
-    return keys;
-  };
-  util2.find = (arr, checker) => {
-    for (const item of arr) {
-      if (checker(item))
-        return item;
-    }
-    return void 0;
-  };
-  util2.isInteger = typeof Number.isInteger === "function" ? (val) => Number.isInteger(val) : (val) => typeof val === "number" && Number.isFinite(val) && Math.floor(val) === val;
-  function joinValues2(array2, separator = " | ") {
-    return array2.map((val) => typeof val === "string" ? `'${val}'` : val).join(separator);
-  }
-  util2.joinValues = joinValues2;
-  util2.jsonStringifyReplacer = (_, value) => {
-    if (typeof value === "bigint") {
-      return value.toString();
-    }
-    return value;
-  };
-})(util || (util = {}));
-var objectUtil;
-(function(objectUtil2) {
-  objectUtil2.mergeShapes = (first, second) => {
-    return {
-      ...first,
-      ...second
-      // second overwrites first
-    };
-  };
-})(objectUtil || (objectUtil = {}));
-var ZodParsedType = util.arrayToEnum([
-  "string",
-  "nan",
-  "number",
-  "integer",
-  "float",
-  "boolean",
-  "date",
-  "bigint",
-  "symbol",
-  "function",
-  "undefined",
-  "null",
-  "array",
-  "object",
-  "unknown",
-  "promise",
-  "void",
-  "never",
-  "map",
-  "set"
-]);
-var getParsedType = (data) => {
-  const t = typeof data;
-  switch (t) {
-    case "undefined":
-      return ZodParsedType.undefined;
-    case "string":
-      return ZodParsedType.string;
-    case "number":
-      return Number.isNaN(data) ? ZodParsedType.nan : ZodParsedType.number;
-    case "boolean":
-      return ZodParsedType.boolean;
-    case "function":
-      return ZodParsedType.function;
-    case "bigint":
-      return ZodParsedType.bigint;
-    case "symbol":
-      return ZodParsedType.symbol;
-    case "object":
-      if (Array.isArray(data)) {
-        return ZodParsedType.array;
-      }
-      if (data === null) {
-        return ZodParsedType.null;
-      }
-      if (data.then && typeof data.then === "function" && data.catch && typeof data.catch === "function") {
-        return ZodParsedType.promise;
-      }
-      if (typeof Map !== "undefined" && data instanceof Map) {
-        return ZodParsedType.map;
-      }
-      if (typeof Set !== "undefined" && data instanceof Set) {
-        return ZodParsedType.set;
-      }
-      if (typeof Date !== "undefined" && data instanceof Date) {
-        return ZodParsedType.date;
-      }
-      return ZodParsedType.object;
-    default:
-      return ZodParsedType.unknown;
-  }
-};
-
-// node_modules/zod/v3/ZodError.js
-var ZodIssueCode = util.arrayToEnum([
-  "invalid_type",
-  "invalid_literal",
-  "custom",
-  "invalid_union",
-  "invalid_union_discriminator",
-  "invalid_enum_value",
-  "unrecognized_keys",
-  "invalid_arguments",
-  "invalid_return_type",
-  "invalid_date",
-  "invalid_string",
-  "too_small",
-  "too_big",
-  "invalid_intersection_types",
-  "not_multiple_of",
-  "not_finite"
-]);
-var quotelessJson = (obj) => {
-  const json = JSON.stringify(obj, null, 2);
-  return json.replace(/"([^"]+)":/g, "$1:");
-};
-var ZodError = class _ZodError extends Error {
-  get errors() {
-    return this.issues;
-  }
-  constructor(issues) {
-    super();
-    this.issues = [];
-    this.addIssue = (sub) => {
-      this.issues = [...this.issues, sub];
-    };
-    this.addIssues = (subs = []) => {
-      this.issues = [...this.issues, ...subs];
-    };
-    const actualProto = new.target.prototype;
-    if (Object.setPrototypeOf) {
-      Object.setPrototypeOf(this, actualProto);
-    } else {
-      this.__proto__ = actualProto;
-    }
-    this.name = "ZodError";
-    this.issues = issues;
-  }
-  format(_mapper) {
-    const mapper = _mapper || function(issue3) {
-      return issue3.message;
-    };
-    const fieldErrors = { _errors: [] };
-    const processError = (error2) => {
-      for (const issue3 of error2.issues) {
-        if (issue3.code === "invalid_union") {
-          issue3.unionErrors.map(processError);
-        } else if (issue3.code === "invalid_return_type") {
-          processError(issue3.returnTypeError);
-        } else if (issue3.code === "invalid_arguments") {
-          processError(issue3.argumentsError);
-        } else if (issue3.path.length === 0) {
-          fieldErrors._errors.push(mapper(issue3));
-        } else {
-          let curr = fieldErrors;
-          let i = 0;
-          while (i < issue3.path.length) {
-            const el = issue3.path[i];
-            const terminal = i === issue3.path.length - 1;
-            if (!terminal) {
-              curr[el] = curr[el] || { _errors: [] };
-            } else {
-              curr[el] = curr[el] || { _errors: [] };
-              curr[el]._errors.push(mapper(issue3));
-            }
-            curr = curr[el];
-            i++;
-          }
-        }
-      }
-    };
-    processError(this);
-    return fieldErrors;
-  }
-  static assert(value) {
-    if (!(value instanceof _ZodError)) {
-      throw new Error(`Not a ZodError: ${value}`);
-    }
-  }
-  toString() {
-    return this.message;
-  }
-  get message() {
-    return JSON.stringify(this.issues, util.jsonStringifyReplacer, 2);
-  }
-  get isEmpty() {
-    return this.issues.length === 0;
-  }
-  flatten(mapper = (issue3) => issue3.message) {
-    const fieldErrors = {};
-    const formErrors = [];
-    for (const sub of this.issues) {
-      if (sub.path.length > 0) {
-        const firstEl = sub.path[0];
-        fieldErrors[firstEl] = fieldErrors[firstEl] || [];
-        fieldErrors[firstEl].push(mapper(sub));
-      } else {
-        formErrors.push(mapper(sub));
-      }
-    }
-    return { formErrors, fieldErrors };
-  }
-  get formErrors() {
-    return this.flatten();
-  }
-};
-ZodError.create = (issues) => {
-  const error2 = new ZodError(issues);
-  return error2;
-};
-
-// node_modules/zod/v3/locales/en.js
-var errorMap = (issue3, _ctx) => {
-  let message;
-  switch (issue3.code) {
-    case ZodIssueCode.invalid_type:
-      if (issue3.received === ZodParsedType.undefined) {
-        message = "Required";
-      } else {
-        message = `Expected ${issue3.expected}, received ${issue3.received}`;
-      }
-      break;
-    case ZodIssueCode.invalid_literal:
-      message = `Invalid literal value, expected ${JSON.stringify(issue3.expected, util.jsonStringifyReplacer)}`;
-      break;
-    case ZodIssueCode.unrecognized_keys:
-      message = `Unrecognized key(s) in object: ${util.joinValues(issue3.keys, ", ")}`;
-      break;
-    case ZodIssueCode.invalid_union:
-      message = `Invalid input`;
-      break;
-    case ZodIssueCode.invalid_union_discriminator:
-      message = `Invalid discriminator value. Expected ${util.joinValues(issue3.options)}`;
-      break;
-    case ZodIssueCode.invalid_enum_value:
-      message = `Invalid enum value. Expected ${util.joinValues(issue3.options)}, received '${issue3.received}'`;
-      break;
-    case ZodIssueCode.invalid_arguments:
-      message = `Invalid function arguments`;
-      break;
-    case ZodIssueCode.invalid_return_type:
-      message = `Invalid function return type`;
-      break;
-    case ZodIssueCode.invalid_date:
-      message = `Invalid date`;
-      break;
-    case ZodIssueCode.invalid_string:
-      if (typeof issue3.validation === "object") {
-        if ("includes" in issue3.validation) {
-          message = `Invalid input: must include "${issue3.validation.includes}"`;
-          if (typeof issue3.validation.position === "number") {
-            message = `${message} at one or more positions greater than or equal to ${issue3.validation.position}`;
-          }
-        } else if ("startsWith" in issue3.validation) {
-          message = `Invalid input: must start with "${issue3.validation.startsWith}"`;
-        } else if ("endsWith" in issue3.validation) {
-          message = `Invalid input: must end with "${issue3.validation.endsWith}"`;
-        } else {
-          util.assertNever(issue3.validation);
-        }
-      } else if (issue3.validation !== "regex") {
-        message = `Invalid ${issue3.validation}`;
-      } else {
-        message = "Invalid";
-      }
-      break;
-    case ZodIssueCode.too_small:
-      if (issue3.type === "array")
-        message = `Array must contain ${issue3.exact ? "exactly" : issue3.inclusive ? `at least` : `more than`} ${issue3.minimum} element(s)`;
-      else if (issue3.type === "string")
-        message = `String must contain ${issue3.exact ? "exactly" : issue3.inclusive ? `at least` : `over`} ${issue3.minimum} character(s)`;
-      else if (issue3.type === "number")
-        message = `Number must be ${issue3.exact ? `exactly equal to ` : issue3.inclusive ? `greater than or equal to ` : `greater than `}${issue3.minimum}`;
-      else if (issue3.type === "bigint")
-        message = `Number must be ${issue3.exact ? `exactly equal to ` : issue3.inclusive ? `greater than or equal to ` : `greater than `}${issue3.minimum}`;
-      else if (issue3.type === "date")
-        message = `Date must be ${issue3.exact ? `exactly equal to ` : issue3.inclusive ? `greater than or equal to ` : `greater than `}${new Date(Number(issue3.minimum))}`;
-      else
-        message = "Invalid input";
-      break;
-    case ZodIssueCode.too_big:
-      if (issue3.type === "array")
-        message = `Array must contain ${issue3.exact ? `exactly` : issue3.inclusive ? `at most` : `less than`} ${issue3.maximum} element(s)`;
-      else if (issue3.type === "string")
-        message = `String must contain ${issue3.exact ? `exactly` : issue3.inclusive ? `at most` : `under`} ${issue3.maximum} character(s)`;
-      else if (issue3.type === "number")
-        message = `Number must be ${issue3.exact ? `exactly` : issue3.inclusive ? `less than or equal to` : `less than`} ${issue3.maximum}`;
-      else if (issue3.type === "bigint")
-        message = `BigInt must be ${issue3.exact ? `exactly` : issue3.inclusive ? `less than or equal to` : `less than`} ${issue3.maximum}`;
-      else if (issue3.type === "date")
-        message = `Date must be ${issue3.exact ? `exactly` : issue3.inclusive ? `smaller than or equal to` : `smaller than`} ${new Date(Number(issue3.maximum))}`;
-      else
-        message = "Invalid input";
-      break;
-    case ZodIssueCode.custom:
-      message = `Invalid input`;
-      break;
-    case ZodIssueCode.invalid_intersection_types:
-      message = `Intersection results could not be merged`;
-      break;
-    case ZodIssueCode.not_multiple_of:
-      message = `Number must be a multiple of ${issue3.multipleOf}`;
-      break;
-    case ZodIssueCode.not_finite:
-      message = "Number must be finite";
-      break;
-    default:
-      message = _ctx.defaultError;
-      util.assertNever(issue3);
-  }
-  return { message };
-};
-var en_default = errorMap;
-
-// node_modules/zod/v3/errors.js
-var overrideErrorMap = en_default;
-function setErrorMap(map) {
-  overrideErrorMap = map;
-}
-function getErrorMap() {
-  return overrideErrorMap;
-}
-
-// node_modules/zod/v3/helpers/parseUtil.js
-var makeIssue = (params) => {
-  const { data, path, errorMaps, issueData } = params;
-  const fullPath = [...path, ...issueData.path || []];
-  const fullIssue = {
-    ...issueData,
-    path: fullPath
-  };
-  if (issueData.message !== void 0) {
-    return {
-      ...issueData,
-      path: fullPath,
-      message: issueData.message
-    };
-  }
-  let errorMessage = "";
-  const maps = errorMaps.filter((m) => !!m).slice().reverse();
-  for (const map of maps) {
-    errorMessage = map(fullIssue, { data, defaultError: errorMessage }).message;
-  }
-  return {
-    ...issueData,
-    path: fullPath,
-    message: errorMessage
-  };
-};
-var EMPTY_PATH = [];
-function addIssueToContext(ctx, issueData) {
-  const overrideMap = getErrorMap();
-  const issue3 = makeIssue({
-    issueData,
-    data: ctx.data,
-    path: ctx.path,
-    errorMaps: [
-      ctx.common.contextualErrorMap,
-      // contextual error map is first priority
-      ctx.schemaErrorMap,
-      // then schema-bound map if available
-      overrideMap,
-      // then global override map
-      overrideMap === en_default ? void 0 : en_default
-      // then global default map
-    ].filter((x) => !!x)
-  });
-  ctx.common.issues.push(issue3);
-}
-var ParseStatus = class _ParseStatus {
-  constructor() {
-    this.value = "valid";
-  }
-  dirty() {
-    if (this.value === "valid")
-      this.value = "dirty";
-  }
-  abort() {
-    if (this.value !== "aborted")
-      this.value = "aborted";
-  }
-  static mergeArray(status, results) {
-    const arrayValue = [];
-    for (const s of results) {
-      if (s.status === "aborted")
-        return INVALID;
-      if (s.status === "dirty")
-        status.dirty();
-      arrayValue.push(s.value);
-    }
-    return { status: status.value, value: arrayValue };
-  }
-  static async mergeObjectAsync(status, pairs) {
-    const syncPairs = [];
-    for (const pair of pairs) {
-      const key2 = await pair.key;
-      const value = await pair.value;
-      syncPairs.push({
-        key: key2,
-        value
-      });
-    }
-    return _ParseStatus.mergeObjectSync(status, syncPairs);
-  }
-  static mergeObjectSync(status, pairs) {
-    const finalObject = {};
-    for (const pair of pairs) {
-      const { key: key2, value } = pair;
-      if (key2.status === "aborted")
-        return INVALID;
-      if (value.status === "aborted")
-        return INVALID;
-      if (key2.status === "dirty")
-        status.dirty();
-      if (value.status === "dirty")
-        status.dirty();
-      if (key2.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
-        finalObject[key2.value] = value.value;
-      }
-    }
-    return { status: status.value, value: finalObject };
-  }
-};
-var INVALID = Object.freeze({
-  status: "aborted"
-});
-var DIRTY = (value) => ({ status: "dirty", value });
-var OK = (value) => ({ status: "valid", value });
-var isAborted = (x) => x.status === "aborted";
-var isDirty = (x) => x.status === "dirty";
-var isValid = (x) => x.status === "valid";
-var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
-
-// node_modules/zod/v3/helpers/errorUtil.js
-var errorUtil;
-(function(errorUtil2) {
-  errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
-  errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
-})(errorUtil || (errorUtil = {}));
-
-// node_modules/zod/v3/types.js
-var ParseInputLazyPath = class {
-  constructor(parent, value, path, key2) {
-    this._cachedPath = [];
-    this.parent = parent;
-    this.data = value;
-    this._path = path;
-    this._key = key2;
-  }
-  get path() {
-    if (!this._cachedPath.length) {
-      if (Array.isArray(this._key)) {
-        this._cachedPath.push(...this._path, ...this._key);
-      } else {
-        this._cachedPath.push(...this._path, this._key);
-      }
-    }
-    return this._cachedPath;
-  }
-};
-var handleResult = (ctx, result) => {
-  if (isValid(result)) {
-    return { success: true, data: result.value };
-  } else {
-    if (!ctx.common.issues.length) {
-      throw new Error("Validation failed but no issues detected.");
-    }
-    return {
-      success: false,
-      get error() {
-        if (this._error)
-          return this._error;
-        const error2 = new ZodError(ctx.common.issues);
-        this._error = error2;
-        return this._error;
-      }
-    };
-  }
-};
-function processCreateParams(params) {
-  if (!params)
-    return {};
-  const { errorMap: errorMap2, invalid_type_error, required_error, description } = params;
-  if (errorMap2 && (invalid_type_error || required_error)) {
-    throw new Error(`Can't use "invalid_type_error" or "required_error" in conjunction with custom error map.`);
-  }
-  if (errorMap2)
-    return { errorMap: errorMap2, description };
-  const customMap = (iss, ctx) => {
-    const { message } = params;
-    if (iss.code === "invalid_enum_value") {
-      return { message: message ?? ctx.defaultError };
-    }
-    if (typeof ctx.data === "undefined") {
-      return { message: message ?? required_error ?? ctx.defaultError };
-    }
-    if (iss.code !== "invalid_type")
-      return { message: ctx.defaultError };
-    return { message: message ?? invalid_type_error ?? ctx.defaultError };
-  };
-  return { errorMap: customMap, description };
-}
-var ZodType = class {
-  get description() {
-    return this._def.description;
-  }
-  _getType(input) {
-    return getParsedType(input.data);
-  }
-  _getOrReturnCtx(input, ctx) {
-    return ctx || {
-      common: input.parent.common,
-      data: input.data,
-      parsedType: getParsedType(input.data),
-      schemaErrorMap: this._def.errorMap,
-      path: input.path,
-      parent: input.parent
-    };
-  }
-  _processInputParams(input) {
-    return {
-      status: new ParseStatus(),
-      ctx: {
-        common: input.parent.common,
-        data: input.data,
-        parsedType: getParsedType(input.data),
-        schemaErrorMap: this._def.errorMap,
-        path: input.path,
-        parent: input.parent
-      }
-    };
-  }
-  _parseSync(input) {
-    const result = this._parse(input);
-    if (isAsync(result)) {
-      throw new Error("Synchronous parse encountered promise.");
-    }
-    return result;
-  }
-  _parseAsync(input) {
-    const result = this._parse(input);
-    return Promise.resolve(result);
-  }
-  parse(data, params) {
-    const result = this.safeParse(data, params);
-    if (result.success)
-      return result.data;
-    throw result.error;
-  }
-  safeParse(data, params) {
-    const ctx = {
-      common: {
-        issues: [],
-        async: params?.async ?? false,
-        contextualErrorMap: params?.errorMap
-      },
-      path: params?.path || [],
-      schemaErrorMap: this._def.errorMap,
-      parent: null,
-      data,
-      parsedType: getParsedType(data)
-    };
-    const result = this._parseSync({ data, path: ctx.path, parent: ctx });
-    return handleResult(ctx, result);
-  }
-  "~validate"(data) {
-    const ctx = {
-      common: {
-        issues: [],
-        async: !!this["~standard"].async
-      },
-      path: [],
-      schemaErrorMap: this._def.errorMap,
-      parent: null,
-      data,
-      parsedType: getParsedType(data)
-    };
-    if (!this["~standard"].async) {
-      try {
-        const result = this._parseSync({ data, path: [], parent: ctx });
-        return isValid(result) ? {
-          value: result.value
-        } : {
-          issues: ctx.common.issues
-        };
-      } catch (err) {
-        if (err?.message?.toLowerCase()?.includes("encountered")) {
-          this["~standard"].async = true;
-        }
-        ctx.common = {
-          issues: [],
-          async: true
-        };
-      }
-    }
-    return this._parseAsync({ data, path: [], parent: ctx }).then((result) => isValid(result) ? {
-      value: result.value
-    } : {
-      issues: ctx.common.issues
-    });
-  }
-  async parseAsync(data, params) {
-    const result = await this.safeParseAsync(data, params);
-    if (result.success)
-      return result.data;
-    throw result.error;
-  }
-  async safeParseAsync(data, params) {
-    const ctx = {
-      common: {
-        issues: [],
-        contextualErrorMap: params?.errorMap,
-        async: true
-      },
-      path: params?.path || [],
-      schemaErrorMap: this._def.errorMap,
-      parent: null,
-      data,
-      parsedType: getParsedType(data)
-    };
-    const maybeAsyncResult = this._parse({ data, path: ctx.path, parent: ctx });
-    const result = await (isAsync(maybeAsyncResult) ? maybeAsyncResult : Promise.resolve(maybeAsyncResult));
-    return handleResult(ctx, result);
-  }
-  refine(check2, message) {
-    const getIssueProperties = (val) => {
-      if (typeof message === "string" || typeof message === "undefined") {
-        return { message };
-      } else if (typeof message === "function") {
-        return message(val);
-      } else {
-        return message;
-      }
-    };
-    return this._refinement((val, ctx) => {
-      const result = check2(val);
-      const setError = () => ctx.addIssue({
-        code: ZodIssueCode.custom,
-        ...getIssueProperties(val)
-      });
-      if (typeof Promise !== "undefined" && result instanceof Promise) {
-        return result.then((data) => {
-          if (!data) {
-            setError();
-            return false;
-          } else {
-            return true;
-          }
-        });
-      }
-      if (!result) {
-        setError();
-        return false;
-      } else {
-        return true;
-      }
-    });
-  }
-  refinement(check2, refinementData) {
-    return this._refinement((val, ctx) => {
-      if (!check2(val)) {
-        ctx.addIssue(typeof refinementData === "function" ? refinementData(val, ctx) : refinementData);
-        return false;
-      } else {
-        return true;
-      }
-    });
-  }
-  _refinement(refinement) {
-    return new ZodEffects({
-      schema: this,
-      typeName: ZodFirstPartyTypeKind.ZodEffects,
-      effect: { type: "refinement", refinement }
-    });
-  }
-  superRefine(refinement) {
-    return this._refinement(refinement);
-  }
-  constructor(def) {
-    this.spa = this.safeParseAsync;
-    this._def = def;
-    this.parse = this.parse.bind(this);
-    this.safeParse = this.safeParse.bind(this);
-    this.parseAsync = this.parseAsync.bind(this);
-    this.safeParseAsync = this.safeParseAsync.bind(this);
-    this.spa = this.spa.bind(this);
-    this.refine = this.refine.bind(this);
-    this.refinement = this.refinement.bind(this);
-    this.superRefine = this.superRefine.bind(this);
-    this.optional = this.optional.bind(this);
-    this.nullable = this.nullable.bind(this);
-    this.nullish = this.nullish.bind(this);
-    this.array = this.array.bind(this);
-    this.promise = this.promise.bind(this);
-    this.or = this.or.bind(this);
-    this.and = this.and.bind(this);
-    this.transform = this.transform.bind(this);
-    this.brand = this.brand.bind(this);
-    this.default = this.default.bind(this);
-    this.catch = this.catch.bind(this);
-    this.describe = this.describe.bind(this);
-    this.pipe = this.pipe.bind(this);
-    this.readonly = this.readonly.bind(this);
-    this.isNullable = this.isNullable.bind(this);
-    this.isOptional = this.isOptional.bind(this);
-    this["~standard"] = {
-      version: 1,
-      vendor: "zod",
-      validate: (data) => this["~validate"](data)
-    };
-  }
-  optional() {
-    return ZodOptional.create(this, this._def);
-  }
-  nullable() {
-    return ZodNullable.create(this, this._def);
-  }
-  nullish() {
-    return this.nullable().optional();
-  }
-  array() {
-    return ZodArray.create(this);
-  }
-  promise() {
-    return ZodPromise.create(this, this._def);
-  }
-  or(option) {
-    return ZodUnion.create([this, option], this._def);
-  }
-  and(incoming) {
-    return ZodIntersection.create(this, incoming, this._def);
-  }
-  transform(transform2) {
-    return new ZodEffects({
-      ...processCreateParams(this._def),
-      schema: this,
-      typeName: ZodFirstPartyTypeKind.ZodEffects,
-      effect: { type: "transform", transform: transform2 }
-    });
-  }
-  default(def) {
-    const defaultValueFunc = typeof def === "function" ? def : () => def;
-    return new ZodDefault({
-      ...processCreateParams(this._def),
-      innerType: this,
-      defaultValue: defaultValueFunc,
-      typeName: ZodFirstPartyTypeKind.ZodDefault
-    });
-  }
-  brand() {
-    return new ZodBranded({
-      typeName: ZodFirstPartyTypeKind.ZodBranded,
-      type: this,
-      ...processCreateParams(this._def)
-    });
-  }
-  catch(def) {
-    const catchValueFunc = typeof def === "function" ? def : () => def;
-    return new ZodCatch({
-      ...processCreateParams(this._def),
-      innerType: this,
-      catchValue: catchValueFunc,
-      typeName: ZodFirstPartyTypeKind.ZodCatch
-    });
-  }
-  describe(description) {
-    const This = this.constructor;
-    return new This({
-      ...this._def,
-      description
-    });
-  }
-  pipe(target) {
-    return ZodPipeline.create(this, target);
-  }
-  readonly() {
-    return ZodReadonly.create(this);
-  }
-  isOptional() {
-    return this.safeParse(void 0).success;
-  }
-  isNullable() {
-    return this.safeParse(null).success;
-  }
-};
-var cuidRegex = /^c[^\s-]{8,}$/i;
-var cuid2Regex = /^[0-9a-z]+$/;
-var ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/i;
-var uuidRegex = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/i;
-var nanoidRegex = /^[a-z0-9_-]{21}$/i;
-var jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*$/;
-var durationRegex = /^[-+]?P(?!$)(?:(?:[-+]?\d+Y)|(?:[-+]?\d+[.,]\d+Y$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:(?:[-+]?\d+W)|(?:[-+]?\d+[.,]\d+W$))?(?:(?:[-+]?\d+D)|(?:[-+]?\d+[.,]\d+D$))?(?:T(?=[\d+-])(?:(?:[-+]?\d+H)|(?:[-+]?\d+[.,]\d+H$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:[-+]?\d+(?:[.,]\d+)?S)?)??$/;
-var emailRegex = /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i;
-var _emojiRegex = `^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$`;
-var emojiRegex;
-var ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/;
-var ipv4CidrRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/(3[0-2]|[12]?[0-9])$/;
-var ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
-var ipv6CidrRegex = /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/;
-var base64Regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
-var base64urlRegex = /^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$/;
-var dateRegexSource = `((\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-((0[13578]|1[02])-(0[1-9]|[12]\\d|3[01])|(0[469]|11)-(0[1-9]|[12]\\d|30)|(02)-(0[1-9]|1\\d|2[0-8])))`;
-var dateRegex = new RegExp(`^${dateRegexSource}$`);
-function timeRegexSource(args) {
-  let secondsRegexSource = `[0-5]\\d`;
-  if (args.precision) {
-    secondsRegexSource = `${secondsRegexSource}\\.\\d{${args.precision}}`;
-  } else if (args.precision == null) {
-    secondsRegexSource = `${secondsRegexSource}(\\.\\d+)?`;
-  }
-  const secondsQuantifier = args.precision ? "+" : "?";
-  return `([01]\\d|2[0-3]):[0-5]\\d(:${secondsRegexSource})${secondsQuantifier}`;
-}
-function timeRegex(args) {
-  return new RegExp(`^${timeRegexSource(args)}$`);
-}
-function datetimeRegex(args) {
-  let regex = `${dateRegexSource}T${timeRegexSource(args)}`;
-  const opts = [];
-  opts.push(args.local ? `Z?` : `Z`);
-  if (args.offset)
-    opts.push(`([+-]\\d{2}:?\\d{2})`);
-  regex = `${regex}(${opts.join("|")})`;
-  return new RegExp(`^${regex}$`);
-}
-function isValidIP(ip, version2) {
-  if ((version2 === "v4" || !version2) && ipv4Regex.test(ip)) {
-    return true;
-  }
-  if ((version2 === "v6" || !version2) && ipv6Regex.test(ip)) {
-    return true;
-  }
-  return false;
-}
-function isValidJWT(jwt, alg) {
-  if (!jwtRegex.test(jwt))
-    return false;
-  try {
-    const [header] = jwt.split(".");
-    if (!header)
-      return false;
-    const base642 = header.replace(/-/g, "+").replace(/_/g, "/").padEnd(header.length + (4 - header.length % 4) % 4, "=");
-    const decoded = JSON.parse(atob(base642));
-    if (typeof decoded !== "object" || decoded === null)
-      return false;
-    if ("typ" in decoded && decoded?.typ !== "JWT")
-      return false;
-    if (!decoded.alg)
-      return false;
-    if (alg && decoded.alg !== alg)
-      return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-function isValidCidr(ip, version2) {
-  if ((version2 === "v4" || !version2) && ipv4CidrRegex.test(ip)) {
-    return true;
-  }
-  if ((version2 === "v6" || !version2) && ipv6CidrRegex.test(ip)) {
-    return true;
-  }
-  return false;
-}
-var ZodString = class _ZodString2 extends ZodType {
-  _parse(input) {
-    if (this._def.coerce) {
-      input.data = String(input.data);
-    }
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.string) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.string,
-        received: ctx2.parsedType
-      });
-      return INVALID;
-    }
-    const status = new ParseStatus();
-    let ctx = void 0;
-    for (const check2 of this._def.checks) {
-      if (check2.kind === "min") {
-        if (input.data.length < check2.value) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_small,
-            minimum: check2.value,
-            type: "string",
-            inclusive: true,
-            exact: false,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "max") {
-        if (input.data.length > check2.value) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_big,
-            maximum: check2.value,
-            type: "string",
-            inclusive: true,
-            exact: false,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "length") {
-        const tooBig = input.data.length > check2.value;
-        const tooSmall = input.data.length < check2.value;
-        if (tooBig || tooSmall) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          if (tooBig) {
-            addIssueToContext(ctx, {
-              code: ZodIssueCode.too_big,
-              maximum: check2.value,
-              type: "string",
-              inclusive: true,
-              exact: true,
-              message: check2.message
-            });
-          } else if (tooSmall) {
-            addIssueToContext(ctx, {
-              code: ZodIssueCode.too_small,
-              minimum: check2.value,
-              type: "string",
-              inclusive: true,
-              exact: true,
-              message: check2.message
-            });
-          }
-          status.dirty();
-        }
-      } else if (check2.kind === "email") {
-        if (!emailRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "email",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "emoji") {
-        if (!emojiRegex) {
-          emojiRegex = new RegExp(_emojiRegex, "u");
-        }
-        if (!emojiRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "emoji",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "uuid") {
-        if (!uuidRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "uuid",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "nanoid") {
-        if (!nanoidRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "nanoid",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "cuid") {
-        if (!cuidRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "cuid",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "cuid2") {
-        if (!cuid2Regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "cuid2",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "ulid") {
-        if (!ulidRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "ulid",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "url") {
-        try {
-          new URL(input.data);
-        } catch {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "url",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "regex") {
-        check2.regex.lastIndex = 0;
-        const testResult = check2.regex.test(input.data);
-        if (!testResult) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "regex",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "trim") {
-        input.data = input.data.trim();
-      } else if (check2.kind === "includes") {
-        if (!input.data.includes(check2.value, check2.position)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: { includes: check2.value, position: check2.position },
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "toLowerCase") {
-        input.data = input.data.toLowerCase();
-      } else if (check2.kind === "toUpperCase") {
-        input.data = input.data.toUpperCase();
-      } else if (check2.kind === "startsWith") {
-        if (!input.data.startsWith(check2.value)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: { startsWith: check2.value },
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "endsWith") {
-        if (!input.data.endsWith(check2.value)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: { endsWith: check2.value },
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "datetime") {
-        const regex = datetimeRegex(check2);
-        if (!regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: "datetime",
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "date") {
-        const regex = dateRegex;
-        if (!regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: "date",
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "time") {
-        const regex = timeRegex(check2);
-        if (!regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: "time",
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "duration") {
-        if (!durationRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "duration",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "ip") {
-        if (!isValidIP(input.data, check2.version)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "ip",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "jwt") {
-        if (!isValidJWT(input.data, check2.alg)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "jwt",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "cidr") {
-        if (!isValidCidr(input.data, check2.version)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "cidr",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "base64") {
-        if (!base64Regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "base64",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "base64url") {
-        if (!base64urlRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "base64url",
-            code: ZodIssueCode.invalid_string,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else {
-        util.assertNever(check2);
-      }
-    }
-    return { status: status.value, value: input.data };
-  }
-  _regex(regex, validation, message) {
-    return this.refinement((data) => regex.test(data), {
-      validation,
-      code: ZodIssueCode.invalid_string,
-      ...errorUtil.errToObj(message)
-    });
-  }
-  _addCheck(check2) {
-    return new _ZodString2({
-      ...this._def,
-      checks: [...this._def.checks, check2]
-    });
-  }
-  email(message) {
-    return this._addCheck({ kind: "email", ...errorUtil.errToObj(message) });
-  }
-  url(message) {
-    return this._addCheck({ kind: "url", ...errorUtil.errToObj(message) });
-  }
-  emoji(message) {
-    return this._addCheck({ kind: "emoji", ...errorUtil.errToObj(message) });
-  }
-  uuid(message) {
-    return this._addCheck({ kind: "uuid", ...errorUtil.errToObj(message) });
-  }
-  nanoid(message) {
-    return this._addCheck({ kind: "nanoid", ...errorUtil.errToObj(message) });
-  }
-  cuid(message) {
-    return this._addCheck({ kind: "cuid", ...errorUtil.errToObj(message) });
-  }
-  cuid2(message) {
-    return this._addCheck({ kind: "cuid2", ...errorUtil.errToObj(message) });
-  }
-  ulid(message) {
-    return this._addCheck({ kind: "ulid", ...errorUtil.errToObj(message) });
-  }
-  base64(message) {
-    return this._addCheck({ kind: "base64", ...errorUtil.errToObj(message) });
-  }
-  base64url(message) {
-    return this._addCheck({
-      kind: "base64url",
-      ...errorUtil.errToObj(message)
-    });
-  }
-  jwt(options) {
-    return this._addCheck({ kind: "jwt", ...errorUtil.errToObj(options) });
-  }
-  ip(options) {
-    return this._addCheck({ kind: "ip", ...errorUtil.errToObj(options) });
-  }
-  cidr(options) {
-    return this._addCheck({ kind: "cidr", ...errorUtil.errToObj(options) });
-  }
-  datetime(options) {
-    if (typeof options === "string") {
-      return this._addCheck({
-        kind: "datetime",
-        precision: null,
-        offset: false,
-        local: false,
-        message: options
-      });
-    }
-    return this._addCheck({
-      kind: "datetime",
-      precision: typeof options?.precision === "undefined" ? null : options?.precision,
-      offset: options?.offset ?? false,
-      local: options?.local ?? false,
-      ...errorUtil.errToObj(options?.message)
-    });
-  }
-  date(message) {
-    return this._addCheck({ kind: "date", message });
-  }
-  time(options) {
-    if (typeof options === "string") {
-      return this._addCheck({
-        kind: "time",
-        precision: null,
-        message: options
-      });
-    }
-    return this._addCheck({
-      kind: "time",
-      precision: typeof options?.precision === "undefined" ? null : options?.precision,
-      ...errorUtil.errToObj(options?.message)
-    });
-  }
-  duration(message) {
-    return this._addCheck({ kind: "duration", ...errorUtil.errToObj(message) });
-  }
-  regex(regex, message) {
-    return this._addCheck({
-      kind: "regex",
-      regex,
-      ...errorUtil.errToObj(message)
-    });
-  }
-  includes(value, options) {
-    return this._addCheck({
-      kind: "includes",
-      value,
-      position: options?.position,
-      ...errorUtil.errToObj(options?.message)
-    });
-  }
-  startsWith(value, message) {
-    return this._addCheck({
-      kind: "startsWith",
-      value,
-      ...errorUtil.errToObj(message)
-    });
-  }
-  endsWith(value, message) {
-    return this._addCheck({
-      kind: "endsWith",
-      value,
-      ...errorUtil.errToObj(message)
-    });
-  }
-  min(minLength, message) {
-    return this._addCheck({
-      kind: "min",
-      value: minLength,
-      ...errorUtil.errToObj(message)
-    });
-  }
-  max(maxLength, message) {
-    return this._addCheck({
-      kind: "max",
-      value: maxLength,
-      ...errorUtil.errToObj(message)
-    });
-  }
-  length(len, message) {
-    return this._addCheck({
-      kind: "length",
-      value: len,
-      ...errorUtil.errToObj(message)
-    });
-  }
-  /**
-   * Equivalent to `.min(1)`
-   */
-  nonempty(message) {
-    return this.min(1, errorUtil.errToObj(message));
-  }
-  trim() {
-    return new _ZodString2({
-      ...this._def,
-      checks: [...this._def.checks, { kind: "trim" }]
-    });
-  }
-  toLowerCase() {
-    return new _ZodString2({
-      ...this._def,
-      checks: [...this._def.checks, { kind: "toLowerCase" }]
-    });
-  }
-  toUpperCase() {
-    return new _ZodString2({
-      ...this._def,
-      checks: [...this._def.checks, { kind: "toUpperCase" }]
-    });
-  }
-  get isDatetime() {
-    return !!this._def.checks.find((ch) => ch.kind === "datetime");
-  }
-  get isDate() {
-    return !!this._def.checks.find((ch) => ch.kind === "date");
-  }
-  get isTime() {
-    return !!this._def.checks.find((ch) => ch.kind === "time");
-  }
-  get isDuration() {
-    return !!this._def.checks.find((ch) => ch.kind === "duration");
-  }
-  get isEmail() {
-    return !!this._def.checks.find((ch) => ch.kind === "email");
-  }
-  get isURL() {
-    return !!this._def.checks.find((ch) => ch.kind === "url");
-  }
-  get isEmoji() {
-    return !!this._def.checks.find((ch) => ch.kind === "emoji");
-  }
-  get isUUID() {
-    return !!this._def.checks.find((ch) => ch.kind === "uuid");
-  }
-  get isNANOID() {
-    return !!this._def.checks.find((ch) => ch.kind === "nanoid");
-  }
-  get isCUID() {
-    return !!this._def.checks.find((ch) => ch.kind === "cuid");
-  }
-  get isCUID2() {
-    return !!this._def.checks.find((ch) => ch.kind === "cuid2");
-  }
-  get isULID() {
-    return !!this._def.checks.find((ch) => ch.kind === "ulid");
-  }
-  get isIP() {
-    return !!this._def.checks.find((ch) => ch.kind === "ip");
-  }
-  get isCIDR() {
-    return !!this._def.checks.find((ch) => ch.kind === "cidr");
-  }
-  get isBase64() {
-    return !!this._def.checks.find((ch) => ch.kind === "base64");
-  }
-  get isBase64url() {
-    return !!this._def.checks.find((ch) => ch.kind === "base64url");
-  }
-  get minLength() {
-    let min = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "min") {
-        if (min === null || ch.value > min)
-          min = ch.value;
-      }
-    }
-    return min;
-  }
-  get maxLength() {
-    let max = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "max") {
-        if (max === null || ch.value < max)
-          max = ch.value;
-      }
-    }
-    return max;
-  }
-};
-ZodString.create = (params) => {
-  return new ZodString({
-    checks: [],
-    typeName: ZodFirstPartyTypeKind.ZodString,
-    coerce: params?.coerce ?? false,
-    ...processCreateParams(params)
-  });
-};
-function floatSafeRemainder(val, step) {
-  const valDecCount = (val.toString().split(".")[1] || "").length;
-  const stepDecCount = (step.toString().split(".")[1] || "").length;
-  const decCount = valDecCount > stepDecCount ? valDecCount : stepDecCount;
-  const valInt = Number.parseInt(val.toFixed(decCount).replace(".", ""));
-  const stepInt = Number.parseInt(step.toFixed(decCount).replace(".", ""));
-  return valInt % stepInt / 10 ** decCount;
-}
-var ZodNumber = class _ZodNumber extends ZodType {
-  constructor() {
-    super(...arguments);
-    this.min = this.gte;
-    this.max = this.lte;
-    this.step = this.multipleOf;
-  }
-  _parse(input) {
-    if (this._def.coerce) {
-      input.data = Number(input.data);
-    }
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.number) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.number,
-        received: ctx2.parsedType
-      });
-      return INVALID;
-    }
-    let ctx = void 0;
-    const status = new ParseStatus();
-    for (const check2 of this._def.checks) {
-      if (check2.kind === "int") {
-        if (!util.isInteger(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_type,
-            expected: "integer",
-            received: "float",
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "min") {
-        const tooSmall = check2.inclusive ? input.data < check2.value : input.data <= check2.value;
-        if (tooSmall) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_small,
-            minimum: check2.value,
-            type: "number",
-            inclusive: check2.inclusive,
-            exact: false,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "max") {
-        const tooBig = check2.inclusive ? input.data > check2.value : input.data >= check2.value;
-        if (tooBig) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_big,
-            maximum: check2.value,
-            type: "number",
-            inclusive: check2.inclusive,
-            exact: false,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "multipleOf") {
-        if (floatSafeRemainder(input.data, check2.value) !== 0) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.not_multiple_of,
-            multipleOf: check2.value,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "finite") {
-        if (!Number.isFinite(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.not_finite,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else {
-        util.assertNever(check2);
-      }
-    }
-    return { status: status.value, value: input.data };
-  }
-  gte(value, message) {
-    return this.setLimit("min", value, true, errorUtil.toString(message));
-  }
-  gt(value, message) {
-    return this.setLimit("min", value, false, errorUtil.toString(message));
-  }
-  lte(value, message) {
-    return this.setLimit("max", value, true, errorUtil.toString(message));
-  }
-  lt(value, message) {
-    return this.setLimit("max", value, false, errorUtil.toString(message));
-  }
-  setLimit(kind, value, inclusive, message) {
-    return new _ZodNumber({
-      ...this._def,
-      checks: [
-        ...this._def.checks,
-        {
-          kind,
-          value,
-          inclusive,
-          message: errorUtil.toString(message)
-        }
-      ]
-    });
-  }
-  _addCheck(check2) {
-    return new _ZodNumber({
-      ...this._def,
-      checks: [...this._def.checks, check2]
-    });
-  }
-  int(message) {
-    return this._addCheck({
-      kind: "int",
-      message: errorUtil.toString(message)
-    });
-  }
-  positive(message) {
-    return this._addCheck({
-      kind: "min",
-      value: 0,
-      inclusive: false,
-      message: errorUtil.toString(message)
-    });
-  }
-  negative(message) {
-    return this._addCheck({
-      kind: "max",
-      value: 0,
-      inclusive: false,
-      message: errorUtil.toString(message)
-    });
-  }
-  nonpositive(message) {
-    return this._addCheck({
-      kind: "max",
-      value: 0,
-      inclusive: true,
-      message: errorUtil.toString(message)
-    });
-  }
-  nonnegative(message) {
-    return this._addCheck({
-      kind: "min",
-      value: 0,
-      inclusive: true,
-      message: errorUtil.toString(message)
-    });
-  }
-  multipleOf(value, message) {
-    return this._addCheck({
-      kind: "multipleOf",
-      value,
-      message: errorUtil.toString(message)
-    });
-  }
-  finite(message) {
-    return this._addCheck({
-      kind: "finite",
-      message: errorUtil.toString(message)
-    });
-  }
-  safe(message) {
-    return this._addCheck({
-      kind: "min",
-      inclusive: true,
-      value: Number.MIN_SAFE_INTEGER,
-      message: errorUtil.toString(message)
-    })._addCheck({
-      kind: "max",
-      inclusive: true,
-      value: Number.MAX_SAFE_INTEGER,
-      message: errorUtil.toString(message)
-    });
-  }
-  get minValue() {
-    let min = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "min") {
-        if (min === null || ch.value > min)
-          min = ch.value;
-      }
-    }
-    return min;
-  }
-  get maxValue() {
-    let max = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "max") {
-        if (max === null || ch.value < max)
-          max = ch.value;
-      }
-    }
-    return max;
-  }
-  get isInt() {
-    return !!this._def.checks.find((ch) => ch.kind === "int" || ch.kind === "multipleOf" && util.isInteger(ch.value));
-  }
-  get isFinite() {
-    let max = null;
-    let min = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "finite" || ch.kind === "int" || ch.kind === "multipleOf") {
-        return true;
-      } else if (ch.kind === "min") {
-        if (min === null || ch.value > min)
-          min = ch.value;
-      } else if (ch.kind === "max") {
-        if (max === null || ch.value < max)
-          max = ch.value;
-      }
-    }
-    return Number.isFinite(min) && Number.isFinite(max);
-  }
-};
-ZodNumber.create = (params) => {
-  return new ZodNumber({
-    checks: [],
-    typeName: ZodFirstPartyTypeKind.ZodNumber,
-    coerce: params?.coerce || false,
-    ...processCreateParams(params)
-  });
-};
-var ZodBigInt = class _ZodBigInt extends ZodType {
-  constructor() {
-    super(...arguments);
-    this.min = this.gte;
-    this.max = this.lte;
-  }
-  _parse(input) {
-    if (this._def.coerce) {
-      try {
-        input.data = BigInt(input.data);
-      } catch {
-        return this._getInvalidInput(input);
-      }
-    }
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.bigint) {
-      return this._getInvalidInput(input);
-    }
-    let ctx = void 0;
-    const status = new ParseStatus();
-    for (const check2 of this._def.checks) {
-      if (check2.kind === "min") {
-        const tooSmall = check2.inclusive ? input.data < check2.value : input.data <= check2.value;
-        if (tooSmall) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_small,
-            type: "bigint",
-            minimum: check2.value,
-            inclusive: check2.inclusive,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "max") {
-        const tooBig = check2.inclusive ? input.data > check2.value : input.data >= check2.value;
-        if (tooBig) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_big,
-            type: "bigint",
-            maximum: check2.value,
-            inclusive: check2.inclusive,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "multipleOf") {
-        if (input.data % check2.value !== BigInt(0)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.not_multiple_of,
-            multipleOf: check2.value,
-            message: check2.message
-          });
-          status.dirty();
-        }
-      } else {
-        util.assertNever(check2);
-      }
-    }
-    return { status: status.value, value: input.data };
-  }
-  _getInvalidInput(input) {
-    const ctx = this._getOrReturnCtx(input);
-    addIssueToContext(ctx, {
-      code: ZodIssueCode.invalid_type,
-      expected: ZodParsedType.bigint,
-      received: ctx.parsedType
-    });
-    return INVALID;
-  }
-  gte(value, message) {
-    return this.setLimit("min", value, true, errorUtil.toString(message));
-  }
-  gt(value, message) {
-    return this.setLimit("min", value, false, errorUtil.toString(message));
-  }
-  lte(value, message) {
-    return this.setLimit("max", value, true, errorUtil.toString(message));
-  }
-  lt(value, message) {
-    return this.setLimit("max", value, false, errorUtil.toString(message));
-  }
-  setLimit(kind, value, inclusive, message) {
-    return new _ZodBigInt({
-      ...this._def,
-      checks: [
-        ...this._def.checks,
-        {
-          kind,
-          value,
-          inclusive,
-          message: errorUtil.toString(message)
-        }
-      ]
-    });
-  }
-  _addCheck(check2) {
-    return new _ZodBigInt({
-      ...this._def,
-      checks: [...this._def.checks, check2]
-    });
-  }
-  positive(message) {
-    return this._addCheck({
-      kind: "min",
-      value: BigInt(0),
-      inclusive: false,
-      message: errorUtil.toString(message)
-    });
-  }
-  negative(message) {
-    return this._addCheck({
-      kind: "max",
-      value: BigInt(0),
-      inclusive: false,
-      message: errorUtil.toString(message)
-    });
-  }
-  nonpositive(message) {
-    return this._addCheck({
-      kind: "max",
-      value: BigInt(0),
-      inclusive: true,
-      message: errorUtil.toString(message)
-    });
-  }
-  nonnegative(message) {
-    return this._addCheck({
-      kind: "min",
-      value: BigInt(0),
-      inclusive: true,
-      message: errorUtil.toString(message)
-    });
-  }
-  multipleOf(value, message) {
-    return this._addCheck({
-      kind: "multipleOf",
-      value,
-      message: errorUtil.toString(message)
-    });
-  }
-  get minValue() {
-    let min = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "min") {
-        if (min === null || ch.value > min)
-          min = ch.value;
-      }
-    }
-    return min;
-  }
-  get maxValue() {
-    let max = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "max") {
-        if (max === null || ch.value < max)
-          max = ch.value;
-      }
-    }
-    return max;
-  }
-};
-ZodBigInt.create = (params) => {
-  return new ZodBigInt({
-    checks: [],
-    typeName: ZodFirstPartyTypeKind.ZodBigInt,
-    coerce: params?.coerce ?? false,
-    ...processCreateParams(params)
-  });
-};
-var ZodBoolean = class extends ZodType {
-  _parse(input) {
-    if (this._def.coerce) {
-      input.data = Boolean(input.data);
-    }
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.boolean) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.boolean,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-};
-ZodBoolean.create = (params) => {
-  return new ZodBoolean({
-    typeName: ZodFirstPartyTypeKind.ZodBoolean,
-    coerce: params?.coerce || false,
-    ...processCreateParams(params)
-  });
-};
-var ZodDate = class _ZodDate extends ZodType {
-  _parse(input) {
-    if (this._def.coerce) {
-      input.data = new Date(input.data);
-    }
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.date) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.date,
-        received: ctx2.parsedType
-      });
-      return INVALID;
-    }
-    if (Number.isNaN(input.data.getTime())) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_date
-      });
-      return INVALID;
-    }
-    const status = new ParseStatus();
-    let ctx = void 0;
-    for (const check2 of this._def.checks) {
-      if (check2.kind === "min") {
-        if (input.data.getTime() < check2.value) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_small,
-            message: check2.message,
-            inclusive: true,
-            exact: false,
-            minimum: check2.value,
-            type: "date"
-          });
-          status.dirty();
-        }
-      } else if (check2.kind === "max") {
-        if (input.data.getTime() > check2.value) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_big,
-            message: check2.message,
-            inclusive: true,
-            exact: false,
-            maximum: check2.value,
-            type: "date"
-          });
-          status.dirty();
-        }
-      } else {
-        util.assertNever(check2);
-      }
-    }
-    return {
-      status: status.value,
-      value: new Date(input.data.getTime())
-    };
-  }
-  _addCheck(check2) {
-    return new _ZodDate({
-      ...this._def,
-      checks: [...this._def.checks, check2]
-    });
-  }
-  min(minDate, message) {
-    return this._addCheck({
-      kind: "min",
-      value: minDate.getTime(),
-      message: errorUtil.toString(message)
-    });
-  }
-  max(maxDate, message) {
-    return this._addCheck({
-      kind: "max",
-      value: maxDate.getTime(),
-      message: errorUtil.toString(message)
-    });
-  }
-  get minDate() {
-    let min = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "min") {
-        if (min === null || ch.value > min)
-          min = ch.value;
-      }
-    }
-    return min != null ? new Date(min) : null;
-  }
-  get maxDate() {
-    let max = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "max") {
-        if (max === null || ch.value < max)
-          max = ch.value;
-      }
-    }
-    return max != null ? new Date(max) : null;
-  }
-};
-ZodDate.create = (params) => {
-  return new ZodDate({
-    checks: [],
-    coerce: params?.coerce || false,
-    typeName: ZodFirstPartyTypeKind.ZodDate,
-    ...processCreateParams(params)
-  });
-};
-var ZodSymbol = class extends ZodType {
-  _parse(input) {
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.symbol) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.symbol,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-};
-ZodSymbol.create = (params) => {
-  return new ZodSymbol({
-    typeName: ZodFirstPartyTypeKind.ZodSymbol,
-    ...processCreateParams(params)
-  });
-};
-var ZodUndefined = class extends ZodType {
-  _parse(input) {
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.undefined) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.undefined,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-};
-ZodUndefined.create = (params) => {
-  return new ZodUndefined({
-    typeName: ZodFirstPartyTypeKind.ZodUndefined,
-    ...processCreateParams(params)
-  });
-};
-var ZodNull = class extends ZodType {
-  _parse(input) {
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.null) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.null,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-};
-ZodNull.create = (params) => {
-  return new ZodNull({
-    typeName: ZodFirstPartyTypeKind.ZodNull,
-    ...processCreateParams(params)
-  });
-};
-var ZodAny = class extends ZodType {
-  constructor() {
-    super(...arguments);
-    this._any = true;
-  }
-  _parse(input) {
-    return OK(input.data);
-  }
-};
-ZodAny.create = (params) => {
-  return new ZodAny({
-    typeName: ZodFirstPartyTypeKind.ZodAny,
-    ...processCreateParams(params)
-  });
-};
-var ZodUnknown = class extends ZodType {
-  constructor() {
-    super(...arguments);
-    this._unknown = true;
-  }
-  _parse(input) {
-    return OK(input.data);
-  }
-};
-ZodUnknown.create = (params) => {
-  return new ZodUnknown({
-    typeName: ZodFirstPartyTypeKind.ZodUnknown,
-    ...processCreateParams(params)
-  });
-};
-var ZodNever = class extends ZodType {
-  _parse(input) {
-    const ctx = this._getOrReturnCtx(input);
-    addIssueToContext(ctx, {
-      code: ZodIssueCode.invalid_type,
-      expected: ZodParsedType.never,
-      received: ctx.parsedType
-    });
-    return INVALID;
-  }
-};
-ZodNever.create = (params) => {
-  return new ZodNever({
-    typeName: ZodFirstPartyTypeKind.ZodNever,
-    ...processCreateParams(params)
-  });
-};
-var ZodVoid = class extends ZodType {
-  _parse(input) {
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.undefined) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.void,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-};
-ZodVoid.create = (params) => {
-  return new ZodVoid({
-    typeName: ZodFirstPartyTypeKind.ZodVoid,
-    ...processCreateParams(params)
-  });
-};
-var ZodArray = class _ZodArray extends ZodType {
-  _parse(input) {
-    const { ctx, status } = this._processInputParams(input);
-    const def = this._def;
-    if (ctx.parsedType !== ZodParsedType.array) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.array,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    if (def.exactLength !== null) {
-      const tooBig = ctx.data.length > def.exactLength.value;
-      const tooSmall = ctx.data.length < def.exactLength.value;
-      if (tooBig || tooSmall) {
-        addIssueToContext(ctx, {
-          code: tooBig ? ZodIssueCode.too_big : ZodIssueCode.too_small,
-          minimum: tooSmall ? def.exactLength.value : void 0,
-          maximum: tooBig ? def.exactLength.value : void 0,
-          type: "array",
-          inclusive: true,
-          exact: true,
-          message: def.exactLength.message
-        });
-        status.dirty();
-      }
-    }
-    if (def.minLength !== null) {
-      if (ctx.data.length < def.minLength.value) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.too_small,
-          minimum: def.minLength.value,
-          type: "array",
-          inclusive: true,
-          exact: false,
-          message: def.minLength.message
-        });
-        status.dirty();
-      }
-    }
-    if (def.maxLength !== null) {
-      if (ctx.data.length > def.maxLength.value) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.too_big,
-          maximum: def.maxLength.value,
-          type: "array",
-          inclusive: true,
-          exact: false,
-          message: def.maxLength.message
-        });
-        status.dirty();
-      }
-    }
-    if (ctx.common.async) {
-      return Promise.all([...ctx.data].map((item, i) => {
-        return def.type._parseAsync(new ParseInputLazyPath(ctx, item, ctx.path, i));
-      })).then((result2) => {
-        return ParseStatus.mergeArray(status, result2);
-      });
-    }
-    const result = [...ctx.data].map((item, i) => {
-      return def.type._parseSync(new ParseInputLazyPath(ctx, item, ctx.path, i));
-    });
-    return ParseStatus.mergeArray(status, result);
-  }
-  get element() {
-    return this._def.type;
-  }
-  min(minLength, message) {
-    return new _ZodArray({
-      ...this._def,
-      minLength: { value: minLength, message: errorUtil.toString(message) }
-    });
-  }
-  max(maxLength, message) {
-    return new _ZodArray({
-      ...this._def,
-      maxLength: { value: maxLength, message: errorUtil.toString(message) }
-    });
-  }
-  length(len, message) {
-    return new _ZodArray({
-      ...this._def,
-      exactLength: { value: len, message: errorUtil.toString(message) }
-    });
-  }
-  nonempty(message) {
-    return this.min(1, message);
-  }
-};
-ZodArray.create = (schema, params) => {
-  return new ZodArray({
-    type: schema,
-    minLength: null,
-    maxLength: null,
-    exactLength: null,
-    typeName: ZodFirstPartyTypeKind.ZodArray,
-    ...processCreateParams(params)
-  });
-};
-function deepPartialify(schema) {
-  if (schema instanceof ZodObject) {
-    const newShape = {};
-    for (const key2 in schema.shape) {
-      const fieldSchema = schema.shape[key2];
-      newShape[key2] = ZodOptional.create(deepPartialify(fieldSchema));
-    }
-    return new ZodObject({
-      ...schema._def,
-      shape: () => newShape
-    });
-  } else if (schema instanceof ZodArray) {
-    return new ZodArray({
-      ...schema._def,
-      type: deepPartialify(schema.element)
-    });
-  } else if (schema instanceof ZodOptional) {
-    return ZodOptional.create(deepPartialify(schema.unwrap()));
-  } else if (schema instanceof ZodNullable) {
-    return ZodNullable.create(deepPartialify(schema.unwrap()));
-  } else if (schema instanceof ZodTuple) {
-    return ZodTuple.create(schema.items.map((item) => deepPartialify(item)));
-  } else {
-    return schema;
-  }
-}
-var ZodObject = class _ZodObject extends ZodType {
-  constructor() {
-    super(...arguments);
-    this._cached = null;
-    this.nonstrict = this.passthrough;
-    this.augment = this.extend;
-  }
-  _getCached() {
-    if (this._cached !== null)
-      return this._cached;
-    const shape = this._def.shape();
-    const keys = util.objectKeys(shape);
-    this._cached = { shape, keys };
-    return this._cached;
-  }
-  _parse(input) {
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.object) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.object,
-        received: ctx2.parsedType
-      });
-      return INVALID;
-    }
-    const { status, ctx } = this._processInputParams(input);
-    const { shape, keys: shapeKeys } = this._getCached();
-    const extraKeys = [];
-    if (!(this._def.catchall instanceof ZodNever && this._def.unknownKeys === "strip")) {
-      for (const key2 in ctx.data) {
-        if (!shapeKeys.includes(key2)) {
-          extraKeys.push(key2);
-        }
-      }
-    }
-    const pairs = [];
-    for (const key2 of shapeKeys) {
-      const keyValidator = shape[key2];
-      const value = ctx.data[key2];
-      pairs.push({
-        key: { status: "valid", value: key2 },
-        value: keyValidator._parse(new ParseInputLazyPath(ctx, value, ctx.path, key2)),
-        alwaysSet: key2 in ctx.data
-      });
-    }
-    if (this._def.catchall instanceof ZodNever) {
-      const unknownKeys = this._def.unknownKeys;
-      if (unknownKeys === "passthrough") {
-        for (const key2 of extraKeys) {
-          pairs.push({
-            key: { status: "valid", value: key2 },
-            value: { status: "valid", value: ctx.data[key2] }
-          });
-        }
-      } else if (unknownKeys === "strict") {
-        if (extraKeys.length > 0) {
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.unrecognized_keys,
-            keys: extraKeys
-          });
-          status.dirty();
-        }
-      } else if (unknownKeys === "strip") {
-      } else {
-        throw new Error(`Internal ZodObject error: invalid unknownKeys value.`);
-      }
-    } else {
-      const catchall = this._def.catchall;
-      for (const key2 of extraKeys) {
-        const value = ctx.data[key2];
-        pairs.push({
-          key: { status: "valid", value: key2 },
-          value: catchall._parse(
-            new ParseInputLazyPath(ctx, value, ctx.path, key2)
-            //, ctx.child(key), value, getParsedType(value)
-          ),
-          alwaysSet: key2 in ctx.data
-        });
-      }
-    }
-    if (ctx.common.async) {
-      return Promise.resolve().then(async () => {
-        const syncPairs = [];
-        for (const pair of pairs) {
-          const key2 = await pair.key;
-          const value = await pair.value;
-          syncPairs.push({
-            key: key2,
-            value,
-            alwaysSet: pair.alwaysSet
-          });
-        }
-        return syncPairs;
-      }).then((syncPairs) => {
-        return ParseStatus.mergeObjectSync(status, syncPairs);
-      });
-    } else {
-      return ParseStatus.mergeObjectSync(status, pairs);
-    }
-  }
-  get shape() {
-    return this._def.shape();
-  }
-  strict(message) {
-    errorUtil.errToObj;
-    return new _ZodObject({
-      ...this._def,
-      unknownKeys: "strict",
-      ...message !== void 0 ? {
-        errorMap: (issue3, ctx) => {
-          const defaultError = this._def.errorMap?.(issue3, ctx).message ?? ctx.defaultError;
-          if (issue3.code === "unrecognized_keys")
-            return {
-              message: errorUtil.errToObj(message).message ?? defaultError
-            };
-          return {
-            message: defaultError
-          };
-        }
-      } : {}
-    });
-  }
-  strip() {
-    return new _ZodObject({
-      ...this._def,
-      unknownKeys: "strip"
-    });
-  }
-  passthrough() {
-    return new _ZodObject({
-      ...this._def,
-      unknownKeys: "passthrough"
-    });
-  }
-  // const AugmentFactory =
-  //   <Def extends ZodObjectDef>(def: Def) =>
-  //   <Augmentation extends ZodRawShape>(
-  //     augmentation: Augmentation
-  //   ): ZodObject<
-  //     extendShape<ReturnType<Def["shape"]>, Augmentation>,
-  //     Def["unknownKeys"],
-  //     Def["catchall"]
-  //   > => {
-  //     return new ZodObject({
-  //       ...def,
-  //       shape: () => ({
-  //         ...def.shape(),
-  //         ...augmentation,
-  //       }),
-  //     }) as any;
-  //   };
-  extend(augmentation) {
-    return new _ZodObject({
-      ...this._def,
-      shape: () => ({
-        ...this._def.shape(),
-        ...augmentation
-      })
-    });
-  }
-  /**
-   * Prior to zod@1.0.12 there was a bug in the
-   * inferred type of merged objects. Please
-   * upgrade if you are experiencing issues.
-   */
-  merge(merging) {
-    const merged = new _ZodObject({
-      unknownKeys: merging._def.unknownKeys,
-      catchall: merging._def.catchall,
-      shape: () => ({
-        ...this._def.shape(),
-        ...merging._def.shape()
-      }),
-      typeName: ZodFirstPartyTypeKind.ZodObject
-    });
-    return merged;
-  }
-  // merge<
-  //   Incoming extends AnyZodObject,
-  //   Augmentation extends Incoming["shape"],
-  //   NewOutput extends {
-  //     [k in keyof Augmentation | keyof Output]: k extends keyof Augmentation
-  //       ? Augmentation[k]["_output"]
-  //       : k extends keyof Output
-  //       ? Output[k]
-  //       : never;
-  //   },
-  //   NewInput extends {
-  //     [k in keyof Augmentation | keyof Input]: k extends keyof Augmentation
-  //       ? Augmentation[k]["_input"]
-  //       : k extends keyof Input
-  //       ? Input[k]
-  //       : never;
-  //   }
-  // >(
-  //   merging: Incoming
-  // ): ZodObject<
-  //   extendShape<T, ReturnType<Incoming["_def"]["shape"]>>,
-  //   Incoming["_def"]["unknownKeys"],
-  //   Incoming["_def"]["catchall"],
-  //   NewOutput,
-  //   NewInput
-  // > {
-  //   const merged: any = new ZodObject({
-  //     unknownKeys: merging._def.unknownKeys,
-  //     catchall: merging._def.catchall,
-  //     shape: () =>
-  //       objectUtil.mergeShapes(this._def.shape(), merging._def.shape()),
-  //     typeName: ZodFirstPartyTypeKind.ZodObject,
-  //   }) as any;
-  //   return merged;
-  // }
-  setKey(key2, schema) {
-    return this.augment({ [key2]: schema });
-  }
-  // merge<Incoming extends AnyZodObject>(
-  //   merging: Incoming
-  // ): //ZodObject<T & Incoming["_shape"], UnknownKeys, Catchall> = (merging) => {
-  // ZodObject<
-  //   extendShape<T, ReturnType<Incoming["_def"]["shape"]>>,
-  //   Incoming["_def"]["unknownKeys"],
-  //   Incoming["_def"]["catchall"]
-  // > {
-  //   // const mergedShape = objectUtil.mergeShapes(
-  //   //   this._def.shape(),
-  //   //   merging._def.shape()
-  //   // );
-  //   const merged: any = new ZodObject({
-  //     unknownKeys: merging._def.unknownKeys,
-  //     catchall: merging._def.catchall,
-  //     shape: () =>
-  //       objectUtil.mergeShapes(this._def.shape(), merging._def.shape()),
-  //     typeName: ZodFirstPartyTypeKind.ZodObject,
-  //   }) as any;
-  //   return merged;
-  // }
-  catchall(index) {
-    return new _ZodObject({
-      ...this._def,
-      catchall: index
-    });
-  }
-  pick(mask) {
-    const shape = {};
-    for (const key2 of util.objectKeys(mask)) {
-      if (mask[key2] && this.shape[key2]) {
-        shape[key2] = this.shape[key2];
-      }
-    }
-    return new _ZodObject({
-      ...this._def,
-      shape: () => shape
-    });
-  }
-  omit(mask) {
-    const shape = {};
-    for (const key2 of util.objectKeys(this.shape)) {
-      if (!mask[key2]) {
-        shape[key2] = this.shape[key2];
-      }
-    }
-    return new _ZodObject({
-      ...this._def,
-      shape: () => shape
-    });
-  }
-  /**
-   * @deprecated
-   */
-  deepPartial() {
-    return deepPartialify(this);
-  }
-  partial(mask) {
-    const newShape = {};
-    for (const key2 of util.objectKeys(this.shape)) {
-      const fieldSchema = this.shape[key2];
-      if (mask && !mask[key2]) {
-        newShape[key2] = fieldSchema;
-      } else {
-        newShape[key2] = fieldSchema.optional();
-      }
-    }
-    return new _ZodObject({
-      ...this._def,
-      shape: () => newShape
-    });
-  }
-  required(mask) {
-    const newShape = {};
-    for (const key2 of util.objectKeys(this.shape)) {
-      if (mask && !mask[key2]) {
-        newShape[key2] = this.shape[key2];
-      } else {
-        const fieldSchema = this.shape[key2];
-        let newField = fieldSchema;
-        while (newField instanceof ZodOptional) {
-          newField = newField._def.innerType;
-        }
-        newShape[key2] = newField;
-      }
-    }
-    return new _ZodObject({
-      ...this._def,
-      shape: () => newShape
-    });
-  }
-  keyof() {
-    return createZodEnum(util.objectKeys(this.shape));
-  }
-};
-ZodObject.create = (shape, params) => {
-  return new ZodObject({
-    shape: () => shape,
-    unknownKeys: "strip",
-    catchall: ZodNever.create(),
-    typeName: ZodFirstPartyTypeKind.ZodObject,
-    ...processCreateParams(params)
-  });
-};
-ZodObject.strictCreate = (shape, params) => {
-  return new ZodObject({
-    shape: () => shape,
-    unknownKeys: "strict",
-    catchall: ZodNever.create(),
-    typeName: ZodFirstPartyTypeKind.ZodObject,
-    ...processCreateParams(params)
-  });
-};
-ZodObject.lazycreate = (shape, params) => {
-  return new ZodObject({
-    shape,
-    unknownKeys: "strip",
-    catchall: ZodNever.create(),
-    typeName: ZodFirstPartyTypeKind.ZodObject,
-    ...processCreateParams(params)
-  });
-};
-var ZodUnion = class extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    const options = this._def.options;
-    function handleResults(results) {
-      for (const result of results) {
-        if (result.result.status === "valid") {
-          return result.result;
-        }
-      }
-      for (const result of results) {
-        if (result.result.status === "dirty") {
-          ctx.common.issues.push(...result.ctx.common.issues);
-          return result.result;
-        }
-      }
-      const unionErrors = results.map((result) => new ZodError(result.ctx.common.issues));
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_union,
-        unionErrors
-      });
-      return INVALID;
-    }
-    if (ctx.common.async) {
-      return Promise.all(options.map(async (option) => {
-        const childCtx = {
-          ...ctx,
-          common: {
-            ...ctx.common,
-            issues: []
-          },
-          parent: null
-        };
-        return {
-          result: await option._parseAsync({
-            data: ctx.data,
-            path: ctx.path,
-            parent: childCtx
-          }),
-          ctx: childCtx
-        };
-      })).then(handleResults);
-    } else {
-      let dirty = void 0;
-      const issues = [];
-      for (const option of options) {
-        const childCtx = {
-          ...ctx,
-          common: {
-            ...ctx.common,
-            issues: []
-          },
-          parent: null
-        };
-        const result = option._parseSync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: childCtx
-        });
-        if (result.status === "valid") {
-          return result;
-        } else if (result.status === "dirty" && !dirty) {
-          dirty = { result, ctx: childCtx };
-        }
-        if (childCtx.common.issues.length) {
-          issues.push(childCtx.common.issues);
-        }
-      }
-      if (dirty) {
-        ctx.common.issues.push(...dirty.ctx.common.issues);
-        return dirty.result;
-      }
-      const unionErrors = issues.map((issues2) => new ZodError(issues2));
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_union,
-        unionErrors
-      });
-      return INVALID;
-    }
-  }
-  get options() {
-    return this._def.options;
-  }
-};
-ZodUnion.create = (types, params) => {
-  return new ZodUnion({
-    options: types,
-    typeName: ZodFirstPartyTypeKind.ZodUnion,
-    ...processCreateParams(params)
-  });
-};
-var getDiscriminator = (type) => {
-  if (type instanceof ZodLazy) {
-    return getDiscriminator(type.schema);
-  } else if (type instanceof ZodEffects) {
-    return getDiscriminator(type.innerType());
-  } else if (type instanceof ZodLiteral) {
-    return [type.value];
-  } else if (type instanceof ZodEnum) {
-    return type.options;
-  } else if (type instanceof ZodNativeEnum) {
-    return util.objectValues(type.enum);
-  } else if (type instanceof ZodDefault) {
-    return getDiscriminator(type._def.innerType);
-  } else if (type instanceof ZodUndefined) {
-    return [void 0];
-  } else if (type instanceof ZodNull) {
-    return [null];
-  } else if (type instanceof ZodOptional) {
-    return [void 0, ...getDiscriminator(type.unwrap())];
-  } else if (type instanceof ZodNullable) {
-    return [null, ...getDiscriminator(type.unwrap())];
-  } else if (type instanceof ZodBranded) {
-    return getDiscriminator(type.unwrap());
-  } else if (type instanceof ZodReadonly) {
-    return getDiscriminator(type.unwrap());
-  } else if (type instanceof ZodCatch) {
-    return getDiscriminator(type._def.innerType);
-  } else {
-    return [];
-  }
-};
-var ZodDiscriminatedUnion = class _ZodDiscriminatedUnion extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.object) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.object,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const discriminator = this.discriminator;
-    const discriminatorValue = ctx.data[discriminator];
-    const option = this.optionsMap.get(discriminatorValue);
-    if (!option) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_union_discriminator,
-        options: Array.from(this.optionsMap.keys()),
-        path: [discriminator]
-      });
-      return INVALID;
-    }
-    if (ctx.common.async) {
-      return option._parseAsync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      });
-    } else {
-      return option._parseSync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      });
-    }
-  }
-  get discriminator() {
-    return this._def.discriminator;
-  }
-  get options() {
-    return this._def.options;
-  }
-  get optionsMap() {
-    return this._def.optionsMap;
-  }
-  /**
-   * The constructor of the discriminated union schema. Its behaviour is very similar to that of the normal z.union() constructor.
-   * However, it only allows a union of objects, all of which need to share a discriminator property. This property must
-   * have a different value for each object in the union.
-   * @param discriminator the name of the discriminator property
-   * @param types an array of object schemas
-   * @param params
-   */
-  static create(discriminator, options, params) {
-    const optionsMap = /* @__PURE__ */ new Map();
-    for (const type of options) {
-      const discriminatorValues = getDiscriminator(type.shape[discriminator]);
-      if (!discriminatorValues.length) {
-        throw new Error(`A discriminator value for key \`${discriminator}\` could not be extracted from all schema options`);
-      }
-      for (const value of discriminatorValues) {
-        if (optionsMap.has(value)) {
-          throw new Error(`Discriminator property ${String(discriminator)} has duplicate value ${String(value)}`);
-        }
-        optionsMap.set(value, type);
-      }
-    }
-    return new _ZodDiscriminatedUnion({
-      typeName: ZodFirstPartyTypeKind.ZodDiscriminatedUnion,
-      discriminator,
-      options,
-      optionsMap,
-      ...processCreateParams(params)
-    });
-  }
-};
-function mergeValues(a, b) {
-  const aType = getParsedType(a);
-  const bType = getParsedType(b);
-  if (a === b) {
-    return { valid: true, data: a };
-  } else if (aType === ZodParsedType.object && bType === ZodParsedType.object) {
-    const bKeys = util.objectKeys(b);
-    const sharedKeys = util.objectKeys(a).filter((key2) => bKeys.indexOf(key2) !== -1);
-    const newObj = { ...a, ...b };
-    for (const key2 of sharedKeys) {
-      const sharedValue = mergeValues(a[key2], b[key2]);
-      if (!sharedValue.valid) {
-        return { valid: false };
-      }
-      newObj[key2] = sharedValue.data;
-    }
-    return { valid: true, data: newObj };
-  } else if (aType === ZodParsedType.array && bType === ZodParsedType.array) {
-    if (a.length !== b.length) {
-      return { valid: false };
-    }
-    const newArray = [];
-    for (let index = 0; index < a.length; index++) {
-      const itemA = a[index];
-      const itemB = b[index];
-      const sharedValue = mergeValues(itemA, itemB);
-      if (!sharedValue.valid) {
-        return { valid: false };
-      }
-      newArray.push(sharedValue.data);
-    }
-    return { valid: true, data: newArray };
-  } else if (aType === ZodParsedType.date && bType === ZodParsedType.date && +a === +b) {
-    return { valid: true, data: a };
-  } else {
-    return { valid: false };
-  }
-}
-var ZodIntersection = class extends ZodType {
-  _parse(input) {
-    const { status, ctx } = this._processInputParams(input);
-    const handleParsed = (parsedLeft, parsedRight) => {
-      if (isAborted(parsedLeft) || isAborted(parsedRight)) {
-        return INVALID;
-      }
-      const merged = mergeValues(parsedLeft.value, parsedRight.value);
-      if (!merged.valid) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.invalid_intersection_types
-        });
-        return INVALID;
-      }
-      if (isDirty(parsedLeft) || isDirty(parsedRight)) {
-        status.dirty();
-      }
-      return { status: status.value, value: merged.data };
-    };
-    if (ctx.common.async) {
-      return Promise.all([
-        this._def.left._parseAsync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        }),
-        this._def.right._parseAsync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        })
-      ]).then(([left, right]) => handleParsed(left, right));
-    } else {
-      return handleParsed(this._def.left._parseSync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      }), this._def.right._parseSync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      }));
-    }
-  }
-};
-ZodIntersection.create = (left, right, params) => {
-  return new ZodIntersection({
-    left,
-    right,
-    typeName: ZodFirstPartyTypeKind.ZodIntersection,
-    ...processCreateParams(params)
-  });
-};
-var ZodTuple = class _ZodTuple extends ZodType {
-  _parse(input) {
-    const { status, ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.array) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.array,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    if (ctx.data.length < this._def.items.length) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.too_small,
-        minimum: this._def.items.length,
-        inclusive: true,
-        exact: false,
-        type: "array"
-      });
-      return INVALID;
-    }
-    const rest = this._def.rest;
-    if (!rest && ctx.data.length > this._def.items.length) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.too_big,
-        maximum: this._def.items.length,
-        inclusive: true,
-        exact: false,
-        type: "array"
-      });
-      status.dirty();
-    }
-    const items = [...ctx.data].map((item, itemIndex) => {
-      const schema = this._def.items[itemIndex] || this._def.rest;
-      if (!schema)
-        return null;
-      return schema._parse(new ParseInputLazyPath(ctx, item, ctx.path, itemIndex));
-    }).filter((x) => !!x);
-    if (ctx.common.async) {
-      return Promise.all(items).then((results) => {
-        return ParseStatus.mergeArray(status, results);
-      });
-    } else {
-      return ParseStatus.mergeArray(status, items);
-    }
-  }
-  get items() {
-    return this._def.items;
-  }
-  rest(rest) {
-    return new _ZodTuple({
-      ...this._def,
-      rest
-    });
-  }
-};
-ZodTuple.create = (schemas, params) => {
-  if (!Array.isArray(schemas)) {
-    throw new Error("You must pass an array of schemas to z.tuple([ ... ])");
-  }
-  return new ZodTuple({
-    items: schemas,
-    typeName: ZodFirstPartyTypeKind.ZodTuple,
-    rest: null,
-    ...processCreateParams(params)
-  });
-};
-var ZodRecord = class _ZodRecord extends ZodType {
-  get keySchema() {
-    return this._def.keyType;
-  }
-  get valueSchema() {
-    return this._def.valueType;
-  }
-  _parse(input) {
-    const { status, ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.object) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.object,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const pairs = [];
-    const keyType = this._def.keyType;
-    const valueType = this._def.valueType;
-    for (const key2 in ctx.data) {
-      pairs.push({
-        key: keyType._parse(new ParseInputLazyPath(ctx, key2, ctx.path, key2)),
-        value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key2], ctx.path, key2)),
-        alwaysSet: key2 in ctx.data
-      });
-    }
-    if (ctx.common.async) {
-      return ParseStatus.mergeObjectAsync(status, pairs);
-    } else {
-      return ParseStatus.mergeObjectSync(status, pairs);
-    }
-  }
-  get element() {
-    return this._def.valueType;
-  }
-  static create(first, second, third) {
-    if (second instanceof ZodType) {
-      return new _ZodRecord({
-        keyType: first,
-        valueType: second,
-        typeName: ZodFirstPartyTypeKind.ZodRecord,
-        ...processCreateParams(third)
-      });
-    }
-    return new _ZodRecord({
-      keyType: ZodString.create(),
-      valueType: first,
-      typeName: ZodFirstPartyTypeKind.ZodRecord,
-      ...processCreateParams(second)
-    });
-  }
-};
-var ZodMap = class extends ZodType {
-  get keySchema() {
-    return this._def.keyType;
-  }
-  get valueSchema() {
-    return this._def.valueType;
-  }
-  _parse(input) {
-    const { status, ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.map) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.map,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const keyType = this._def.keyType;
-    const valueType = this._def.valueType;
-    const pairs = [...ctx.data.entries()].map(([key2, value], index) => {
-      return {
-        key: keyType._parse(new ParseInputLazyPath(ctx, key2, ctx.path, [index, "key"])),
-        value: valueType._parse(new ParseInputLazyPath(ctx, value, ctx.path, [index, "value"]))
-      };
-    });
-    if (ctx.common.async) {
-      const finalMap = /* @__PURE__ */ new Map();
-      return Promise.resolve().then(async () => {
-        for (const pair of pairs) {
-          const key2 = await pair.key;
-          const value = await pair.value;
-          if (key2.status === "aborted" || value.status === "aborted") {
-            return INVALID;
-          }
-          if (key2.status === "dirty" || value.status === "dirty") {
-            status.dirty();
-          }
-          finalMap.set(key2.value, value.value);
-        }
-        return { status: status.value, value: finalMap };
-      });
-    } else {
-      const finalMap = /* @__PURE__ */ new Map();
-      for (const pair of pairs) {
-        const key2 = pair.key;
-        const value = pair.value;
-        if (key2.status === "aborted" || value.status === "aborted") {
-          return INVALID;
-        }
-        if (key2.status === "dirty" || value.status === "dirty") {
-          status.dirty();
-        }
-        finalMap.set(key2.value, value.value);
-      }
-      return { status: status.value, value: finalMap };
-    }
-  }
-};
-ZodMap.create = (keyType, valueType, params) => {
-  return new ZodMap({
-    valueType,
-    keyType,
-    typeName: ZodFirstPartyTypeKind.ZodMap,
-    ...processCreateParams(params)
-  });
-};
-var ZodSet = class _ZodSet extends ZodType {
-  _parse(input) {
-    const { status, ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.set) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.set,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const def = this._def;
-    if (def.minSize !== null) {
-      if (ctx.data.size < def.minSize.value) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.too_small,
-          minimum: def.minSize.value,
-          type: "set",
-          inclusive: true,
-          exact: false,
-          message: def.minSize.message
-        });
-        status.dirty();
-      }
-    }
-    if (def.maxSize !== null) {
-      if (ctx.data.size > def.maxSize.value) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.too_big,
-          maximum: def.maxSize.value,
-          type: "set",
-          inclusive: true,
-          exact: false,
-          message: def.maxSize.message
-        });
-        status.dirty();
-      }
-    }
-    const valueType = this._def.valueType;
-    function finalizeSet(elements2) {
-      const parsedSet = /* @__PURE__ */ new Set();
-      for (const element of elements2) {
-        if (element.status === "aborted")
-          return INVALID;
-        if (element.status === "dirty")
-          status.dirty();
-        parsedSet.add(element.value);
-      }
-      return { status: status.value, value: parsedSet };
-    }
-    const elements = [...ctx.data.values()].map((item, i) => valueType._parse(new ParseInputLazyPath(ctx, item, ctx.path, i)));
-    if (ctx.common.async) {
-      return Promise.all(elements).then((elements2) => finalizeSet(elements2));
-    } else {
-      return finalizeSet(elements);
-    }
-  }
-  min(minSize, message) {
-    return new _ZodSet({
-      ...this._def,
-      minSize: { value: minSize, message: errorUtil.toString(message) }
-    });
-  }
-  max(maxSize, message) {
-    return new _ZodSet({
-      ...this._def,
-      maxSize: { value: maxSize, message: errorUtil.toString(message) }
-    });
-  }
-  size(size, message) {
-    return this.min(size, message).max(size, message);
-  }
-  nonempty(message) {
-    return this.min(1, message);
-  }
-};
-ZodSet.create = (valueType, params) => {
-  return new ZodSet({
-    valueType,
-    minSize: null,
-    maxSize: null,
-    typeName: ZodFirstPartyTypeKind.ZodSet,
-    ...processCreateParams(params)
-  });
-};
-var ZodFunction = class _ZodFunction extends ZodType {
-  constructor() {
-    super(...arguments);
-    this.validate = this.implement;
-  }
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.function) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.function,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    function makeArgsIssue(args, error2) {
-      return makeIssue({
-        data: args,
-        path: ctx.path,
-        errorMaps: [ctx.common.contextualErrorMap, ctx.schemaErrorMap, getErrorMap(), en_default].filter((x) => !!x),
-        issueData: {
-          code: ZodIssueCode.invalid_arguments,
-          argumentsError: error2
-        }
-      });
-    }
-    function makeReturnsIssue(returns, error2) {
-      return makeIssue({
-        data: returns,
-        path: ctx.path,
-        errorMaps: [ctx.common.contextualErrorMap, ctx.schemaErrorMap, getErrorMap(), en_default].filter((x) => !!x),
-        issueData: {
-          code: ZodIssueCode.invalid_return_type,
-          returnTypeError: error2
-        }
-      });
-    }
-    const params = { errorMap: ctx.common.contextualErrorMap };
-    const fn = ctx.data;
-    if (this._def.returns instanceof ZodPromise) {
-      const me = this;
-      return OK(async function(...args) {
-        const error2 = new ZodError([]);
-        const parsedArgs = await me._def.args.parseAsync(args, params).catch((e) => {
-          error2.addIssue(makeArgsIssue(args, e));
-          throw error2;
-        });
-        const result = await Reflect.apply(fn, this, parsedArgs);
-        const parsedReturns = await me._def.returns._def.type.parseAsync(result, params).catch((e) => {
-          error2.addIssue(makeReturnsIssue(result, e));
-          throw error2;
-        });
-        return parsedReturns;
-      });
-    } else {
-      const me = this;
-      return OK(function(...args) {
-        const parsedArgs = me._def.args.safeParse(args, params);
-        if (!parsedArgs.success) {
-          throw new ZodError([makeArgsIssue(args, parsedArgs.error)]);
-        }
-        const result = Reflect.apply(fn, this, parsedArgs.data);
-        const parsedReturns = me._def.returns.safeParse(result, params);
-        if (!parsedReturns.success) {
-          throw new ZodError([makeReturnsIssue(result, parsedReturns.error)]);
-        }
-        return parsedReturns.data;
-      });
-    }
-  }
-  parameters() {
-    return this._def.args;
-  }
-  returnType() {
-    return this._def.returns;
-  }
-  args(...items) {
-    return new _ZodFunction({
-      ...this._def,
-      args: ZodTuple.create(items).rest(ZodUnknown.create())
-    });
-  }
-  returns(returnType) {
-    return new _ZodFunction({
-      ...this._def,
-      returns: returnType
-    });
-  }
-  implement(func) {
-    const validatedFunc = this.parse(func);
-    return validatedFunc;
-  }
-  strictImplement(func) {
-    const validatedFunc = this.parse(func);
-    return validatedFunc;
-  }
-  static create(args, returns, params) {
-    return new _ZodFunction({
-      args: args ? args : ZodTuple.create([]).rest(ZodUnknown.create()),
-      returns: returns || ZodUnknown.create(),
-      typeName: ZodFirstPartyTypeKind.ZodFunction,
-      ...processCreateParams(params)
-    });
-  }
-};
-var ZodLazy = class extends ZodType {
-  get schema() {
-    return this._def.getter();
-  }
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    const lazySchema = this._def.getter();
-    return lazySchema._parse({ data: ctx.data, path: ctx.path, parent: ctx });
-  }
-};
-ZodLazy.create = (getter, params) => {
-  return new ZodLazy({
-    getter,
-    typeName: ZodFirstPartyTypeKind.ZodLazy,
-    ...processCreateParams(params)
-  });
-};
-var ZodLiteral = class extends ZodType {
-  _parse(input) {
-    if (input.data !== this._def.value) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        received: ctx.data,
-        code: ZodIssueCode.invalid_literal,
-        expected: this._def.value
-      });
-      return INVALID;
-    }
-    return { status: "valid", value: input.data };
-  }
-  get value() {
-    return this._def.value;
-  }
-};
-ZodLiteral.create = (value, params) => {
-  return new ZodLiteral({
-    value,
-    typeName: ZodFirstPartyTypeKind.ZodLiteral,
-    ...processCreateParams(params)
-  });
-};
-function createZodEnum(values, params) {
-  return new ZodEnum({
-    values,
-    typeName: ZodFirstPartyTypeKind.ZodEnum,
-    ...processCreateParams(params)
-  });
-}
-var ZodEnum = class _ZodEnum extends ZodType {
-  _parse(input) {
-    if (typeof input.data !== "string") {
-      const ctx = this._getOrReturnCtx(input);
-      const expectedValues = this._def.values;
-      addIssueToContext(ctx, {
-        expected: util.joinValues(expectedValues),
-        received: ctx.parsedType,
-        code: ZodIssueCode.invalid_type
-      });
-      return INVALID;
-    }
-    if (!this._cache) {
-      this._cache = new Set(this._def.values);
-    }
-    if (!this._cache.has(input.data)) {
-      const ctx = this._getOrReturnCtx(input);
-      const expectedValues = this._def.values;
-      addIssueToContext(ctx, {
-        received: ctx.data,
-        code: ZodIssueCode.invalid_enum_value,
-        options: expectedValues
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-  get options() {
-    return this._def.values;
-  }
-  get enum() {
-    const enumValues = {};
-    for (const val of this._def.values) {
-      enumValues[val] = val;
-    }
-    return enumValues;
-  }
-  get Values() {
-    const enumValues = {};
-    for (const val of this._def.values) {
-      enumValues[val] = val;
-    }
-    return enumValues;
-  }
-  get Enum() {
-    const enumValues = {};
-    for (const val of this._def.values) {
-      enumValues[val] = val;
-    }
-    return enumValues;
-  }
-  extract(values, newDef = this._def) {
-    return _ZodEnum.create(values, {
-      ...this._def,
-      ...newDef
-    });
-  }
-  exclude(values, newDef = this._def) {
-    return _ZodEnum.create(this.options.filter((opt) => !values.includes(opt)), {
-      ...this._def,
-      ...newDef
-    });
-  }
-};
-ZodEnum.create = createZodEnum;
-var ZodNativeEnum = class extends ZodType {
-  _parse(input) {
-    const nativeEnumValues = util.getValidEnumValues(this._def.values);
-    const ctx = this._getOrReturnCtx(input);
-    if (ctx.parsedType !== ZodParsedType.string && ctx.parsedType !== ZodParsedType.number) {
-      const expectedValues = util.objectValues(nativeEnumValues);
-      addIssueToContext(ctx, {
-        expected: util.joinValues(expectedValues),
-        received: ctx.parsedType,
-        code: ZodIssueCode.invalid_type
-      });
-      return INVALID;
-    }
-    if (!this._cache) {
-      this._cache = new Set(util.getValidEnumValues(this._def.values));
-    }
-    if (!this._cache.has(input.data)) {
-      const expectedValues = util.objectValues(nativeEnumValues);
-      addIssueToContext(ctx, {
-        received: ctx.data,
-        code: ZodIssueCode.invalid_enum_value,
-        options: expectedValues
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-  get enum() {
-    return this._def.values;
-  }
-};
-ZodNativeEnum.create = (values, params) => {
-  return new ZodNativeEnum({
-    values,
-    typeName: ZodFirstPartyTypeKind.ZodNativeEnum,
-    ...processCreateParams(params)
-  });
-};
-var ZodPromise = class extends ZodType {
-  unwrap() {
-    return this._def.type;
-  }
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.promise && ctx.common.async === false) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.promise,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const promisified = ctx.parsedType === ZodParsedType.promise ? ctx.data : Promise.resolve(ctx.data);
-    return OK(promisified.then((data) => {
-      return this._def.type.parseAsync(data, {
-        path: ctx.path,
-        errorMap: ctx.common.contextualErrorMap
-      });
-    }));
-  }
-};
-ZodPromise.create = (schema, params) => {
-  return new ZodPromise({
-    type: schema,
-    typeName: ZodFirstPartyTypeKind.ZodPromise,
-    ...processCreateParams(params)
-  });
-};
-var ZodEffects = class extends ZodType {
-  innerType() {
-    return this._def.schema;
-  }
-  sourceType() {
-    return this._def.schema._def.typeName === ZodFirstPartyTypeKind.ZodEffects ? this._def.schema.sourceType() : this._def.schema;
-  }
-  _parse(input) {
-    const { status, ctx } = this._processInputParams(input);
-    const effect = this._def.effect || null;
-    const checkCtx = {
-      addIssue: (arg) => {
-        addIssueToContext(ctx, arg);
-        if (arg.fatal) {
-          status.abort();
-        } else {
-          status.dirty();
-        }
-      },
-      get path() {
-        return ctx.path;
-      }
-    };
-    checkCtx.addIssue = checkCtx.addIssue.bind(checkCtx);
-    if (effect.type === "preprocess") {
-      const processed = effect.transform(ctx.data, checkCtx);
-      if (ctx.common.async) {
-        return Promise.resolve(processed).then(async (processed2) => {
-          if (status.value === "aborted")
-            return INVALID;
-          const result = await this._def.schema._parseAsync({
-            data: processed2,
-            path: ctx.path,
-            parent: ctx
-          });
-          if (result.status === "aborted")
-            return INVALID;
-          if (result.status === "dirty")
-            return DIRTY(result.value);
-          if (status.value === "dirty")
-            return DIRTY(result.value);
-          return result;
-        });
-      } else {
-        if (status.value === "aborted")
-          return INVALID;
-        const result = this._def.schema._parseSync({
-          data: processed,
-          path: ctx.path,
-          parent: ctx
-        });
-        if (result.status === "aborted")
-          return INVALID;
-        if (result.status === "dirty")
-          return DIRTY(result.value);
-        if (status.value === "dirty")
-          return DIRTY(result.value);
-        return result;
-      }
-    }
-    if (effect.type === "refinement") {
-      const executeRefinement = (acc) => {
-        const result = effect.refinement(acc, checkCtx);
-        if (ctx.common.async) {
-          return Promise.resolve(result);
-        }
-        if (result instanceof Promise) {
-          throw new Error("Async refinement encountered during synchronous parse operation. Use .parseAsync instead.");
-        }
-        return acc;
-      };
-      if (ctx.common.async === false) {
-        const inner = this._def.schema._parseSync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        });
-        if (inner.status === "aborted")
-          return INVALID;
-        if (inner.status === "dirty")
-          status.dirty();
-        executeRefinement(inner.value);
-        return { status: status.value, value: inner.value };
-      } else {
-        return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((inner) => {
-          if (inner.status === "aborted")
-            return INVALID;
-          if (inner.status === "dirty")
-            status.dirty();
-          return executeRefinement(inner.value).then(() => {
-            return { status: status.value, value: inner.value };
-          });
-        });
-      }
-    }
-    if (effect.type === "transform") {
-      if (ctx.common.async === false) {
-        const base = this._def.schema._parseSync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        });
-        if (!isValid(base))
-          return INVALID;
-        const result = effect.transform(base.value, checkCtx);
-        if (result instanceof Promise) {
-          throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
-        }
-        return { status: status.value, value: result };
-      } else {
-        return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((base) => {
-          if (!isValid(base))
-            return INVALID;
-          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({
-            status: status.value,
-            value: result
-          }));
-        });
-      }
-    }
-    util.assertNever(effect);
-  }
-};
-ZodEffects.create = (schema, effect, params) => {
-  return new ZodEffects({
-    schema,
-    typeName: ZodFirstPartyTypeKind.ZodEffects,
-    effect,
-    ...processCreateParams(params)
-  });
-};
-ZodEffects.createWithPreprocess = (preprocess2, schema, params) => {
-  return new ZodEffects({
-    schema,
-    effect: { type: "preprocess", transform: preprocess2 },
-    typeName: ZodFirstPartyTypeKind.ZodEffects,
-    ...processCreateParams(params)
-  });
-};
-var ZodOptional = class extends ZodType {
-  _parse(input) {
-    const parsedType2 = this._getType(input);
-    if (parsedType2 === ZodParsedType.undefined) {
-      return OK(void 0);
-    }
-    return this._def.innerType._parse(input);
-  }
-  unwrap() {
-    return this._def.innerType;
-  }
-};
-ZodOptional.create = (type, params) => {
-  return new ZodOptional({
-    innerType: type,
-    typeName: ZodFirstPartyTypeKind.ZodOptional,
-    ...processCreateParams(params)
-  });
-};
-var ZodNullable = class extends ZodType {
-  _parse(input) {
-    const parsedType2 = this._getType(input);
-    if (parsedType2 === ZodParsedType.null) {
-      return OK(null);
-    }
-    return this._def.innerType._parse(input);
-  }
-  unwrap() {
-    return this._def.innerType;
-  }
-};
-ZodNullable.create = (type, params) => {
-  return new ZodNullable({
-    innerType: type,
-    typeName: ZodFirstPartyTypeKind.ZodNullable,
-    ...processCreateParams(params)
-  });
-};
-var ZodDefault = class extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    let data = ctx.data;
-    if (ctx.parsedType === ZodParsedType.undefined) {
-      data = this._def.defaultValue();
-    }
-    return this._def.innerType._parse({
-      data,
-      path: ctx.path,
-      parent: ctx
-    });
-  }
-  removeDefault() {
-    return this._def.innerType;
-  }
-};
-ZodDefault.create = (type, params) => {
-  return new ZodDefault({
-    innerType: type,
-    typeName: ZodFirstPartyTypeKind.ZodDefault,
-    defaultValue: typeof params.default === "function" ? params.default : () => params.default,
-    ...processCreateParams(params)
-  });
-};
-var ZodCatch = class extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    const newCtx = {
-      ...ctx,
-      common: {
-        ...ctx.common,
-        issues: []
-      }
-    };
-    const result = this._def.innerType._parse({
-      data: newCtx.data,
-      path: newCtx.path,
-      parent: {
-        ...newCtx
-      }
-    });
-    if (isAsync(result)) {
-      return result.then((result2) => {
-        return {
-          status: "valid",
-          value: result2.status === "valid" ? result2.value : this._def.catchValue({
-            get error() {
-              return new ZodError(newCtx.common.issues);
-            },
-            input: newCtx.data
-          })
-        };
-      });
-    } else {
-      return {
-        status: "valid",
-        value: result.status === "valid" ? result.value : this._def.catchValue({
-          get error() {
-            return new ZodError(newCtx.common.issues);
-          },
-          input: newCtx.data
-        })
-      };
-    }
-  }
-  removeCatch() {
-    return this._def.innerType;
-  }
-};
-ZodCatch.create = (type, params) => {
-  return new ZodCatch({
-    innerType: type,
-    typeName: ZodFirstPartyTypeKind.ZodCatch,
-    catchValue: typeof params.catch === "function" ? params.catch : () => params.catch,
-    ...processCreateParams(params)
-  });
-};
-var ZodNaN = class extends ZodType {
-  _parse(input) {
-    const parsedType2 = this._getType(input);
-    if (parsedType2 !== ZodParsedType.nan) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.nan,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return { status: "valid", value: input.data };
-  }
-};
-ZodNaN.create = (params) => {
-  return new ZodNaN({
-    typeName: ZodFirstPartyTypeKind.ZodNaN,
-    ...processCreateParams(params)
-  });
-};
-var BRAND = /* @__PURE__ */ Symbol("zod_brand");
-var ZodBranded = class extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    const data = ctx.data;
-    return this._def.type._parse({
-      data,
-      path: ctx.path,
-      parent: ctx
-    });
-  }
-  unwrap() {
-    return this._def.type;
-  }
-};
-var ZodPipeline = class _ZodPipeline extends ZodType {
-  _parse(input) {
-    const { status, ctx } = this._processInputParams(input);
-    if (ctx.common.async) {
-      const handleAsync = async () => {
-        const inResult = await this._def.in._parseAsync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        });
-        if (inResult.status === "aborted")
-          return INVALID;
-        if (inResult.status === "dirty") {
-          status.dirty();
-          return DIRTY(inResult.value);
-        } else {
-          return this._def.out._parseAsync({
-            data: inResult.value,
-            path: ctx.path,
-            parent: ctx
-          });
-        }
-      };
-      return handleAsync();
-    } else {
-      const inResult = this._def.in._parseSync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      });
-      if (inResult.status === "aborted")
-        return INVALID;
-      if (inResult.status === "dirty") {
-        status.dirty();
-        return {
-          status: "dirty",
-          value: inResult.value
-        };
-      } else {
-        return this._def.out._parseSync({
-          data: inResult.value,
-          path: ctx.path,
-          parent: ctx
-        });
-      }
-    }
-  }
-  static create(a, b) {
-    return new _ZodPipeline({
-      in: a,
-      out: b,
-      typeName: ZodFirstPartyTypeKind.ZodPipeline
-    });
-  }
-};
-var ZodReadonly = class extends ZodType {
-  _parse(input) {
-    const result = this._def.innerType._parse(input);
-    const freeze = (data) => {
-      if (isValid(data)) {
-        data.value = Object.freeze(data.value);
-      }
-      return data;
-    };
-    return isAsync(result) ? result.then((data) => freeze(data)) : freeze(result);
-  }
-  unwrap() {
-    return this._def.innerType;
-  }
-};
-ZodReadonly.create = (type, params) => {
-  return new ZodReadonly({
-    innerType: type,
-    typeName: ZodFirstPartyTypeKind.ZodReadonly,
-    ...processCreateParams(params)
-  });
-};
-function cleanParams(params, data) {
-  const p = typeof params === "function" ? params(data) : typeof params === "string" ? { message: params } : params;
-  const p2 = typeof p === "string" ? { message: p } : p;
-  return p2;
-}
-function custom(check2, _params = {}, fatal) {
-  if (check2)
-    return ZodAny.create().superRefine((data, ctx) => {
-      const r = check2(data);
-      if (r instanceof Promise) {
-        return r.then((r2) => {
-          if (!r2) {
-            const params = cleanParams(_params, data);
-            const _fatal = params.fatal ?? fatal ?? true;
-            ctx.addIssue({ code: "custom", ...params, fatal: _fatal });
-          }
-        });
-      }
-      if (!r) {
-        const params = cleanParams(_params, data);
-        const _fatal = params.fatal ?? fatal ?? true;
-        ctx.addIssue({ code: "custom", ...params, fatal: _fatal });
-      }
-      return;
-    });
-  return ZodAny.create();
-}
-var late = {
-  object: ZodObject.lazycreate
-};
-var ZodFirstPartyTypeKind;
-(function(ZodFirstPartyTypeKind2) {
-  ZodFirstPartyTypeKind2["ZodString"] = "ZodString";
-  ZodFirstPartyTypeKind2["ZodNumber"] = "ZodNumber";
-  ZodFirstPartyTypeKind2["ZodNaN"] = "ZodNaN";
-  ZodFirstPartyTypeKind2["ZodBigInt"] = "ZodBigInt";
-  ZodFirstPartyTypeKind2["ZodBoolean"] = "ZodBoolean";
-  ZodFirstPartyTypeKind2["ZodDate"] = "ZodDate";
-  ZodFirstPartyTypeKind2["ZodSymbol"] = "ZodSymbol";
-  ZodFirstPartyTypeKind2["ZodUndefined"] = "ZodUndefined";
-  ZodFirstPartyTypeKind2["ZodNull"] = "ZodNull";
-  ZodFirstPartyTypeKind2["ZodAny"] = "ZodAny";
-  ZodFirstPartyTypeKind2["ZodUnknown"] = "ZodUnknown";
-  ZodFirstPartyTypeKind2["ZodNever"] = "ZodNever";
-  ZodFirstPartyTypeKind2["ZodVoid"] = "ZodVoid";
-  ZodFirstPartyTypeKind2["ZodArray"] = "ZodArray";
-  ZodFirstPartyTypeKind2["ZodObject"] = "ZodObject";
-  ZodFirstPartyTypeKind2["ZodUnion"] = "ZodUnion";
-  ZodFirstPartyTypeKind2["ZodDiscriminatedUnion"] = "ZodDiscriminatedUnion";
-  ZodFirstPartyTypeKind2["ZodIntersection"] = "ZodIntersection";
-  ZodFirstPartyTypeKind2["ZodTuple"] = "ZodTuple";
-  ZodFirstPartyTypeKind2["ZodRecord"] = "ZodRecord";
-  ZodFirstPartyTypeKind2["ZodMap"] = "ZodMap";
-  ZodFirstPartyTypeKind2["ZodSet"] = "ZodSet";
-  ZodFirstPartyTypeKind2["ZodFunction"] = "ZodFunction";
-  ZodFirstPartyTypeKind2["ZodLazy"] = "ZodLazy";
-  ZodFirstPartyTypeKind2["ZodLiteral"] = "ZodLiteral";
-  ZodFirstPartyTypeKind2["ZodEnum"] = "ZodEnum";
-  ZodFirstPartyTypeKind2["ZodEffects"] = "ZodEffects";
-  ZodFirstPartyTypeKind2["ZodNativeEnum"] = "ZodNativeEnum";
-  ZodFirstPartyTypeKind2["ZodOptional"] = "ZodOptional";
-  ZodFirstPartyTypeKind2["ZodNullable"] = "ZodNullable";
-  ZodFirstPartyTypeKind2["ZodDefault"] = "ZodDefault";
-  ZodFirstPartyTypeKind2["ZodCatch"] = "ZodCatch";
-  ZodFirstPartyTypeKind2["ZodPromise"] = "ZodPromise";
-  ZodFirstPartyTypeKind2["ZodBranded"] = "ZodBranded";
-  ZodFirstPartyTypeKind2["ZodPipeline"] = "ZodPipeline";
-  ZodFirstPartyTypeKind2["ZodReadonly"] = "ZodReadonly";
-})(ZodFirstPartyTypeKind || (ZodFirstPartyTypeKind = {}));
-var instanceOfType = (cls, params = {
-  message: `Input not instance of ${cls.name}`
-}) => custom((data) => data instanceof cls, params);
-var stringType = ZodString.create;
-var numberType = ZodNumber.create;
-var nanType = ZodNaN.create;
-var bigIntType = ZodBigInt.create;
-var booleanType = ZodBoolean.create;
-var dateType = ZodDate.create;
-var symbolType = ZodSymbol.create;
-var undefinedType = ZodUndefined.create;
-var nullType = ZodNull.create;
-var anyType = ZodAny.create;
-var unknownType = ZodUnknown.create;
-var neverType = ZodNever.create;
-var voidType = ZodVoid.create;
-var arrayType = ZodArray.create;
-var objectType = ZodObject.create;
-var strictObjectType = ZodObject.strictCreate;
-var unionType = ZodUnion.create;
-var discriminatedUnionType = ZodDiscriminatedUnion.create;
-var intersectionType = ZodIntersection.create;
-var tupleType = ZodTuple.create;
-var recordType = ZodRecord.create;
-var mapType = ZodMap.create;
-var setType = ZodSet.create;
-var functionType = ZodFunction.create;
-var lazyType = ZodLazy.create;
-var literalType = ZodLiteral.create;
-var enumType = ZodEnum.create;
-var nativeEnumType = ZodNativeEnum.create;
-var promiseType = ZodPromise.create;
-var effectsType = ZodEffects.create;
-var optionalType = ZodOptional.create;
-var nullableType = ZodNullable.create;
-var preprocessType = ZodEffects.createWithPreprocess;
-var pipelineType = ZodPipeline.create;
-var ostring = () => stringType().optional();
-var onumber = () => numberType().optional();
-var oboolean = () => booleanType().optional();
-var coerce = {
-  string: ((arg) => ZodString.create({ ...arg, coerce: true })),
-  number: ((arg) => ZodNumber.create({ ...arg, coerce: true })),
-  boolean: ((arg) => ZodBoolean.create({
-    ...arg,
-    coerce: true
-  })),
-  bigint: ((arg) => ZodBigInt.create({ ...arg, coerce: true })),
-  date: ((arg) => ZodDate.create({ ...arg, coerce: true }))
-};
-var NEVER = INVALID;
-
 // node_modules/zod/v4/core/core.js
-var NEVER2 = Object.freeze({
+var NEVER = Object.freeze({
   status: "aborted"
 });
 // @__NO_SIDE_EFFECTS__
@@ -18662,11 +15445,11 @@ __export(util_exports, {
   escapeRegex: () => escapeRegex,
   extend: () => extend,
   finalizeIssue: () => finalizeIssue,
-  floatSafeRemainder: () => floatSafeRemainder2,
+  floatSafeRemainder: () => floatSafeRemainder,
   getElementAtPath: () => getElementAtPath,
   getEnumValues: () => getEnumValues,
   getLengthableOrigin: () => getLengthableOrigin,
-  getParsedType: () => getParsedType2,
+  getParsedType: () => getParsedType,
   getSizableOrigin: () => getSizableOrigin,
   isObject: () => isObject,
   isPlainObject: () => isPlainObject,
@@ -18737,7 +15520,7 @@ function cleanRegex(source) {
   const end = source.endsWith("$") ? source.length - 1 : source.length;
   return source.slice(start, end);
 }
-function floatSafeRemainder2(val, step) {
+function floatSafeRemainder(val, step) {
   const valDecCount = (val.toString().split(".")[1] || "").length;
   const stepDecCount = (step.toString().split(".")[1] || "").length;
   const decCount = valDecCount > stepDecCount ? valDecCount : stepDecCount;
@@ -18840,7 +15623,7 @@ function numKeys(data) {
   }
   return keyCount;
 }
-var getParsedType2 = (data) => {
+var getParsedType = (data) => {
   const t = typeof data;
   switch (t) {
     case "undefined":
@@ -19247,7 +16030,6 @@ var _parse = (_Err) => (schema, value, _ctx, _params) => {
   }
   return result.value;
 };
-var parse = /* @__PURE__ */ _parse($ZodRealError);
 var _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: true }) : { async: true };
   let result = schema._zod.run({ value, issues: [] }, ctx);
@@ -19260,7 +16042,6 @@ var _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
   }
   return result.value;
 };
-var parseAsync = /* @__PURE__ */ _parseAsync($ZodRealError);
 var _safeParse = (_Err) => (schema, value, _ctx) => {
   const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
   const result = schema._zod.run({ value, issues: [] }, ctx);
@@ -19329,8 +16110,8 @@ function datetime(args) {
     opts.push("");
   if (args.offset)
     opts.push(`([+-]\\d{2}:\\d{2})`);
-  const timeRegex2 = `${time3}(?:${opts.join("|")})`;
-  return new RegExp(`^${dateSource}T(?:${timeRegex2})$`);
+  const timeRegex = `${time3}(?:${opts.join("|")})`;
+  return new RegExp(`^${dateSource}T(?:${timeRegex})$`);
 }
 var string = (params) => {
   const regex = params ? `[\\s\\S]{${params?.minimum ?? 0},${params?.maximum ?? ""}}` : `[\\s\\S]*`;
@@ -19420,7 +16201,7 @@ var $ZodCheckMultipleOf = /* @__PURE__ */ $constructor("$ZodCheckMultipleOf", (i
   inst._zod.check = (payload) => {
     if (typeof payload.value !== typeof def.value)
       throw new Error("Cannot mix number and bigint in multiple_of check.");
-    const isMultiple = typeof payload.value === "bigint" ? payload.value % def.value === BigInt(0) : floatSafeRemainder2(payload.value, def.value) === 0;
+    const isMultiple = typeof payload.value === "bigint" ? payload.value % def.value === BigInt(0) : floatSafeRemainder(payload.value, def.value) === 0;
     if (isMultiple)
       return;
     payload.issues.push({
@@ -19794,14 +16575,14 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
     });
   } else {
     const runChecks = (payload, checks2, ctx) => {
-      let isAborted2 = aborted(payload);
+      let isAborted = aborted(payload);
       let asyncResult;
       for (const ch of checks2) {
         if (ch._zod.def.when) {
           const shouldRun = ch._zod.def.when(payload);
           if (!shouldRun)
             continue;
-        } else if (isAborted2) {
+        } else if (isAborted) {
           continue;
         }
         const currLen = payload.issues.length;
@@ -19815,15 +16596,15 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
             const nextLen = payload.issues.length;
             if (nextLen === currLen)
               return;
-            if (!isAborted2)
-              isAborted2 = aborted(payload, currLen);
+            if (!isAborted)
+              isAborted = aborted(payload, currLen);
           });
         } else {
           const nextLen = payload.issues.length;
           if (nextLen === currLen)
             continue;
-          if (!isAborted2)
-            isAborted2 = aborted(payload, currLen);
+          if (!isAborted)
+            isAborted = aborted(payload, currLen);
         }
       }
       if (asyncResult) {
@@ -20121,7 +16902,7 @@ var $ZodE164 = /* @__PURE__ */ $constructor("$ZodE164", (inst, def) => {
   def.pattern ?? (def.pattern = e164);
   $ZodStringFormat.init(inst, def);
 });
-function isValidJWT2(token, algorithm = null) {
+function isValidJWT(token, algorithm = null) {
   try {
     const tokensParts = token.split(".");
     if (tokensParts.length !== 3)
@@ -20144,7 +16925,7 @@ function isValidJWT2(token, algorithm = null) {
 var $ZodJWT = /* @__PURE__ */ $constructor("$ZodJWT", (inst, def) => {
   $ZodStringFormat.init(inst, def);
   inst._zod.check = (payload) => {
-    if (isValidJWT2(payload.value, def.alg))
+    if (isValidJWT(payload.value, def.alg))
       return;
     payload.issues.push({
       code: "invalid_format",
@@ -20597,7 +17378,7 @@ var $ZodIntersection = /* @__PURE__ */ $constructor("$ZodIntersection", (inst, d
     return handleIntersectionResults(payload, left, right);
   };
 });
-function mergeValues2(a, b) {
+function mergeValues(a, b) {
   if (a === b) {
     return { valid: true, data: a };
   }
@@ -20609,7 +17390,7 @@ function mergeValues2(a, b) {
     const sharedKeys = Object.keys(a).filter((key2) => bKeys.indexOf(key2) !== -1);
     const newObj = { ...a, ...b };
     for (const key2 of sharedKeys) {
-      const sharedValue = mergeValues2(a[key2], b[key2]);
+      const sharedValue = mergeValues(a[key2], b[key2]);
       if (!sharedValue.valid) {
         return {
           valid: false,
@@ -20628,7 +17409,7 @@ function mergeValues2(a, b) {
     for (let index = 0; index < a.length; index++) {
       const itemA = a[index];
       const itemB = b[index];
-      const sharedValue = mergeValues2(itemA, itemB);
+      const sharedValue = mergeValues(itemA, itemB);
       if (!sharedValue.valid) {
         return {
           valid: false,
@@ -20650,7 +17431,7 @@ function handleIntersectionResults(result, left, right) {
   }
   if (aborted(result))
     return result;
-  const merged = mergeValues2(left.value, right.value);
+  const merged = mergeValues(left.value, right.value);
   if (!merged.valid) {
     throw new Error(`Unmergable intersection. Error path: ${JSON.stringify(merged.mergeErrorPath)}`);
   }
@@ -21121,7 +17902,7 @@ var error = () => {
     }
   };
 };
-function en_default2() {
+function en_default() {
   return {
     localeError: error()
   };
@@ -21614,966 +18395,9 @@ function _refine(Class2, fn, _params) {
   return schema;
 }
 
-// node_modules/zod/v4/core/to-json-schema.js
-var JSONSchemaGenerator = class {
-  constructor(params) {
-    this.counter = 0;
-    this.metadataRegistry = params?.metadata ?? globalRegistry;
-    this.target = params?.target ?? "draft-2020-12";
-    this.unrepresentable = params?.unrepresentable ?? "throw";
-    this.override = params?.override ?? (() => {
-    });
-    this.io = params?.io ?? "output";
-    this.seen = /* @__PURE__ */ new Map();
-  }
-  process(schema, _params = { path: [], schemaPath: [] }) {
-    var _a;
-    const def = schema._zod.def;
-    const formatMap = {
-      guid: "uuid",
-      url: "uri",
-      datetime: "date-time",
-      json_string: "json-string",
-      regex: ""
-      // do not set
-    };
-    const seen = this.seen.get(schema);
-    if (seen) {
-      seen.count++;
-      const isCycle = _params.schemaPath.includes(schema);
-      if (isCycle) {
-        seen.cycle = _params.path;
-      }
-      return seen.schema;
-    }
-    const result = { schema: {}, count: 1, cycle: void 0, path: _params.path };
-    this.seen.set(schema, result);
-    const overrideSchema = schema._zod.toJSONSchema?.();
-    if (overrideSchema) {
-      result.schema = overrideSchema;
-    } else {
-      const params = {
-        ..._params,
-        schemaPath: [..._params.schemaPath, schema],
-        path: _params.path
-      };
-      const parent = schema._zod.parent;
-      if (parent) {
-        result.ref = parent;
-        this.process(parent, params);
-        this.seen.get(parent).isParent = true;
-      } else {
-        const _json = result.schema;
-        switch (def.type) {
-          case "string": {
-            const json = _json;
-            json.type = "string";
-            const { minimum, maximum, format, patterns, contentEncoding } = schema._zod.bag;
-            if (typeof minimum === "number")
-              json.minLength = minimum;
-            if (typeof maximum === "number")
-              json.maxLength = maximum;
-            if (format) {
-              json.format = formatMap[format] ?? format;
-              if (json.format === "")
-                delete json.format;
-            }
-            if (contentEncoding)
-              json.contentEncoding = contentEncoding;
-            if (patterns && patterns.size > 0) {
-              const regexes = [...patterns];
-              if (regexes.length === 1)
-                json.pattern = regexes[0].source;
-              else if (regexes.length > 1) {
-                result.schema.allOf = [
-                  ...regexes.map((regex) => ({
-                    ...this.target === "draft-7" ? { type: "string" } : {},
-                    pattern: regex.source
-                  }))
-                ];
-              }
-            }
-            break;
-          }
-          case "number": {
-            const json = _json;
-            const { minimum, maximum, format, multipleOf, exclusiveMaximum, exclusiveMinimum } = schema._zod.bag;
-            if (typeof format === "string" && format.includes("int"))
-              json.type = "integer";
-            else
-              json.type = "number";
-            if (typeof exclusiveMinimum === "number")
-              json.exclusiveMinimum = exclusiveMinimum;
-            if (typeof minimum === "number") {
-              json.minimum = minimum;
-              if (typeof exclusiveMinimum === "number") {
-                if (exclusiveMinimum >= minimum)
-                  delete json.minimum;
-                else
-                  delete json.exclusiveMinimum;
-              }
-            }
-            if (typeof exclusiveMaximum === "number")
-              json.exclusiveMaximum = exclusiveMaximum;
-            if (typeof maximum === "number") {
-              json.maximum = maximum;
-              if (typeof exclusiveMaximum === "number") {
-                if (exclusiveMaximum <= maximum)
-                  delete json.maximum;
-                else
-                  delete json.exclusiveMaximum;
-              }
-            }
-            if (typeof multipleOf === "number")
-              json.multipleOf = multipleOf;
-            break;
-          }
-          case "boolean": {
-            const json = _json;
-            json.type = "boolean";
-            break;
-          }
-          case "bigint": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("BigInt cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          case "symbol": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("Symbols cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          case "null": {
-            _json.type = "null";
-            break;
-          }
-          case "any": {
-            break;
-          }
-          case "unknown": {
-            break;
-          }
-          case "undefined": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("Undefined cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          case "void": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("Void cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          case "never": {
-            _json.not = {};
-            break;
-          }
-          case "date": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("Date cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          case "array": {
-            const json = _json;
-            const { minimum, maximum } = schema._zod.bag;
-            if (typeof minimum === "number")
-              json.minItems = minimum;
-            if (typeof maximum === "number")
-              json.maxItems = maximum;
-            json.type = "array";
-            json.items = this.process(def.element, { ...params, path: [...params.path, "items"] });
-            break;
-          }
-          case "object": {
-            const json = _json;
-            json.type = "object";
-            json.properties = {};
-            const shape = def.shape;
-            for (const key2 in shape) {
-              json.properties[key2] = this.process(shape[key2], {
-                ...params,
-                path: [...params.path, "properties", key2]
-              });
-            }
-            const allKeys = new Set(Object.keys(shape));
-            const requiredKeys = new Set([...allKeys].filter((key2) => {
-              const v = def.shape[key2]._zod;
-              if (this.io === "input") {
-                return v.optin === void 0;
-              } else {
-                return v.optout === void 0;
-              }
-            }));
-            if (requiredKeys.size > 0) {
-              json.required = Array.from(requiredKeys);
-            }
-            if (def.catchall?._zod.def.type === "never") {
-              json.additionalProperties = false;
-            } else if (!def.catchall) {
-              if (this.io === "output")
-                json.additionalProperties = false;
-            } else if (def.catchall) {
-              json.additionalProperties = this.process(def.catchall, {
-                ...params,
-                path: [...params.path, "additionalProperties"]
-              });
-            }
-            break;
-          }
-          case "union": {
-            const json = _json;
-            json.anyOf = def.options.map((x, i) => this.process(x, {
-              ...params,
-              path: [...params.path, "anyOf", i]
-            }));
-            break;
-          }
-          case "intersection": {
-            const json = _json;
-            const a = this.process(def.left, {
-              ...params,
-              path: [...params.path, "allOf", 0]
-            });
-            const b = this.process(def.right, {
-              ...params,
-              path: [...params.path, "allOf", 1]
-            });
-            const isSimpleIntersection = (val) => "allOf" in val && Object.keys(val).length === 1;
-            const allOf = [
-              ...isSimpleIntersection(a) ? a.allOf : [a],
-              ...isSimpleIntersection(b) ? b.allOf : [b]
-            ];
-            json.allOf = allOf;
-            break;
-          }
-          case "tuple": {
-            const json = _json;
-            json.type = "array";
-            const prefixItems = def.items.map((x, i) => this.process(x, { ...params, path: [...params.path, "prefixItems", i] }));
-            if (this.target === "draft-2020-12") {
-              json.prefixItems = prefixItems;
-            } else {
-              json.items = prefixItems;
-            }
-            if (def.rest) {
-              const rest = this.process(def.rest, {
-                ...params,
-                path: [...params.path, "items"]
-              });
-              if (this.target === "draft-2020-12") {
-                json.items = rest;
-              } else {
-                json.additionalItems = rest;
-              }
-            }
-            if (def.rest) {
-              json.items = this.process(def.rest, {
-                ...params,
-                path: [...params.path, "items"]
-              });
-            }
-            const { minimum, maximum } = schema._zod.bag;
-            if (typeof minimum === "number")
-              json.minItems = minimum;
-            if (typeof maximum === "number")
-              json.maxItems = maximum;
-            break;
-          }
-          case "record": {
-            const json = _json;
-            json.type = "object";
-            json.propertyNames = this.process(def.keyType, { ...params, path: [...params.path, "propertyNames"] });
-            json.additionalProperties = this.process(def.valueType, {
-              ...params,
-              path: [...params.path, "additionalProperties"]
-            });
-            break;
-          }
-          case "map": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("Map cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          case "set": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("Set cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          case "enum": {
-            const json = _json;
-            const values = getEnumValues(def.entries);
-            if (values.every((v) => typeof v === "number"))
-              json.type = "number";
-            if (values.every((v) => typeof v === "string"))
-              json.type = "string";
-            json.enum = values;
-            break;
-          }
-          case "literal": {
-            const json = _json;
-            const vals = [];
-            for (const val of def.values) {
-              if (val === void 0) {
-                if (this.unrepresentable === "throw") {
-                  throw new Error("Literal `undefined` cannot be represented in JSON Schema");
-                } else {
-                }
-              } else if (typeof val === "bigint") {
-                if (this.unrepresentable === "throw") {
-                  throw new Error("BigInt literals cannot be represented in JSON Schema");
-                } else {
-                  vals.push(Number(val));
-                }
-              } else {
-                vals.push(val);
-              }
-            }
-            if (vals.length === 0) {
-            } else if (vals.length === 1) {
-              const val = vals[0];
-              json.type = val === null ? "null" : typeof val;
-              json.const = val;
-            } else {
-              if (vals.every((v) => typeof v === "number"))
-                json.type = "number";
-              if (vals.every((v) => typeof v === "string"))
-                json.type = "string";
-              if (vals.every((v) => typeof v === "boolean"))
-                json.type = "string";
-              if (vals.every((v) => v === null))
-                json.type = "null";
-              json.enum = vals;
-            }
-            break;
-          }
-          case "file": {
-            const json = _json;
-            const file = {
-              type: "string",
-              format: "binary",
-              contentEncoding: "binary"
-            };
-            const { minimum, maximum, mime } = schema._zod.bag;
-            if (minimum !== void 0)
-              file.minLength = minimum;
-            if (maximum !== void 0)
-              file.maxLength = maximum;
-            if (mime) {
-              if (mime.length === 1) {
-                file.contentMediaType = mime[0];
-                Object.assign(json, file);
-              } else {
-                json.anyOf = mime.map((m) => {
-                  const mFile = { ...file, contentMediaType: m };
-                  return mFile;
-                });
-              }
-            } else {
-              Object.assign(json, file);
-            }
-            break;
-          }
-          case "transform": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("Transforms cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          case "nullable": {
-            const inner = this.process(def.innerType, params);
-            _json.anyOf = [inner, { type: "null" }];
-            break;
-          }
-          case "nonoptional": {
-            this.process(def.innerType, params);
-            result.ref = def.innerType;
-            break;
-          }
-          case "success": {
-            const json = _json;
-            json.type = "boolean";
-            break;
-          }
-          case "default": {
-            this.process(def.innerType, params);
-            result.ref = def.innerType;
-            _json.default = JSON.parse(JSON.stringify(def.defaultValue));
-            break;
-          }
-          case "prefault": {
-            this.process(def.innerType, params);
-            result.ref = def.innerType;
-            if (this.io === "input")
-              _json._prefault = JSON.parse(JSON.stringify(def.defaultValue));
-            break;
-          }
-          case "catch": {
-            this.process(def.innerType, params);
-            result.ref = def.innerType;
-            let catchValue;
-            try {
-              catchValue = def.catchValue(void 0);
-            } catch {
-              throw new Error("Dynamic catch values are not supported in JSON Schema");
-            }
-            _json.default = catchValue;
-            break;
-          }
-          case "nan": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("NaN cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          case "template_literal": {
-            const json = _json;
-            const pattern = schema._zod.pattern;
-            if (!pattern)
-              throw new Error("Pattern not found in template literal");
-            json.type = "string";
-            json.pattern = pattern.source;
-            break;
-          }
-          case "pipe": {
-            const innerType = this.io === "input" ? def.in._zod.def.type === "transform" ? def.out : def.in : def.out;
-            this.process(innerType, params);
-            result.ref = innerType;
-            break;
-          }
-          case "readonly": {
-            this.process(def.innerType, params);
-            result.ref = def.innerType;
-            _json.readOnly = true;
-            break;
-          }
-          // passthrough types
-          case "promise": {
-            this.process(def.innerType, params);
-            result.ref = def.innerType;
-            break;
-          }
-          case "optional": {
-            this.process(def.innerType, params);
-            result.ref = def.innerType;
-            break;
-          }
-          case "lazy": {
-            const innerType = schema._zod.innerType;
-            this.process(innerType, params);
-            result.ref = innerType;
-            break;
-          }
-          case "custom": {
-            if (this.unrepresentable === "throw") {
-              throw new Error("Custom types cannot be represented in JSON Schema");
-            }
-            break;
-          }
-          default: {
-            def;
-          }
-        }
-      }
-    }
-    const meta = this.metadataRegistry.get(schema);
-    if (meta)
-      Object.assign(result.schema, meta);
-    if (this.io === "input" && isTransforming(schema)) {
-      delete result.schema.examples;
-      delete result.schema.default;
-    }
-    if (this.io === "input" && result.schema._prefault)
-      (_a = result.schema).default ?? (_a.default = result.schema._prefault);
-    delete result.schema._prefault;
-    const _result = this.seen.get(schema);
-    return _result.schema;
-  }
-  emit(schema, _params) {
-    const params = {
-      cycles: _params?.cycles ?? "ref",
-      reused: _params?.reused ?? "inline",
-      // unrepresentable: _params?.unrepresentable ?? "throw",
-      // uri: _params?.uri ?? ((id) => `${id}`),
-      external: _params?.external ?? void 0
-    };
-    const root = this.seen.get(schema);
-    if (!root)
-      throw new Error("Unprocessed schema. This is a bug in Zod.");
-    const makeURI = (entry) => {
-      const defsSegment = this.target === "draft-2020-12" ? "$defs" : "definitions";
-      if (params.external) {
-        const externalId = params.external.registry.get(entry[0])?.id;
-        const uriGenerator = params.external.uri ?? ((id2) => id2);
-        if (externalId) {
-          return { ref: uriGenerator(externalId) };
-        }
-        const id = entry[1].defId ?? entry[1].schema.id ?? `schema${this.counter++}`;
-        entry[1].defId = id;
-        return { defId: id, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id}` };
-      }
-      if (entry[1] === root) {
-        return { ref: "#" };
-      }
-      const uriPrefix = `#`;
-      const defUriPrefix = `${uriPrefix}/${defsSegment}/`;
-      const defId = entry[1].schema.id ?? `__schema${this.counter++}`;
-      return { defId, ref: defUriPrefix + defId };
-    };
-    const extractToDef = (entry) => {
-      if (entry[1].schema.$ref) {
-        return;
-      }
-      const seen = entry[1];
-      const { ref, defId } = makeURI(entry);
-      seen.def = { ...seen.schema };
-      if (defId)
-        seen.defId = defId;
-      const schema2 = seen.schema;
-      for (const key2 in schema2) {
-        delete schema2[key2];
-      }
-      schema2.$ref = ref;
-    };
-    if (params.cycles === "throw") {
-      for (const entry of this.seen.entries()) {
-        const seen = entry[1];
-        if (seen.cycle) {
-          throw new Error(`Cycle detected: #/${seen.cycle?.join("/")}/<root>
-
-Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.`);
-        }
-      }
-    }
-    for (const entry of this.seen.entries()) {
-      const seen = entry[1];
-      if (schema === entry[0]) {
-        extractToDef(entry);
-        continue;
-      }
-      if (params.external) {
-        const ext = params.external.registry.get(entry[0])?.id;
-        if (schema !== entry[0] && ext) {
-          extractToDef(entry);
-          continue;
-        }
-      }
-      const id = this.metadataRegistry.get(entry[0])?.id;
-      if (id) {
-        extractToDef(entry);
-        continue;
-      }
-      if (seen.cycle) {
-        extractToDef(entry);
-        continue;
-      }
-      if (seen.count > 1) {
-        if (params.reused === "ref") {
-          extractToDef(entry);
-          continue;
-        }
-      }
-    }
-    const flattenRef = (zodSchema, params2) => {
-      const seen = this.seen.get(zodSchema);
-      const schema2 = seen.def ?? seen.schema;
-      const _cached = { ...schema2 };
-      if (seen.ref === null) {
-        return;
-      }
-      const ref = seen.ref;
-      seen.ref = null;
-      if (ref) {
-        flattenRef(ref, params2);
-        const refSchema = this.seen.get(ref).schema;
-        if (refSchema.$ref && params2.target === "draft-7") {
-          schema2.allOf = schema2.allOf ?? [];
-          schema2.allOf.push(refSchema);
-        } else {
-          Object.assign(schema2, refSchema);
-          Object.assign(schema2, _cached);
-        }
-      }
-      if (!seen.isParent)
-        this.override({
-          zodSchema,
-          jsonSchema: schema2,
-          path: seen.path ?? []
-        });
-    };
-    for (const entry of [...this.seen.entries()].reverse()) {
-      flattenRef(entry[0], { target: this.target });
-    }
-    const result = {};
-    if (this.target === "draft-2020-12") {
-      result.$schema = "https://json-schema.org/draft/2020-12/schema";
-    } else if (this.target === "draft-7") {
-      result.$schema = "http://json-schema.org/draft-07/schema#";
-    } else {
-      console.warn(`Invalid target: ${this.target}`);
-    }
-    if (params.external?.uri) {
-      const id = params.external.registry.get(schema)?.id;
-      if (!id)
-        throw new Error("Schema is missing an `id` property");
-      result.$id = params.external.uri(id);
-    }
-    Object.assign(result, root.def);
-    const defs = params.external?.defs ?? {};
-    for (const entry of this.seen.entries()) {
-      const seen = entry[1];
-      if (seen.def && seen.defId) {
-        defs[seen.defId] = seen.def;
-      }
-    }
-    if (params.external) {
-    } else {
-      if (Object.keys(defs).length > 0) {
-        if (this.target === "draft-2020-12") {
-          result.$defs = defs;
-        } else {
-          result.definitions = defs;
-        }
-      }
-    }
-    try {
-      return JSON.parse(JSON.stringify(result));
-    } catch (_err) {
-      throw new Error("Error converting schema to JSON.");
-    }
-  }
-};
-function toJSONSchema(input, _params) {
-  if (input instanceof $ZodRegistry) {
-    const gen2 = new JSONSchemaGenerator(_params);
-    const defs = {};
-    for (const entry of input._idmap.entries()) {
-      const [_, schema] = entry;
-      gen2.process(schema);
-    }
-    const schemas = {};
-    const external = {
-      registry: input,
-      uri: _params?.uri,
-      defs
-    };
-    for (const entry of input._idmap.entries()) {
-      const [key2, schema] = entry;
-      schemas[key2] = gen2.emit(schema, {
-        ..._params,
-        external
-      });
-    }
-    if (Object.keys(defs).length > 0) {
-      const defsSegment = gen2.target === "draft-2020-12" ? "$defs" : "definitions";
-      schemas.__shared = {
-        [defsSegment]: defs
-      };
-    }
-    return { schemas };
-  }
-  const gen = new JSONSchemaGenerator(_params);
-  gen.process(input);
-  return gen.emit(input, _params);
-}
-function isTransforming(_schema, _ctx) {
-  const ctx = _ctx ?? { seen: /* @__PURE__ */ new Set() };
-  if (ctx.seen.has(_schema))
-    return false;
-  ctx.seen.add(_schema);
-  const schema = _schema;
-  const def = schema._zod.def;
-  switch (def.type) {
-    case "string":
-    case "number":
-    case "bigint":
-    case "boolean":
-    case "date":
-    case "symbol":
-    case "undefined":
-    case "null":
-    case "any":
-    case "unknown":
-    case "never":
-    case "void":
-    case "literal":
-    case "enum":
-    case "nan":
-    case "file":
-    case "template_literal":
-      return false;
-    case "array": {
-      return isTransforming(def.element, ctx);
-    }
-    case "object": {
-      for (const key2 in def.shape) {
-        if (isTransforming(def.shape[key2], ctx))
-          return true;
-      }
-      return false;
-    }
-    case "union": {
-      for (const option of def.options) {
-        if (isTransforming(option, ctx))
-          return true;
-      }
-      return false;
-    }
-    case "intersection": {
-      return isTransforming(def.left, ctx) || isTransforming(def.right, ctx);
-    }
-    case "tuple": {
-      for (const item of def.items) {
-        if (isTransforming(item, ctx))
-          return true;
-      }
-      if (def.rest && isTransforming(def.rest, ctx))
-        return true;
-      return false;
-    }
-    case "record": {
-      return isTransforming(def.keyType, ctx) || isTransforming(def.valueType, ctx);
-    }
-    case "map": {
-      return isTransforming(def.keyType, ctx) || isTransforming(def.valueType, ctx);
-    }
-    case "set": {
-      return isTransforming(def.valueType, ctx);
-    }
-    // inner types
-    case "promise":
-    case "optional":
-    case "nonoptional":
-    case "nullable":
-    case "readonly":
-      return isTransforming(def.innerType, ctx);
-    case "lazy":
-      return isTransforming(def.getter(), ctx);
-    case "default": {
-      return isTransforming(def.innerType, ctx);
-    }
-    case "prefault": {
-      return isTransforming(def.innerType, ctx);
-    }
-    case "custom": {
-      return false;
-    }
-    case "transform": {
-      return true;
-    }
-    case "pipe": {
-      return isTransforming(def.in, ctx) || isTransforming(def.out, ctx);
-    }
-    case "success": {
-      return false;
-    }
-    case "catch": {
-      return false;
-    }
-    default:
-      def;
-  }
-  throw new Error(`Unknown schema type: ${def.type}`);
-}
-
-// node_modules/zod/v4/mini/schemas.js
-var ZodMiniType = /* @__PURE__ */ $constructor("ZodMiniType", (inst, def) => {
-  if (!inst._zod)
-    throw new Error("Uninitialized schema in ZodMiniType.");
-  $ZodType.init(inst, def);
-  inst.def = def;
-  inst.parse = (data, params) => parse(inst, data, params, { callee: inst.parse });
-  inst.safeParse = (data, params) => safeParse(inst, data, params);
-  inst.parseAsync = async (data, params) => parseAsync(inst, data, params, { callee: inst.parseAsync });
-  inst.safeParseAsync = async (data, params) => safeParseAsync(inst, data, params);
-  inst.check = (...checks) => {
-    return inst.clone(
-      {
-        ...def,
-        checks: [
-          ...def.checks ?? [],
-          ...checks.map((ch) => typeof ch === "function" ? { _zod: { check: ch, def: { check: "custom" }, onattach: [] } } : ch)
-        ]
-      }
-      // { parent: true }
-    );
-  };
-  inst.clone = (_def, params) => clone(inst, _def, params);
-  inst.brand = () => inst;
-  inst.register = ((reg, meta) => {
-    reg.add(inst, meta);
-    return inst;
-  });
-});
-var ZodMiniObject = /* @__PURE__ */ $constructor("ZodMiniObject", (inst, def) => {
-  $ZodObject.init(inst, def);
-  ZodMiniType.init(inst, def);
-  util_exports.defineLazy(inst, "shape", () => def.shape);
-});
-function object(shape, params) {
-  const def = {
-    type: "object",
-    get shape() {
-      util_exports.assignProp(this, "shape", { ...shape });
-      return this.shape;
-    },
-    ...util_exports.normalizeParams(params)
-  };
-  return new ZodMiniObject(def);
-}
-
-// node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
-function isZ4Schema(s) {
-  const schema = s;
-  return !!schema._zod;
-}
-function objectFromShape(shape) {
-  const values = Object.values(shape);
-  if (values.length === 0)
-    return object({});
-  const allV4 = values.every(isZ4Schema);
-  const allV3 = values.every((s) => !isZ4Schema(s));
-  if (allV4)
-    return object(shape);
-  if (allV3)
-    return objectType(shape);
-  throw new Error("Mixed Zod versions detected in object shape.");
-}
-function safeParse2(schema, data) {
-  if (isZ4Schema(schema)) {
-    const result2 = safeParse(schema, data);
-    return result2;
-  }
-  const v3Schema = schema;
-  const result = v3Schema.safeParse(data);
-  return result;
-}
-async function safeParseAsync2(schema, data) {
-  if (isZ4Schema(schema)) {
-    const result2 = await safeParseAsync(schema, data);
-    return result2;
-  }
-  const v3Schema = schema;
-  const result = await v3Schema.safeParseAsync(data);
-  return result;
-}
-function getObjectShape(schema) {
-  if (!schema)
-    return void 0;
-  let rawShape;
-  if (isZ4Schema(schema)) {
-    const v4Schema = schema;
-    rawShape = v4Schema._zod?.def?.shape;
-  } else {
-    const v3Schema = schema;
-    rawShape = v3Schema.shape;
-  }
-  if (!rawShape)
-    return void 0;
-  if (typeof rawShape === "function") {
-    try {
-      return rawShape();
-    } catch {
-      return void 0;
-    }
-  }
-  return rawShape;
-}
-function normalizeObjectSchema(schema) {
-  if (!schema)
-    return void 0;
-  if (typeof schema === "object") {
-    const asV3 = schema;
-    const asV4 = schema;
-    if (!asV3._def && !asV4._zod) {
-      const values = Object.values(schema);
-      if (values.length > 0 && values.every((v) => typeof v === "object" && v !== null && (v._def !== void 0 || v._zod !== void 0 || typeof v.parse === "function"))) {
-        return objectFromShape(schema);
-      }
-    }
-  }
-  if (isZ4Schema(schema)) {
-    const v4Schema = schema;
-    const def = v4Schema._zod?.def;
-    if (def && (def.type === "object" || def.shape !== void 0)) {
-      return schema;
-    }
-  } else {
-    const v3Schema = schema;
-    if (v3Schema.shape !== void 0) {
-      return schema;
-    }
-  }
-  return void 0;
-}
-function getParseErrorMessage(error2) {
-  if (error2 && typeof error2 === "object") {
-    if ("message" in error2 && typeof error2.message === "string") {
-      return error2.message;
-    }
-    if ("issues" in error2 && Array.isArray(error2.issues) && error2.issues.length > 0) {
-      const firstIssue = error2.issues[0];
-      if (firstIssue && typeof firstIssue === "object" && "message" in firstIssue) {
-        return String(firstIssue.message);
-      }
-    }
-    try {
-      return JSON.stringify(error2);
-    } catch {
-      return String(error2);
-    }
-  }
-  return String(error2);
-}
-function getSchemaDescription(schema) {
-  return schema.description;
-}
-function isSchemaOptional(schema) {
-  if (isZ4Schema(schema)) {
-    const v4Schema = schema;
-    return v4Schema._zod?.def?.type === "optional";
-  }
-  const v3Schema = schema;
-  if (typeof schema.isOptional === "function") {
-    return schema.isOptional();
-  }
-  return v3Schema._def?.typeName === "ZodOptional";
-}
-function getLiteralValue(schema) {
-  if (isZ4Schema(schema)) {
-    const v4Schema = schema;
-    const def2 = v4Schema._zod?.def;
-    if (def2) {
-      if (def2.value !== void 0)
-        return def2.value;
-      if (Array.isArray(def2.values) && def2.values.length > 0) {
-        return def2.values[0];
-      }
-    }
-  }
-  const v3Schema = schema;
-  const def = v3Schema._def;
-  if (def) {
-    if (def.value !== void 0)
-      return def.value;
-    if (Array.isArray(def.values) && def.values.length > 0) {
-      return def.values[0];
-    }
-  }
-  const directValue = schema.value;
-  if (directValue !== void 0)
-    return directValue;
-  return void 0;
-}
-
 // node_modules/zod/v4/classic/iso.js
-var iso_exports2 = {};
-__export(iso_exports2, {
+var iso_exports = {};
+__export(iso_exports, {
   ZodISODate: () => ZodISODate,
   ZodISODateTime: () => ZodISODateTime,
   ZodISODuration: () => ZodISODuration,
@@ -22641,19 +18465,19 @@ var initializer2 = (inst, issues) => {
     }
   });
 };
-var ZodError2 = $constructor("ZodError", initializer2);
+var ZodError = $constructor("ZodError", initializer2);
 var ZodRealError = $constructor("ZodError", initializer2, {
   Parent: Error
 });
 
 // node_modules/zod/v4/classic/parse.js
-var parse2 = /* @__PURE__ */ _parse(ZodRealError);
-var parseAsync2 = /* @__PURE__ */ _parseAsync(ZodRealError);
-var safeParse3 = /* @__PURE__ */ _safeParse(ZodRealError);
-var safeParseAsync3 = /* @__PURE__ */ _safeParseAsync(ZodRealError);
+var parse = /* @__PURE__ */ _parse(ZodRealError);
+var parseAsync = /* @__PURE__ */ _parseAsync(ZodRealError);
+var safeParse2 = /* @__PURE__ */ _safeParse(ZodRealError);
+var safeParseAsync2 = /* @__PURE__ */ _safeParseAsync(ZodRealError);
 
 // node_modules/zod/v4/classic/schemas.js
-var ZodType2 = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
+var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   $ZodType.init(inst, def);
   inst.def = def;
   Object.defineProperty(inst, "_def", { value: def });
@@ -22675,10 +18499,10 @@ var ZodType2 = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
     reg.add(inst, meta);
     return inst;
   });
-  inst.parse = (data, params) => parse2(inst, data, params, { callee: inst.parse });
-  inst.safeParse = (data, params) => safeParse3(inst, data, params);
-  inst.parseAsync = async (data, params) => parseAsync2(inst, data, params, { callee: inst.parseAsync });
-  inst.safeParseAsync = async (data, params) => safeParseAsync3(inst, data, params);
+  inst.parse = (data, params) => parse(inst, data, params, { callee: inst.parse });
+  inst.safeParse = (data, params) => safeParse2(inst, data, params);
+  inst.parseAsync = async (data, params) => parseAsync(inst, data, params, { callee: inst.parseAsync });
+  inst.safeParseAsync = async (data, params) => safeParseAsync2(inst, data, params);
   inst.spa = inst.safeParseAsync;
   inst.refine = (check2, params) => inst.check(refine(check2, params));
   inst.superRefine = (refinement) => inst.check(superRefine(refinement));
@@ -22721,7 +18545,7 @@ var ZodType2 = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
 });
 var _ZodString = /* @__PURE__ */ $constructor("_ZodString", (inst, def) => {
   $ZodString.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   const bag = inst._zod.bag;
   inst.format = bag.format ?? null;
   inst.minLength = bag.minimum ?? null;
@@ -22741,7 +18565,7 @@ var _ZodString = /* @__PURE__ */ $constructor("_ZodString", (inst, def) => {
   inst.toLowerCase = () => inst.check(_toLowerCase());
   inst.toUpperCase = () => inst.check(_toUpperCase());
 });
-var ZodString2 = /* @__PURE__ */ $constructor("ZodString", (inst, def) => {
+var ZodString = /* @__PURE__ */ $constructor("ZodString", (inst, def) => {
   $ZodString.init(inst, def);
   _ZodString.init(inst, def);
   inst.email = (params) => inst.check(_email(ZodEmail, params));
@@ -22773,7 +18597,7 @@ var ZodString2 = /* @__PURE__ */ $constructor("ZodString", (inst, def) => {
   inst.duration = (params) => inst.check(duration2(params));
 });
 function string2(params) {
-  return _string(ZodString2, params);
+  return _string(ZodString, params);
 }
 var ZodStringFormat = /* @__PURE__ */ $constructor("ZodStringFormat", (inst, def) => {
   $ZodStringFormat.init(inst, def);
@@ -22855,9 +18679,9 @@ var ZodJWT = /* @__PURE__ */ $constructor("ZodJWT", (inst, def) => {
   $ZodJWT.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
-var ZodNumber2 = /* @__PURE__ */ $constructor("ZodNumber", (inst, def) => {
+var ZodNumber = /* @__PURE__ */ $constructor("ZodNumber", (inst, def) => {
   $ZodNumber.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.gt = (value, params) => inst.check(_gt(value, params));
   inst.gte = (value, params) => inst.check(_gte(value, params));
   inst.min = (value, params) => inst.check(_gte(value, params));
@@ -22881,46 +18705,46 @@ var ZodNumber2 = /* @__PURE__ */ $constructor("ZodNumber", (inst, def) => {
   inst.format = bag.format ?? null;
 });
 function number2(params) {
-  return _number(ZodNumber2, params);
+  return _number(ZodNumber, params);
 }
 var ZodNumberFormat = /* @__PURE__ */ $constructor("ZodNumberFormat", (inst, def) => {
   $ZodNumberFormat.init(inst, def);
-  ZodNumber2.init(inst, def);
+  ZodNumber.init(inst, def);
 });
 function int(params) {
   return _int(ZodNumberFormat, params);
 }
-var ZodBoolean2 = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
+var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
   $ZodBoolean.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
 });
 function boolean2(params) {
-  return _boolean(ZodBoolean2, params);
+  return _boolean(ZodBoolean, params);
 }
-var ZodNull2 = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
+var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
 });
 function _null3(params) {
-  return _null2(ZodNull2, params);
+  return _null2(ZodNull, params);
 }
-var ZodUnknown2 = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
+var ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
   $ZodUnknown.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
 });
 function unknown() {
-  return _unknown(ZodUnknown2);
+  return _unknown(ZodUnknown);
 }
-var ZodNever2 = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
+var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
   $ZodNever.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
 });
 function never(params) {
-  return _never(ZodNever2, params);
+  return _never(ZodNever, params);
 }
-var ZodArray2 = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
+var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   $ZodArray.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.element = def.element;
   inst.min = (minLength, params) => inst.check(_minLength(minLength, params));
   inst.nonempty = (params) => inst.check(_minLength(1, params));
@@ -22929,11 +18753,11 @@ var ZodArray2 = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   inst.unwrap = () => inst.element;
 });
 function array(element, params) {
-  return _array(ZodArray2, element, params);
+  return _array(ZodArray, element, params);
 }
-var ZodObject2 = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
+var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   $ZodObject.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   util_exports.defineLazy(inst, "shape", () => def.shape);
   inst.keyof = () => _enum(Object.keys(inst._zod.def.shape));
   inst.catchall = (catchall) => inst.clone({ ...inst._zod.def, catchall });
@@ -22947,10 +18771,10 @@ var ZodObject2 = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   inst.merge = (other) => util_exports.merge(inst, other);
   inst.pick = (mask) => util_exports.pick(inst, mask);
   inst.omit = (mask) => util_exports.omit(inst, mask);
-  inst.partial = (...args) => util_exports.partial(ZodOptional2, inst, args[0]);
+  inst.partial = (...args) => util_exports.partial(ZodOptional, inst, args[0]);
   inst.required = (...args) => util_exports.required(ZodNonOptional, inst, args[0]);
 });
-function object2(shape, params) {
+function object(shape, params) {
   const def = {
     type: "object",
     get shape() {
@@ -22959,10 +18783,10 @@ function object2(shape, params) {
     },
     ...util_exports.normalizeParams(params)
   };
-  return new ZodObject2(def);
+  return new ZodObject(def);
 }
 function looseObject(shape, params) {
-  return new ZodObject2({
+  return new ZodObject({
     type: "object",
     get shape() {
       util_exports.assignProp(this, "shape", { ...shape });
@@ -22972,58 +18796,58 @@ function looseObject(shape, params) {
     ...util_exports.normalizeParams(params)
   });
 }
-var ZodUnion2 = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
+var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.options = def.options;
 });
 function union(options, params) {
-  return new ZodUnion2({
+  return new ZodUnion({
     type: "union",
     options,
     ...util_exports.normalizeParams(params)
   });
 }
-var ZodDiscriminatedUnion2 = /* @__PURE__ */ $constructor("ZodDiscriminatedUnion", (inst, def) => {
-  ZodUnion2.init(inst, def);
+var ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("ZodDiscriminatedUnion", (inst, def) => {
+  ZodUnion.init(inst, def);
   $ZodDiscriminatedUnion.init(inst, def);
 });
 function discriminatedUnion(discriminator, options, params) {
-  return new ZodDiscriminatedUnion2({
+  return new ZodDiscriminatedUnion({
     type: "union",
     options,
     discriminator,
     ...util_exports.normalizeParams(params)
   });
 }
-var ZodIntersection2 = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
+var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
 });
 function intersection(left, right) {
-  return new ZodIntersection2({
+  return new ZodIntersection({
     type: "intersection",
     left,
     right
   });
 }
-var ZodRecord2 = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
+var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
   $ZodRecord.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
 });
 function record(keyType, valueType, params) {
-  return new ZodRecord2({
+  return new ZodRecord({
     type: "record",
     keyType,
     valueType,
     ...util_exports.normalizeParams(params)
   });
 }
-var ZodEnum2 = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
+var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
   $ZodEnum.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.enum = def.entries;
   inst.options = Object.values(def.entries);
   const keys = new Set(Object.keys(def.entries));
@@ -23035,7 +18859,7 @@ var ZodEnum2 = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
       } else
         throw new Error(`Key ${value} not found in enum`);
     }
-    return new ZodEnum2({
+    return new ZodEnum({
       ...def,
       checks: [],
       ...util_exports.normalizeParams(params),
@@ -23050,7 +18874,7 @@ var ZodEnum2 = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
       } else
         throw new Error(`Key ${value} not found in enum`);
     }
-    return new ZodEnum2({
+    return new ZodEnum({
       ...def,
       checks: [],
       ...util_exports.normalizeParams(params),
@@ -23060,15 +18884,15 @@ var ZodEnum2 = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
 });
 function _enum(values, params) {
   const entries = Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values;
-  return new ZodEnum2({
+  return new ZodEnum({
     type: "enum",
     entries,
     ...util_exports.normalizeParams(params)
   });
 }
-var ZodLiteral2 = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
+var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   $ZodLiteral.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.values = new Set(def.values);
   Object.defineProperty(inst, "value", {
     get() {
@@ -23080,7 +18904,7 @@ var ZodLiteral2 = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   });
 });
 function literal(value, params) {
-  return new ZodLiteral2({
+  return new ZodLiteral({
     type: "literal",
     values: Array.isArray(value) ? value : [value],
     ...util_exports.normalizeParams(params)
@@ -23088,7 +18912,7 @@ function literal(value, params) {
 }
 var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   $ZodTransform.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst._zod.parse = (payload, _ctx) => {
     payload.addIssue = (issue3) => {
       if (typeof issue3 === "string") {
@@ -23121,36 +18945,36 @@ function transform(fn) {
     transform: fn
   });
 }
-var ZodOptional2 = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
+var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function optional(innerType) {
-  return new ZodOptional2({
+  return new ZodOptional({
     type: "optional",
     innerType
   });
 }
-var ZodNullable2 = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
+var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
   $ZodNullable.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nullable(innerType) {
-  return new ZodNullable2({
+  return new ZodNullable({
     type: "nullable",
     innerType
   });
 }
-var ZodDefault2 = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
+var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
   $ZodDefault.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeDefault = inst.unwrap;
 });
 function _default(innerType, defaultValue) {
-  return new ZodDefault2({
+  return new ZodDefault({
     type: "default",
     innerType,
     get defaultValue() {
@@ -23160,7 +18984,7 @@ function _default(innerType, defaultValue) {
 }
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
   $ZodPrefault.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function prefault(innerType, defaultValue) {
@@ -23174,7 +18998,7 @@ function prefault(innerType, defaultValue) {
 }
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
@@ -23184,14 +19008,14 @@ function nonoptional(innerType, params) {
     ...util_exports.normalizeParams(params)
   });
 }
-var ZodCatch2 = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
+var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
   $ZodCatch.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeCatch = inst.unwrap;
 });
 function _catch(innerType, catchValue) {
-  return new ZodCatch2({
+  return new ZodCatch({
     type: "catch",
     innerType,
     catchValue: typeof catchValue === "function" ? catchValue : () => catchValue
@@ -23199,7 +19023,7 @@ function _catch(innerType, catchValue) {
 }
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
   $ZodPipe.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
   inst.in = def.in;
   inst.out = def.out;
 });
@@ -23211,19 +19035,19 @@ function pipe(in_, out) {
     // ...util.normalizeParams(params),
   });
 }
-var ZodReadonly2 = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
+var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
   $ZodReadonly.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
 });
 function readonly(innerType) {
-  return new ZodReadonly2({
+  return new ZodReadonly({
     type: "readonly",
     innerType
   });
 }
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
-  ZodType2.init(inst, def);
+  ZodType.init(inst, def);
 });
 function check(fn) {
   const ch = new $ZodCheck({
@@ -23233,7 +19057,7 @@ function check(fn) {
   ch._zod.check = fn;
   return ch;
 }
-function custom2(fn, _params) {
+function custom(fn, _params) {
   return _custom(ZodCustom, fn ?? (() => true), _params);
 }
 function refine(fn, _params = {}) {
@@ -23264,14 +19088,14 @@ function preprocess(fn, schema) {
 }
 
 // node_modules/zod/v4/classic/external.js
-config(en_default2());
+config(en_default());
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
 var LATEST_PROTOCOL_VERSION = "2025-11-25";
 var SUPPORTED_PROTOCOL_VERSIONS = [LATEST_PROTOCOL_VERSION, "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"];
 var RELATED_TASK_META_KEY = "io.modelcontextprotocol/related-task";
 var JSONRPC_VERSION = "2.0";
-var AssertObjectSchema = custom2((v) => v !== null && (typeof v === "object" || typeof v === "function"));
+var AssertObjectSchema = custom((v) => v !== null && (typeof v === "object" || typeof v === "function"));
 var ProgressTokenSchema = union([string2(), number2().int()]);
 var CursorSchema = string2();
 var TaskCreationParamsSchema = looseObject({
@@ -23284,10 +19108,10 @@ var TaskCreationParamsSchema = looseObject({
    */
   pollInterval: number2().optional()
 });
-var TaskMetadataSchema = object2({
+var TaskMetadataSchema = object({
   ttl: number2().optional()
 });
-var RelatedTaskMetadataSchema = object2({
+var RelatedTaskMetadataSchema = object({
   taskId: string2()
 });
 var RequestMetaSchema = looseObject({
@@ -23300,7 +19124,7 @@ var RequestMetaSchema = looseObject({
    */
   [RELATED_TASK_META_KEY]: RelatedTaskMetadataSchema.optional()
 });
-var BaseRequestParamsSchema = object2({
+var BaseRequestParamsSchema = object({
   /**
    * See [General fields: `_meta`](/specification/draft/basic/index#meta) for notes on `_meta` usage.
    */
@@ -23318,18 +19142,18 @@ var TaskAugmentedRequestParamsSchema = BaseRequestParamsSchema.extend({
   task: TaskMetadataSchema.optional()
 });
 var isTaskAugmentedRequestParams = (value) => TaskAugmentedRequestParamsSchema.safeParse(value).success;
-var RequestSchema = object2({
+var RequestSchema = object({
   method: string2(),
   params: BaseRequestParamsSchema.loose().optional()
 });
-var NotificationsParamsSchema = object2({
+var NotificationsParamsSchema = object({
   /**
    * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
    * for notes on _meta usage.
    */
   _meta: RequestMetaSchema.optional()
 });
-var NotificationSchema = object2({
+var NotificationSchema = object({
   method: string2(),
   params: NotificationsParamsSchema.loose().optional()
 });
@@ -23341,18 +19165,18 @@ var ResultSchema = looseObject({
   _meta: RequestMetaSchema.optional()
 });
 var RequestIdSchema = union([string2(), number2().int()]);
-var JSONRPCRequestSchema = object2({
+var JSONRPCRequestSchema = object({
   jsonrpc: literal(JSONRPC_VERSION),
   id: RequestIdSchema,
   ...RequestSchema.shape
 }).strict();
 var isJSONRPCRequest = (value) => JSONRPCRequestSchema.safeParse(value).success;
-var JSONRPCNotificationSchema = object2({
+var JSONRPCNotificationSchema = object({
   jsonrpc: literal(JSONRPC_VERSION),
   ...NotificationSchema.shape
 }).strict();
 var isJSONRPCNotification = (value) => JSONRPCNotificationSchema.safeParse(value).success;
-var JSONRPCResultResponseSchema = object2({
+var JSONRPCResultResponseSchema = object({
   jsonrpc: literal(JSONRPC_VERSION),
   id: RequestIdSchema,
   result: ResultSchema
@@ -23369,10 +19193,10 @@ var ErrorCode;
   ErrorCode2[ErrorCode2["InternalError"] = -32603] = "InternalError";
   ErrorCode2[ErrorCode2["UrlElicitationRequired"] = -32042] = "UrlElicitationRequired";
 })(ErrorCode || (ErrorCode = {}));
-var JSONRPCErrorResponseSchema = object2({
+var JSONRPCErrorResponseSchema = object({
   jsonrpc: literal(JSONRPC_VERSION),
   id: RequestIdSchema.optional(),
-  error: object2({
+  error: object({
     /**
      * The error type that occurred.
      */
@@ -23412,7 +19236,7 @@ var CancelledNotificationSchema = NotificationSchema.extend({
   method: literal("notifications/cancelled"),
   params: CancelledNotificationParamsSchema
 });
-var IconSchema = object2({
+var IconSchema = object({
   /**
    * URL or data URI for the icon.
    */
@@ -23437,7 +19261,7 @@ var IconSchema = object2({
    */
   theme: _enum(["light", "dark"]).optional()
 });
-var IconsSchema = object2({
+var IconsSchema = object({
   /**
    * Optional set of sized icons that the client can display in a user interface.
    *
@@ -23451,7 +19275,7 @@ var IconsSchema = object2({
    */
   icons: array(IconSchema).optional()
 });
-var BaseMetadataSchema = object2({
+var BaseMetadataSchema = object({
   /** Intended for programmatic or logical use, but used as a display name in past specs or fallback */
   name: string2(),
   /**
@@ -23481,7 +19305,7 @@ var ImplementationSchema = BaseMetadataSchema.extend({
    */
   description: string2().optional()
 });
-var FormElicitationCapabilitySchema = intersection(object2({
+var FormElicitationCapabilitySchema = intersection(object({
   applyDefaults: boolean2().optional()
 }), record(string2(), unknown()));
 var ElicitationCapabilitySchema = preprocess((value) => {
@@ -23491,7 +19315,7 @@ var ElicitationCapabilitySchema = preprocess((value) => {
     }
   }
   return value;
-}, intersection(object2({
+}, intersection(object({
   form: FormElicitationCapabilitySchema.optional(),
   url: AssertObjectSchema.optional()
 }), record(string2(), unknown()).optional()));
@@ -23543,7 +19367,7 @@ var ServerTasksCapabilitySchema = looseObject({
     }).optional()
   }).optional()
 });
-var ClientCapabilitiesSchema = object2({
+var ClientCapabilitiesSchema = object({
   /**
    * Experimental, non-standard capabilities that the client supports.
    */
@@ -23551,7 +19375,7 @@ var ClientCapabilitiesSchema = object2({
   /**
    * Present if the client supports sampling from an LLM.
    */
-  sampling: object2({
+  sampling: object({
     /**
      * Present if the client supports context inclusion via includeContext parameter.
      * If not declared, servers SHOULD only use `includeContext: "none"` (or omit it).
@@ -23569,7 +19393,7 @@ var ClientCapabilitiesSchema = object2({
   /**
    * Present if the client supports listing roots.
    */
-  roots: object2({
+  roots: object({
     /**
      * Whether the client supports issuing notifications for changes to the roots list.
      */
@@ -23596,7 +19420,7 @@ var InitializeRequestSchema = RequestSchema.extend({
   method: literal("initialize"),
   params: InitializeRequestParamsSchema
 });
-var ServerCapabilitiesSchema = object2({
+var ServerCapabilitiesSchema = object({
   /**
    * Experimental, non-standard capabilities that the server supports.
    */
@@ -23612,7 +19436,7 @@ var ServerCapabilitiesSchema = object2({
   /**
    * Present if the server offers any prompt templates.
    */
-  prompts: object2({
+  prompts: object({
     /**
      * Whether this server supports issuing notifications for changes to the prompt list.
      */
@@ -23621,7 +19445,7 @@ var ServerCapabilitiesSchema = object2({
   /**
    * Present if the server offers any resources to read.
    */
-  resources: object2({
+  resources: object({
     /**
      * Whether this server supports clients subscribing to resource updates.
      */
@@ -23634,7 +19458,7 @@ var ServerCapabilitiesSchema = object2({
   /**
    * Present if the server offers any tools to call.
    */
-  tools: object2({
+  tools: object({
     /**
      * Whether this server supports issuing notifications for changes to the tool list.
      */
@@ -23671,7 +19495,7 @@ var PingRequestSchema = RequestSchema.extend({
   method: literal("ping"),
   params: BaseRequestParamsSchema.optional()
 });
-var ProgressSchema = object2({
+var ProgressSchema = object({
   /**
    * The progress thus far. This should increase every time progress is made, even if the total is unknown.
    */
@@ -23685,7 +19509,7 @@ var ProgressSchema = object2({
    */
   message: optional(string2())
 });
-var ProgressNotificationParamsSchema = object2({
+var ProgressNotificationParamsSchema = object({
   ...NotificationsParamsSchema.shape,
   ...ProgressSchema.shape,
   /**
@@ -23715,7 +19539,7 @@ var PaginatedResultSchema = ResultSchema.extend({
   nextCursor: CursorSchema.optional()
 });
 var TaskStatusSchema = _enum(["working", "input_required", "completed", "failed", "cancelled"]);
-var TaskSchema = object2({
+var TaskSchema = object({
   taskId: string2(),
   status: TaskStatusSchema,
   /**
@@ -23772,7 +19596,7 @@ var CancelTaskRequestSchema = RequestSchema.extend({
   })
 });
 var CancelTaskResultSchema = ResultSchema.merge(TaskSchema);
-var ResourceContentsSchema = object2({
+var ResourceContentsSchema = object({
   /**
    * The URI of this resource.
    */
@@ -23808,7 +19632,7 @@ var BlobResourceContentsSchema = ResourceContentsSchema.extend({
   blob: Base64Schema
 });
 var RoleSchema = _enum(["user", "assistant"]);
-var AnnotationsSchema = object2({
+var AnnotationsSchema = object({
   /**
    * Intended audience(s) for the resource.
    */
@@ -23820,9 +19644,9 @@ var AnnotationsSchema = object2({
   /**
    * ISO 8601 timestamp for the most recent modification.
    */
-  lastModified: iso_exports2.datetime({ offset: true }).optional()
+  lastModified: iso_exports.datetime({ offset: true }).optional()
 });
-var ResourceSchema = object2({
+var ResourceSchema = object({
   ...BaseMetadataSchema.shape,
   ...IconsSchema.shape,
   /**
@@ -23855,7 +19679,7 @@ var ResourceSchema = object2({
    */
   _meta: optional(looseObject({}))
 });
-var ResourceTemplateSchema = object2({
+var ResourceTemplateSchema = object({
   ...BaseMetadataSchema.shape,
   ...IconsSchema.shape,
   /**
@@ -23934,7 +19758,7 @@ var ResourceUpdatedNotificationSchema = NotificationSchema.extend({
   method: literal("notifications/resources/updated"),
   params: ResourceUpdatedNotificationParamsSchema
 });
-var PromptArgumentSchema = object2({
+var PromptArgumentSchema = object({
   /**
    * The name of the argument.
    */
@@ -23948,7 +19772,7 @@ var PromptArgumentSchema = object2({
    */
   required: optional(boolean2())
 });
-var PromptSchema = object2({
+var PromptSchema = object({
   ...BaseMetadataSchema.shape,
   ...IconsSchema.shape,
   /**
@@ -23985,7 +19809,7 @@ var GetPromptRequestSchema = RequestSchema.extend({
   method: literal("prompts/get"),
   params: GetPromptRequestParamsSchema
 });
-var TextContentSchema = object2({
+var TextContentSchema = object({
   type: literal("text"),
   /**
    * The text content of the message.
@@ -24001,7 +19825,7 @@ var TextContentSchema = object2({
    */
   _meta: record(string2(), unknown()).optional()
 });
-var ImageContentSchema = object2({
+var ImageContentSchema = object({
   type: literal("image"),
   /**
    * The base64-encoded image data.
@@ -24021,7 +19845,7 @@ var ImageContentSchema = object2({
    */
   _meta: record(string2(), unknown()).optional()
 });
-var AudioContentSchema = object2({
+var AudioContentSchema = object({
   type: literal("audio"),
   /**
    * The base64-encoded audio data.
@@ -24041,7 +19865,7 @@ var AudioContentSchema = object2({
    */
   _meta: record(string2(), unknown()).optional()
 });
-var ToolUseContentSchema = object2({
+var ToolUseContentSchema = object({
   type: literal("tool_use"),
   /**
    * The name of the tool to invoke.
@@ -24064,7 +19888,7 @@ var ToolUseContentSchema = object2({
    */
   _meta: record(string2(), unknown()).optional()
 });
-var EmbeddedResourceSchema = object2({
+var EmbeddedResourceSchema = object({
   type: literal("resource"),
   resource: union([TextResourceContentsSchema, BlobResourceContentsSchema]),
   /**
@@ -24087,7 +19911,7 @@ var ContentBlockSchema = union([
   ResourceLinkSchema,
   EmbeddedResourceSchema
 ]);
-var PromptMessageSchema = object2({
+var PromptMessageSchema = object({
   role: RoleSchema,
   content: ContentBlockSchema
 });
@@ -24102,7 +19926,7 @@ var PromptListChangedNotificationSchema = NotificationSchema.extend({
   method: literal("notifications/prompts/list_changed"),
   params: NotificationsParamsSchema.optional()
 });
-var ToolAnnotationsSchema = object2({
+var ToolAnnotationsSchema = object({
   /**
    * A human-readable title for the tool.
    */
@@ -24141,7 +19965,7 @@ var ToolAnnotationsSchema = object2({
    */
   openWorldHint: boolean2().optional()
 });
-var ToolExecutionSchema = object2({
+var ToolExecutionSchema = object({
   /**
    * Indicates the tool's preference for task-augmented execution.
    * - "required": Clients MUST invoke the tool as a task
@@ -24152,7 +19976,7 @@ var ToolExecutionSchema = object2({
    */
   taskSupport: _enum(["required", "optional", "forbidden"]).optional()
 });
-var ToolSchema = object2({
+var ToolSchema = object({
   ...BaseMetadataSchema.shape,
   ...IconsSchema.shape,
   /**
@@ -24163,7 +19987,7 @@ var ToolSchema = object2({
    * A JSON Schema 2020-12 object defining the expected parameters for the tool.
    * Must have type: 'object' at the root level per MCP spec.
    */
-  inputSchema: object2({
+  inputSchema: object({
     type: literal("object"),
     properties: record(string2(), AssertObjectSchema).optional(),
     required: array(string2()).optional()
@@ -24173,7 +19997,7 @@ var ToolSchema = object2({
    * returned in the structuredContent field of a CallToolResult.
    * Must have type: 'object' at the root level per MCP spec.
    */
-  outputSchema: object2({
+  outputSchema: object({
     type: literal("object"),
     properties: record(string2(), AssertObjectSchema).optional(),
     required: array(string2()).optional()
@@ -24249,7 +20073,7 @@ var ToolListChangedNotificationSchema = NotificationSchema.extend({
   method: literal("notifications/tools/list_changed"),
   params: NotificationsParamsSchema.optional()
 });
-var ListChangedOptionsBaseSchema = object2({
+var ListChangedOptionsBaseSchema = object({
   /**
    * If true, the list will be refreshed automatically when a list changed notification is received.
    * The callback will be called with the updated list.
@@ -24298,13 +20122,13 @@ var LoggingMessageNotificationSchema = NotificationSchema.extend({
   method: literal("notifications/message"),
   params: LoggingMessageNotificationParamsSchema
 });
-var ModelHintSchema = object2({
+var ModelHintSchema = object({
   /**
    * A hint for a model name.
    */
   name: string2().optional()
 });
-var ModelPreferencesSchema = object2({
+var ModelPreferencesSchema = object({
   /**
    * Optional hints to use for model selection.
    */
@@ -24322,7 +20146,7 @@ var ModelPreferencesSchema = object2({
    */
   intelligencePriority: number2().min(0).max(1).optional()
 });
-var ToolChoiceSchema = object2({
+var ToolChoiceSchema = object({
   /**
    * Controls when tools are used:
    * - "auto": Model decides whether to use tools (default)
@@ -24331,11 +20155,11 @@ var ToolChoiceSchema = object2({
    */
   mode: _enum(["auto", "required", "none"]).optional()
 });
-var ToolResultContentSchema = object2({
+var ToolResultContentSchema = object({
   type: literal("tool_result"),
   toolUseId: string2().describe("The unique identifier for the corresponding tool call."),
   content: array(ContentBlockSchema).default([]),
-  structuredContent: object2({}).loose().optional(),
+  structuredContent: object({}).loose().optional(),
   isError: boolean2().optional(),
   /**
    * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
@@ -24351,7 +20175,7 @@ var SamplingMessageContentBlockSchema = discriminatedUnion("type", [
   ToolUseContentSchema,
   ToolResultContentSchema
 ]);
-var SamplingMessageSchema = object2({
+var SamplingMessageSchema = object({
   role: RoleSchema,
   content: union([SamplingMessageContentBlockSchema, array(SamplingMessageContentBlockSchema)]),
   /**
@@ -24451,13 +20275,13 @@ var CreateMessageResultWithToolsSchema = ResultSchema.extend({
    */
   content: union([SamplingMessageContentBlockSchema, array(SamplingMessageContentBlockSchema)])
 });
-var BooleanSchemaSchema = object2({
+var BooleanSchemaSchema = object({
   type: literal("boolean"),
   title: string2().optional(),
   description: string2().optional(),
   default: boolean2().optional()
 });
-var StringSchemaSchema = object2({
+var StringSchemaSchema = object({
   type: literal("string"),
   title: string2().optional(),
   description: string2().optional(),
@@ -24466,7 +20290,7 @@ var StringSchemaSchema = object2({
   format: _enum(["email", "uri", "date", "date-time"]).optional(),
   default: string2().optional()
 });
-var NumberSchemaSchema = object2({
+var NumberSchemaSchema = object({
   type: _enum(["number", "integer"]),
   title: string2().optional(),
   description: string2().optional(),
@@ -24474,24 +20298,24 @@ var NumberSchemaSchema = object2({
   maximum: number2().optional(),
   default: number2().optional()
 });
-var UntitledSingleSelectEnumSchemaSchema = object2({
+var UntitledSingleSelectEnumSchemaSchema = object({
   type: literal("string"),
   title: string2().optional(),
   description: string2().optional(),
   enum: array(string2()),
   default: string2().optional()
 });
-var TitledSingleSelectEnumSchemaSchema = object2({
+var TitledSingleSelectEnumSchemaSchema = object({
   type: literal("string"),
   title: string2().optional(),
   description: string2().optional(),
-  oneOf: array(object2({
+  oneOf: array(object({
     const: string2(),
     title: string2()
   })),
   default: string2().optional()
 });
-var LegacyTitledEnumSchemaSchema = object2({
+var LegacyTitledEnumSchemaSchema = object({
   type: literal("string"),
   title: string2().optional(),
   description: string2().optional(),
@@ -24500,26 +20324,26 @@ var LegacyTitledEnumSchemaSchema = object2({
   default: string2().optional()
 });
 var SingleSelectEnumSchemaSchema = union([UntitledSingleSelectEnumSchemaSchema, TitledSingleSelectEnumSchemaSchema]);
-var UntitledMultiSelectEnumSchemaSchema = object2({
+var UntitledMultiSelectEnumSchemaSchema = object({
   type: literal("array"),
   title: string2().optional(),
   description: string2().optional(),
   minItems: number2().optional(),
   maxItems: number2().optional(),
-  items: object2({
+  items: object({
     type: literal("string"),
     enum: array(string2())
   }),
   default: array(string2()).optional()
 });
-var TitledMultiSelectEnumSchemaSchema = object2({
+var TitledMultiSelectEnumSchemaSchema = object({
   type: literal("array"),
   title: string2().optional(),
   description: string2().optional(),
   minItems: number2().optional(),
   maxItems: number2().optional(),
-  items: object2({
-    anyOf: array(object2({
+  items: object({
+    anyOf: array(object({
       const: string2(),
       title: string2()
     }))
@@ -24544,7 +20368,7 @@ var ElicitRequestFormParamsSchema = TaskAugmentedRequestParamsSchema.extend({
    * A restricted subset of JSON Schema.
    * Only top-level properties are allowed, without nesting.
    */
-  requestedSchema: object2({
+  requestedSchema: object({
     type: literal("object"),
     properties: record(string2(), PrimitiveSchemaDefinitionSchema),
     required: array(string2()).optional()
@@ -24600,14 +20424,14 @@ var ElicitResultSchema = ResultSchema.extend({
    */
   content: preprocess((val) => val === null ? void 0 : val, record(string2(), union([string2(), number2(), boolean2(), array(string2())])).optional())
 });
-var ResourceTemplateReferenceSchema = object2({
+var ResourceTemplateReferenceSchema = object({
   type: literal("ref/resource"),
   /**
    * The URI or URI template of the resource.
    */
   uri: string2()
 });
-var PromptReferenceSchema = object2({
+var PromptReferenceSchema = object({
   type: literal("ref/prompt"),
   /**
    * The name of the prompt or prompt template
@@ -24619,7 +20443,7 @@ var CompleteRequestParamsSchema = BaseRequestParamsSchema.extend({
   /**
    * The argument's information
    */
-  argument: object2({
+  argument: object({
     /**
      * The name of the argument
      */
@@ -24629,7 +20453,7 @@ var CompleteRequestParamsSchema = BaseRequestParamsSchema.extend({
      */
     value: string2()
   }),
-  context: object2({
+  context: object({
     /**
      * Previously-resolved variables in a URI template or prompt.
      */
@@ -24640,18 +20464,6 @@ var CompleteRequestSchema = RequestSchema.extend({
   method: literal("completion/complete"),
   params: CompleteRequestParamsSchema
 });
-function assertCompleteRequestPrompt(request) {
-  if (request.params.ref.type !== "ref/prompt") {
-    throw new TypeError(`Expected CompleteRequestPrompt, but got ${request.params.ref.type}`);
-  }
-  void request;
-}
-function assertCompleteRequestResourceTemplate(request) {
-  if (request.params.ref.type !== "ref/resource") {
-    throw new TypeError(`Expected CompleteRequestResourceTemplate, but got ${request.params.ref.type}`);
-  }
-  void request;
-}
 var CompleteResultSchema = ResultSchema.extend({
   completion: looseObject({
     /**
@@ -24668,7 +20480,7 @@ var CompleteResultSchema = ResultSchema.extend({
     hasMore: optional(boolean2())
   })
 });
-var RootSchema = object2({
+var RootSchema = object({
   /**
    * The URI identifying the root. This *must* start with file:// for now.
    */
@@ -24797,1317 +20609,3794 @@ var UrlElicitationRequiredError = class extends McpError {
   }
 };
 
+// src/generated/agent-tools.ts
+var AGENT_TOOLS = {
+  "metadata": {
+    "schema": "ideaspaces.agent-tools",
+    "version": 1,
+    "digest": "sha256:00eb3df229670b242349420f3776066054c1606bc17b4ab49c2b684525d2184b",
+    "cli": {
+      "version": "0.10.1",
+      "commit": "52e9967acc281783a3c6080bfa299a9bb465fbe6"
+    },
+    "protocol": {
+      "version": "0.32.0",
+      "commit": "916ae9ffb2733295b04b192abc29cf3fe1b736c6"
+    },
+    "wrapper": {
+      "version": "0.1.36"
+    }
+  },
+  "tools": {
+    "is_auth": {
+      "name": "is_auth",
+      "description": "Open browser sign-in for this CLI on this machine.\nA person explicitly wants this CLI authenticated.\nComplete browser authorization; host-run auth must stay with the host.\nOne browser flow; headless callers use an existing IS_API_KEY.\n\nRevoke this CLI session, then clear its credentials.\nExplicitly asked to sign this CLI out.\nCredentials are retained if revocation fails; host auth is not replaced.\nOne CLI session; no paging.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "login",
+              "logout"
+            ],
+            "description": "login: open browser OAuth and save credentials. logout: clear credentials."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "entries": [
+        "login",
+        "logout"
+      ],
+      "requires": [
+        ">=0.9.0",
+        ">=0.9.0"
+      ]
+    },
+    "is_threads": {
+      "name": "is_threads",
+      "description": "List local or hosted Threads.\nDiscover Threads before reading one.\nLocal rows may include unreadable posts. new is reader state; hosted unread counts come from the service.\nHosted pages default 50, max 200; continue cursor. Local list has no paging and returns all discovered Threads.\n\nRead one local or hosted Thread at a selected rung.\nRead a Thread or one exact post; use list for discovery.\nCompare shown with matching. A snapshot plus tail can omit intervening posts; page since the snapshot. For folded marks, continue since last_activity_id.\nLocal surface defaults to 5 including the head; other pages default to 10. Hosted defaults to 50, max 200. Continue since locally or cursor remotely.\n\nStart a local or hosted Thread.\nNew direction needs a Thread, not another reply.\nLocal needs about; hosted needs name, summary and message. Check attachment, recipients and returned id.\nOne Thread; local/hosted creation are independent.\n\nAppend an immutable local or hosted Thread post.\nReply to a specific post or branch from the post your topic serves.\nSupply name, summary and reply_to; verify returned id/path. Local author is a claim. Keep post_id for exact hosted retries.\nOne post; local kind/mark and host metadata have distinct validation.\n\nAppend a closure post to a local or hosted Thread.\nDone-when holds and closure has been agreed.\nVerify target and rationale; hosted close requires yes.\nOne closure post; no content or history is removed.\n\nRead local Thread activity since a cursor or named reader baseline.\nFind what moved, not every Thread.\nCompare shown with moved; baseline means nothing new yet. Reading does not advance the position.\nDefault 50 Threads, max 500; keep returned cursor; unshown activity stays new.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "about": {
+            "type": "string",
+            "description": "Local Thread title, or a portable contextual entity where supported."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "list",
+              "open",
+              "new",
+              "post",
+              "close",
+              "recent"
+            ],
+            "description": "Explicit Thread operation. hosted=true lists/starts through /threads. recent says which local Threads moved, ids and counts only; hold its cursor and pass it next time. Agent acknowledgement of the person's Unread is not exposed."
+          },
+          "attached_to": {
+            "type": "string",
+            "description": "Parent entity/post reference for the Note or local Thread."
+          },
+          "author": {
+            "type": "string",
+            "description": "Local author claim, not verified identity."
+          },
+          "checkout": {
+            "type": "string",
+            "description": "Absolute checkout root for an explicitly selected Map member."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque continuation/read position returned by this operation."
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "depth": {
+            "type": "string",
+            "description": "Progressive-disclosure rung or numeric tree depth as documented.",
+            "enum": [
+              "name",
+              "summary",
+              "children",
+              "surface",
+              "full"
+            ]
+          },
+          "hosted": {
+            "type": "boolean",
+            "description": "Use hosted routing rather than the local/legacy path."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Local immutable post kind; hosted kind is chosen by its verb."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results in this page; inspect returned continuation/counts.",
+            "minimum": 1
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "mark": {
+            "type": "string",
+            "description": "Value of a local mark replying to exactly one post."
+          },
+          "member": {
+            "type": "integer",
+            "description": "Zero-based authored Map member ordinal.",
+            "minimum": 0
+          },
+          "message": {
+            "type": "string",
+            "description": "Exact message/content; stdin is accepted where documented."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name/title."
+          },
+          "new": {
+            "type": "boolean",
+            "description": "Select activity after a local reader position; hosted list uses service unread counts."
+          },
+          "order": {
+            "type": "string",
+            "description": "Page direction: older or newer; since advances forward with older.",
+            "enum": [
+              "newer",
+              "older"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "description": "Local Thread slug/path or hosted x_ id."
+          },
+          "pin": {
+            "type": "string",
+            "description": "Exact authored Git commit for reading a local path."
+          },
+          "position": {
+            "type": "string",
+            "description": "Repository-relative position of a Map member."
+          },
+          "post": {
+            "type": "string",
+            "description": "Exact post id to select."
+          },
+          "post_id": {
+            "type": "string",
+            "description": "Stable id for exact hosted resend after uncertain delivery."
+          },
+          "recipients": {
+            "type": "array",
+            "description": "Explicit hosted recipients, handles or emails.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16
+          },
+          "reply_to": {
+            "type": "array",
+            "description": "Parent post id(s); latest is explicit, never implicit. Locally a full msg_ id, or its eight-hex short form (msg_1b7f2056) when only one post in the Thread starts with it; an ambiguous one is refused with the matches.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "since": {
+            "type": "string",
+            "description": "Continuation position from the prior page or ISO filter where supported."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Dense summary for progressive discovery."
+          },
+          "supersedes": {
+            "type": "string",
+            "description": "Prior post id superseded by a correction."
+          },
+          "tags": {
+            "type": "array",
+            "description": "Retrieval labels.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unread": {
+            "type": "boolean",
+            "description": "Only hosted service-unread Threads or local reader-unread Threads."
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "entries": [
+        "threads.list",
+        "threads.open",
+        "threads.new",
+        "threads.post",
+        "threads.close",
+        "threads.recent"
+      ],
+      "requires": [
+        ">=0.9.0",
+        ">=0.9.0",
+        ">=0.9.0",
+        ">=0.9.0",
+        ">=0.9.0",
+        ">=0.9.0"
+      ]
+    },
+    "is_write": {
+      "name": "is_write",
+      "description": "Create or update a local Note with frontmatter and optional staging.\nCapture durable knowledge; use if_match when updating a prior revision.\nCheck frontmatter validation and returned sha; force bypasses revision checking.\nOne Note per call; content is supplied explicitly or on stdin.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "attached_to": {
+            "type": "string",
+            "description": "Parent entity/post reference for the Note or local Thread."
+          },
+          "content": {
+            "type": "string",
+            "description": "Exact Note content; otherwise reads stdin."
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Bypass existing revision/overwrite protection explicitly."
+          },
+          "if_match": {
+            "type": "string",
+            "description": "Expected revision: local hash, or hosted version_id for spaces edits."
+          },
+          "map": {
+            "type": "object",
+            "properties": {
+              "roots": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "repo": {
+                      "type": "string",
+                      "description": "Canonical absolute repository URL: <web-origin>/repos/{root_node_id}"
+                    },
+                    "root_node_id": {
+                      "type": "string",
+                      "description": "Portable root Node identity"
+                    },
+                    "sha": {
+                      "type": "string",
+                      "description": "Optional full Git commit pin; omit for a live Space Map root"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "root": {
+                          "type": "integer",
+                          "description": "Zero-based index into map.roots"
+                        },
+                        "position": {
+                          "type": "string",
+                          "description": "Portable repository-relative protocol position, or ."
+                        },
+                        "depth": {
+                          "type": "string",
+                          "enum": [
+                            "name",
+                            "summary",
+                            "surface",
+                            "children",
+                            "full"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "position"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Open type:id address"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "depth": {
+                          "type": "string",
+                          "enum": [
+                            "name",
+                            "summary"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "roots",
+              "members"
+            ],
+            "additionalProperties": true,
+            "description": "Portable Map block for deliberately capturing this Note as a map-note"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name/title."
+          },
+          "path": {
+            "type": "string",
+            "description": "Local path to the target."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Dense summary for progressive discovery."
+          },
+          "tags": {
+            "type": "array",
+            "description": "Retrieval labels.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "content",
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "entries": [
+        "write"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_status": {
+      "name": "is_status",
+      "description": "Read session captures, open Change and optional safe file revisions.\nInspect session-owned captures and file revisions before saving.\nSession state belongs to the host; this entry grants no permissions or cross-session ownership.\nOne host session; optional file selection is exact.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "path": {
+            "type": "string",
+            "description": "Optional file to inspect for safe refinement."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "entries": [
+        "session.status"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_commit": {
+      "name": "is_commit",
+      "description": "Commit the exact named staged paths, or this MCP process's captured paths with all.\nSave agreed captures explicitly; never adopt unrelated staged knowledge.\nThe session ledger, revisions, assisting agent, Conversation and open Change stay host-owned. Check the returned commit SHA.\nOne commit; explicit paths or session-owned all, never both.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "boolean",
+            "description": "Commit only paths captured by this MCP server session. Never adopts other staged knowledge from the shared index."
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "message": {
+            "type": "string",
+            "description": "Exact message/content; stdin is accepted where documented."
+          },
+          "op": {
+            "type": "string",
+            "description": "Commit operation trailer.",
+            "enum": [
+              "create",
+              "update",
+              "move",
+              "delete",
+              "restructure",
+              "capture"
+            ]
+          },
+          "paths": {
+            "type": "array",
+            "description": "Positional paths for commit.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "entries": [
+        "commit"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_change_open": {
+      "name": "is_change_open",
+      "description": "Open a session Change, minting or continuing its id.\nManage a multi-commit decision in the current host session.\nSession state belongs to the host; this entry grants no permissions or cross-session ownership.\nOne host session; optional file selection is exact.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "description": "Handle used to mint a new Change-Id."
+          },
+          "id": {
+            "type": "string",
+            "description": "Existing Change-Id to continue."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "entries": [
+        "change.open"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_change_close": {
+      "name": "is_change_close",
+      "description": "Close the session Change; later commits no longer carry its id.\nManage a multi-commit decision in the current host session.\nSession state belongs to the host; this entry grants no permissions or cross-session ownership.\nOne host session; optional file selection is exact.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "entries": [
+        "change.close"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_look": {
+      "name": "is_look",
+      "description": "Read one local Note, Content directory, Thread or pinned Map address.\nDeepen one identified target; use navigate for orientation.\nCheck target.page.nextCursor and continue with since. A Thread's children show each post's id, kind and author; cite the id shown, never a guessed or padded one. Open the post for body evidence; a summary alone is not proof.\nRungs bound detail; directory target.page reports total, shown and nextCursor. Continue with since.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "A Map member by address instead of a path: @<root name>//<position>, @<root_node_id>//<position>, or //<position> for your own root. Read against `map`, else the session's launch Map; works from any cwd."
+          },
+          "agreement": {
+            "type": "string",
+            "description": "Reference Agreement representation, never caller authority.",
+            "enum": [
+              "summary",
+              "full"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "description": "Read a Map address at its authored pin or checkout head.",
+            "enum": [
+              "pin",
+              "head"
+            ]
+          },
+          "contract": {
+            "type": "string",
+            "description": "Reference frame: foundation or agreement, never caller authority.",
+            "enum": [
+              "foundation",
+              "agreement"
+            ]
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "depth": {
+            "type": "string",
+            "description": "Progressive-disclosure rung or numeric tree depth as documented. Default summary; children when limit, since or order pages a folder; full when post selects one post.",
+            "enum": [
+              "name",
+              "summary",
+              "surface",
+              "children",
+              "full"
+            ],
+            "default": "summary"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results in this page; inspect returned continuation/counts.",
+            "minimum": 0
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "order": {
+            "type": "string",
+            "description": "Page direction: older or newer; since advances forward with older.",
+            "enum": [
+              "older",
+              "newer"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "description": "Local path to the target."
+          },
+          "pin": {
+            "type": "string",
+            "description": "Exact authored Git commit for reading a local path."
+          },
+          "position": {
+            "type": "string",
+            "description": "Authored repository-relative position paired with pin; must name the same target as path"
+          },
+          "post": {
+            "type": "string",
+            "description": "Post id to select and read in full: the full msg_ id, or its unique eight-hex short form."
+          },
+          "since": {
+            "type": "string",
+            "description": "Continuation position from the prior page or ISO filter where supported."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "entries": [
+        "look"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_navigate": {
+      "name": "is_navigate",
+      "description": "Orient here or read another position as reference without changing authority.\nChange reference focus, not your working directory or operating contract.\nA target Agreement is reference only. Check selected contract and tree depth.\nDepth 1 by default, up to 4; focus is a bounded depth-one reference view.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "A Map member directory by address instead of a path: @<root name>//<position>, @<root_node_id>//<position>, or //<position>. Read against `map`, else the session's launch Map."
+          },
+          "agreement": {
+            "type": "string",
+            "description": "Reference Agreement representation, never caller authority.",
+            "enum": [
+              "summary",
+              "full"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "description": "Read a Map address at its authored pin or checkout head.",
+            "enum": [
+              "pin",
+              "head"
+            ]
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "path": {
+            "type": "string",
+            "description": "Local path to the target."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "entries": [
+        "navigate"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_pull": {
+      "name": "is_pull",
+      "description": "Fetch and integrate remote Git changes into this checkout.\nExplicitly update a clone, not a fork source.\nUse dry_run first when useful; dirty captures must be saved first.\nOne target per call; no paging.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Preview remote sync state without pushing or integrating."
+          },
+          "rebase": {
+            "type": "boolean",
+            "description": "Integrate by rebase (default true) rather than merge.",
+            "default": true
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "entries": [
+        "pull"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_push": {
+      "name": "is_push",
+      "description": "Push committed captures to the configured remote.\nSharing committed repo state was explicitly requested.\nCheck dry_run, remote and ahead/behind; pull first if behind.\nOne target per call; no paging.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Preview remote sync state without pushing or integrating."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "entries": [
+        "push"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_spaces": {
+      "name": "is_spaces",
+      "description": "List hosted repos and your available actions.\nDiscover repos, not Maps or local checkout paths.\nCheck relationship and actions; repo access is separate from Space membership.\nUnbounded result for the selected scope; no client continuation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "entries": [
+        "repos"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_get": {
+      "name": "is_get",
+      "description": "Preview bringing a Space home; yes plus as selects clone, fork or link.\nStart from a shared URL or existing directory.\nRead proposed action and destination before yes.\nOne target per call; no paging.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Positional source for get."
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "dir": {
+            "type": "string",
+            "description": "Positional destination for get."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Explicit get mode: clone, fork or link; used with yes.",
+            "enum": [
+              "clone",
+              "fork",
+              "link"
+            ]
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "additionalProperties": false
+      },
+      "entries": [
+        "get"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_clone": {
+      "name": "is_clone",
+      "description": "Clone an authorized repo into a local folder.\nNeed remote history and an ongoing Git remote.\nCheck destination and authorization; cloning does not widen access.\nOne target per call; no paging.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "dir": {
+            "type": "string",
+            "description": "Positional destination for clone."
+          },
+          "space": {
+            "type": "string",
+            "description": "Positional source for clone."
+          }
+        },
+        "required": [
+          "space"
+        ],
+        "additionalProperties": false
+      },
+      "entries": [
+        "clone"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    },
+    "is_collaborate": {
+      "name": "is_collaborate",
+      "description": "Launch or resume a local Agreement POV on Pi or Claude; close acknowledges only.\nAsk a fellow POV to work from its own Agreement, with an explicit purpose.\nNo nesting. Claude defaults to read-only; writes and permissions must be explicit. Pi read-only is unavailable. A failed child is a failed call.\nOne local turn, at most 12000 reply characters. Missing runtime usage is unknown, not zero.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "open",
+              "say",
+              "close"
+            ],
+            "description": "open: start a CLI-backed local conversation. say: resume by conversation id. close: compatibility acknowledgement only; it changes no state."
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
+          },
+          "effort": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "description": "Claude effort only, if the installed Claude Code supports --effort."
+          },
+          "handle": {
+            "type": "string",
+            "description": "For say/close: exact conversation_id returned by open (Pi local id or Claude UUID); supply the same runtime on say/close."
+          },
+          "message": {
+            "type": "string",
+            "description": "For open/say: the purpose and task, in your own words. Intent does not grant tools."
+          },
+          "model": {
+            "type": "string",
+            "description": "Model alias/id for the selected runtime."
+          },
+          "permission_mode": {
+            "type": "string",
+            "enum": [
+              "acceptEdits",
+              "auto",
+              "bypassPermissions",
+              "manual",
+              "dontAsk",
+              "plan"
+            ],
+            "description": "Claude permission mode. bypassPermissions requires read_only=false explicitly."
+          },
+          "pov": {
+            "type": "string",
+            "description": "For open/say: explicit local IdeaSpace repo path with its own _agent/agreement.md; relative to cwd or absolute."
+          },
+          "read_only": {
+            "type": "boolean",
+            "description": "Claude-only restricted Read/Grep/Glob and no plugin MCP servers. Default true on Claude; pass false deliberately to allow writes."
+          },
+          "runtime": {
+            "type": "string",
+            "enum": [
+              "pi",
+              "claude"
+            ],
+            "description": "Child harness, default claude. On say specify pi if open used pi."
+          },
+          "thinking": {
+            "type": "string",
+            "enum": [
+              "off",
+              "minimal",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "description": "Pi thinking only."
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "entries": [
+        "mcp.collaborate"
+      ],
+      "requires": [
+        ">=0.9.0"
+      ]
+    }
+  },
+  "divergences": [
+    {
+      "tool": "is_auth",
+      "parameter": "action",
+      "kind": "host-owned addition",
+      "reason": "Host action selector over the explicitly exposed commands."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "space",
+      "kind": "host-owned omission",
+      "reason": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "open",
+      "kind": "host-owned omission",
+      "reason": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "reader",
+      "kind": "host-owned omission",
+      "reason": "Reader identity is supplied by the host environment, not by a model."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "thread",
+      "kind": "alias",
+      "alias": "path"
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "ack",
+      "kind": "host-owned omission",
+      "reason": "Reader acknowledgement remains host-owned and unexposed; never move the person's Unread."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "agreement",
+      "kind": "host-owned omission",
+      "reason": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "reader",
+      "kind": "host-owned omission",
+      "reason": "Reader identity is supplied by the host environment, not by a model."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "thread",
+      "kind": "alias",
+      "alias": "path"
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "home",
+      "kind": "host-owned omission",
+      "reason": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "thread",
+      "kind": "alias",
+      "alias": "path"
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "no_check_links",
+      "kind": "host-owned omission",
+      "reason": "This host always validates links; bypass stays unexposed."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "thread",
+      "kind": "alias",
+      "alias": "path"
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "yes",
+      "kind": "host-owned omission",
+      "reason": "This composite tool retains its existing action-specific inputs; unsupported discovery filters or close confirmations stay in the CLI."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "reader",
+      "kind": "host-owned omission",
+      "reason": "Reader identity is supplied by the host environment, not by a model."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "action",
+      "kind": "host-owned addition",
+      "reason": "Host action selector over the explicitly exposed commands."
+    },
+    {
+      "tool": "is_threads",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    },
+    {
+      "tool": "is_write",
+      "parameter": "stage",
+      "kind": "host-owned omission",
+      "reason": "Capture always stages its exact path and records host revision ownership; unstaged writes are not this tool."
+    },
+    {
+      "tool": "is_write",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    },
+    {
+      "tool": "is_write",
+      "parameter": "map",
+      "kind": "host-owned override",
+      "reason": "Host-owned structured Map value; local-effects parser validates shape, not the CLI file/string input."
+    },
+    {
+      "tool": "is_status",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    },
+    {
+      "tool": "is_commit",
+      "parameter": "author_name",
+      "kind": "host-owned omission",
+      "reason": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them."
+    },
+    {
+      "tool": "is_commit",
+      "parameter": "author_email",
+      "kind": "host-owned omission",
+      "reason": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them."
+    },
+    {
+      "tool": "is_commit",
+      "parameter": "change_id",
+      "kind": "host-owned omission",
+      "reason": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them."
+    },
+    {
+      "tool": "is_commit",
+      "parameter": "conversation",
+      "kind": "host-owned omission",
+      "reason": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them."
+    },
+    {
+      "tool": "is_commit",
+      "parameter": "co_author",
+      "kind": "host-owned omission",
+      "reason": "Commit identity, Conversation and Change provenance derive from host session state; the model cannot override them."
+    },
+    {
+      "tool": "is_commit",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    },
+    {
+      "tool": "is_commit",
+      "parameter": "all",
+      "kind": "host-owned override",
+      "reason": "Host-owned session capture ledger: all means only this process's captures, never every staged file."
+    },
+    {
+      "tool": "is_look",
+      "parameter": "address",
+      "kind": "host-owned addition",
+      "reason": "Named Map-address input alias; CLI resolves its authored pin."
+    },
+    {
+      "tool": "is_look",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    },
+    {
+      "tool": "is_look",
+      "parameter": "position",
+      "kind": "host-owned addition",
+      "reason": "Host authored-position consistency check; never infer a pin."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "focus",
+      "kind": "host-owned omission",
+      "reason": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "contract",
+      "kind": "host-owned omission",
+      "reason": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "depth",
+      "kind": "host-owned omission",
+      "reason": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "mark_seen",
+      "kind": "host-owned omission",
+      "reason": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "workspace",
+      "kind": "host-owned omission",
+      "reason": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "mount",
+      "kind": "host-owned omission",
+      "reason": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "pullable",
+      "kind": "host-owned omission",
+      "reason": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "no_git",
+      "kind": "host-owned omission",
+      "reason": "The host supplies a bounded reference orientation, not CLI workspace/mount state or reader acknowledgement."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "address",
+      "kind": "host-owned addition",
+      "reason": "Named Map-address input alias; CLI resolves its authored pin."
+    },
+    {
+      "tool": "is_navigate",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    },
+    {
+      "tool": "is_pull",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    },
+    {
+      "tool": "is_push",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    },
+    {
+      "tool": "is_get",
+      "parameter": "source",
+      "kind": "alias",
+      "alias": "address"
+    },
+    {
+      "tool": "is_get",
+      "parameter": "destination",
+      "kind": "alias",
+      "alias": "dir"
+    },
+    {
+      "tool": "is_get",
+      "parameter": "as",
+      "kind": "alias",
+      "alias": "mode"
+    },
+    {
+      "tool": "is_get",
+      "parameter": "name",
+      "kind": "host-owned omission",
+      "reason": "The host exposes plan-first mode plus destination; applying yes is derived from the explicit mode, with no separate naming override."
+    },
+    {
+      "tool": "is_get",
+      "parameter": "yes",
+      "kind": "host-owned omission",
+      "reason": "The host exposes plan-first mode plus destination; applying yes is derived from the explicit mode, with no separate naming override."
+    },
+    {
+      "tool": "is_get",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    },
+    {
+      "tool": "is_clone",
+      "parameter": "source",
+      "kind": "alias",
+      "alias": "space"
+    },
+    {
+      "tool": "is_clone",
+      "parameter": "destination",
+      "kind": "alias",
+      "alias": "dir"
+    },
+    {
+      "tool": "is_clone",
+      "parameter": "cwd",
+      "kind": "host-owned addition",
+      "reason": "Host working-directory resolution; never an authority or reach grant."
+    }
+  ],
+  "entries": [
+    {
+      "id": "look",
+      "owner": "cli",
+      "status": "active",
+      "job": "J1",
+      "effect": "read",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Read one local Note, Content directory, Thread or pinned Map address.",
+        "use_when": "Deepen one identified target; use navigate for orientation.",
+        "check": "Check target.page.nextCursor and continue with since. A Thread's children show each post's id, kind and author; cite the id shown, never a guessed or padded one. Open the post for body evidence; a summary alone is not proof.",
+        "bound": "Rungs bound detail; directory target.page reports total, shown and nextCursor. Continue with since."
+      },
+      "bound": {
+        "unit": "entries",
+        "says": true,
+        "continue": "since"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Local path to the target."
+          },
+          "depth": {
+            "type": "string",
+            "description": "Progressive-disclosure rung or numeric tree depth as documented. Default summary; children when limit, since or order pages a folder; full when post selects one post.",
+            "enum": [
+              "name",
+              "summary",
+              "surface",
+              "children",
+              "full"
+            ],
+            "default": "summary"
+          },
+          "contract": {
+            "type": "string",
+            "description": "Reference frame: foundation or agreement, never caller authority.",
+            "enum": [
+              "foundation",
+              "agreement"
+            ]
+          },
+          "agreement": {
+            "type": "string",
+            "description": "Reference Agreement representation, never caller authority.",
+            "enum": [
+              "summary",
+              "full"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results in this page; inspect returned continuation/counts.",
+            "minimum": 0
+          },
+          "since": {
+            "type": "string",
+            "description": "Continuation position from the prior page or ISO filter where supported."
+          },
+          "order": {
+            "type": "string",
+            "description": "Page direction: older or newer; since advances forward with older.",
+            "enum": [
+              "older",
+              "newer"
+            ]
+          },
+          "post": {
+            "type": "string",
+            "description": "Post id to select and read in full: the full msg_ id, or its unique eight-hex short form."
+          },
+          "pin": {
+            "type": "string",
+            "description": "Exact authored Git commit for reading a local path."
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "at": {
+            "type": "string",
+            "description": "Read a Map address at its authored pin or checkout head.",
+            "enum": [
+              "pin",
+              "head"
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "look"
+        ],
+        "positional": [
+          "path"
+        ],
+        "flags": {
+          "depth": {
+            "flag": "--depth"
+          },
+          "contract": {
+            "flag": "--contract"
+          },
+          "agreement": {
+            "flag": "--agreement"
+          },
+          "limit": {
+            "flag": "--limit"
+          },
+          "since": {
+            "flag": "--since"
+          },
+          "order": {
+            "flag": "--order"
+          },
+          "post": {
+            "flag": "--post"
+          },
+          "pin": {
+            "flag": "--pin"
+          },
+          "map": {
+            "flag": "--map"
+          },
+          "at": {
+            "flag": "--at"
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "text",
+          "kind",
+          "depth",
+          "reference",
+          "target",
+          "target.page.shown",
+          "target.page.total",
+          "target.page.nextCursor",
+          "map",
+          "portable",
+          "dirty"
+        ]
+      }
+    },
+    {
+      "id": "navigate",
+      "owner": "cli",
+      "status": "active",
+      "job": "J1",
+      "effect": "read",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Orient here or read another position as reference without changing authority.",
+        "use_when": "Change reference focus, not your working directory or operating contract.",
+        "check": "A target Agreement is reference only. Check selected contract and tree depth.",
+        "bound": "Depth 1 by default, up to 4; focus is a bounded depth-one reference view."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Local path to the target."
+          },
+          "focus": {
+            "type": "boolean",
+            "description": "Read the target as bounded reference focus without changing caller authority."
+          },
+          "agreement": {
+            "type": "string",
+            "description": "Reference Agreement representation, never caller authority."
+          },
+          "contract": {
+            "type": "string",
+            "description": "Reference frame: foundation or agreement, never caller authority."
+          },
+          "depth": {
+            "type": "integer",
+            "description": "Progressive-disclosure rung or numeric tree depth as documented.",
+            "minimum": 1,
+            "maximum": 4,
+            "default": 1
+          },
+          "mark_seen": {
+            "type": "boolean",
+            "description": "Record the orientation checkpoint explicitly."
+          },
+          "workspace": {
+            "type": "string",
+            "description": "Workspace directory used for orientation/state."
+          },
+          "mount": {
+            "type": "array",
+            "description": "Additional content roots for workspace orientation.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pullable": {
+            "type": "string",
+            "description": "Additional pullable source declarations for workspace state."
+          },
+          "no_git": {
+            "type": "boolean",
+            "description": "Omit Git-derived orientation state."
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "at": {
+            "type": "string",
+            "description": "Read a Map address at its authored pin or checkout head."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "navigate"
+        ],
+        "positional": [
+          "path"
+        ],
+        "flags": {
+          "focus": {
+            "flag": "--focus",
+            "boolean": "bare"
+          },
+          "agreement": {
+            "flag": "--agreement"
+          },
+          "contract": {
+            "flag": "--contract"
+          },
+          "depth": {
+            "flag": "--depth"
+          },
+          "mark_seen": {
+            "flag": "--mark-seen",
+            "boolean": "bare"
+          },
+          "workspace": {
+            "flag": "--workspace"
+          },
+          "mount": {
+            "flag": "--mount",
+            "list": "csv"
+          },
+          "pullable": {
+            "flag": "--pullable"
+          },
+          "no_git": {
+            "flag": "--no-git",
+            "boolean": "bare"
+          },
+          "map": {
+            "flag": "--map"
+          },
+          "at": {
+            "flag": "--at"
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "text",
+          "position",
+          "root",
+          "repoRoot",
+          "manifest",
+          "space"
+        ]
+      }
+    },
+    {
+      "id": "threads.open",
+      "owner": "cli",
+      "status": "active",
+      "job": "J1",
+      "effect": "read",
+      "reach": "local+hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Read one local or hosted Thread at a selected rung.",
+        "use_when": "Read a Thread or one exact post; use list for discovery.",
+        "check": "Compare shown with matching. A snapshot plus tail can omit intervening posts; page since the snapshot. For folded marks, continue since last_activity_id.",
+        "bound": "Local surface defaults to 5 including the head; other pages default to 10. Hosted defaults to 50, max 200. Continue since locally or cursor remotely."
+      },
+      "bound": {
+        "unit": "posts",
+        "default": 5,
+        "says": true,
+        "continue": "since"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread": {
+            "type": "string",
+            "description": "Local Thread slug/path or hosted x_ id."
+          },
+          "depth": {
+            "type": "string",
+            "description": "Progressive-disclosure rung or numeric tree depth as documented."
+          },
+          "new": {
+            "type": "boolean",
+            "description": "Select activity after a local reader position; hosted list uses service unread counts."
+          },
+          "ack": {
+            "type": "boolean",
+            "description": "Explicitly acknowledge the selected local read; reading alone never acknowledges."
+          },
+          "since": {
+            "type": "string",
+            "description": "Continuation position from the prior page or ISO filter where supported."
+          },
+          "post": {
+            "type": "string",
+            "description": "Exact post id to select."
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "member": {
+            "type": "integer",
+            "description": "Zero-based authored Map member ordinal.",
+            "minimum": 0
+          },
+          "checkout": {
+            "type": "string",
+            "description": "Absolute checkout root for an explicitly selected Map member."
+          },
+          "pin": {
+            "type": "string",
+            "description": "Exact authored Git commit for reading a local path."
+          },
+          "position": {
+            "type": "string",
+            "description": "Repository-relative position of a Map member."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results in this page; inspect returned continuation/counts.",
+            "minimum": 1
+          },
+          "order": {
+            "type": "string",
+            "description": "Page direction: older or newer; since advances forward with older."
+          },
+          "agreement": {
+            "type": "string",
+            "description": "Reference Agreement representation, never caller authority."
+          },
+          "reader": {
+            "type": "string",
+            "description": "Local reader identity; defaults to IDEASPACES_READER or person."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque continuation/read position returned by this operation."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Compatibility filter accepted only by the read alias."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "threads",
+          "open"
+        ],
+        "positional": [
+          "thread"
+        ],
+        "flags": {
+          "depth": {
+            "flag": "--depth"
+          },
+          "new": {
+            "flag": "--new",
+            "boolean": "bare"
+          },
+          "ack": {
+            "flag": "--ack",
+            "boolean": "bare"
+          },
+          "since": {
+            "flag": "--since"
+          },
+          "post": {
+            "flag": "--post"
+          },
+          "map": {
+            "flag": "--map"
+          },
+          "member": {
+            "flag": "--member"
+          },
+          "checkout": {
+            "flag": "--checkout"
+          },
+          "pin": {
+            "flag": "--pin"
+          },
+          "position": {
+            "flag": "--position"
+          },
+          "limit": {
+            "flag": "--limit"
+          },
+          "order": {
+            "flag": "--order"
+          },
+          "agreement": {
+            "flag": "--agreement"
+          },
+          "reader": {
+            "flag": "--reader"
+          },
+          "cursor": {
+            "flag": "--cursor"
+          }
+        },
+        "local_flags": [
+          "depth",
+          "new",
+          "ack",
+          "since",
+          "post",
+          "map",
+          "member",
+          "checkout",
+          "pin",
+          "position",
+          "limit",
+          "order",
+          "agreement",
+          "reader"
+        ],
+        "hosted_flags": [
+          "limit",
+          "cursor"
+        ],
+        "alias_flags": {
+          "threads read": [
+            "kind"
+          ]
+        }
+      },
+      "aliases": [
+        "threads read"
+      ],
+      "output": {
+        "json": [
+          "shown",
+          "matching",
+          "has_more",
+          "posts",
+          "thread.snapshot",
+          "child_threads",
+          "cursor",
+          "older_cursor",
+          "last_activity_id"
+        ]
+      }
+    },
+    {
+      "id": "write",
+      "owner": "cli",
+      "status": "active",
+      "job": "J2",
+      "effect": "write-local",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Create or update a local Note with frontmatter and optional staging.",
+        "use_when": "Capture durable knowledge; use if_match when updating a prior revision.",
+        "check": "Check frontmatter validation and returned sha; force bypasses revision checking.",
+        "bound": "One Note per call; content is supplied explicitly or on stdin."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Local path to the target."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name/title."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Dense summary for progressive discovery."
+          },
+          "tags": {
+            "type": "array",
+            "description": "Retrieval labels.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "attached_to": {
+            "type": "string",
+            "description": "Parent entity/post reference for the Note or local Thread."
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "content": {
+            "type": "string",
+            "description": "Exact Note content; otherwise reads stdin."
+          },
+          "if_match": {
+            "type": "string",
+            "description": "Expected revision: local hash, or hosted version_id for spaces edits."
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Bypass existing revision/overwrite protection explicitly."
+          },
+          "stage": {
+            "type": "boolean",
+            "description": "Stage the written Note in Git (default true).",
+            "default": true
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "write"
+        ],
+        "positional": [
+          "path"
+        ],
+        "flags": {
+          "name": {
+            "flag": "--name"
+          },
+          "summary": {
+            "flag": "--summary"
+          },
+          "tags": {
+            "flag": "--tags",
+            "list": "csv"
+          },
+          "attached_to": {
+            "flag": "--attached-to"
+          },
+          "map": {
+            "flag": "--map"
+          },
+          "content": {
+            "flag": "--content"
+          },
+          "if_match": {
+            "flag": "--if-match"
+          },
+          "force": {
+            "flag": "--force",
+            "boolean": "bare"
+          },
+          "stage": {
+            "flag": "--stage",
+            "boolean": "bare"
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "path",
+          "sha",
+          "staged"
+        ]
+      }
+    },
+    {
+      "id": "commit",
+      "owner": "cli",
+      "status": "active",
+      "job": "J3",
+      "effect": "write-local",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Commit only named staged paths, or all staged files when all is explicit.",
+        "use_when": "Save agreed captures to Git; this CLI has no session-owned capture set.",
+        "check": "Inspect selected paths. all means every staged file, not this session; check returned commit SHA.",
+        "bound": "One commit; explicit paths or all, never both."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "description": "Positional paths for commit.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Commit all staged files, NOT this session captures."
+          },
+          "author_name": {
+            "type": "string",
+            "description": "Explicit Git commit author name."
+          },
+          "author_email": {
+            "type": "string",
+            "description": "Explicit Git commit author email."
+          },
+          "op": {
+            "type": "string",
+            "description": "Commit operation trailer."
+          },
+          "change_id": {
+            "type": "string",
+            "description": "Change-Id trailer for the commit."
+          },
+          "conversation": {
+            "type": "string",
+            "description": "Existing local runtime conversation id."
+          },
+          "co_author": {
+            "type": "string",
+            "description": "Agent identity for a co-author commit trailer."
+          },
+          "message": {
+            "type": "string",
+            "description": "Exact message/content; stdin is accepted where documented."
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "commit"
+        ],
+        "positional": [
+          "paths"
+        ],
+        "flags": {
+          "all": {
+            "flag": "--all",
+            "boolean": "bare"
+          },
+          "author_name": {
+            "flag": "--author-name"
+          },
+          "author_email": {
+            "flag": "--author-email"
+          },
+          "op": {
+            "flag": "--op"
+          },
+          "change_id": {
+            "flag": "--change-id"
+          },
+          "conversation": {
+            "flag": "--conversation"
+          },
+          "co_author": {
+            "flag": "--co-author"
+          },
+          "message": {
+            "flag": "--message",
+            "aliases": [
+              "-m"
+            ]
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "commit_sha",
+          "committed_paths"
+        ]
+      }
+    },
+    {
+      "id": "threads.post",
+      "owner": "cli",
+      "status": "active",
+      "job": "J4",
+      "effect": "write-local",
+      "reach": "local+hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Append an immutable local or hosted Thread post.",
+        "use_when": "Reply to a specific post or branch from the post your topic serves.",
+        "check": "Supply name, summary and reply_to; verify returned id/path. Local author is a claim. Keep post_id for exact hosted retries.",
+        "bound": "One post; local kind/mark and host metadata have distinct validation."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread": {
+            "type": "string",
+            "description": "Local Thread slug/path or hosted x_ id."
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "member": {
+            "type": "integer",
+            "description": "Zero-based authored Map member ordinal.",
+            "minimum": 0
+          },
+          "checkout": {
+            "type": "string",
+            "description": "Absolute checkout root for an explicitly selected Map member."
+          },
+          "reply_to": {
+            "type": "array",
+            "description": "Parent post id(s); latest is explicit, never implicit. Locally a full msg_ id, or its eight-hex short form (msg_1b7f2056) when only one post in the Thread starts with it; an ambiguous one is refused with the matches.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "description": "Local immutable post kind; hosted kind is chosen by its verb."
+          },
+          "mark": {
+            "type": "string",
+            "description": "Value of a local mark replying to exactly one post."
+          },
+          "author": {
+            "type": "string",
+            "description": "Local author claim, not verified identity."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name/title."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Dense summary for progressive discovery."
+          },
+          "supersedes": {
+            "type": "string",
+            "description": "Prior post id superseded by a correction."
+          },
+          "message": {
+            "type": "string",
+            "description": "Exact message/content; stdin is accepted where documented."
+          },
+          "tags": {
+            "type": "array",
+            "description": "Retrieval labels.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "no_check_links": {
+            "type": "boolean",
+            "description": "Skip local post link validation only when deliberately required."
+          },
+          "post_id": {
+            "type": "string",
+            "description": "Stable id for exact hosted resend after uncertain delivery."
+          }
+        },
+        "required": [
+          "thread"
+        ],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "threads",
+          "post"
+        ],
+        "positional": [
+          "thread"
+        ],
+        "flags": {
+          "map": {
+            "flag": "--map"
+          },
+          "member": {
+            "flag": "--member"
+          },
+          "checkout": {
+            "flag": "--checkout"
+          },
+          "reply_to": {
+            "flag": "--reply-to",
+            "list": "csv"
+          },
+          "kind": {
+            "flag": "--kind"
+          },
+          "mark": {
+            "flag": "--mark"
+          },
+          "author": {
+            "flag": "--author"
+          },
+          "name": {
+            "flag": "--name"
+          },
+          "summary": {
+            "flag": "--summary"
+          },
+          "supersedes": {
+            "flag": "--supersedes"
+          },
+          "message": {
+            "flag": "--message"
+          },
+          "tags": {
+            "flag": "--tags",
+            "list": "csv"
+          },
+          "no_check_links": {
+            "flag": "--no-check-links",
+            "boolean": "bare"
+          },
+          "post_id": {
+            "flag": "--post-id"
+          }
+        },
+        "local_flags": [
+          "map",
+          "member",
+          "checkout",
+          "reply-to",
+          "kind",
+          "mark",
+          "author",
+          "name",
+          "summary",
+          "supersedes",
+          "message",
+          "tags",
+          "no-check-links"
+        ],
+        "hosted_flags": [
+          "reply-to",
+          "message",
+          "name",
+          "summary",
+          "post-id",
+          "map",
+          "tags"
+        ]
+      },
+      "output": {
+        "json": [
+          "id",
+          "path",
+          "kind",
+          "in_reply_to",
+          "state",
+          "warnings"
+        ]
+      }
+    },
+    {
+      "id": "threads.close",
+      "owner": "cli",
+      "status": "active",
+      "job": "J4",
+      "effect": "write-local",
+      "reach": "local+hosted",
+      "confirm": "plan-then-yes",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Append a closure post to a local or hosted Thread.",
+        "use_when": "Done-when holds and closure has been agreed.",
+        "check": "Verify target and rationale; hosted close requires yes.",
+        "bound": "One closure post; no content or history is removed."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread": {
+            "type": "string",
+            "description": "Local Thread slug/path or hosted x_ id."
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "reply_to": {
+            "type": "array",
+            "description": "Parent post id(s); latest is explicit, never implicit. Locally a full msg_ id, or its eight-hex short form (msg_1b7f2056) when only one post in the Thread starts with it; an ambiguous one is refused with the matches.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "description": "Local immutable post kind; hosted kind is chosen by its verb."
+          },
+          "author": {
+            "type": "string",
+            "description": "Local author claim, not verified identity."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name/title."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Dense summary for progressive discovery."
+          },
+          "supersedes": {
+            "type": "string",
+            "description": "Prior post id superseded by a correction."
+          },
+          "message": {
+            "type": "string",
+            "description": "Exact message/content; stdin is accepted where documented."
+          },
+          "post_id": {
+            "type": "string",
+            "description": "Stable id for exact hosted resend after uncertain delivery."
+          },
+          "yes": {
+            "type": "boolean",
+            "description": "Explicit application of the previously read plan."
+          }
+        },
+        "required": [
+          "thread"
+        ],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "threads",
+          "close"
+        ],
+        "positional": [
+          "thread"
+        ],
+        "flags": {
+          "map": {
+            "flag": "--map"
+          },
+          "reply_to": {
+            "flag": "--reply-to",
+            "list": "csv"
+          },
+          "kind": {
+            "flag": "--kind"
+          },
+          "author": {
+            "flag": "--author"
+          },
+          "name": {
+            "flag": "--name"
+          },
+          "summary": {
+            "flag": "--summary"
+          },
+          "supersedes": {
+            "flag": "--supersedes"
+          },
+          "message": {
+            "flag": "--message"
+          },
+          "post_id": {
+            "flag": "--post-id"
+          },
+          "yes": {
+            "flag": "--yes",
+            "boolean": "bare"
+          }
+        },
+        "local_flags": [
+          "map",
+          "reply-to",
+          "kind",
+          "author",
+          "name",
+          "summary",
+          "supersedes",
+          "message"
+        ],
+        "hosted_flags": [
+          "message",
+          "post-id"
+        ]
+      },
+      "output": {
+        "json": [
+          "id",
+          "path",
+          "kind",
+          "in_reply_to"
+        ]
+      }
+    },
+    {
+      "id": "threads.new",
+      "owner": "cli",
+      "status": "active",
+      "job": "J4",
+      "effect": "write-local",
+      "reach": "local+hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Start a local or hosted Thread.",
+        "use_when": "New direction needs a Thread, not another reply.",
+        "check": "Local needs about; hosted needs name, summary and message. Check attachment, recipients and returned id.",
+        "bound": "One Thread; local/hosted creation are independent."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "thread": {
+            "type": "string",
+            "description": "Local Thread slug/path or hosted x_ id."
+          },
+          "about": {
+            "type": "string",
+            "description": "Local Thread title, or a portable contextual entity where supported."
+          },
+          "attached_to": {
+            "type": "string",
+            "description": "Parent entity/post reference for the Note or local Thread."
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "hosted": {
+            "type": "boolean",
+            "description": "Use hosted routing rather than the local/legacy path."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name/title."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Dense summary for progressive discovery."
+          },
+          "message": {
+            "type": "string",
+            "description": "Exact message/content; stdin is accepted where documented."
+          },
+          "post_id": {
+            "type": "string",
+            "description": "Stable id for exact hosted resend after uncertain delivery."
+          },
+          "recipients": {
+            "type": "array",
+            "description": "Explicit hosted recipients, handles or emails.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Retrieval labels.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "home": {
+            "type": "string",
+            "description": "Hosted map:<id> placement, or Home scaffold destination for create."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "threads",
+          "new"
+        ],
+        "positional": [
+          "thread"
+        ],
+        "flags": {
+          "about": {
+            "flag": "--about"
+          },
+          "attached_to": {
+            "flag": "--attached-to"
+          },
+          "map": {
+            "flag": "--map"
+          },
+          "hosted": {
+            "flag": "--hosted",
+            "boolean": "bare"
+          },
+          "name": {
+            "flag": "--name"
+          },
+          "summary": {
+            "flag": "--summary"
+          },
+          "message": {
+            "flag": "--message"
+          },
+          "post_id": {
+            "flag": "--post-id"
+          },
+          "recipients": {
+            "flag": "--recipients",
+            "list": "csv"
+          },
+          "tags": {
+            "flag": "--tags",
+            "list": "csv"
+          },
+          "home": {
+            "flag": "--home"
+          }
+        },
+        "local_flags": [
+          "about",
+          "attached-to",
+          "map"
+        ],
+        "hosted_flags": [
+          "hosted",
+          "name",
+          "summary",
+          "message",
+          "post-id",
+          "recipients",
+          "map",
+          "tags",
+          "home"
+        ]
+      },
+      "output": {
+        "json": [
+          "path",
+          "slug",
+          "thread_id",
+          "opening_post_id",
+          "date"
+        ]
+      }
+    },
+    {
+      "id": "threads.list",
+      "owner": "cli",
+      "status": "active",
+      "job": "J6",
+      "effect": "read",
+      "reach": "local+hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "List local or hosted Threads.",
+        "use_when": "Discover Threads before reading one.",
+        "check": "Local rows may include unreadable posts. new is reader state; hosted unread counts come from the service.",
+        "bound": "Hosted pages default 50, max 200; continue cursor. Local list has no paging and returns all discovered Threads."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "new": {
+            "type": "boolean",
+            "description": "Select activity after a local reader position; hosted list uses service unread counts."
+          },
+          "unread": {
+            "type": "boolean",
+            "description": "Only hosted service-unread Threads or local reader-unread Threads."
+          },
+          "space": {
+            "type": "string",
+            "description": "Compatibility repository URL selector for share."
+          },
+          "depth": {
+            "type": "string",
+            "description": "Progressive-disclosure rung or numeric tree depth as documented."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Local immutable post kind; hosted kind is chosen by its verb."
+          },
+          "since": {
+            "type": "string",
+            "description": "Continuation position from the prior page or ISO filter where supported."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results in this page; inspect returned continuation/counts.",
+            "minimum": 1
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque continuation/read position returned by this operation."
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Include open local Threads when filtering discovery."
+          },
+          "reader": {
+            "type": "string",
+            "description": "Local reader identity; defaults to IDEASPACES_READER or person."
+          },
+          "hosted": {
+            "type": "boolean",
+            "description": "Use hosted routing rather than the local/legacy path."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "threads",
+          "list"
+        ],
+        "positional": [],
+        "flags": {
+          "new": {
+            "flag": "--new",
+            "boolean": "bare"
+          },
+          "unread": {
+            "flag": "--unread",
+            "boolean": "bare"
+          },
+          "space": {
+            "flag": "--space"
+          },
+          "depth": {
+            "flag": "--depth"
+          },
+          "kind": {
+            "flag": "--kind"
+          },
+          "since": {
+            "flag": "--since"
+          },
+          "limit": {
+            "flag": "--limit"
+          },
+          "cursor": {
+            "flag": "--cursor"
+          },
+          "open": {
+            "flag": "--open",
+            "boolean": "bare"
+          },
+          "reader": {
+            "flag": "--reader"
+          },
+          "hosted": {
+            "flag": "--hosted",
+            "boolean": "bare"
+          }
+        },
+        "local_flags": [
+          "new",
+          "unread",
+          "space",
+          "depth",
+          "kind",
+          "since",
+          "limit",
+          "cursor",
+          "open",
+          "reader"
+        ],
+        "hosted_flags": [
+          "hosted",
+          "limit",
+          "cursor",
+          "new",
+          "unread"
+        ]
+      },
+      "output": {
+        "json": [
+          "schema",
+          "threads",
+          "hosted_checked",
+          "local_complete",
+          "hosted_error",
+          "cursor"
+        ]
+      }
+    },
+    {
+      "id": "threads.recent",
+      "owner": "cli",
+      "status": "active",
+      "job": "J6",
+      "effect": "read",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Read local Thread activity since a cursor or named reader baseline.",
+        "use_when": "Find what moved, not every Thread.",
+        "check": "Compare shown with moved; baseline means nothing new yet. Reading does not advance the position.",
+        "bound": "Default 50 Threads, max 500; keep returned cursor; unshown activity stays new."
+      },
+      "bound": {
+        "unit": "entries",
+        "default": 50,
+        "max": 500,
+        "says": true,
+        "continue": "cursor"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "Opaque continuation/read position returned by this operation."
+          },
+          "reader": {
+            "type": "string",
+            "description": "Local reader identity; defaults to IDEASPACES_READER or person."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results in this page; inspect returned continuation/counts.",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "threads",
+          "recent"
+        ],
+        "positional": [],
+        "flags": {
+          "cursor": {
+            "flag": "--cursor"
+          },
+          "reader": {
+            "flag": "--reader"
+          },
+          "limit": {
+            "flag": "--limit"
+          }
+        },
+        "local_flags": [
+          "cursor",
+          "reader",
+          "limit"
+        ]
+      },
+      "output": {
+        "json": [
+          "schema",
+          "baseline",
+          "threads",
+          "moved",
+          "shown",
+          "cursor"
+        ]
+      }
+    },
+    {
+      "id": "get",
+      "owner": "cli",
+      "status": "active",
+      "job": "J9",
+      "effect": "write-local",
+      "reach": "local+hosted",
+      "confirm": "plan-then-yes",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Preview bringing a Space home; yes plus as selects clone, fork or link.",
+        "use_when": "Start from a shared URL or existing directory.",
+        "check": "Read proposed action and destination before yes.",
+        "bound": "One target per call; no paging."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Positional source for get."
+          },
+          "destination": {
+            "type": "string",
+            "description": "Positional destination for get."
+          },
+          "as": {
+            "type": "string",
+            "description": "Explicit get mode: clone, fork or link; used with yes."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name/title."
+          },
+          "yes": {
+            "type": "boolean",
+            "description": "Explicit application of the previously read plan."
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "get"
+        ],
+        "positional": [
+          "source",
+          "destination"
+        ],
+        "flags": {
+          "as": {
+            "flag": "--as"
+          },
+          "name": {
+            "flag": "--name"
+          },
+          "yes": {
+            "flag": "--yes",
+            "boolean": "bare"
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "address",
+          "kind",
+          "root_node_id",
+          "modes",
+          "logged_in",
+          "next"
+        ]
+      }
+    },
+    {
+      "id": "clone",
+      "owner": "cli",
+      "status": "active",
+      "job": "J9",
+      "effect": "write-local",
+      "reach": "local+hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Clone an authorized repo into a local folder.",
+        "use_when": "Need remote history and an ongoing Git remote.",
+        "check": "Check destination and authorization; cloning does not widen access.",
+        "bound": "One target per call; no paging."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Positional source for clone."
+          },
+          "destination": {
+            "type": "string",
+            "description": "Positional destination for clone."
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "clone"
+        ],
+        "positional": [
+          "source",
+          "destination"
+        ],
+        "flags": {}
+      },
+      "output": {
+        "json": [
+          "repo_id",
+          "root_node_id",
+          "repo_url",
+          "path",
+          "identity_state"
+        ]
+      }
+    },
+    {
+      "id": "pull",
+      "owner": "cli",
+      "status": "active",
+      "job": "J9",
+      "effect": "write-local",
+      "reach": "local+hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Fetch and integrate remote Git changes into this checkout.",
+        "use_when": "Explicitly update a clone, not a fork source.",
+        "check": "Use dry_run first when useful; dirty captures must be saved first.",
+        "bound": "One target per call; no paging."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dry_run": {
+            "type": "boolean",
+            "description": "Preview remote sync state without pushing or integrating."
+          },
+          "rebase": {
+            "type": "boolean",
+            "description": "Integrate by rebase (default true) rather than merge.",
+            "default": true
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "pull"
+        ],
+        "positional": [],
+        "flags": {
+          "dry_run": {
+            "flag": "--dry-run",
+            "boolean": "bare"
+          },
+          "rebase": {
+            "flag": "--rebase",
+            "boolean": "bare"
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "upstream",
+          "dry_run",
+          "integrated"
+        ]
+      }
+    },
+    {
+      "id": "push",
+      "owner": "cli",
+      "status": "active",
+      "job": "J9",
+      "effect": "share",
+      "reach": "local+hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Push committed captures to the configured remote.",
+        "use_when": "Sharing committed repo state was explicitly requested.",
+        "check": "Check dry_run, remote and ahead/behind; pull first if behind.",
+        "bound": "One target per call; no paging."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dry_run": {
+            "type": "boolean",
+            "description": "Preview remote sync state without pushing or integrating."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "push"
+        ],
+        "positional": [],
+        "flags": {
+          "dry_run": {
+            "flag": "--dry-run",
+            "boolean": "bare"
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "upstream",
+          "dry_run",
+          "pushed"
+        ]
+      }
+    },
+    {
+      "id": "repos",
+      "owner": "cli",
+      "status": "active",
+      "job": "J9",
+      "effect": "read",
+      "reach": "hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "List hosted repos and your available actions.",
+        "use_when": "Discover repos, not Maps or local checkout paths.",
+        "check": "Check relationship and actions; repo access is separate from Space membership.",
+        "bound": "Unbounded result for the selected scope; no client continuation."
+      },
+      "bound": "unbounded",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "repos"
+        ],
+        "positional": [],
+        "flags": {}
+      },
+      "output": {
+        "json": [
+          "username",
+          "repos"
+        ]
+      }
+    },
+    {
+      "id": "status",
+      "owner": "cli",
+      "status": "active",
+      "job": "J9",
+      "effect": "status",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Read Git state, staged captures, activity and drift.",
+        "use_when": "Need volatile checkout state or one file revision.",
+        "check": "No session capture ownership is inferred by this CLI; inspect staged paths.",
+        "bound": "Unbounded result for the selected scope; no client continuation."
+      },
+      "bound": "unbounded",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Local path to the target."
+          },
+          "fetch": {
+            "type": "boolean",
+            "description": "Explicitly fetch remote refs before reporting state."
+          },
+          "workspace": {
+            "type": "string",
+            "description": "Workspace directory used for orientation/state."
+          },
+          "mount": {
+            "type": "array",
+            "description": "Additional content roots for workspace orientation.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pullable": {
+            "type": "string",
+            "description": "Additional pullable source declarations for workspace state."
+          },
+          "contract": {
+            "type": "string",
+            "description": "Reference frame: foundation or agreement, never caller authority."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "status"
+        ],
+        "positional": [],
+        "flags": {
+          "path": {
+            "flag": "--path"
+          },
+          "fetch": {
+            "flag": "--fetch",
+            "boolean": "bare"
+          },
+          "workspace": {
+            "flag": "--workspace"
+          },
+          "mount": {
+            "flag": "--mount",
+            "list": "csv"
+          },
+          "pullable": {
+            "flag": "--pullable"
+          },
+          "contract": {
+            "flag": "--contract"
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "repoRoot",
+          "branch",
+          "ahead",
+          "behind",
+          "dirty",
+          "tracked_captures",
+          "path",
+          "sha",
+          "revision"
+        ]
+      }
+    },
+    {
+      "id": "agent.run",
+      "owner": "cli",
+      "status": "active",
+      "job": "J11",
+      "effect": "launch",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Launch a local agent POV on Pi or Claude with explicit reach.",
+        "use_when": "Need a separate agent run; inspect agent.capabilities first.",
+        "check": "Check disclosed reach, requested versus observed model and final status. Host permissions still govern.",
+        "bound": "Message capped at 8192 bytes; no implicit run ceiling. Output streams lifecycle events."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pov": {
+            "type": "string",
+            "description": "Local agent POV folder."
+          },
+          "message": {
+            "type": "string",
+            "description": "Exact message/content; stdin is accepted where documented."
+          },
+          "task": {
+            "type": "string",
+            "description": "Short task description stored on the local run."
+          },
+          "runtime": {
+            "type": "string",
+            "description": "Local runtime, pi or claude.",
+            "enum": [
+              "pi",
+              "claude"
+            ],
+            "default": "pi"
+          },
+          "model": {
+            "type": "string",
+            "description": "Requested runtime model, or hosted conversation model tier."
+          },
+          "parent": {
+            "type": "string",
+            "description": "Parent run id for local records; explicit value overrides environment discovery."
+          },
+          "parent_tool_use_id": {
+            "type": "string",
+            "description": "Parent tool-use coordinate recorded for run attribution."
+          },
+          "run_id": {
+            "type": "string",
+            "description": "Stable local run record id; agent record can also use IDEASPACES_RUN_ID."
+          },
+          "pi_thinking": {
+            "type": "string",
+            "description": "Pi thinking level forwarded to the runtime."
+          },
+          "pi_trust": {
+            "type": "string",
+            "description": "Pi resource trust: saved or explicit."
+          },
+          "topic": {
+            "type": "string",
+            "description": "Explicit name for a new Pi agent transcript only."
+          },
+          "ext": {
+            "type": "array",
+            "description": "Explicit Pi extension paths; not ambient discovery.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skill": {
+            "type": "array",
+            "description": "Explicit local runtime skill directories.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "claude_effort": {
+            "type": "string",
+            "description": "Claude effort level; the installed runtime validates it."
+          },
+          "permission_mode": {
+            "type": "string",
+            "description": "Claude permission mode; bypassPermissions is refused."
+          },
+          "read_only": {
+            "type": "boolean",
+            "description": "Claude read-only launch, with MCP servers removed."
+          },
+          "reach": {
+            "type": "array",
+            "description": "Explicit extra directories for a Claude local turn.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "map": {
+            "type": "string",
+            "description": "Authored Map input/path; references grant no access."
+          },
+          "conversation": {
+            "type": "string",
+            "description": "Existing local runtime conversation id."
+          },
+          "thread": {
+            "type": "string",
+            "description": "Local Thread slug/path or hosted x_ id."
+          },
+          "thread_map": {
+            "type": "string",
+            "description": "Authored Map selecting the source Thread of a local run."
+          },
+          "thread_member": {
+            "type": "integer",
+            "description": "Zero-based source Thread Map member ordinal.",
+            "minimum": 0
+          },
+          "pi_bin": {
+            "type": "string",
+            "description": "Explicit Pi executable path."
+          },
+          "claude_bin": {
+            "type": "string",
+            "description": "Explicit Claude Code executable path."
+          },
+          "pi_model": {
+            "type": "string",
+            "description": "Pi provider/model selector."
+          },
+          "claude_model": {
+            "type": "string",
+            "description": "Claude Code model selector."
+          },
+          "claude_auth": {
+            "type": "string",
+            "description": "Claude authentication mode: login or api-key."
+          },
+          "model_tier": {
+            "type": "string",
+            "description": "Local conversation model-tier metadata."
+          },
+          "session_dir": {
+            "type": "string",
+            "description": "Local runtime transcript directory."
+          },
+          "working_root": {
+            "type": "string",
+            "description": "Local launch working-set root, not permission to widen reach."
+          },
+          "focus": {
+            "type": "string",
+            "description": "Reference focus path for a local runtime launch."
+          },
+          "autocompact": {
+            "type": "string",
+            "description": "Claude auto-compaction window, auto or 100k\u20131M."
+          }
+        },
+        "required": [
+          "pov",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "agent",
+          "run"
+        ],
+        "positional": [
+          "pov"
+        ],
+        "flags": {
+          "message": {
+            "flag": "--message"
+          },
+          "task": {
+            "flag": "--task"
+          },
+          "runtime": {
+            "flag": "--runtime"
+          },
+          "model": {
+            "flag": "--model"
+          },
+          "parent": {
+            "flag": "--parent"
+          },
+          "parent_tool_use_id": {
+            "flag": "--parent-tool-use-id"
+          },
+          "run_id": {
+            "flag": "--run-id"
+          },
+          "pi_thinking": {
+            "flag": "--pi-thinking"
+          },
+          "pi_trust": {
+            "flag": "--pi-trust"
+          },
+          "topic": {
+            "flag": "--topic"
+          },
+          "ext": {
+            "flag": "--ext",
+            "list": "csv"
+          },
+          "skill": {
+            "flag": "--skill",
+            "list": "csv"
+          },
+          "claude_effort": {
+            "flag": "--claude-effort"
+          },
+          "permission_mode": {
+            "flag": "--permission-mode"
+          },
+          "read_only": {
+            "flag": "--read-only",
+            "boolean": "bare"
+          },
+          "reach": {
+            "flag": "--reach",
+            "list": "repeat"
+          },
+          "map": {
+            "flag": "--map"
+          },
+          "conversation": {
+            "flag": "--conversation"
+          },
+          "thread": {
+            "flag": "--thread"
+          },
+          "thread_map": {
+            "flag": "--thread-map"
+          },
+          "thread_member": {
+            "flag": "--thread-member"
+          },
+          "pi_bin": {
+            "flag": "--pi-bin"
+          },
+          "claude_bin": {
+            "flag": "--claude-bin"
+          },
+          "pi_model": {
+            "flag": "--pi-model"
+          },
+          "claude_model": {
+            "flag": "--claude-model"
+          },
+          "claude_auth": {
+            "flag": "--claude-auth"
+          },
+          "model_tier": {
+            "flag": "--model-tier"
+          },
+          "session_dir": {
+            "flag": "--session-dir"
+          },
+          "working_root": {
+            "flag": "--working-root"
+          },
+          "focus": {
+            "flag": "--focus"
+          },
+          "autocompact": {
+            "flag": "--autocompact"
+          }
+        }
+      },
+      "output": {
+        "json": []
+      }
+    },
+    {
+      "id": "conversation.get",
+      "owner": "cli",
+      "status": "active",
+      "job": "J11",
+      "effect": "read",
+      "reach": "local+hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Read one hosted or local conversation and its history.",
+        "use_when": "Inspect an exact hosted conversation.",
+        "check": "Hosted reads need repo_id and conversation_id. Local reads need local and conversation, plus optional context.",
+        "bound": "Service result without client-side paging; output may be large."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repo_id": {
+            "type": "string",
+            "description": "Hosted repository id."
+          },
+          "conversation_id": {
+            "type": "string",
+            "description": "Positional conversation id for conversation.get."
+          },
+          "local": {
+            "type": "boolean",
+            "description": "Use the local runtime rather than hosted conversation."
+          },
+          "context": {
+            "type": "string",
+            "description": "Local runtime context directory."
+          },
+          "runtime": {
+            "type": "string",
+            "description": "Local runtime, pi or claude."
+          },
+          "conversation": {
+            "type": "string",
+            "description": "Existing local runtime conversation id."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "conversation",
+          "get"
+        ],
+        "positional": [
+          "repo_id",
+          "conversation_id"
+        ],
+        "flags": {
+          "local": {
+            "flag": "--local",
+            "boolean": "bare"
+          },
+          "context": {
+            "flag": "--context"
+          },
+          "runtime": {
+            "flag": "--runtime"
+          },
+          "conversation": {
+            "flag": "--conversation"
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "conversation",
+          "messages"
+        ]
+      }
+    },
+    {
+      "id": "change.new",
+      "owner": "cli",
+      "status": "active",
+      "job": "J12",
+      "effect": "write-local",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Mint a Change-Id for one decision spanning commits or repos.",
+        "use_when": "A decision needs one durable coordinate across several commits.",
+        "check": "Reuse an existing Change-Id when continuing the same decision.",
+        "bound": "One id per call; does not arm host session state."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "description": "Positional handle for change.new."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "change",
+          "new"
+        ],
+        "positional": [
+          "handle"
+        ],
+        "flags": {
+          "handle": {
+            "flag": "--handle"
+          }
+        }
+      },
+      "output": {
+        "json": [
+          "change_id"
+        ]
+      }
+    },
+    {
+      "id": "login",
+      "owner": "cli",
+      "status": "active",
+      "job": "J13",
+      "effect": "account",
+      "reach": "local+hosted",
+      "confirm": "browser",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Open browser sign-in for this CLI on this machine.",
+        "use_when": "A person explicitly wants this CLI authenticated.",
+        "check": "Complete browser authorization; host-run auth must stay with the host.",
+        "bound": "One browser flow; headless callers use an existing IS_API_KEY."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "login"
+        ],
+        "positional": [],
+        "flags": {}
+      },
+      "output": {
+        "json": [
+          "logged_in",
+          "web_url",
+          "env_override_active"
+        ]
+      }
+    },
+    {
+      "id": "logout",
+      "owner": "cli",
+      "status": "active",
+      "job": "J13",
+      "effect": "account",
+      "reach": "local+hosted",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Revoke this CLI session, then clear its credentials.",
+        "use_when": "Explicitly asked to sign this CLI out.",
+        "check": "Credentials are retained if revocation fails; host auth is not replaced.",
+        "bound": "One CLI session; no paging."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "cli": {
+        "argv": [
+          "logout"
+        ],
+        "positional": [],
+        "flags": {}
+      },
+      "aliases": [
+        "power logout"
+      ],
+      "output": {
+        "json": [
+          "logged_out",
+          "env_override_active"
+        ]
+      }
+    },
+    {
+      "id": "change.open",
+      "owner": "host",
+      "implemented_by": [
+        "mcp",
+        "pi"
+      ],
+      "status": "active",
+      "job": "J12",
+      "effect": "write-local",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Open a session Change, minting or continuing its id.",
+        "use_when": "Manage a multi-commit decision in the current host session.",
+        "check": "Session state belongs to the host; this entry grants no permissions or cross-session ownership.",
+        "bound": "One host session; optional file selection is exact."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "description": "Handle used to mint a new Change-Id."
+          },
+          "id": {
+            "type": "string",
+            "description": "Existing Change-Id to continue."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "calls": [
+        "change.new"
+      ],
+      "output": {
+        "json": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": "change.close",
+      "owner": "host",
+      "implemented_by": [
+        "mcp",
+        "pi"
+      ],
+      "status": "active",
+      "job": "J12",
+      "effect": "write-local",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Close the session Change; later commits no longer carry its id.",
+        "use_when": "Manage a multi-commit decision in the current host session.",
+        "check": "Session state belongs to the host; this entry grants no permissions or cross-session ownership.",
+        "bound": "One host session; optional file selection is exact."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "calls": [],
+      "output": {
+        "json": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": "session.status",
+      "owner": "host",
+      "implemented_by": [
+        "mcp",
+        "pi"
+      ],
+      "status": "active",
+      "job": "J9",
+      "effect": "status",
+      "reach": "local",
+      "confirm": "none",
+      "requires": {
+        "cli": ">=0.9.0"
+      },
+      "text": {
+        "does": "Read session captures, open Change and optional safe file revisions.",
+        "use_when": "Inspect session-owned captures and file revisions before saving.",
+        "check": "Session state belongs to the host; this entry grants no permissions or cross-session ownership.",
+        "bound": "One host session; optional file selection is exact."
+      },
+      "bound": "n/a",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Optional file to inspect for safe refinement."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "calls": [
+        "status"
+      ],
+      "output": {
+        "json": [
+          "session_owned",
+          "change",
+          "captures",
+          "revision"
+        ]
+      }
+    }
+  ]
+};
+
+// src/catalog-adapter.ts
+var valuedFlags = new Set(
+  AGENT_TOOLS.entries.flatMap(
+    (entry) => "cli" in entry ? Object.values(entry.cli.flags).flatMap((raw) => {
+      const flag = raw;
+      return flag.boolean ? [] : [flag.flag, ...flag.aliases ?? []];
+    }) : []
+  )
+);
+function cliOption(flag, value) {
+  if (!valuedFlags.has(flag))
+    throw new Error(`Option is not in the generated CLI contract: ${flag}`);
+  return `${flag}=${value}`;
+}
+
+// src/catalog-runtime.ts
+async function inspectCatalog(run2, { deadlineMs = 1200 } = {}) {
+  const controller = new AbortController();
+  let observed = {
+    available: false,
+    changed: [],
+    note: "Installed CLI version and digest are unknown."
+  };
+  let timer;
+  const work = (async () => {
+    try {
+      const result = await run2(["capabilities", "--json"], controller.signal);
+      const data = JSON.parse(result.out);
+      if (result.code !== 0 || typeof data.cli?.version !== "string" || typeof data.digest !== "string")
+        throw new Error("CLI does not report build metadata");
+      observed = {
+        available: true,
+        version: data.cli.version,
+        digest: data.digest,
+        changed: [],
+        note: "Installed CLI catalog matches generated contracts."
+      };
+      if (data.digest === AGENT_TOOLS.metadata.digest) return observed;
+      const pending = [...AGENT_TOOLS.entries];
+      const changed = [];
+      await Promise.all(
+        Array.from({ length: Math.min(3, pending.length) }, async () => {
+          while (pending.length && !controller.signal.aborted) {
+            const entry = pending.shift();
+            try {
+              const response = await run2(
+                ["capabilities", entry.id, "--json"],
+                controller.signal
+              );
+              if (JSON.stringify(JSON.parse(response.out).entry) !== JSON.stringify(entry))
+                changed.push(entry.id);
+            } catch {
+              changed.push(`${entry.id} (unverified)`);
+            }
+          }
+        })
+      );
+      if (controller.signal.aborted) return observed;
+      changed.sort();
+      observed = {
+        ...observed,
+        changed,
+        note: `Catalog drift; changed or unverified exposed entries: ${changed.join(", ") || "none (other entries changed)"}. Tools keep running.`
+      };
+      return observed;
+    } catch (error2) {
+      return {
+        ...observed,
+        note: `Installed CLI catalog unavailable: ${error2 instanceof Error ? error2.message : String(error2)}. Unknown is not zero.`
+      };
+    }
+  })();
+  const deadline = new Promise((resolve15) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve15({
+        ...observed,
+        note: `Catalog metadata deadline (${deadlineMs}ms); entry comparison incomplete. Generated entries: ${AGENT_TOOLS.entries.map((e) => e.id).join(", ")}. Tools keep running; missing observations are unknown.`
+      });
+    }, deadlineMs);
+  });
+  try {
+    return await Promise.race([work, deadline]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    controller.abort();
+  }
+}
+function belowRequired(version2, requirements) {
+  const v = version2?.match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);
+  if (!v) return false;
+  return requirements.some((r) => {
+    const required2 = r.match(/^>=(\d+)\.(\d+)\.(\d+)$/);
+    for (let i = 1; i <= 3; i++) {
+      if (+v[i] < +required2[i]) return true;
+      if (+v[i] > +required2[i]) return false;
+    }
+    return false;
+  });
+}
+
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
+function isZ4Schema(s) {
+  const schema = s;
+  return !!schema._zod;
+}
+function safeParse3(schema, data) {
+  if (isZ4Schema(schema)) {
+    const result2 = safeParse(schema, data);
+    return result2;
+  }
+  const v3Schema = schema;
+  const result = v3Schema.safeParse(data);
+  return result;
+}
+function getObjectShape(schema) {
+  if (!schema)
+    return void 0;
+  let rawShape;
+  if (isZ4Schema(schema)) {
+    const v4Schema = schema;
+    rawShape = v4Schema._zod?.def?.shape;
+  } else {
+    const v3Schema = schema;
+    rawShape = v3Schema.shape;
+  }
+  if (!rawShape)
+    return void 0;
+  if (typeof rawShape === "function") {
+    try {
+      return rawShape();
+    } catch {
+      return void 0;
+    }
+  }
+  return rawShape;
+}
+function getLiteralValue(schema) {
+  if (isZ4Schema(schema)) {
+    const v4Schema = schema;
+    const def2 = v4Schema._zod?.def;
+    if (def2) {
+      if (def2.value !== void 0)
+        return def2.value;
+      if (Array.isArray(def2.values) && def2.values.length > 0) {
+        return def2.values[0];
+      }
+    }
+  }
+  const v3Schema = schema;
+  const def = v3Schema._def;
+  if (def) {
+    if (def.value !== void 0)
+      return def.value;
+    if (Array.isArray(def.values) && def.values.length > 0) {
+      return def.values[0];
+    }
+  }
+  const directValue = schema.value;
+  if (directValue !== void 0)
+    return directValue;
+  return void 0;
+}
+
 // node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
 function isTerminal(status) {
   return status === "completed" || status === "failed" || status === "cancelled";
 }
 
-// node_modules/zod-to-json-schema/dist/esm/Options.js
-var ignoreOverride = /* @__PURE__ */ Symbol("Let zodToJsonSchema decide on which parser to use");
-var defaultOptions = {
-  name: void 0,
-  $refStrategy: "root",
-  basePath: ["#"],
-  effectStrategy: "input",
-  pipeStrategy: "all",
-  dateStrategy: "format:date-time",
-  mapStrategy: "entries",
-  removeAdditionalStrategy: "passthrough",
-  allowedAdditionalProperties: true,
-  rejectedAdditionalProperties: false,
-  definitionPath: "definitions",
-  target: "jsonSchema7",
-  strictUnions: false,
-  definitions: {},
-  errorMessages: false,
-  markdownDescription: false,
-  patternStrategy: "escape",
-  applyRegexFlags: false,
-  emailStrategy: "format:email",
-  base64Strategy: "contentEncoding:base64",
-  nameStrategy: "ref",
-  openAiAnyTypeName: "OpenAiAnyType"
-};
-var getDefaultOptions = (options) => typeof options === "string" ? {
-  ...defaultOptions,
-  name: options
-} : {
-  ...defaultOptions,
-  ...options
-};
-
-// node_modules/zod-to-json-schema/dist/esm/Refs.js
-var getRefs = (options) => {
-  const _options = getDefaultOptions(options);
-  const currentPath = _options.name !== void 0 ? [..._options.basePath, _options.definitionPath, _options.name] : _options.basePath;
-  return {
-    ..._options,
-    flags: { hasReferencedOpenAiAnyType: false },
-    currentPath,
-    propertyPath: void 0,
-    seen: new Map(Object.entries(_options.definitions).map(([name, def]) => [
-      def._def,
-      {
-        def: def._def,
-        path: [..._options.basePath, _options.definitionPath, name],
-        // Resolution of references will be forced even though seen, so it's ok that the schema is undefined here for now.
-        jsonSchema: void 0
-      }
-    ]))
-  };
-};
-
-// node_modules/zod-to-json-schema/dist/esm/errorMessages.js
-function addErrorMessage(res, key2, errorMessage, refs) {
-  if (!refs?.errorMessages)
-    return;
-  if (errorMessage) {
-    res.errorMessage = {
-      ...res.errorMessage,
-      [key2]: errorMessage
-    };
-  }
-}
-function setResponseValueAndErrors(res, key2, value, errorMessage, refs) {
-  res[key2] = value;
-  addErrorMessage(res, key2, errorMessage, refs);
-}
-
-// node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
-var getRelativePath = (pathA, pathB) => {
-  let i = 0;
-  for (; i < pathA.length && i < pathB.length; i++) {
-    if (pathA[i] !== pathB[i])
-      break;
-  }
-  return [(pathA.length - i).toString(), ...pathB.slice(i)].join("/");
-};
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/any.js
-function parseAnyDef(refs) {
-  if (refs.target !== "openAi") {
-    return {};
-  }
-  const anyDefinitionPath = [
-    ...refs.basePath,
-    refs.definitionPath,
-    refs.openAiAnyTypeName
-  ];
-  refs.flags.hasReferencedOpenAiAnyType = true;
-  return {
-    $ref: refs.$refStrategy === "relative" ? getRelativePath(anyDefinitionPath, refs.currentPath) : anyDefinitionPath.join("/")
-  };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/array.js
-function parseArrayDef(def, refs) {
-  const res = {
-    type: "array"
-  };
-  if (def.type?._def && def.type?._def?.typeName !== ZodFirstPartyTypeKind.ZodAny) {
-    res.items = parseDef(def.type._def, {
-      ...refs,
-      currentPath: [...refs.currentPath, "items"]
-    });
-  }
-  if (def.minLength) {
-    setResponseValueAndErrors(res, "minItems", def.minLength.value, def.minLength.message, refs);
-  }
-  if (def.maxLength) {
-    setResponseValueAndErrors(res, "maxItems", def.maxLength.value, def.maxLength.message, refs);
-  }
-  if (def.exactLength) {
-    setResponseValueAndErrors(res, "minItems", def.exactLength.value, def.exactLength.message, refs);
-    setResponseValueAndErrors(res, "maxItems", def.exactLength.value, def.exactLength.message, refs);
-  }
-  return res;
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
-function parseBigintDef(def, refs) {
-  const res = {
-    type: "integer",
-    format: "int64"
-  };
-  if (!def.checks)
-    return res;
-  for (const check2 of def.checks) {
-    switch (check2.kind) {
-      case "min":
-        if (refs.target === "jsonSchema7") {
-          if (check2.inclusive) {
-            setResponseValueAndErrors(res, "minimum", check2.value, check2.message, refs);
-          } else {
-            setResponseValueAndErrors(res, "exclusiveMinimum", check2.value, check2.message, refs);
-          }
-        } else {
-          if (!check2.inclusive) {
-            res.exclusiveMinimum = true;
-          }
-          setResponseValueAndErrors(res, "minimum", check2.value, check2.message, refs);
-        }
-        break;
-      case "max":
-        if (refs.target === "jsonSchema7") {
-          if (check2.inclusive) {
-            setResponseValueAndErrors(res, "maximum", check2.value, check2.message, refs);
-          } else {
-            setResponseValueAndErrors(res, "exclusiveMaximum", check2.value, check2.message, refs);
-          }
-        } else {
-          if (!check2.inclusive) {
-            res.exclusiveMaximum = true;
-          }
-          setResponseValueAndErrors(res, "maximum", check2.value, check2.message, refs);
-        }
-        break;
-      case "multipleOf":
-        setResponseValueAndErrors(res, "multipleOf", check2.value, check2.message, refs);
-        break;
-    }
-  }
-  return res;
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
-function parseBooleanDef() {
-  return {
-    type: "boolean"
-  };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
-function parseBrandedDef(_def, refs) {
-  return parseDef(_def.type._def, refs);
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
-var parseCatchDef = (def, refs) => {
-  return parseDef(def.innerType._def, refs);
-};
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/date.js
-function parseDateDef(def, refs, overrideDateStrategy) {
-  const strategy = overrideDateStrategy ?? refs.dateStrategy;
-  if (Array.isArray(strategy)) {
-    return {
-      anyOf: strategy.map((item, i) => parseDateDef(def, refs, item))
-    };
-  }
-  switch (strategy) {
-    case "string":
-    case "format:date-time":
-      return {
-        type: "string",
-        format: "date-time"
-      };
-    case "format:date":
-      return {
-        type: "string",
-        format: "date"
-      };
-    case "integer":
-      return integerDateParser(def, refs);
-  }
-}
-var integerDateParser = (def, refs) => {
-  const res = {
-    type: "integer",
-    format: "unix-time"
-  };
-  if (refs.target === "openApi3") {
-    return res;
-  }
-  for (const check2 of def.checks) {
-    switch (check2.kind) {
-      case "min":
-        setResponseValueAndErrors(
-          res,
-          "minimum",
-          check2.value,
-          // This is in milliseconds
-          check2.message,
-          refs
-        );
-        break;
-      case "max":
-        setResponseValueAndErrors(
-          res,
-          "maximum",
-          check2.value,
-          // This is in milliseconds
-          check2.message,
-          refs
-        );
-        break;
-    }
-  }
-  return res;
-};
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/default.js
-function parseDefaultDef(_def, refs) {
-  return {
-    ...parseDef(_def.innerType._def, refs),
-    default: _def.defaultValue()
-  };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
-function parseEffectsDef(_def, refs) {
-  return refs.effectStrategy === "input" ? parseDef(_def.schema._def, refs) : parseAnyDef(refs);
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
-function parseEnumDef(def) {
-  return {
-    type: "string",
-    enum: Array.from(def.values)
-  };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
-var isJsonSchema7AllOfType = (type) => {
-  if ("type" in type && type.type === "string")
-    return false;
-  return "allOf" in type;
-};
-function parseIntersectionDef(def, refs) {
-  const allOf = [
-    parseDef(def.left._def, {
-      ...refs,
-      currentPath: [...refs.currentPath, "allOf", "0"]
-    }),
-    parseDef(def.right._def, {
-      ...refs,
-      currentPath: [...refs.currentPath, "allOf", "1"]
-    })
-  ].filter((x) => !!x);
-  let unevaluatedProperties = refs.target === "jsonSchema2019-09" ? { unevaluatedProperties: false } : void 0;
-  const mergedAllOf = [];
-  allOf.forEach((schema) => {
-    if (isJsonSchema7AllOfType(schema)) {
-      mergedAllOf.push(...schema.allOf);
-      if (schema.unevaluatedProperties === void 0) {
-        unevaluatedProperties = void 0;
-      }
-    } else {
-      let nestedSchema = schema;
-      if ("additionalProperties" in schema && schema.additionalProperties === false) {
-        const { additionalProperties, ...rest } = schema;
-        nestedSchema = rest;
-      } else {
-        unevaluatedProperties = void 0;
-      }
-      mergedAllOf.push(nestedSchema);
-    }
-  });
-  return mergedAllOf.length ? {
-    allOf: mergedAllOf,
-    ...unevaluatedProperties
-  } : void 0;
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
-function parseLiteralDef(def, refs) {
-  const parsedType2 = typeof def.value;
-  if (parsedType2 !== "bigint" && parsedType2 !== "number" && parsedType2 !== "boolean" && parsedType2 !== "string") {
-    return {
-      type: Array.isArray(def.value) ? "array" : "object"
-    };
-  }
-  if (refs.target === "openApi3") {
-    return {
-      type: parsedType2 === "bigint" ? "integer" : parsedType2,
-      enum: [def.value]
-    };
-  }
-  return {
-    type: parsedType2 === "bigint" ? "integer" : parsedType2,
-    const: def.value
-  };
-}
-
 // node_modules/zod-to-json-schema/dist/esm/parsers/string.js
-var emojiRegex2 = void 0;
-var zodPatterns = {
-  /**
-   * `c` was changed to `[cC]` to replicate /i flag
-   */
-  cuid: /^[cC][^\s-]{8,}$/,
-  cuid2: /^[0-9a-z]+$/,
-  ulid: /^[0-9A-HJKMNP-TV-Z]{26}$/,
-  /**
-   * `a-z` was added to replicate /i flag
-   */
-  email: /^(?!\.)(?!.*\.\.)([a-zA-Z0-9_'+\-\.]*)[a-zA-Z0-9_+-]@([a-zA-Z0-9][a-zA-Z0-9\-]*\.)+[a-zA-Z]{2,}$/,
-  /**
-   * Constructed a valid Unicode RegExp
-   *
-   * Lazily instantiate since this type of regex isn't supported
-   * in all envs (e.g. React Native).
-   *
-   * See:
-   * https://github.com/colinhacks/zod/issues/2433
-   * Fix in Zod:
-   * https://github.com/colinhacks/zod/commit/9340fd51e48576a75adc919bff65dbc4a5d4c99b
-   */
-  emoji: () => {
-    if (emojiRegex2 === void 0) {
-      emojiRegex2 = RegExp("^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$", "u");
-    }
-    return emojiRegex2;
-  },
-  /**
-   * Unused
-   */
-  uuid: /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/,
-  /**
-   * Unused
-   */
-  ipv4: /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/,
-  ipv4Cidr: /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/(3[0-2]|[12]?[0-9])$/,
-  /**
-   * Unused
-   */
-  ipv6: /^(([a-f0-9]{1,4}:){7}|::([a-f0-9]{1,4}:){0,6}|([a-f0-9]{1,4}:){1}:([a-f0-9]{1,4}:){0,5}|([a-f0-9]{1,4}:){2}:([a-f0-9]{1,4}:){0,4}|([a-f0-9]{1,4}:){3}:([a-f0-9]{1,4}:){0,3}|([a-f0-9]{1,4}:){4}:([a-f0-9]{1,4}:){0,2}|([a-f0-9]{1,4}:){5}:([a-f0-9]{1,4}:){0,1})([a-f0-9]{1,4}|(((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\.){3}((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2})))$/,
-  ipv6Cidr: /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/,
-  base64: /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/,
-  base64url: /^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$/,
-  nanoid: /^[a-zA-Z0-9_-]{21}$/,
-  jwt: /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*$/
-};
-function parseStringDef(def, refs) {
-  const res = {
-    type: "string"
-  };
-  if (def.checks) {
-    for (const check2 of def.checks) {
-      switch (check2.kind) {
-        case "min":
-          setResponseValueAndErrors(res, "minLength", typeof res.minLength === "number" ? Math.max(res.minLength, check2.value) : check2.value, check2.message, refs);
-          break;
-        case "max":
-          setResponseValueAndErrors(res, "maxLength", typeof res.maxLength === "number" ? Math.min(res.maxLength, check2.value) : check2.value, check2.message, refs);
-          break;
-        case "email":
-          switch (refs.emailStrategy) {
-            case "format:email":
-              addFormat(res, "email", check2.message, refs);
-              break;
-            case "format:idn-email":
-              addFormat(res, "idn-email", check2.message, refs);
-              break;
-            case "pattern:zod":
-              addPattern(res, zodPatterns.email, check2.message, refs);
-              break;
-          }
-          break;
-        case "url":
-          addFormat(res, "uri", check2.message, refs);
-          break;
-        case "uuid":
-          addFormat(res, "uuid", check2.message, refs);
-          break;
-        case "regex":
-          addPattern(res, check2.regex, check2.message, refs);
-          break;
-        case "cuid":
-          addPattern(res, zodPatterns.cuid, check2.message, refs);
-          break;
-        case "cuid2":
-          addPattern(res, zodPatterns.cuid2, check2.message, refs);
-          break;
-        case "startsWith":
-          addPattern(res, RegExp(`^${escapeLiteralCheckValue(check2.value, refs)}`), check2.message, refs);
-          break;
-        case "endsWith":
-          addPattern(res, RegExp(`${escapeLiteralCheckValue(check2.value, refs)}$`), check2.message, refs);
-          break;
-        case "datetime":
-          addFormat(res, "date-time", check2.message, refs);
-          break;
-        case "date":
-          addFormat(res, "date", check2.message, refs);
-          break;
-        case "time":
-          addFormat(res, "time", check2.message, refs);
-          break;
-        case "duration":
-          addFormat(res, "duration", check2.message, refs);
-          break;
-        case "length":
-          setResponseValueAndErrors(res, "minLength", typeof res.minLength === "number" ? Math.max(res.minLength, check2.value) : check2.value, check2.message, refs);
-          setResponseValueAndErrors(res, "maxLength", typeof res.maxLength === "number" ? Math.min(res.maxLength, check2.value) : check2.value, check2.message, refs);
-          break;
-        case "includes": {
-          addPattern(res, RegExp(escapeLiteralCheckValue(check2.value, refs)), check2.message, refs);
-          break;
-        }
-        case "ip": {
-          if (check2.version !== "v6") {
-            addFormat(res, "ipv4", check2.message, refs);
-          }
-          if (check2.version !== "v4") {
-            addFormat(res, "ipv6", check2.message, refs);
-          }
-          break;
-        }
-        case "base64url":
-          addPattern(res, zodPatterns.base64url, check2.message, refs);
-          break;
-        case "jwt":
-          addPattern(res, zodPatterns.jwt, check2.message, refs);
-          break;
-        case "cidr": {
-          if (check2.version !== "v6") {
-            addPattern(res, zodPatterns.ipv4Cidr, check2.message, refs);
-          }
-          if (check2.version !== "v4") {
-            addPattern(res, zodPatterns.ipv6Cidr, check2.message, refs);
-          }
-          break;
-        }
-        case "emoji":
-          addPattern(res, zodPatterns.emoji(), check2.message, refs);
-          break;
-        case "ulid": {
-          addPattern(res, zodPatterns.ulid, check2.message, refs);
-          break;
-        }
-        case "base64": {
-          switch (refs.base64Strategy) {
-            case "format:binary": {
-              addFormat(res, "binary", check2.message, refs);
-              break;
-            }
-            case "contentEncoding:base64": {
-              setResponseValueAndErrors(res, "contentEncoding", "base64", check2.message, refs);
-              break;
-            }
-            case "pattern:zod": {
-              addPattern(res, zodPatterns.base64, check2.message, refs);
-              break;
-            }
-          }
-          break;
-        }
-        case "nanoid": {
-          addPattern(res, zodPatterns.nanoid, check2.message, refs);
-        }
-        case "toLowerCase":
-        case "toUpperCase":
-        case "trim":
-          break;
-        default:
-          /* @__PURE__ */ ((_) => {
-          })(check2);
-      }
-    }
-  }
-  return res;
-}
-function escapeLiteralCheckValue(literal2, refs) {
-  return refs.patternStrategy === "escape" ? escapeNonAlphaNumeric(literal2) : literal2;
-}
 var ALPHA_NUMERIC = new Set("ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvxyz0123456789");
-function escapeNonAlphaNumeric(source) {
-  let result = "";
-  for (let i = 0; i < source.length; i++) {
-    if (!ALPHA_NUMERIC.has(source[i])) {
-      result += "\\";
-    }
-    result += source[i];
-  }
-  return result;
-}
-function addFormat(schema, value, message, refs) {
-  if (schema.format || schema.anyOf?.some((x) => x.format)) {
-    if (!schema.anyOf) {
-      schema.anyOf = [];
-    }
-    if (schema.format) {
-      schema.anyOf.push({
-        format: schema.format,
-        ...schema.errorMessage && refs.errorMessages && {
-          errorMessage: { format: schema.errorMessage.format }
-        }
-      });
-      delete schema.format;
-      if (schema.errorMessage) {
-        delete schema.errorMessage.format;
-        if (Object.keys(schema.errorMessage).length === 0) {
-          delete schema.errorMessage;
-        }
-      }
-    }
-    schema.anyOf.push({
-      format: value,
-      ...message && refs.errorMessages && { errorMessage: { format: message } }
-    });
-  } else {
-    setResponseValueAndErrors(schema, "format", value, message, refs);
-  }
-}
-function addPattern(schema, regex, message, refs) {
-  if (schema.pattern || schema.allOf?.some((x) => x.pattern)) {
-    if (!schema.allOf) {
-      schema.allOf = [];
-    }
-    if (schema.pattern) {
-      schema.allOf.push({
-        pattern: schema.pattern,
-        ...schema.errorMessage && refs.errorMessages && {
-          errorMessage: { pattern: schema.errorMessage.pattern }
-        }
-      });
-      delete schema.pattern;
-      if (schema.errorMessage) {
-        delete schema.errorMessage.pattern;
-        if (Object.keys(schema.errorMessage).length === 0) {
-          delete schema.errorMessage;
-        }
-      }
-    }
-    schema.allOf.push({
-      pattern: stringifyRegExpWithFlags(regex, refs),
-      ...message && refs.errorMessages && { errorMessage: { pattern: message } }
-    });
-  } else {
-    setResponseValueAndErrors(schema, "pattern", stringifyRegExpWithFlags(regex, refs), message, refs);
-  }
-}
-function stringifyRegExpWithFlags(regex, refs) {
-  if (!refs.applyRegexFlags || !regex.flags) {
-    return regex.source;
-  }
-  const flags = {
-    i: regex.flags.includes("i"),
-    m: regex.flags.includes("m"),
-    s: regex.flags.includes("s")
-    // `.` matches newlines
-  };
-  const source = flags.i ? regex.source.toLowerCase() : regex.source;
-  let pattern = "";
-  let isEscaped = false;
-  let inCharGroup = false;
-  let inCharRange = false;
-  for (let i = 0; i < source.length; i++) {
-    if (isEscaped) {
-      pattern += source[i];
-      isEscaped = false;
-      continue;
-    }
-    if (flags.i) {
-      if (inCharGroup) {
-        if (source[i].match(/[a-z]/)) {
-          if (inCharRange) {
-            pattern += source[i];
-            pattern += `${source[i - 2]}-${source[i]}`.toUpperCase();
-            inCharRange = false;
-          } else if (source[i + 1] === "-" && source[i + 2]?.match(/[a-z]/)) {
-            pattern += source[i];
-            inCharRange = true;
-          } else {
-            pattern += `${source[i]}${source[i].toUpperCase()}`;
-          }
-          continue;
-        }
-      } else if (source[i].match(/[a-z]/)) {
-        pattern += `[${source[i]}${source[i].toUpperCase()}]`;
-        continue;
-      }
-    }
-    if (flags.m) {
-      if (source[i] === "^") {
-        pattern += `(^|(?<=[\r
-]))`;
-        continue;
-      } else if (source[i] === "$") {
-        pattern += `($|(?=[\r
-]))`;
-        continue;
-      }
-    }
-    if (flags.s && source[i] === ".") {
-      pattern += inCharGroup ? `${source[i]}\r
-` : `[${source[i]}\r
-]`;
-      continue;
-    }
-    pattern += source[i];
-    if (source[i] === "\\") {
-      isEscaped = true;
-    } else if (inCharGroup && source[i] === "]") {
-      inCharGroup = false;
-    } else if (!inCharGroup && source[i] === "[") {
-      inCharGroup = true;
-    }
-  }
-  try {
-    new RegExp(pattern);
-  } catch {
-    console.warn(`Could not convert regex pattern at ${refs.currentPath.join("/")} to a flag-independent form! Falling back to the flag-ignorant source`);
-    return regex.source;
-  }
-  return pattern;
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/record.js
-function parseRecordDef(def, refs) {
-  if (refs.target === "openAi") {
-    console.warn("Warning: OpenAI may not support records in schemas! Try an array of key-value pairs instead.");
-  }
-  if (refs.target === "openApi3" && def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodEnum) {
-    return {
-      type: "object",
-      required: def.keyType._def.values,
-      properties: def.keyType._def.values.reduce((acc, key2) => ({
-        ...acc,
-        [key2]: parseDef(def.valueType._def, {
-          ...refs,
-          currentPath: [...refs.currentPath, "properties", key2]
-        }) ?? parseAnyDef(refs)
-      }), {}),
-      additionalProperties: refs.rejectedAdditionalProperties
-    };
-  }
-  const schema = {
-    type: "object",
-    additionalProperties: parseDef(def.valueType._def, {
-      ...refs,
-      currentPath: [...refs.currentPath, "additionalProperties"]
-    }) ?? refs.allowedAdditionalProperties
-  };
-  if (refs.target === "openApi3") {
-    return schema;
-  }
-  if (def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodString && def.keyType._def.checks?.length) {
-    const { type, ...keyType } = parseStringDef(def.keyType._def, refs);
-    return {
-      ...schema,
-      propertyNames: keyType
-    };
-  } else if (def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodEnum) {
-    return {
-      ...schema,
-      propertyNames: {
-        enum: def.keyType._def.values
-      }
-    };
-  } else if (def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodBranded && def.keyType._def.type._def.typeName === ZodFirstPartyTypeKind.ZodString && def.keyType._def.type._def.checks?.length) {
-    const { type, ...keyType } = parseBrandedDef(def.keyType._def, refs);
-    return {
-      ...schema,
-      propertyNames: keyType
-    };
-  }
-  return schema;
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/map.js
-function parseMapDef(def, refs) {
-  if (refs.mapStrategy === "record") {
-    return parseRecordDef(def, refs);
-  }
-  const keys = parseDef(def.keyType._def, {
-    ...refs,
-    currentPath: [...refs.currentPath, "items", "items", "0"]
-  }) || parseAnyDef(refs);
-  const values = parseDef(def.valueType._def, {
-    ...refs,
-    currentPath: [...refs.currentPath, "items", "items", "1"]
-  }) || parseAnyDef(refs);
-  return {
-    type: "array",
-    maxItems: 125,
-    items: {
-      type: "array",
-      items: [keys, values],
-      minItems: 2,
-      maxItems: 2
-    }
-  };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
-function parseNativeEnumDef(def) {
-  const object3 = def.values;
-  const actualKeys = Object.keys(def.values).filter((key2) => {
-    return typeof object3[object3[key2]] !== "number";
-  });
-  const actualValues = actualKeys.map((key2) => object3[key2]);
-  const parsedTypes = Array.from(new Set(actualValues.map((values) => typeof values)));
-  return {
-    type: parsedTypes.length === 1 ? parsedTypes[0] === "string" ? "string" : "number" : ["string", "number"],
-    enum: actualValues
-  };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/never.js
-function parseNeverDef(refs) {
-  return refs.target === "openAi" ? void 0 : {
-    not: parseAnyDef({
-      ...refs,
-      currentPath: [...refs.currentPath, "not"]
-    })
-  };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/null.js
-function parseNullDef(refs) {
-  return refs.target === "openApi3" ? {
-    enum: ["null"],
-    nullable: true
-  } : {
-    type: "null"
-  };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/union.js
-var primitiveMappings = {
-  ZodString: "string",
-  ZodNumber: "number",
-  ZodBigInt: "integer",
-  ZodBoolean: "boolean",
-  ZodNull: "null"
-};
-function parseUnionDef(def, refs) {
-  if (refs.target === "openApi3")
-    return asAnyOf(def, refs);
-  const options = def.options instanceof Map ? Array.from(def.options.values()) : def.options;
-  if (options.every((x) => x._def.typeName in primitiveMappings && (!x._def.checks || !x._def.checks.length))) {
-    const types = options.reduce((types2, x) => {
-      const type = primitiveMappings[x._def.typeName];
-      return type && !types2.includes(type) ? [...types2, type] : types2;
-    }, []);
-    return {
-      type: types.length > 1 ? types : types[0]
-    };
-  } else if (options.every((x) => x._def.typeName === "ZodLiteral" && !x.description)) {
-    const types = options.reduce((acc, x) => {
-      const type = typeof x._def.value;
-      switch (type) {
-        case "string":
-        case "number":
-        case "boolean":
-          return [...acc, type];
-        case "bigint":
-          return [...acc, "integer"];
-        case "object":
-          if (x._def.value === null)
-            return [...acc, "null"];
-        case "symbol":
-        case "undefined":
-        case "function":
-        default:
-          return acc;
-      }
-    }, []);
-    if (types.length === options.length) {
-      const uniqueTypes = types.filter((x, i, a) => a.indexOf(x) === i);
-      return {
-        type: uniqueTypes.length > 1 ? uniqueTypes : uniqueTypes[0],
-        enum: options.reduce((acc, x) => {
-          return acc.includes(x._def.value) ? acc : [...acc, x._def.value];
-        }, [])
-      };
-    }
-  } else if (options.every((x) => x._def.typeName === "ZodEnum")) {
-    return {
-      type: "string",
-      enum: options.reduce((acc, x) => [
-        ...acc,
-        ...x._def.values.filter((x2) => !acc.includes(x2))
-      ], [])
-    };
-  }
-  return asAnyOf(def, refs);
-}
-var asAnyOf = (def, refs) => {
-  const anyOf = (def.options instanceof Map ? Array.from(def.options.values()) : def.options).map((x, i) => parseDef(x._def, {
-    ...refs,
-    currentPath: [...refs.currentPath, "anyOf", `${i}`]
-  })).filter((x) => !!x && (!refs.strictUnions || typeof x === "object" && Object.keys(x).length > 0));
-  return anyOf.length ? { anyOf } : void 0;
-};
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
-function parseNullableDef(def, refs) {
-  if (["ZodString", "ZodNumber", "ZodBigInt", "ZodBoolean", "ZodNull"].includes(def.innerType._def.typeName) && (!def.innerType._def.checks || !def.innerType._def.checks.length)) {
-    if (refs.target === "openApi3") {
-      return {
-        type: primitiveMappings[def.innerType._def.typeName],
-        nullable: true
-      };
-    }
-    return {
-      type: [
-        primitiveMappings[def.innerType._def.typeName],
-        "null"
-      ]
-    };
-  }
-  if (refs.target === "openApi3") {
-    const base2 = parseDef(def.innerType._def, {
-      ...refs,
-      currentPath: [...refs.currentPath]
-    });
-    if (base2 && "$ref" in base2)
-      return { allOf: [base2], nullable: true };
-    return base2 && { ...base2, nullable: true };
-  }
-  const base = parseDef(def.innerType._def, {
-    ...refs,
-    currentPath: [...refs.currentPath, "anyOf", "0"]
-  });
-  return base && { anyOf: [base, { type: "null" }] };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/number.js
-function parseNumberDef(def, refs) {
-  const res = {
-    type: "number"
-  };
-  if (!def.checks)
-    return res;
-  for (const check2 of def.checks) {
-    switch (check2.kind) {
-      case "int":
-        res.type = "integer";
-        addErrorMessage(res, "type", check2.message, refs);
-        break;
-      case "min":
-        if (refs.target === "jsonSchema7") {
-          if (check2.inclusive) {
-            setResponseValueAndErrors(res, "minimum", check2.value, check2.message, refs);
-          } else {
-            setResponseValueAndErrors(res, "exclusiveMinimum", check2.value, check2.message, refs);
-          }
-        } else {
-          if (!check2.inclusive) {
-            res.exclusiveMinimum = true;
-          }
-          setResponseValueAndErrors(res, "minimum", check2.value, check2.message, refs);
-        }
-        break;
-      case "max":
-        if (refs.target === "jsonSchema7") {
-          if (check2.inclusive) {
-            setResponseValueAndErrors(res, "maximum", check2.value, check2.message, refs);
-          } else {
-            setResponseValueAndErrors(res, "exclusiveMaximum", check2.value, check2.message, refs);
-          }
-        } else {
-          if (!check2.inclusive) {
-            res.exclusiveMaximum = true;
-          }
-          setResponseValueAndErrors(res, "maximum", check2.value, check2.message, refs);
-        }
-        break;
-      case "multipleOf":
-        setResponseValueAndErrors(res, "multipleOf", check2.value, check2.message, refs);
-        break;
-    }
-  }
-  return res;
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/object.js
-function parseObjectDef(def, refs) {
-  const forceOptionalIntoNullable = refs.target === "openAi";
-  const result = {
-    type: "object",
-    properties: {}
-  };
-  const required2 = [];
-  const shape = def.shape();
-  for (const propName in shape) {
-    let propDef = shape[propName];
-    if (propDef === void 0 || propDef._def === void 0) {
-      continue;
-    }
-    let propOptional = safeIsOptional(propDef);
-    if (propOptional && forceOptionalIntoNullable) {
-      if (propDef._def.typeName === "ZodOptional") {
-        propDef = propDef._def.innerType;
-      }
-      if (!propDef.isNullable()) {
-        propDef = propDef.nullable();
-      }
-      propOptional = false;
-    }
-    const parsedDef = parseDef(propDef._def, {
-      ...refs,
-      currentPath: [...refs.currentPath, "properties", propName],
-      propertyPath: [...refs.currentPath, "properties", propName]
-    });
-    if (parsedDef === void 0) {
-      continue;
-    }
-    result.properties[propName] = parsedDef;
-    if (!propOptional) {
-      required2.push(propName);
-    }
-  }
-  if (required2.length) {
-    result.required = required2;
-  }
-  const additionalProperties = decideAdditionalProperties(def, refs);
-  if (additionalProperties !== void 0) {
-    result.additionalProperties = additionalProperties;
-  }
-  return result;
-}
-function decideAdditionalProperties(def, refs) {
-  if (def.catchall._def.typeName !== "ZodNever") {
-    return parseDef(def.catchall._def, {
-      ...refs,
-      currentPath: [...refs.currentPath, "additionalProperties"]
-    });
-  }
-  switch (def.unknownKeys) {
-    case "passthrough":
-      return refs.allowedAdditionalProperties;
-    case "strict":
-      return refs.rejectedAdditionalProperties;
-    case "strip":
-      return refs.removeAdditionalStrategy === "strict" ? refs.allowedAdditionalProperties : refs.rejectedAdditionalProperties;
-  }
-}
-function safeIsOptional(schema) {
-  try {
-    return schema.isOptional();
-  } catch {
-    return true;
-  }
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
-var parseOptionalDef = (def, refs) => {
-  if (refs.currentPath.toString() === refs.propertyPath?.toString()) {
-    return parseDef(def.innerType._def, refs);
-  }
-  const innerSchema = parseDef(def.innerType._def, {
-    ...refs,
-    currentPath: [...refs.currentPath, "anyOf", "1"]
-  });
-  return innerSchema ? {
-    anyOf: [
-      {
-        not: parseAnyDef(refs)
-      },
-      innerSchema
-    ]
-  } : parseAnyDef(refs);
-};
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
-var parsePipelineDef = (def, refs) => {
-  if (refs.pipeStrategy === "input") {
-    return parseDef(def.in._def, refs);
-  } else if (refs.pipeStrategy === "output") {
-    return parseDef(def.out._def, refs);
-  }
-  const a = parseDef(def.in._def, {
-    ...refs,
-    currentPath: [...refs.currentPath, "allOf", "0"]
-  });
-  const b = parseDef(def.out._def, {
-    ...refs,
-    currentPath: [...refs.currentPath, "allOf", a ? "1" : "0"]
-  });
-  return {
-    allOf: [a, b].filter((x) => x !== void 0)
-  };
-};
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
-function parsePromiseDef(def, refs) {
-  return parseDef(def.type._def, refs);
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/set.js
-function parseSetDef(def, refs) {
-  const items = parseDef(def.valueType._def, {
-    ...refs,
-    currentPath: [...refs.currentPath, "items"]
-  });
-  const schema = {
-    type: "array",
-    uniqueItems: true,
-    items
-  };
-  if (def.minSize) {
-    setResponseValueAndErrors(schema, "minItems", def.minSize.value, def.minSize.message, refs);
-  }
-  if (def.maxSize) {
-    setResponseValueAndErrors(schema, "maxItems", def.maxSize.value, def.maxSize.message, refs);
-  }
-  return schema;
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
-function parseTupleDef(def, refs) {
-  if (def.rest) {
-    return {
-      type: "array",
-      minItems: def.items.length,
-      items: def.items.map((x, i) => parseDef(x._def, {
-        ...refs,
-        currentPath: [...refs.currentPath, "items", `${i}`]
-      })).reduce((acc, x) => x === void 0 ? acc : [...acc, x], []),
-      additionalItems: parseDef(def.rest._def, {
-        ...refs,
-        currentPath: [...refs.currentPath, "additionalItems"]
-      })
-    };
-  } else {
-    return {
-      type: "array",
-      minItems: def.items.length,
-      maxItems: def.items.length,
-      items: def.items.map((x, i) => parseDef(x._def, {
-        ...refs,
-        currentPath: [...refs.currentPath, "items", `${i}`]
-      })).reduce((acc, x) => x === void 0 ? acc : [...acc, x], [])
-    };
-  }
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
-function parseUndefinedDef(refs) {
-  return {
-    not: parseAnyDef(refs)
-  };
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
-function parseUnknownDef(refs) {
-  return parseAnyDef(refs);
-}
-
-// node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
-var parseReadonlyDef = (def, refs) => {
-  return parseDef(def.innerType._def, refs);
-};
-
-// node_modules/zod-to-json-schema/dist/esm/selectParser.js
-var selectParser = (def, typeName, refs) => {
-  switch (typeName) {
-    case ZodFirstPartyTypeKind.ZodString:
-      return parseStringDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodNumber:
-      return parseNumberDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodObject:
-      return parseObjectDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodBigInt:
-      return parseBigintDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodBoolean:
-      return parseBooleanDef();
-    case ZodFirstPartyTypeKind.ZodDate:
-      return parseDateDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodUndefined:
-      return parseUndefinedDef(refs);
-    case ZodFirstPartyTypeKind.ZodNull:
-      return parseNullDef(refs);
-    case ZodFirstPartyTypeKind.ZodArray:
-      return parseArrayDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodUnion:
-    case ZodFirstPartyTypeKind.ZodDiscriminatedUnion:
-      return parseUnionDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodIntersection:
-      return parseIntersectionDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodTuple:
-      return parseTupleDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodRecord:
-      return parseRecordDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodLiteral:
-      return parseLiteralDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodEnum:
-      return parseEnumDef(def);
-    case ZodFirstPartyTypeKind.ZodNativeEnum:
-      return parseNativeEnumDef(def);
-    case ZodFirstPartyTypeKind.ZodNullable:
-      return parseNullableDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodOptional:
-      return parseOptionalDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodMap:
-      return parseMapDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodSet:
-      return parseSetDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodLazy:
-      return () => def.getter()._def;
-    case ZodFirstPartyTypeKind.ZodPromise:
-      return parsePromiseDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodNaN:
-    case ZodFirstPartyTypeKind.ZodNever:
-      return parseNeverDef(refs);
-    case ZodFirstPartyTypeKind.ZodEffects:
-      return parseEffectsDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodAny:
-      return parseAnyDef(refs);
-    case ZodFirstPartyTypeKind.ZodUnknown:
-      return parseUnknownDef(refs);
-    case ZodFirstPartyTypeKind.ZodDefault:
-      return parseDefaultDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodBranded:
-      return parseBrandedDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodReadonly:
-      return parseReadonlyDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodCatch:
-      return parseCatchDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodPipeline:
-      return parsePipelineDef(def, refs);
-    case ZodFirstPartyTypeKind.ZodFunction:
-    case ZodFirstPartyTypeKind.ZodVoid:
-    case ZodFirstPartyTypeKind.ZodSymbol:
-      return void 0;
-    default:
-      return /* @__PURE__ */ ((_) => void 0)(typeName);
-  }
-};
-
-// node_modules/zod-to-json-schema/dist/esm/parseDef.js
-function parseDef(def, refs, forceResolution = false) {
-  const seenItem = refs.seen.get(def);
-  if (refs.override) {
-    const overrideResult = refs.override?.(def, refs, seenItem, forceResolution);
-    if (overrideResult !== ignoreOverride) {
-      return overrideResult;
-    }
-  }
-  if (seenItem && !forceResolution) {
-    const seenSchema = get$ref(seenItem, refs);
-    if (seenSchema !== void 0) {
-      return seenSchema;
-    }
-  }
-  const newItem = { def, path: refs.currentPath, jsonSchema: void 0 };
-  refs.seen.set(def, newItem);
-  const jsonSchemaOrGetter = selectParser(def, def.typeName, refs);
-  const jsonSchema = typeof jsonSchemaOrGetter === "function" ? parseDef(jsonSchemaOrGetter(), refs) : jsonSchemaOrGetter;
-  if (jsonSchema) {
-    addMeta(def, refs, jsonSchema);
-  }
-  if (refs.postProcess) {
-    const postProcessResult = refs.postProcess(jsonSchema, def, refs);
-    newItem.jsonSchema = jsonSchema;
-    return postProcessResult;
-  }
-  newItem.jsonSchema = jsonSchema;
-  return jsonSchema;
-}
-var get$ref = (item, refs) => {
-  switch (refs.$refStrategy) {
-    case "root":
-      return { $ref: item.path.join("/") };
-    case "relative":
-      return { $ref: getRelativePath(refs.currentPath, item.path) };
-    case "none":
-    case "seen": {
-      if (item.path.length < refs.currentPath.length && item.path.every((value, index) => refs.currentPath[index] === value)) {
-        console.warn(`Recursive reference detected at ${refs.currentPath.join("/")}! Defaulting to any`);
-        return parseAnyDef(refs);
-      }
-      return refs.$refStrategy === "seen" ? parseAnyDef(refs) : void 0;
-    }
-  }
-};
-var addMeta = (def, refs, jsonSchema) => {
-  if (def.description) {
-    jsonSchema.description = def.description;
-    if (refs.markdownDescription) {
-      jsonSchema.markdownDescription = def.description;
-    }
-  }
-  return jsonSchema;
-};
-
-// node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
-var zodToJsonSchema = (schema, options) => {
-  const refs = getRefs(options);
-  let definitions = typeof options === "object" && options.definitions ? Object.entries(options.definitions).reduce((acc, [name2, schema2]) => ({
-    ...acc,
-    [name2]: parseDef(schema2._def, {
-      ...refs,
-      currentPath: [...refs.basePath, refs.definitionPath, name2]
-    }, true) ?? parseAnyDef(refs)
-  }), {}) : void 0;
-  const name = typeof options === "string" ? options : options?.nameStrategy === "title" ? void 0 : options?.name;
-  const main = parseDef(schema._def, name === void 0 ? refs : {
-    ...refs,
-    currentPath: [...refs.basePath, refs.definitionPath, name]
-  }, false) ?? parseAnyDef(refs);
-  const title = typeof options === "object" && options.name !== void 0 && options.nameStrategy === "title" ? options.name : void 0;
-  if (title !== void 0) {
-    main.title = title;
-  }
-  if (refs.flags.hasReferencedOpenAiAnyType) {
-    if (!definitions) {
-      definitions = {};
-    }
-    if (!definitions[refs.openAiAnyTypeName]) {
-      definitions[refs.openAiAnyTypeName] = {
-        // Skipping "object" as no properties can be defined and additionalProperties must be "false"
-        type: ["string", "number", "integer", "boolean", "array", "null"],
-        items: {
-          $ref: refs.$refStrategy === "relative" ? "1" : [
-            ...refs.basePath,
-            refs.definitionPath,
-            refs.openAiAnyTypeName
-          ].join("/")
-        }
-      };
-    }
-  }
-  const combined = name === void 0 ? definitions ? {
-    ...main,
-    [refs.definitionPath]: definitions
-  } : main : {
-    $ref: [
-      ...refs.$refStrategy === "relative" ? [] : refs.basePath,
-      refs.definitionPath,
-      name
-    ].join("/"),
-    [refs.definitionPath]: {
-      ...definitions,
-      [name]: main
-    }
-  };
-  if (refs.target === "jsonSchema7") {
-    combined.$schema = "http://json-schema.org/draft-07/schema#";
-  } else if (refs.target === "jsonSchema2019-09" || refs.target === "openAi") {
-    combined.$schema = "https://json-schema.org/draft/2019-09/schema#";
-  }
-  if (refs.target === "openAi" && ("anyOf" in combined || "oneOf" in combined || "allOf" in combined || "type" in combined && Array.isArray(combined.type))) {
-    console.warn("Warning: OpenAI may not support schemas with unions as roots! Try wrapping it in an object property.");
-  }
-  return combined;
-};
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
-function mapMiniTarget(t) {
-  if (!t)
-    return "draft-7";
-  if (t === "jsonSchema7" || t === "draft-7")
-    return "draft-7";
-  if (t === "jsonSchema2019-09" || t === "draft-2020-12")
-    return "draft-2020-12";
-  return "draft-7";
-}
-function toJsonSchemaCompat(schema, opts) {
-  if (isZ4Schema(schema)) {
-    return toJSONSchema(schema, {
-      target: mapMiniTarget(opts?.target),
-      io: opts?.pipeStrategy ?? "input"
-    });
-  }
-  return zodToJsonSchema(schema, {
-    strictUnions: opts?.strictUnions ?? true,
-    pipeStrategy: opts?.pipeStrategy ?? "input"
-  });
-}
 function getMethodLiteral(schema) {
   const shape = getObjectShape(schema);
   const methodSchema = shape?.method;
@@ -26121,7 +24410,7 @@ function getMethodLiteral(schema) {
   return value;
 }
 function parseWithCompat(schema, data) {
-  const result = safeParse2(schema, data);
+  const result = safeParse3(schema, data);
   if (!result.success) {
     throw result.error;
   }
@@ -26719,7 +25008,7 @@ var Protocol = class {
           return reject(response);
         }
         try {
-          const parseResult = safeParse2(resultSchema, response.result);
+          const parseResult = safeParse3(resultSchema, response.result);
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
@@ -27480,7 +25769,7 @@ var Server = class extends Protocol {
     const method = methodValue;
     if (method === "tools/call") {
       const wrappedHandler = async (request, extra) => {
-        const validatedRequest = safeParse2(CallToolRequestSchema, request);
+        const validatedRequest = safeParse3(CallToolRequestSchema, request);
         if (!validatedRequest.success) {
           const errorMessage = validatedRequest.error instanceof Error ? validatedRequest.error.message : String(validatedRequest.error);
           throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call request: ${errorMessage}`);
@@ -27488,14 +25777,14 @@ var Server = class extends Protocol {
         const { params } = validatedRequest.data;
         const result = await Promise.resolve(handler(request, extra));
         if (params.task) {
-          const taskValidationResult = safeParse2(CreateTaskResultSchema, result);
+          const taskValidationResult = safeParse3(CreateTaskResultSchema, result);
           if (!taskValidationResult.success) {
             const errorMessage = taskValidationResult.error instanceof Error ? taskValidationResult.error.message : String(taskValidationResult.error);
             throw new McpError(ErrorCode.InvalidParams, `Invalid task creation result: ${errorMessage}`);
           }
           return taskValidationResult.data;
         }
-        const validationResult = safeParse2(CallToolResultSchema, result);
+        const validationResult = safeParse3(CallToolResultSchema, result);
         if (!validationResult.success) {
           const errorMessage = validationResult.error instanceof Error ? validationResult.error.message : String(validationResult.error);
           throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call result: ${errorMessage}`);
@@ -27778,884 +26067,82 @@ var Server = class extends Protocol {
   }
 };
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/server/completable.js
-var COMPLETABLE_SYMBOL = /* @__PURE__ */ Symbol.for("mcp.completable");
-function isCompletable(schema) {
-  return !!schema && typeof schema === "object" && COMPLETABLE_SYMBOL in schema;
-}
-function getCompleter(schema) {
-  const meta = schema[COMPLETABLE_SYMBOL];
-  return meta?.complete;
-}
-var McpZodTypeKind;
-(function(McpZodTypeKind2) {
-  McpZodTypeKind2["Completable"] = "McpCompletable";
-})(McpZodTypeKind || (McpZodTypeKind = {}));
-
-// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
-var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
-function validateToolName(name) {
-  const warnings = [];
-  if (name.length === 0) {
-    return {
-      isValid: false,
-      warnings: ["Tool name cannot be empty"]
-    };
-  }
-  if (name.length > 128) {
-    return {
-      isValid: false,
-      warnings: [`Tool name exceeds maximum length of 128 characters (current: ${name.length})`]
-    };
-  }
-  if (name.includes(" ")) {
-    warnings.push("Tool name contains spaces, which may cause parsing issues");
-  }
-  if (name.includes(",")) {
-    warnings.push("Tool name contains commas, which may cause parsing issues");
-  }
-  if (name.startsWith("-") || name.endsWith("-")) {
-    warnings.push("Tool name starts or ends with a dash, which may cause parsing issues in some contexts");
-  }
-  if (name.startsWith(".") || name.endsWith(".")) {
-    warnings.push("Tool name starts or ends with a dot, which may cause parsing issues in some contexts");
-  }
-  if (!TOOL_NAME_REGEX.test(name)) {
-    const invalidChars = name.split("").filter((char) => !/[A-Za-z0-9._-]/.test(char)).filter((char, index, arr) => arr.indexOf(char) === index);
-    warnings.push(`Tool name contains invalid characters: ${invalidChars.map((c) => `"${c}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
-    return {
-      isValid: false,
-      warnings
-    };
-  }
-  return {
-    isValid: true,
-    warnings
-  };
-}
-function issueToolNameWarning(name, warnings) {
-  if (warnings.length > 0) {
-    console.warn(`Tool name validation warning for "${name}":`);
-    for (const warning of warnings) {
-      console.warn(`  - ${warning}`);
+// src/tool-server.ts
+var import__ = __toESM(require__(), 1);
+function createToolServer(runtime2) {
+  const server2 = new Server(
+    { name: "core", version: AGENT_TOOLS.metadata.wrapper.version },
+    {
+      capabilities: { tools: {}, resources: {} },
+      instructions: `IdeaSpaces MCP ${AGENT_TOOLS.metadata.wrapper.version}; generated catalog ${AGENT_TOOLS.metadata.digest}; CLI source ${AGENT_TOOLS.metadata.cli.commit}; protocol ${AGENT_TOOLS.metadata.protocol.commit}. ${runtime2?.note ?? "Running CLI metadata has not been observed."} Running CLI version ${runtime2?.version ?? "unknown"}, digest ${runtime2?.digest ?? "unknown"}. Host exposure and session ownership are explicit; the catalog grants no authority.`
     }
-    console.warn("Tool registration will proceed, but this may cause compatibility issues.");
-    console.warn("Consider updating the tool name to conform to the MCP tool naming standard.");
-    console.warn("See SEP: Specify Format for Tool Names (https://github.com/modelcontextprotocol/modelcontextprotocol/issues/986) for more details.");
+  );
+  const ajv = new import__.Ajv2020({ strict: false, allErrors: true });
+  const registered = /* @__PURE__ */ new Map();
+  function registerTool2(name, call) {
+    if (registered.has(name)) throw new Error(`Duplicate tool ${name}`);
+    registered.set(name, {
+      call,
+      validate: ajv.compile(AGENT_TOOLS.tools[name].inputSchema)
+    });
   }
-}
-function validateAndWarnToolName(name) {
-  const result = validateToolName(name);
-  issueToolNameWarning(name, result.warnings);
-  return result.isValid;
-}
-
-// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js
-var ExperimentalMcpServerTasks = class {
-  constructor(_mcpServer) {
-    this._mcpServer = _mcpServer;
-  }
-  registerToolTask(name, config2, handler) {
-    const execution = { taskSupport: "required", ...config2.execution };
-    if (execution.taskSupport === "forbidden") {
-      throw new Error(`Cannot register task-based tool '${name}' with taskSupport 'forbidden'. Use registerTool() instead.`);
-    }
-    const mcpServerInternal = this._mcpServer;
-    return mcpServerInternal._createRegisteredTool(name, config2.title, config2.description, config2.inputSchema, config2.outputSchema, config2.annotations, execution, config2._meta, handler);
-  }
-};
-
-// node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
-var McpServer = class {
-  constructor(serverInfo, options) {
-    this._registeredResources = {};
-    this._registeredResourceTemplates = {};
-    this._registeredTools = {};
-    this._registeredPrompts = {};
-    this._toolHandlersInitialized = false;
-    this._completionHandlerInitialized = false;
-    this._resourceHandlersInitialized = false;
-    this._promptHandlersInitialized = false;
-    this.server = new Server(serverInfo, options);
-  }
-  /**
-   * Access experimental features.
-   *
-   * WARNING: These APIs are experimental and may change without notice.
-   *
-   * @experimental
-   */
-  get experimental() {
-    if (!this._experimental) {
-      this._experimental = {
-        tasks: new ExperimentalMcpServerTasks(this)
+  server2.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: [...registered.keys()].map((name) => {
+      const t = AGENT_TOOLS.tools[name];
+      return {
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema
+      };
+    })
+  }));
+  server2.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const tool = registered.get(request.params.name);
+    if (!tool)
+      return {
+        content: [
+          { type: "text", text: `Unknown tool: ${request.params.name}` }
+        ],
+        isError: true
+      };
+    const contract = AGENT_TOOLS.tools[request.params.name];
+    if (belowRequired(runtime2?.version, contract.requires))
+      return {
+        content: [
+          {
+            type: "text",
+            text: `${request.params.name} requires CLI ${contract.requires.join(", ")}; installed ${runtime2?.version}. Update with npm install -g @ideaspaces/cli (or update the plugin bundle).`
+          }
+        ],
+        isError: true
+      };
+    const input = request.params.arguments ?? {};
+    if (!tool.validate(input))
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Invalid ${request.params.name} parameters: ${ajv.errorsText(tool.validate.errors)}`
+          }
+        ],
+        isError: true
+      };
+    try {
+      return await tool.call(input);
+    } catch (error2) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: error2 instanceof Error ? error2.message : String(error2)
+          }
+        ],
+        isError: true
       };
     }
-    return this._experimental;
-  }
-  /**
-   * Attaches to the given transport, starts it, and starts listening for messages.
-   *
-   * The `server` object assumes ownership of the Transport, replacing any callbacks that have already been set, and expects that it is the only user of the Transport instance going forward.
-   */
-  async connect(transport2) {
-    return await this.server.connect(transport2);
-  }
-  /**
-   * Closes the connection.
-   */
-  async close() {
-    await this.server.close();
-  }
-  setToolRequestHandlers() {
-    if (this._toolHandlersInitialized) {
-      return;
-    }
-    this.server.assertCanSetRequestHandler(getMethodValue(ListToolsRequestSchema));
-    this.server.assertCanSetRequestHandler(getMethodValue(CallToolRequestSchema));
-    this.server.registerCapabilities({
-      tools: {
-        listChanged: true
-      }
-    });
-    this.server.setRequestHandler(ListToolsRequestSchema, () => ({
-      tools: Object.entries(this._registeredTools).filter(([, tool]) => tool.enabled).map(([name, tool]) => {
-        const toolDefinition = {
-          name,
-          title: tool.title,
-          description: tool.description,
-          inputSchema: (() => {
-            const obj = normalizeObjectSchema(tool.inputSchema);
-            return obj ? toJsonSchemaCompat(obj, {
-              strictUnions: true,
-              pipeStrategy: "input"
-            }) : EMPTY_OBJECT_JSON_SCHEMA;
-          })(),
-          annotations: tool.annotations,
-          execution: tool.execution,
-          _meta: tool._meta
-        };
-        if (tool.outputSchema) {
-          const obj = normalizeObjectSchema(tool.outputSchema);
-          if (obj) {
-            toolDefinition.outputSchema = toJsonSchemaCompat(obj, {
-              strictUnions: true,
-              pipeStrategy: "output"
-            });
-          }
-        }
-        return toolDefinition;
-      })
-    }));
-    this.server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-      try {
-        const tool = this._registeredTools[request.params.name];
-        if (!tool) {
-          throw new McpError(ErrorCode.InvalidParams, `Tool ${request.params.name} not found`);
-        }
-        if (!tool.enabled) {
-          throw new McpError(ErrorCode.InvalidParams, `Tool ${request.params.name} disabled`);
-        }
-        const isTaskRequest = !!request.params.task;
-        const taskSupport = tool.execution?.taskSupport;
-        const isTaskHandler = "createTask" in tool.handler;
-        if ((taskSupport === "required" || taskSupport === "optional") && !isTaskHandler) {
-          throw new McpError(ErrorCode.InternalError, `Tool ${request.params.name} has taskSupport '${taskSupport}' but was not registered with registerToolTask`);
-        }
-        if (taskSupport === "required" && !isTaskRequest) {
-          throw new McpError(ErrorCode.MethodNotFound, `Tool ${request.params.name} requires task augmentation (taskSupport: 'required')`);
-        }
-        if (taskSupport === "optional" && !isTaskRequest && isTaskHandler) {
-          return await this.handleAutomaticTaskPolling(tool, request, extra);
-        }
-        const args = await this.validateToolInput(tool, request.params.arguments, request.params.name);
-        const result = await this.executeToolHandler(tool, args, extra);
-        if (isTaskRequest) {
-          return result;
-        }
-        await this.validateToolOutput(tool, result, request.params.name);
-        return result;
-      } catch (error2) {
-        if (error2 instanceof McpError) {
-          if (error2.code === ErrorCode.UrlElicitationRequired) {
-            throw error2;
-          }
-        }
-        return this.createToolError(error2 instanceof Error ? error2.message : String(error2));
-      }
-    });
-    this._toolHandlersInitialized = true;
-  }
-  /**
-   * Creates a tool error result.
-   *
-   * @param errorMessage - The error message.
-   * @returns The tool error result.
-   */
-  createToolError(errorMessage) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: errorMessage
-        }
-      ],
-      isError: true
-    };
-  }
-  /**
-   * Validates tool input arguments against the tool's input schema.
-   */
-  async validateToolInput(tool, args, toolName) {
-    if (!tool.inputSchema) {
-      return void 0;
-    }
-    const inputObj = normalizeObjectSchema(tool.inputSchema);
-    const schemaToParse = inputObj ?? tool.inputSchema;
-    const parseResult = await safeParseAsync2(schemaToParse, args);
-    if (!parseResult.success) {
-      const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
-      const errorMessage = getParseErrorMessage(error2);
-      throw new McpError(ErrorCode.InvalidParams, `Input validation error: Invalid arguments for tool ${toolName}: ${errorMessage}`);
-    }
-    return parseResult.data;
-  }
-  /**
-   * Validates tool output against the tool's output schema.
-   */
-  async validateToolOutput(tool, result, toolName) {
-    if (!tool.outputSchema) {
-      return;
-    }
-    if (!("content" in result)) {
-      return;
-    }
-    if (result.isError) {
-      return;
-    }
-    if (!result.structuredContent) {
-      throw new McpError(ErrorCode.InvalidParams, `Output validation error: Tool ${toolName} has an output schema but no structured content was provided`);
-    }
-    const outputObj = normalizeObjectSchema(tool.outputSchema);
-    const parseResult = await safeParseAsync2(outputObj, result.structuredContent);
-    if (!parseResult.success) {
-      const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
-      const errorMessage = getParseErrorMessage(error2);
-      throw new McpError(ErrorCode.InvalidParams, `Output validation error: Invalid structured content for tool ${toolName}: ${errorMessage}`);
-    }
-  }
-  /**
-   * Executes a tool handler (either regular or task-based).
-   */
-  async executeToolHandler(tool, args, extra) {
-    const handler = tool.handler;
-    const isTaskHandler = "createTask" in handler;
-    if (isTaskHandler) {
-      if (!extra.taskStore) {
-        throw new Error("No task store provided.");
-      }
-      const taskExtra = { ...extra, taskStore: extra.taskStore };
-      if (tool.inputSchema) {
-        const typedHandler = handler;
-        return await Promise.resolve(typedHandler.createTask(args, taskExtra));
-      } else {
-        const typedHandler = handler;
-        return await Promise.resolve(typedHandler.createTask(taskExtra));
-      }
-    }
-    if (tool.inputSchema) {
-      const typedHandler = handler;
-      return await Promise.resolve(typedHandler(args, extra));
-    } else {
-      const typedHandler = handler;
-      return await Promise.resolve(typedHandler(extra));
-    }
-  }
-  /**
-   * Handles automatic task polling for tools with taskSupport 'optional'.
-   */
-  async handleAutomaticTaskPolling(tool, request, extra) {
-    if (!extra.taskStore) {
-      throw new Error("No task store provided for task-capable tool.");
-    }
-    const args = await this.validateToolInput(tool, request.params.arguments, request.params.name);
-    const handler = tool.handler;
-    const taskExtra = { ...extra, taskStore: extra.taskStore };
-    const createTaskResult = args ? await Promise.resolve(handler.createTask(args, taskExtra)) : (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await Promise.resolve(handler.createTask(taskExtra))
-    );
-    const taskId = createTaskResult.task.taskId;
-    let task = createTaskResult.task;
-    const pollInterval = task.pollInterval ?? 5e3;
-    while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve15) => setTimeout(resolve15, pollInterval));
-      const updatedTask = await extra.taskStore.getTask(taskId);
-      if (!updatedTask) {
-        throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
-      }
-      task = updatedTask;
-    }
-    return await extra.taskStore.getTaskResult(taskId);
-  }
-  setCompletionRequestHandler() {
-    if (this._completionHandlerInitialized) {
-      return;
-    }
-    this.server.assertCanSetRequestHandler(getMethodValue(CompleteRequestSchema));
-    this.server.registerCapabilities({
-      completions: {}
-    });
-    this.server.setRequestHandler(CompleteRequestSchema, async (request) => {
-      switch (request.params.ref.type) {
-        case "ref/prompt":
-          assertCompleteRequestPrompt(request);
-          return this.handlePromptCompletion(request, request.params.ref);
-        case "ref/resource":
-          assertCompleteRequestResourceTemplate(request);
-          return this.handleResourceCompletion(request, request.params.ref);
-        default:
-          throw new McpError(ErrorCode.InvalidParams, `Invalid completion reference: ${request.params.ref}`);
-      }
-    });
-    this._completionHandlerInitialized = true;
-  }
-  async handlePromptCompletion(request, ref) {
-    const prompt = this._registeredPrompts[ref.name];
-    if (!prompt) {
-      throw new McpError(ErrorCode.InvalidParams, `Prompt ${ref.name} not found`);
-    }
-    if (!prompt.enabled) {
-      throw new McpError(ErrorCode.InvalidParams, `Prompt ${ref.name} disabled`);
-    }
-    if (!prompt.argsSchema) {
-      return EMPTY_COMPLETION_RESULT;
-    }
-    const promptShape = getObjectShape(prompt.argsSchema);
-    const field = promptShape?.[request.params.argument.name];
-    if (!isCompletable(field)) {
-      return EMPTY_COMPLETION_RESULT;
-    }
-    const completer = getCompleter(field);
-    if (!completer) {
-      return EMPTY_COMPLETION_RESULT;
-    }
-    const suggestions = await completer(request.params.argument.value, request.params.context);
-    return createCompletionResult(suggestions);
-  }
-  async handleResourceCompletion(request, ref) {
-    const template = Object.values(this._registeredResourceTemplates).find((t) => t.resourceTemplate.uriTemplate.toString() === ref.uri);
-    if (!template) {
-      if (this._registeredResources[ref.uri]) {
-        return EMPTY_COMPLETION_RESULT;
-      }
-      throw new McpError(ErrorCode.InvalidParams, `Resource template ${request.params.ref.uri} not found`);
-    }
-    const completer = template.resourceTemplate.completeCallback(request.params.argument.name);
-    if (!completer) {
-      return EMPTY_COMPLETION_RESULT;
-    }
-    const suggestions = await completer(request.params.argument.value, request.params.context);
-    return createCompletionResult(suggestions);
-  }
-  setResourceRequestHandlers() {
-    if (this._resourceHandlersInitialized) {
-      return;
-    }
-    this.server.assertCanSetRequestHandler(getMethodValue(ListResourcesRequestSchema));
-    this.server.assertCanSetRequestHandler(getMethodValue(ListResourceTemplatesRequestSchema));
-    this.server.assertCanSetRequestHandler(getMethodValue(ReadResourceRequestSchema));
-    this.server.registerCapabilities({
-      resources: {
-        listChanged: true
-      }
-    });
-    this.server.setRequestHandler(ListResourcesRequestSchema, async (request, extra) => {
-      const resources = Object.entries(this._registeredResources).filter(([_, resource]) => resource.enabled).map(([uri, resource]) => ({
-        uri,
-        name: resource.name,
-        ...resource.metadata
-      }));
-      const templateResources = [];
-      for (const template of Object.values(this._registeredResourceTemplates)) {
-        if (!template.resourceTemplate.listCallback) {
-          continue;
-        }
-        const result = await template.resourceTemplate.listCallback(extra);
-        for (const resource of result.resources) {
-          templateResources.push({
-            ...template.metadata,
-            // the defined resource metadata should override the template metadata if present
-            ...resource
-          });
-        }
-      }
-      return { resources: [...resources, ...templateResources] };
-    });
-    this.server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
-      const resourceTemplates = Object.entries(this._registeredResourceTemplates).map(([name, template]) => ({
-        name,
-        uriTemplate: template.resourceTemplate.uriTemplate.toString(),
-        ...template.metadata
-      }));
-      return { resourceTemplates };
-    });
-    this.server.setRequestHandler(ReadResourceRequestSchema, async (request, extra) => {
-      const uri = new URL(request.params.uri);
-      const resource = this._registeredResources[uri.toString()];
-      if (resource) {
-        if (!resource.enabled) {
-          throw new McpError(ErrorCode.InvalidParams, `Resource ${uri} disabled`);
-        }
-        return resource.readCallback(uri, extra);
-      }
-      for (const template of Object.values(this._registeredResourceTemplates)) {
-        const variables = template.resourceTemplate.uriTemplate.match(uri.toString());
-        if (variables) {
-          return template.readCallback(uri, variables, extra);
-        }
-      }
-      throw new McpError(ErrorCode.InvalidParams, `Resource ${uri} not found`);
-    });
-    this._resourceHandlersInitialized = true;
-  }
-  setPromptRequestHandlers() {
-    if (this._promptHandlersInitialized) {
-      return;
-    }
-    this.server.assertCanSetRequestHandler(getMethodValue(ListPromptsRequestSchema));
-    this.server.assertCanSetRequestHandler(getMethodValue(GetPromptRequestSchema));
-    this.server.registerCapabilities({
-      prompts: {
-        listChanged: true
-      }
-    });
-    this.server.setRequestHandler(ListPromptsRequestSchema, () => ({
-      prompts: Object.entries(this._registeredPrompts).filter(([, prompt]) => prompt.enabled).map(([name, prompt]) => {
-        return {
-          name,
-          title: prompt.title,
-          description: prompt.description,
-          arguments: prompt.argsSchema ? promptArgumentsFromSchema(prompt.argsSchema) : void 0
-        };
-      })
-    }));
-    this.server.setRequestHandler(GetPromptRequestSchema, async (request, extra) => {
-      const prompt = this._registeredPrompts[request.params.name];
-      if (!prompt) {
-        throw new McpError(ErrorCode.InvalidParams, `Prompt ${request.params.name} not found`);
-      }
-      if (!prompt.enabled) {
-        throw new McpError(ErrorCode.InvalidParams, `Prompt ${request.params.name} disabled`);
-      }
-      if (prompt.argsSchema) {
-        const argsObj = normalizeObjectSchema(prompt.argsSchema);
-        const parseResult = await safeParseAsync2(argsObj, request.params.arguments);
-        if (!parseResult.success) {
-          const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
-          const errorMessage = getParseErrorMessage(error2);
-          throw new McpError(ErrorCode.InvalidParams, `Invalid arguments for prompt ${request.params.name}: ${errorMessage}`);
-        }
-        const args = parseResult.data;
-        const cb = prompt.callback;
-        return await Promise.resolve(cb(args, extra));
-      } else {
-        const cb = prompt.callback;
-        return await Promise.resolve(cb(extra));
-      }
-    });
-    this._promptHandlersInitialized = true;
-  }
-  resource(name, uriOrTemplate, ...rest) {
-    let metadata;
-    if (typeof rest[0] === "object") {
-      metadata = rest.shift();
-    }
-    const readCallback = rest[0];
-    if (typeof uriOrTemplate === "string") {
-      if (this._registeredResources[uriOrTemplate]) {
-        throw new Error(`Resource ${uriOrTemplate} is already registered`);
-      }
-      const registeredResource = this._createRegisteredResource(name, void 0, uriOrTemplate, metadata, readCallback);
-      this.setResourceRequestHandlers();
-      this.sendResourceListChanged();
-      return registeredResource;
-    } else {
-      if (this._registeredResourceTemplates[name]) {
-        throw new Error(`Resource template ${name} is already registered`);
-      }
-      const registeredResourceTemplate = this._createRegisteredResourceTemplate(name, void 0, uriOrTemplate, metadata, readCallback);
-      this.setResourceRequestHandlers();
-      this.sendResourceListChanged();
-      return registeredResourceTemplate;
-    }
-  }
-  registerResource(name, uriOrTemplate, config2, readCallback) {
-    if (typeof uriOrTemplate === "string") {
-      if (this._registeredResources[uriOrTemplate]) {
-        throw new Error(`Resource ${uriOrTemplate} is already registered`);
-      }
-      const registeredResource = this._createRegisteredResource(name, config2.title, uriOrTemplate, config2, readCallback);
-      this.setResourceRequestHandlers();
-      this.sendResourceListChanged();
-      return registeredResource;
-    } else {
-      if (this._registeredResourceTemplates[name]) {
-        throw new Error(`Resource template ${name} is already registered`);
-      }
-      const registeredResourceTemplate = this._createRegisteredResourceTemplate(name, config2.title, uriOrTemplate, config2, readCallback);
-      this.setResourceRequestHandlers();
-      this.sendResourceListChanged();
-      return registeredResourceTemplate;
-    }
-  }
-  _createRegisteredResource(name, title, uri, metadata, readCallback) {
-    const registeredResource = {
-      name,
-      title,
-      metadata,
-      readCallback,
-      enabled: true,
-      disable: () => registeredResource.update({ enabled: false }),
-      enable: () => registeredResource.update({ enabled: true }),
-      remove: () => registeredResource.update({ uri: null }),
-      update: (updates) => {
-        if (typeof updates.uri !== "undefined" && updates.uri !== uri) {
-          delete this._registeredResources[uri];
-          if (updates.uri)
-            this._registeredResources[updates.uri] = registeredResource;
-        }
-        if (typeof updates.name !== "undefined")
-          registeredResource.name = updates.name;
-        if (typeof updates.title !== "undefined")
-          registeredResource.title = updates.title;
-        if (typeof updates.metadata !== "undefined")
-          registeredResource.metadata = updates.metadata;
-        if (typeof updates.callback !== "undefined")
-          registeredResource.readCallback = updates.callback;
-        if (typeof updates.enabled !== "undefined")
-          registeredResource.enabled = updates.enabled;
-        this.sendResourceListChanged();
-      }
-    };
-    this._registeredResources[uri] = registeredResource;
-    return registeredResource;
-  }
-  _createRegisteredResourceTemplate(name, title, template, metadata, readCallback) {
-    const registeredResourceTemplate = {
-      resourceTemplate: template,
-      title,
-      metadata,
-      readCallback,
-      enabled: true,
-      disable: () => registeredResourceTemplate.update({ enabled: false }),
-      enable: () => registeredResourceTemplate.update({ enabled: true }),
-      remove: () => registeredResourceTemplate.update({ name: null }),
-      update: (updates) => {
-        if (typeof updates.name !== "undefined" && updates.name !== name) {
-          delete this._registeredResourceTemplates[name];
-          if (updates.name)
-            this._registeredResourceTemplates[updates.name] = registeredResourceTemplate;
-        }
-        if (typeof updates.title !== "undefined")
-          registeredResourceTemplate.title = updates.title;
-        if (typeof updates.template !== "undefined")
-          registeredResourceTemplate.resourceTemplate = updates.template;
-        if (typeof updates.metadata !== "undefined")
-          registeredResourceTemplate.metadata = updates.metadata;
-        if (typeof updates.callback !== "undefined")
-          registeredResourceTemplate.readCallback = updates.callback;
-        if (typeof updates.enabled !== "undefined")
-          registeredResourceTemplate.enabled = updates.enabled;
-        this.sendResourceListChanged();
-      }
-    };
-    this._registeredResourceTemplates[name] = registeredResourceTemplate;
-    const variableNames = template.uriTemplate.variableNames;
-    const hasCompleter = Array.isArray(variableNames) && variableNames.some((v) => !!template.completeCallback(v));
-    if (hasCompleter) {
-      this.setCompletionRequestHandler();
-    }
-    return registeredResourceTemplate;
-  }
-  _createRegisteredPrompt(name, title, description, argsSchema, callback) {
-    const registeredPrompt = {
-      title,
-      description,
-      argsSchema: argsSchema === void 0 ? void 0 : objectFromShape(argsSchema),
-      callback,
-      enabled: true,
-      disable: () => registeredPrompt.update({ enabled: false }),
-      enable: () => registeredPrompt.update({ enabled: true }),
-      remove: () => registeredPrompt.update({ name: null }),
-      update: (updates) => {
-        if (typeof updates.name !== "undefined" && updates.name !== name) {
-          delete this._registeredPrompts[name];
-          if (updates.name)
-            this._registeredPrompts[updates.name] = registeredPrompt;
-        }
-        if (typeof updates.title !== "undefined")
-          registeredPrompt.title = updates.title;
-        if (typeof updates.description !== "undefined")
-          registeredPrompt.description = updates.description;
-        if (typeof updates.argsSchema !== "undefined")
-          registeredPrompt.argsSchema = objectFromShape(updates.argsSchema);
-        if (typeof updates.callback !== "undefined")
-          registeredPrompt.callback = updates.callback;
-        if (typeof updates.enabled !== "undefined")
-          registeredPrompt.enabled = updates.enabled;
-        this.sendPromptListChanged();
-      }
-    };
-    this._registeredPrompts[name] = registeredPrompt;
-    if (argsSchema) {
-      const hasCompletable = Object.values(argsSchema).some((field) => {
-        const inner = field instanceof ZodOptional ? field._def?.innerType : field;
-        return isCompletable(inner);
-      });
-      if (hasCompletable) {
-        this.setCompletionRequestHandler();
-      }
-    }
-    return registeredPrompt;
-  }
-  _createRegisteredTool(name, title, description, inputSchema, outputSchema, annotations, execution, _meta, handler) {
-    validateAndWarnToolName(name);
-    const registeredTool = {
-      title,
-      description,
-      inputSchema: getZodSchemaObject(inputSchema),
-      outputSchema: getZodSchemaObject(outputSchema),
-      annotations,
-      execution,
-      _meta,
-      handler,
-      enabled: true,
-      disable: () => registeredTool.update({ enabled: false }),
-      enable: () => registeredTool.update({ enabled: true }),
-      remove: () => registeredTool.update({ name: null }),
-      update: (updates) => {
-        if (typeof updates.name !== "undefined" && updates.name !== name) {
-          if (typeof updates.name === "string") {
-            validateAndWarnToolName(updates.name);
-          }
-          delete this._registeredTools[name];
-          if (updates.name)
-            this._registeredTools[updates.name] = registeredTool;
-        }
-        if (typeof updates.title !== "undefined")
-          registeredTool.title = updates.title;
-        if (typeof updates.description !== "undefined")
-          registeredTool.description = updates.description;
-        if (typeof updates.paramsSchema !== "undefined")
-          registeredTool.inputSchema = objectFromShape(updates.paramsSchema);
-        if (typeof updates.outputSchema !== "undefined")
-          registeredTool.outputSchema = objectFromShape(updates.outputSchema);
-        if (typeof updates.callback !== "undefined")
-          registeredTool.handler = updates.callback;
-        if (typeof updates.annotations !== "undefined")
-          registeredTool.annotations = updates.annotations;
-        if (typeof updates._meta !== "undefined")
-          registeredTool._meta = updates._meta;
-        if (typeof updates.enabled !== "undefined")
-          registeredTool.enabled = updates.enabled;
-        this.sendToolListChanged();
-      }
-    };
-    this._registeredTools[name] = registeredTool;
-    this.setToolRequestHandlers();
-    this.sendToolListChanged();
-    return registeredTool;
-  }
-  /**
-   * tool() implementation. Parses arguments passed to overrides defined above.
-   */
-  tool(name, ...rest) {
-    if (this._registeredTools[name]) {
-      throw new Error(`Tool ${name} is already registered`);
-    }
-    let description;
-    let inputSchema;
-    let outputSchema;
-    let annotations;
-    if (typeof rest[0] === "string") {
-      description = rest.shift();
-    }
-    if (rest.length > 1) {
-      const firstArg = rest[0];
-      if (isZodRawShapeCompat(firstArg)) {
-        inputSchema = rest.shift();
-        if (rest.length > 1 && typeof rest[0] === "object" && rest[0] !== null && !isZodRawShapeCompat(rest[0])) {
-          annotations = rest.shift();
-        }
-      } else if (typeof firstArg === "object" && firstArg !== null) {
-        if (Object.values(firstArg).some((v) => typeof v === "object" && v !== null)) {
-          throw new Error(`Tool ${name} expected a Zod schema or ToolAnnotations, but received an unrecognized object`);
-        }
-        annotations = rest.shift();
-      }
-    }
-    const callback = rest[0];
-    return this._createRegisteredTool(name, void 0, description, inputSchema, outputSchema, annotations, { taskSupport: "forbidden" }, void 0, callback);
-  }
-  /**
-   * Registers a tool with a config object and callback.
-   */
-  registerTool(name, config2, cb) {
-    if (this._registeredTools[name]) {
-      throw new Error(`Tool ${name} is already registered`);
-    }
-    const { title, description, inputSchema, outputSchema, annotations, _meta } = config2;
-    return this._createRegisteredTool(name, title, description, inputSchema, outputSchema, annotations, { taskSupport: "forbidden" }, _meta, cb);
-  }
-  prompt(name, ...rest) {
-    if (this._registeredPrompts[name]) {
-      throw new Error(`Prompt ${name} is already registered`);
-    }
-    let description;
-    if (typeof rest[0] === "string") {
-      description = rest.shift();
-    }
-    let argsSchema;
-    if (rest.length > 1) {
-      argsSchema = rest.shift();
-    }
-    const cb = rest[0];
-    const registeredPrompt = this._createRegisteredPrompt(name, void 0, description, argsSchema, cb);
-    this.setPromptRequestHandlers();
-    this.sendPromptListChanged();
-    return registeredPrompt;
-  }
-  /**
-   * Registers a prompt with a config object and callback.
-   */
-  registerPrompt(name, config2, cb) {
-    if (this._registeredPrompts[name]) {
-      throw new Error(`Prompt ${name} is already registered`);
-    }
-    const { title, description, argsSchema } = config2;
-    const registeredPrompt = this._createRegisteredPrompt(name, title, description, argsSchema, cb);
-    this.setPromptRequestHandlers();
-    this.sendPromptListChanged();
-    return registeredPrompt;
-  }
-  /**
-   * Checks if the server is connected to a transport.
-   * @returns True if the server is connected
-   */
-  isConnected() {
-    return this.server.transport !== void 0;
-  }
-  /**
-   * Sends a logging message to the client, if connected.
-   * Note: You only need to send the parameters object, not the entire JSON RPC message
-   * @see LoggingMessageNotification
-   * @param params
-   * @param sessionId optional for stateless and backward compatibility
-   */
-  async sendLoggingMessage(params, sessionId) {
-    return this.server.sendLoggingMessage(params, sessionId);
-  }
-  /**
-   * Sends a resource list changed event to the client, if connected.
-   */
-  sendResourceListChanged() {
-    if (this.isConnected()) {
-      this.server.sendResourceListChanged();
-    }
-  }
-  /**
-   * Sends a tool list changed event to the client, if connected.
-   */
-  sendToolListChanged() {
-    if (this.isConnected()) {
-      this.server.sendToolListChanged();
-    }
-  }
-  /**
-   * Sends a prompt list changed event to the client, if connected.
-   */
-  sendPromptListChanged() {
-    if (this.isConnected()) {
-      this.server.sendPromptListChanged();
-    }
-  }
-};
-var EMPTY_OBJECT_JSON_SCHEMA = {
-  type: "object",
-  properties: {}
-};
-function isZodTypeLike(value) {
-  return value !== null && typeof value === "object" && "parse" in value && typeof value.parse === "function" && "safeParse" in value && typeof value.safeParse === "function";
-}
-function isZodSchemaInstance(obj) {
-  return "_def" in obj || "_zod" in obj || isZodTypeLike(obj);
-}
-function isZodRawShapeCompat(obj) {
-  if (typeof obj !== "object" || obj === null) {
-    return false;
-  }
-  if (isZodSchemaInstance(obj)) {
-    return false;
-  }
-  if (Object.keys(obj).length === 0) {
-    return true;
-  }
-  return Object.values(obj).some(isZodTypeLike);
-}
-function getZodSchemaObject(schema) {
-  if (!schema) {
-    return void 0;
-  }
-  if (isZodRawShapeCompat(schema)) {
-    return objectFromShape(schema);
-  }
-  if (!isZodSchemaInstance(schema)) {
-    throw new Error("inputSchema must be a Zod schema or raw shape, received an unrecognized object");
-  }
-  return schema;
-}
-function promptArgumentsFromSchema(schema) {
-  const shape = getObjectShape(schema);
-  if (!shape)
-    return [];
-  return Object.entries(shape).map(([name, field]) => {
-    const description = getSchemaDescription(field);
-    const isOptional = isSchemaOptional(field);
-    return {
-      name,
-      description,
-      required: !isOptional
-    };
   });
+  return { server: server2, registerTool: registerTool2 };
 }
-function getMethodValue(schema) {
-  const shape = getObjectShape(schema);
-  const methodSchema = shape?.method;
-  if (!methodSchema) {
-    throw new Error("Schema is missing a method literal");
-  }
-  const value = getLiteralValue(methodSchema);
-  if (typeof value === "string") {
-    return value;
-  }
-  throw new Error("Schema method literal must be a string");
-}
-function createCompletionResult(suggestions) {
-  return {
-    completion: {
-      values: suggestions.slice(0, 100),
-      total: suggestions.length,
-      hasMore: suggestions.length > 100
-    }
-  };
-}
-var EMPTY_COMPLETION_RESULT = {
-  completion: {
-    values: [],
-    hasMore: false
-  }
-};
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 import process2 from "node:process";
@@ -30754,7 +28241,7 @@ async function readAwarenessSections(opts) {
   };
   const now = extractNow(contract, nowExcerptLength);
   const contractEntries = stack?.length ? buildStackedContractEntries(stack, summaryExcerptLength) : buildContractEntries(contract, summaryExcerptLength);
-  const [tree, skills, activity] = await Promise.all([
+  const [tree, skills2, activity] = await Promise.all([
     buildTree(root, treeOpts),
     readSkills(stack?.length ? stack.map((level) => level.dir) : [root], summaryExcerptLength),
     lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
@@ -30763,7 +28250,7 @@ async function readAwarenessSections(opts) {
     now,
     tree,
     contract: contractEntries,
-    skills,
+    skills: skills2,
     activity
   };
 }
@@ -30787,12 +28274,12 @@ async function readAgreementAwarenessSections(opts) {
     revision: contentRevision(file.content),
     placement: "head"
   })));
-  const [tree, skills, activity] = await Promise.all([
+  const [tree, skills2, activity] = await Promise.all([
     buildTree(root, treeOpts),
     readSkills(agreement.stack.map((level) => level.dir), summaryExcerptLength),
     lastSha ? readActivity(activityRoot, lastSha, maxChanges) : Promise.resolve(null)
   ]);
-  return { now: null, tree, contract, skills, activity };
+  return { now: null, tree, contract, skills: skills2, activity };
 }
 async function readFloorAwarenessSections(opts) {
   const { root, activityRoot, lastSha, maxChanges = 15, summaryExcerptLength = 200 } = opts;
@@ -31181,11 +28668,11 @@ function renderContract(entries, levelBase) {
   }
   return lines.join("\n");
 }
-function renderSkills(skills, levelBase) {
-  if (!skills.length)
+function renderSkills(skills2, levelBase) {
+  if (!skills2.length)
     return null;
   const lines = ["Operating skills:"];
-  for (const skill of skills) {
+  for (const skill of skills2) {
     const name = `${skill.name}${levelAnnotation(skill.level, levelBase)}`;
     lines.push(skill.summary ? `  ${name} \u2014 ${skill.summary}` : `  ${name}`);
   }
@@ -31809,12 +29296,14 @@ async function readMarkdownTarget(path, position, depth) {
   let name;
   let summary;
   let warnings;
+  let post;
   if (isPost) {
     const postResult = parseThreadPost(source, position);
     if (postResult.status === "valid") {
       name = nonEmptyString(postResult.post.frontmatter.name) ?? nonEmptyString(postResult.post.id) ?? basename3(path, extname(path));
       summary = nonEmptyString(postResult.post.frontmatter.summary) ?? summarizeMarkdown(source);
       warnings = postResult.post.warnings?.map((warning) => ({ post: position, ...warning }));
+      post = postHandle(postResult.post);
     } else {
       name = nonEmptyString(frontmatter?.name) ?? basename3(path, extname(path));
       summary = summarizeMarkdown(source);
@@ -31827,6 +29316,8 @@ async function readMarkdownTarget(path, position, depth) {
   const target = baseTarget(path, position, "markdown", depth, name, summary);
   if (warnings?.length)
     target.warnings = warnings;
+  if (post)
+    target.post = post;
   if (depth === "surface" || depth === "full") {
     target.surface = stripFrontmatter(source);
   } else if (depth === "children") {
@@ -31878,10 +29369,12 @@ async function readDirectoryTarget(path, position, depth, maxChildren, summaryEx
           const postResult = parseThreadPost(content, joinPortable(position, fileName));
           let postName;
           let postSummary;
+          let post;
           if (postResult.status === "valid") {
             warnings.push(...(postResult.post.warnings ?? []).map((warning) => ({ post: joinPortable(position, fileName), ...warning })));
             postName = nonEmptyString(postResult.post.frontmatter.name) ?? nonEmptyString(postResult.post.id) ?? basename3(fileName, ".md");
             postSummary = nonEmptyString(postResult.post.frontmatter.summary) ?? (summarizeMarkdown(content) || void 0);
+            post = postHandle(postResult.post);
           } else {
             warnings.push(...postResult.issues.map((warning) => ({ post: joinPortable(position, fileName), field: "frontmatter", warning })));
             const fm = parseFrontmatter(content);
@@ -31892,7 +29385,8 @@ async function readDirectoryTarget(path, position, depth, maxChildren, summaryEx
             kind: "markdown",
             name: postName,
             position: joinPortable(position, fileName),
-            ...postSummary ? { summary: postSummary } : {}
+            ...postSummary ? { summary: postSummary } : {},
+            ...post ? { post } : {}
           });
         } catch {
           children.push({
@@ -32025,7 +29519,8 @@ function finishTarget(target) {
     ...target.children !== void 0 ? { children: target.children } : {},
     ...target.omittedChildren !== void 0 ? { omittedChildren: target.omittedChildren } : {},
     ...target.page !== void 0 ? { page: target.page } : {},
-    ...target.warnings !== void 0 ? { warnings: target.warnings } : {}
+    ...target.warnings !== void 0 ? { warnings: target.warnings } : {},
+    ...target.post !== void 0 ? { post: target.post } : {}
   };
   target.revision = contentRevision2(JSON.stringify(represented));
   return target;
@@ -32044,6 +29539,13 @@ async function readDirectoryReadme(path) {
     throw error2;
   }
 }
+function postHandle(post) {
+  const author = nonEmptyString(post.frontmatter.author);
+  return { id: post.id, kind: post.kind, ...author ? { author } : {} };
+}
+function renderPostHandle(post) {
+  return [post.id, post.kind, ...post.author ? [post.author] : []].join(" \xB7 ");
+}
 function renderTarget(target) {
   const lines = [
     "Look:",
@@ -32054,6 +29556,8 @@ function renderTarget(target) {
     "  placement: history",
     `  name: ${target.name}`
   ];
+  if (target.post)
+    lines.push(`  post: ${renderPostHandle(target.post)}`);
   if ("summary" in target)
     lines.push(`  summary: ${target.summary ?? "(none)"}`);
   if (target.warnings?.length) {
@@ -32082,7 +29586,8 @@ function renderTarget(target) {
       } else {
         const suffix = child.kind === "directory" ? "/" : "";
         const summary = child.summary ? ` \u2014 ${child.summary}` : "";
-        lines.push(`  ${child.position}${suffix}${summary}`);
+        const post = child.post ? ` [${renderPostHandle(child.post)}]` : "";
+        lines.push(`  ${child.position}${suffix}${post}${summary}`);
       }
     }
     if (target.omittedChildren)
@@ -33535,39 +31040,75 @@ import { existsSync as existsSync3, lstatSync, readFileSync, realpathSync } from
 var import_yaml3 = __toESM(require_dist2(), 1);
 function isHostedRef(input) {
   const path = input.path?.trim() ?? "";
-  return HOSTED_THREAD_ID.test(path) && !existsSync3(join11(resolve11(process.cwd(), input.cwd ?? "."), THREADS_DIRECTORY, path));
+  return HOSTED_THREAD_ID.test(path) && !existsSync3(
+    join11(resolve11(process.cwd(), input.cwd ?? "."), THREADS_DIRECTORY, path)
+  );
 }
 function threadArgs(input) {
-  if (input.action === "ack") throw new Error("Agent acknowledgement is held until a separate agent token exists; it must not move the person's Unread.");
+  if (input.action === "ack")
+    throw new Error(
+      "Agent acknowledgement is held until a separate agent token exists; it must not move the person's Unread."
+    );
   if (input.action === "recent") return recentArgs(input);
   if (input.hosted || isHostedRef(input)) return hostedArgs(input);
-  if (input.cursor !== void 0 || input.recipients !== void 0 || input.post_id !== void 0 || input.unread !== void 0) throw new Error("Hosted options require hosted: true or an x_ id.");
+  if (input.cursor !== void 0 || input.recipients !== void 0 || input.post_id !== void 0 || input.unread !== void 0)
+    throw new Error("Hosted options require hosted: true or an x_ id.");
   const { action } = input;
   const path = input.path?.trim();
   const selected = input.member !== void 0;
-  if (input.tags?.length && action !== "post") throw new Error("tags apply only to posts.");
-  if (input.attached_to !== void 0 && action !== "new") throw new Error("attached_to belongs only on a new Thread's opening post.");
-  if (input.about !== void 0 && action !== "new") throw new Error("about applies only to threads new.");
-  if ((input.kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) && action !== "post") throw new Error("kind, mark and supersedes apply only to local posts.");
-  if (input.reply_to?.length && action !== "post") throw new Error("reply_to applies only to posts.");
-  if (input.checkout && !selected) throw new Error("checkout requires an authored map and member.");
+  if (input.tags?.length && action !== "post")
+    throw new Error("tags apply only to posts.");
+  if (input.attached_to !== void 0 && action !== "new")
+    throw new Error("attached_to belongs only on a new Thread's opening post.");
+  if (input.about !== void 0 && action !== "new")
+    throw new Error("about applies only to threads new.");
+  if ((input.kind !== void 0 || input.mark !== void 0 || input.supersedes !== void 0) && action !== "post")
+    throw new Error("kind, mark and supersedes apply only to local posts.");
+  if (input.reply_to?.length && action !== "post")
+    throw new Error("reply_to applies only to posts.");
+  if (input.checkout && !selected)
+    throw new Error("checkout requires an authored map and member.");
   if (selected && (!input.map?.trim() || !Number.isSafeInteger(input.member) || input.member < 0)) {
-    throw new Error("Selected Thread requires an authored map and zero-based member.");
+    throw new Error(
+      "Selected Thread requires an authored map and zero-based member."
+    );
   }
-  if (input.map && action === "open" && !selected && !path?.startsWith("x_")) throw new Error("Pinned open with map requires a member; no HEAD fallback.");
-  if ((selected || input.checkout) && action !== "open" && action !== "post") throw new Error("Selection is only available for open and post.");
+  if (input.map && action === "open" && !selected && !path?.startsWith("x_"))
+    throw new Error(
+      "Pinned open with map requires a member; no HEAD fallback."
+    );
+  if ((selected || input.checkout) && action !== "open" && action !== "post")
+    throw new Error("Selection is only available for open and post.");
   if (action === "list") {
-    if (input.limit !== void 0) throw new Error("List paging requires hosted: true; local list does not accept limit.");
-    if (input.since || input.post || input.new) throw new Error("--since, --new and --post select an opened Thread, not a list.");
-    return ["threads", "list", ...path ? [path] : [], "--depth", input.depth ?? "summary"];
+    if (input.limit !== void 0)
+      throw new Error(
+        "List paging requires hosted: true; local list does not accept limit."
+      );
+    if (input.since || input.post || input.new)
+      throw new Error(
+        "--since, --new and --post select an opened Thread, not a list."
+      );
+    return [
+      "threads",
+      "list",
+      ...path ? [path] : [],
+      cliOption("--depth", input.depth ?? "summary")
+    ];
   }
-  if (!path?.trim()) throw new Error("Provide a local Thread path or hosted x_ id.");
+  if (!path?.trim())
+    throw new Error("Provide a local Thread path or hosted x_ id.");
   if (action === "new") {
     if (selected || input.checkout !== void 0 || input.pin !== void 0 || input.position !== void 0 || input.depth !== void 0 || input.new !== void 0 || input.since !== void 0 || input.post !== void 0 || input.limit !== void 0 || input.order !== void 0 || input.message !== void 0 || input.reply_to?.length || input.name !== void 0 || input.summary !== void 0 || input.author !== void 0) {
-      throw new Error("threads new needs only a local slug, about and optional attached_to; omit read, post and pin options.");
+      throw new Error(
+        "threads new needs only a local slug, about and optional attached_to; omit read, post and pin options."
+      );
     }
-    if (!input.about?.trim()) throw new Error("threads new requires about (the opening title).");
-    if (input.map !== void 0 && !input.map.trim()) throw new Error("threads new --map requires a pinned Map note or inline selection.");
+    if (!input.about?.trim())
+      throw new Error("threads new requires about (the opening title).");
+    if (input.map !== void 0 && !input.map.trim())
+      throw new Error(
+        "threads new --map requires a pinned Map note or inline selection."
+      );
     if (input.attached_to !== void 0 && (!input.attached_to.includes(":") || !parseThreadAttachment(input.attached_to))) {
       throw new Error("attached_to requires a valid <type>:<id> link.");
     }
@@ -33575,82 +31116,132 @@ function threadArgs(input) {
       "threads",
       "new",
       path,
-      "--about",
-      input.about,
-      ...input.attached_to ? ["--attached-to", input.attached_to] : [],
-      ...input.map ? ["--map", input.map] : []
+      cliOption("--about", input.about),
+      ...input.attached_to ? [cliOption("--attached-to", input.attached_to)] : [],
+      ...input.map ? [cliOption("--map", input.map)] : []
     ];
   }
-  if (input.new && input.since) throw new Error("Use --new or --since, not both.");
-  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1)) throw new Error("limit must be a positive integer.");
-  if (input.order !== void 0 && input.order !== "newer" && input.order !== "older") throw new Error("order must be newer or older.");
+  if (input.new && input.since)
+    throw new Error("Use --new or --since, not both.");
+  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1))
+    throw new Error("limit must be a positive integer.");
+  if (input.order !== void 0 && input.order !== "newer" && input.order !== "older")
+    throw new Error("order must be newer or older.");
   const paged = input.limit !== void 0 || input.order !== void 0;
-  if (paged && action !== "open") throw new Error("limit and order apply to opening, not writing.");
+  if (paged && action !== "open")
+    throw new Error("limit and order apply to opening, not writing.");
   if (action === "open") {
-    if (input.post && paged) throw new Error("One exact post needs no limit or order.");
-    if ((selected || input.pin) && paged) throw new Error("Pinned selection needs no limit or order.");
-    if ((selected || input.pin) && (input.new || input.since || input.post || input.depth === "children")) throw new Error("An authored pinned post cannot use --new, --since, --post or children; open the live Thread to traverse it.");
-    if (input.pin && !input.position || input.position && !input.pin) throw new Error("Pinned open requires both authored pin and position; never substitute HEAD.");
-    if (selected && (input.pin || input.position)) throw new Error("Use either authored map/member selection or pin/position, not both.");
+    if (input.post && paged)
+      throw new Error("One exact post needs no limit or order.");
+    if ((selected || input.pin) && paged)
+      throw new Error("Pinned selection needs no limit or order.");
+    if ((selected || input.pin) && (input.new || input.since || input.post || input.depth === "children"))
+      throw new Error(
+        "An authored pinned post cannot use --new, --since, --post or children; open the live Thread to traverse it."
+      );
+    if (input.pin && !input.position || input.position && !input.pin)
+      throw new Error(
+        "Pinned open requires both authored pin and position; never substitute HEAD."
+      );
+    if (selected && (input.pin || input.position))
+      throw new Error(
+        "Use either authored map/member selection or pin/position, not both."
+      );
     return [
       "threads",
       "open",
       path,
-      "--depth",
-      selected || input.pin ? "full" : input.depth ?? "surface",
+      cliOption(
+        "--depth",
+        selected || input.pin ? "full" : input.depth ?? "surface"
+      ),
       ...input.new ? ["--new"] : [],
-      ...input.since ? ["--since", input.since] : [],
-      ...input.post ? ["--post", input.post] : [],
-      ...input.limit ? ["--limit", String(input.limit)] : [],
-      ...input.order ? ["--order", input.order] : [],
-      ...selected ? ["--map", input.map, "--member", String(input.member), ...input.checkout ? ["--checkout", input.checkout] : []] : input.pin ? ["--pin", input.pin, "--position", input.position] : []
+      ...input.since ? [cliOption("--since", input.since)] : [],
+      ...input.post ? [cliOption("--post", input.post)] : [],
+      ...input.limit ? [cliOption("--limit", String(input.limit))] : [],
+      ...input.order ? [cliOption("--order", input.order)] : [],
+      ...selected ? [
+        cliOption("--map", input.map),
+        cliOption("--member", String(input.member)),
+        ...input.checkout ? [cliOption("--checkout", input.checkout)] : []
+      ] : input.pin ? [
+        cliOption("--pin", input.pin),
+        cliOption("--position", input.position)
+      ] : []
     ];
   }
-  if (input.pin || input.position || input.depth || input.new || input.since || input.post) throw new Error("Pin, position, depth, --new, --since and --post apply to opening, not writing.");
-  if (input.tags?.some((tag) => !tag?.trim() || tag.includes(","))) throw new Error("tags must be non-empty and may not contain commas.");
-  if (selected && (input.author || !input.reply_to?.length)) throw new Error("Selected posts require an explicit reply_to and the caller's Agreement author; omit author.");
-  if (!input.message?.trim()) throw new Error("A post or closure needs a nonempty message.");
-  if (action === "post" && input.kind !== void 0 && !input.kind.trim()) throw new Error("kind must be a non-empty string.");
+  if (input.pin || input.position || input.depth || input.new || input.since || input.post)
+    throw new Error(
+      "Pin, position, depth, --new, --since and --post apply to opening, not writing."
+    );
+  if (input.tags?.some((tag) => !tag?.trim() || tag.includes(",")))
+    throw new Error("tags must be non-empty and may not contain commas.");
+  if (selected && (input.author || !input.reply_to?.length))
+    throw new Error(
+      "Selected posts require an explicit reply_to and the caller's Agreement author; omit author."
+    );
+  if (!input.message?.trim())
+    throw new Error("A post or closure needs a nonempty message.");
+  if (action === "post" && input.kind !== void 0 && !input.kind.trim())
+    throw new Error("kind must be a non-empty string.");
   if (action === "post" && input.kind && !THREAD_KINDS.includes(input.kind)) {
-    throw new Error(`kind ${JSON.stringify(input.kind)} is not a kind: use ${THREAD_KINDS.join(", ")}. A label for a post goes in tags.`);
+    throw new Error(
+      `kind ${JSON.stringify(input.kind)} is not a kind: use ${THREAD_KINDS.join(", ")}. A label for a post goes in tags.`
+    );
   }
   if (action === "post" && input.kind === "mark" && (!input.mark?.trim() || input.reply_to?.length !== 1 || input.reply_to[0] === "latest")) {
-    throw new Error("kind: mark requires mark and reply_to with exactly one explicit target post id.");
+    throw new Error(
+      "kind: mark requires mark and reply_to with exactly one explicit target post id."
+    );
   }
-  if (input.mark !== void 0 && input.kind !== "mark") throw new Error("mark requires kind: mark.");
-  if (input.kind === "correction" && !input.supersedes?.trim()) throw new Error("kind: correction requires supersedes with the post id being corrected or retracted.");
-  if (input.supersedes !== void 0 && input.kind !== "correction") throw new Error("supersedes requires kind: correction.");
-  if (action === "close" && (input.reply_to?.length || input.name || input.summary || input.map || input.tags?.length)) throw new Error("Closure only accepts message and author; omit reply_to, name, summary, tags and map.");
+  if (input.mark !== void 0 && input.kind !== "mark")
+    throw new Error("mark requires kind: mark.");
+  if (input.kind === "correction" && !input.supersedes?.trim())
+    throw new Error(
+      "kind: correction requires supersedes with the post id being corrected or retracted."
+    );
+  if (input.supersedes !== void 0 && input.kind !== "correction")
+    throw new Error("supersedes requires kind: correction.");
+  if (action === "close" && (input.reply_to?.length || input.name || input.summary || input.map || input.tags?.length))
+    throw new Error(
+      "Closure only accepts message and author; omit reply_to, name, summary, tags and map."
+    );
   return [
     "threads",
     action,
     path,
-    "--message",
-    input.message,
-    ...input.author ? ["--author", input.author] : [],
+    cliOption("--message", input.message),
+    ...input.author ? [cliOption("--author", input.author)] : [],
     ...action === "post" ? [
-      ...input.reply_to?.length ? ["--reply-to", input.reply_to.join(",")] : [],
-      ...input.kind ? ["--kind", input.kind] : [],
-      ...input.mark ? ["--mark", input.mark] : [],
-      ...input.supersedes ? ["--supersedes", input.supersedes] : [],
-      ...input.name ? ["--name", input.name] : [],
-      ...input.summary ? ["--summary", input.summary] : [],
-      ...input.tags?.length ? ["--tags", input.tags.join(",")] : [],
-      ...input.map ? ["--map", input.map] : [],
-      ...selected ? ["--member", String(input.member), ...input.checkout ? ["--checkout", input.checkout] : []] : []
+      ...input.reply_to?.length ? [cliOption("--reply-to", input.reply_to.join(","))] : [],
+      ...input.kind ? [cliOption("--kind", input.kind)] : [],
+      ...input.mark ? [cliOption("--mark", input.mark)] : [],
+      ...input.supersedes ? [cliOption("--supersedes", input.supersedes)] : [],
+      ...input.name ? [cliOption("--name", input.name)] : [],
+      ...input.summary ? [cliOption("--summary", input.summary)] : [],
+      ...input.tags?.length ? [cliOption("--tags", input.tags.join(","))] : [],
+      ...input.map ? [cliOption("--map", input.map)] : [],
+      ...selected ? [
+        cliOption("--member", String(input.member)),
+        ...input.checkout ? [cliOption("--checkout", input.checkout)] : []
+      ] : []
     ] : []
   ];
 }
 function lookReaderArgs(input) {
-  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 0)) throw new Error("limit must be a non-negative integer.");
-  if (input.since !== void 0 && !input.since.trim()) throw new Error("since needs a child filename from nextCursor.");
-  if (input.post !== void 0 && !input.post.trim()) throw new Error("post needs a msg_ id.");
-  if (input.post && (input.limit !== void 0 || input.since || input.order)) throw new Error("post selects one id; omit limit, since and order.");
+  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 0))
+    throw new Error("limit must be a non-negative integer.");
+  if (input.since !== void 0 && !input.since.trim())
+    throw new Error("since needs a child filename from nextCursor.");
+  if (input.post !== void 0 && !input.post.trim())
+    throw new Error("post needs a msg_ id.");
+  if (input.post && (input.limit !== void 0 || input.since || input.order))
+    throw new Error("post selects one id; omit limit, since and order.");
   return [
-    ...input.limit !== void 0 ? ["--limit", String(input.limit)] : [],
-    ...input.since ? ["--since", input.since] : [],
-    ...input.order ? ["--order", input.order] : [],
-    ...input.post ? ["--post", input.post] : []
+    ...input.limit !== void 0 ? [cliOption("--limit", String(input.limit))] : [],
+    ...input.since ? [cliOption("--since", input.since)] : [],
+    ...input.order ? [cliOption("--order", input.order)] : [],
+    ...input.post ? [cliOption("--post", input.post)] : []
   ];
 }
 function lookCliFailure(detail3) {
@@ -33662,7 +31253,9 @@ function threadCliFailure(detail3) {
     return `${detail3}
 An opening-post Map requires IdeaSpaces CLI 0.4.0 or newer. Update the CLI (or plugin bundle) and retry.`;
   }
-  if (/Unknown flag for threads (?:new: --attached-to|post: --(?:mark|kind))/i.test(detail3)) {
+  if (/Unknown flag for threads (?:new: --attached-to|post: --(?:mark|kind))/i.test(
+    detail3
+  )) {
     return `${detail3}
 Opening links and marks require IdeaSpaces CLI 0.3.1 or newer. Update the CLI (or plugin bundle) and retry.`;
   }
@@ -33670,25 +31263,34 @@ Opening links and marks require IdeaSpaces CLI 0.3.1 or newer. Update the CLI (o
     return `${detail3}
 Tags on a hosted Thread require IdeaSpaces CLI 0.7.0 or newer. Update the CLI (or plugin bundle) and retry.`;
   }
-  return /Unknown flag for threads (?:open|post)|--depth surface requires --post/i.test(detail3) ? `${detail3}
+  return /Unknown flag for threads (?:open|post)|--depth surface requires --post/i.test(
+    detail3
+  ) ? `${detail3}
 This Thread tree tool requires IdeaSpaces CLI 0.2.21 or newer. Update the CLI (or plugin bundle) and retry.` : detail3;
 }
 function selectedPin(input, cwd) {
-  if (input.map === void 0 || input.member === void 0) throw new Error("Selected Thread requires map and member.");
+  if (input.map === void 0 || input.member === void 0)
+    throw new Error("Selected Thread requires map and member.");
   const file = resolve11(cwd, input.map);
   let value;
   if (existsSync3(file)) {
     const stat2 = lstatSync(file);
-    if (!stat2.isFile() || stat2.isSymbolicLink() || stat2.size > 128 * 1024) throw new Error("Map must be a regular file no larger than 128 KiB.");
+    if (!stat2.isFile() || stat2.isSymbolicLink() || stat2.size > 128 * 1024)
+      throw new Error("Map must be a regular file no larger than 128 KiB.");
     const text = readFileSync(file, "utf8");
     value = parseFrontmatter(text)?.map ?? (0, import_yaml3.parse)(text);
   } else {
-    if (!input.map.includes("\n") && !input.map.includes(":")) throw new Error(`Map file not found: ${file}`);
+    if (!input.map.includes("\n") && !input.map.includes(":"))
+      throw new Error(`Map file not found: ${file}`);
     value = (0, import_yaml3.parse)(input.map);
   }
-  if (value && typeof value === "object" && "map" in value) value = value.map;
+  if (value && typeof value === "object" && "map" in value)
+    value = value.map;
   const parsed = parseMap(value);
-  if (parsed.status !== "valid") throw new Error("Map must supply valid roots and members with authored pins.");
+  if (parsed.status !== "valid")
+    throw new Error(
+      "Map must supply valid roots and members with authored pins."
+    );
   const member = parsed.map.members[input.member];
   if (!member || !("position" in member) || typeof member.position !== "string" || typeof member.root !== "number") {
     throw new Error("Selected Map member is not a pinned local position.");
@@ -33703,7 +31305,9 @@ function postView(text, position, depth) {
   const view = depth === "name" ? name : depth === "summary" ? `${name}
 ${summarizeMarkdown(text) ?? ""}` : depth === "surface" ? stripFrontmatter(text) : text;
   const parsed = parseThreadPost(text, position);
-  const warnings = parsed.status === "valid" ? (parsed.post.warnings ?? []).map((warning) => `${position}: ${warning.field}: ${warning.warning}`) : parsed.issues.map((warning) => `${position}: frontmatter: ${warning}`);
+  const warnings = parsed.status === "valid" ? (parsed.post.warnings ?? []).map(
+    (warning) => `${position}: ${warning.field}: ${warning.warning}`
+  ) : parsed.issues.map((warning) => `${position}: frontmatter: ${warning}`);
   return warnings.length ? `${view.trimEnd()}
 
 Warnings:
@@ -33711,14 +31315,18 @@ ${warnings.map((warning) => `  ${warning}`).join("\n")}` : view;
 }
 function pinnedView(data, depth, expected) {
   if (!data.pinned || data.pin !== expected.pin || data.position !== expected.position) {
-    throw new Error("CLI did not return the requested authored pin and position; refusing working-tree fallback.");
+    throw new Error(
+      "CLI did not return the requested authored pin and position; refusing working-tree fallback."
+    );
   }
   return postView(data.pinned, expected.position, depth);
 }
 function virtualThreadPost(path, root) {
   const realRoot = realpathSync(root);
   const position = relative6(resolve11(root), resolve11(root, path)).split(sep6).join("/");
-  const match = /^_threads\/([^/]+)\/(msg_[A-Za-z0-9][A-Za-z0-9_-]*)$/.exec(position);
+  const match = /^_threads\/([^/]+)\/(msg_[A-Za-z0-9][A-Za-z0-9_-]*)$/.exec(
+    position
+  );
   if (!match) return null;
   const thread = resolve11(root, "_threads", match[1]);
   let actual;
@@ -33728,7 +31336,10 @@ function virtualThreadPost(path, root) {
     return { status: "invalid", reason: `Thread folder not found: ${thread}` };
   }
   if (relative6(realRoot, actual).split(sep6).join("/") !== `_threads/${match[1]}`) {
-    return { status: "invalid", reason: "Thread folder escapes the selected root." };
+    return {
+      status: "invalid",
+      reason: "Thread folder escapes the selected root."
+    };
   }
   return { status: "ok", thread: actual, position, postId: match[2] };
 }
@@ -33751,47 +31362,96 @@ function hostedArgs(input) {
   const path = input.path?.trim();
   const allowed = {
     list: ["hosted", "limit", "cursor", "unread"],
-    new: ["hosted", "name", "summary", "message", "recipients", "map", "post_id", "tags"],
+    new: [
+      "hosted",
+      "name",
+      "summary",
+      "message",
+      "recipients",
+      "map",
+      "post_id",
+      "tags"
+    ],
     open: ["hosted", "path", "limit", "cursor"],
-    post: ["hosted", "path", "reply_to", "message", "name", "summary", "map", "post_id", "tags"]
+    post: [
+      "hosted",
+      "path",
+      "reply_to",
+      "message",
+      "name",
+      "summary",
+      "map",
+      "post_id",
+      "tags"
+    ]
   };
-  if (!allowed[action]) throw new Error("Hosted close requires an explicit CLI preview and confirmation; use threads close x_id --message <why> then --yes.");
+  if (!allowed[action])
+    throw new Error(
+      "Hosted close requires an explicit CLI preview and confirmation; use threads close x_id --message <why> then --yes."
+    );
   for (const [key2, value] of Object.entries(input)) {
-    if (key2 !== "action" && key2 !== "cwd" && value !== void 0 && !(Array.isArray(value) && value.length === 0) && !allowed[action].includes(key2)) throw new Error(`${key2} is local-only or unsupported for hosted ${action}; omit it.`);
+    if (key2 !== "action" && key2 !== "cwd" && value !== void 0 && !(Array.isArray(value) && value.length === 0) && !allowed[action].includes(key2))
+      throw new Error(
+        `${key2} is local-only or unsupported for hosted ${action}; omit it.`
+      );
   }
-  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 200)) throw new Error("Hosted limit must be from 1 to 200.");
+  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 200))
+    throw new Error("Hosted limit must be from 1 to 200.");
   if (action === "list" || action === "new") {
-    if (path) throw new Error("Hosted list/new takes no path; use hosted: true.");
-  } else if (!HOSTED_THREAD_ID.test(path ?? "")) throw new Error("Hosted Thread id must match " + HOSTED_THREAD_ID.source + ".");
-  if (input.tags?.some((tag) => !tag?.trim() || tag.includes(","))) throw new Error("tags must be non-empty and may not contain commas.");
-  if (input.recipients?.some((r) => !r.trim() || r.includes(","))) throw new Error("Each recipients entry must be one selector, not a comma-separated list.");
-  if (input.post_id !== void 0 && !/^msg_[A-Za-z0-9_-]{1,60}$/.test(input.post_id)) throw new Error("post_id must be a msg_ id.");
-  if (action === "new" && (!input.name?.trim() || !input.summary?.trim())) throw new Error("Hosted new requires name and summary.");
-  if ((action === "new" || action === "post") && !input.message?.trim()) throw new Error("Hosted writes require message.");
-  if (action === "post" && (!input.reply_to?.length || input.reply_to.length > 16 || new Set(input.reply_to).size !== input.reply_to.length || input.reply_to.some((p) => !/^msg_[A-Za-z0-9_-]{1,60}$/.test(p)))) throw new Error("Hosted reply_to requires one to 16 distinct msg_ parent ids. Old n_ ids are not converted.");
+    if (path)
+      throw new Error("Hosted list/new takes no path; use hosted: true.");
+  } else if (!HOSTED_THREAD_ID.test(path ?? ""))
+    throw new Error(
+      "Hosted Thread id must match " + HOSTED_THREAD_ID.source + "."
+    );
+  if (input.tags?.some((tag) => !tag?.trim() || tag.includes(",")))
+    throw new Error("tags must be non-empty and may not contain commas.");
+  if (input.recipients?.some((r) => !r.trim() || r.includes(",")))
+    throw new Error(
+      "Each recipients entry must be one selector, not a comma-separated list."
+    );
+  if (input.post_id !== void 0 && !/^msg_[A-Za-z0-9_-]{1,60}$/.test(input.post_id))
+    throw new Error("post_id must be a msg_ id.");
+  if (action === "new" && (!input.name?.trim() || !input.summary?.trim()))
+    throw new Error("Hosted new requires name and summary.");
+  if ((action === "new" || action === "post") && !input.message?.trim())
+    throw new Error("Hosted writes require message.");
+  if (action === "post" && (!input.reply_to?.length || input.reply_to.length > 16 || new Set(input.reply_to).size !== input.reply_to.length || input.reply_to.some((p) => !/^msg_[A-Za-z0-9_-]{1,60}$/.test(p))))
+    throw new Error(
+      "Hosted reply_to requires one to 16 distinct msg_ parent ids. Old n_ ids are not converted."
+    );
   return [
     "threads",
     action,
     ...action === "list" || action === "new" ? ["--hosted"] : [path],
-    ...input.limit !== void 0 ? ["--limit", String(input.limit)] : [],
-    ...input.cursor !== void 0 ? ["--cursor", input.cursor] : [],
+    ...input.limit !== void 0 ? [cliOption("--limit", String(input.limit))] : [],
+    ...input.cursor !== void 0 ? [cliOption("--cursor", input.cursor)] : [],
     ...input.unread ? ["--unread"] : [],
-    ...input.reply_to ? ["--reply-to", input.reply_to.join(",")] : [],
-    ...input.message !== void 0 ? ["--message", input.message] : [],
-    ...input.name !== void 0 ? ["--name", input.name] : [],
-    ...input.summary !== void 0 ? ["--summary", input.summary] : [],
-    ...input.recipients !== void 0 ? ["--recipients", input.recipients.join(",")] : [],
-    ...input.map !== void 0 ? ["--map", input.map] : [],
-    ...input.tags?.length ? ["--tags", input.tags.join(",")] : [],
-    ...input.post_id !== void 0 ? ["--post-id", input.post_id] : []
+    ...input.reply_to ? [cliOption("--reply-to", input.reply_to.join(","))] : [],
+    ...input.message !== void 0 ? [cliOption("--message", input.message)] : [],
+    ...input.name !== void 0 ? [cliOption("--name", input.name)] : [],
+    ...input.summary !== void 0 ? [cliOption("--summary", input.summary)] : [],
+    ...input.recipients !== void 0 ? [cliOption("--recipients", input.recipients.join(","))] : [],
+    ...input.map !== void 0 ? [cliOption("--map", input.map)] : [],
+    ...input.tags?.length ? [cliOption("--tags", input.tags.join(","))] : [],
+    ...input.post_id !== void 0 ? [cliOption("--post-id", input.post_id)] : []
   ];
 }
 function recentArgs(input) {
   for (const [key2, value] of Object.entries(input)) {
-    if (!["action", "cwd", "cursor", "limit"].includes(key2) && value !== void 0 && !(Array.isArray(value) && value.length === 0)) throw new Error(`${key2} does not apply to recent; it takes cursor and limit.`);
+    if (!["action", "cwd", "cursor", "limit"].includes(key2) && value !== void 0 && !(Array.isArray(value) && value.length === 0))
+      throw new Error(
+        `${key2} does not apply to recent; it takes cursor and limit.`
+      );
   }
-  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 500)) throw new Error("recent limit must be from 1 to 500.");
-  return ["threads", "recent", ...input.cursor !== void 0 ? ["--cursor", input.cursor] : [], ...input.limit !== void 0 ? ["--limit", String(input.limit)] : []];
+  if (input.limit !== void 0 && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 500))
+    throw new Error("recent limit must be from 1 to 500.");
+  return [
+    "threads",
+    "recent",
+    ...input.cursor !== void 0 ? [cliOption("--cursor", input.cursor)] : [],
+    ...input.limit !== void 0 ? [cliOption("--limit", String(input.limit))] : []
+  ];
 }
 function recentCliFailure(detail3) {
   return /^Usage: ideaspaces threads <(?!.*\brecent\b)/.test(detail3) ? `${detail3}
@@ -33946,7 +31606,10 @@ var activeChildren = /* @__PURE__ */ new Set();
 function signalTree(child, signal) {
   if (!child.pid) return;
   try {
-    if (process.platform === "win32") spawn4("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+    if (process.platform === "win32")
+      spawn4("taskkill", ["/pid", String(child.pid), "/T", "/F"], {
+        windowsHide: true
+      });
     else process.kill(-child.pid, signal);
   } catch {
     try {
@@ -34014,7 +31677,14 @@ var spawnCli = (args, cwd) => new Promise((done) => {
     if (timer) clearTimeout(timer);
     untrackChild(child);
     const reason = overflow ? "CLI output exceeded limit" : timedOut ? `CLI turn timed out after ${timeoutMs}ms` : "";
-    done({ out, err: (reason ? `${reason}${err ? `: ${err}` : ""}` : err).slice(0, 4e3), code: timedOut || overflow ? 1 : code });
+    done({
+      out,
+      err: (reason ? `${reason}${err ? `: ${err}` : ""}` : err).slice(
+        0,
+        4e3
+      ),
+      code: timedOut || overflow ? 1 : code
+    });
   };
   if (timeoutMs > 0) {
     timer = setTimeout(() => {
@@ -34047,20 +31717,25 @@ function resolvePov(pov, cwd) {
     const dir = realpathSync3(candidate);
     const root = lstatSync3(dir);
     const contract = lstatSync3(join13(dir, "_agent", "agreement.md"));
-    if (root.isDirectory() && contract.isFile() && !contract.isSymbolicLink()) return { dir };
+    if (root.isDirectory() && contract.isFile() && !contract.isSymbolicLink())
+      return { dir };
   } catch {
   }
-  return { error: `Not a local Agreement POV: ${candidate} (requires a regular _agent/agreement.md in the target repository)` };
+  return {
+    error: `Not a local Agreement POV: ${candidate} (requires a regular _agent/agreement.md in the target repository)`
+  };
 }
-function parseTurn(out, err, code, expectedId, runtime) {
-  if (err.startsWith("CLI output exceeded limit") || err.startsWith("CLI turn timed out")) return { ok: false, text: err };
+function parseTurn(out, err, code, expectedId, runtime2) {
+  if (err.startsWith("CLI output exceeded limit") || err.startsWith("CLI turn timed out"))
+    return { ok: false, text: err };
   let reply = "";
   let complete = false;
   let failure2;
   let conversationId;
   for (const line of out.split("\n")) {
     if (!line.trim()) continue;
-    if (Buffer.byteLength(line) > MAX_EVENT_BYTES) return { ok: false, text: "CLI event exceeded limit" };
+    if (Buffer.byteLength(line) > MAX_EVENT_BYTES)
+      return { ok: false, text: "CLI event exceeded limit" };
     let event;
     try {
       event = JSON.parse(line);
@@ -34069,307 +31744,233 @@ function parseTurn(out, err, code, expectedId, runtime) {
     }
     if (event.type === "message_start") {
       const id = event.conversation_id;
-      if (typeof id !== "string" || !PI_ID.test(id) || runtime === "claude" && !UUID.test(id) || expectedId && id !== expectedId || conversationId && id !== conversationId) return { ok: false, text: "CLI returned an invalid or different conversation id" };
+      if (typeof id !== "string" || !PI_ID.test(id) || runtime2 === "claude" && !UUID.test(id) || expectedId && id !== expectedId || conversationId && id !== conversationId)
+        return {
+          ok: false,
+          text: "CLI returned an invalid or different conversation id"
+        };
       conversationId = id;
     }
-    if (event.type === "text_delta" && typeof event.delta === "string") reply = (reply + event.delta).slice(0, MAX_REPLY_CHARS);
+    if (event.type === "text_delta" && typeof event.delta === "string")
+      reply = (reply + event.delta).slice(0, MAX_REPLY_CHARS);
     if (event.type === "turn_complete") {
       complete = true;
       const response = event.result?.response;
-      if (typeof response === "string") reply = response.slice(0, MAX_REPLY_CHARS);
+      if (typeof response === "string")
+        reply = response.slice(0, MAX_REPLY_CHARS);
     }
-    if (event.type === "error") failure2 = String(event.message ?? "Child failed").slice(0, 4e3);
+    if (event.type === "error")
+      failure2 = String(event.message ?? "Child failed").slice(0, 4e3);
     if (event.type === "cancelled") failure2 = "Child turn was cancelled";
   }
   if (code === 0 && complete && !failure2 && !conversationId) {
-    return { ok: false, text: "CLI completed without a conversation id; refusing to invent a transcript handle." };
+    return {
+      ok: false,
+      text: "CLI completed without a conversation id; refusing to invent a transcript handle."
+    };
   }
   if (code !== 0 || failure2 || !complete) {
-    return { ok: false, text: (failure2 || err.trim() || `CLI exited ${code} without a successful turn_complete`).slice(0, 4e3) };
+    return {
+      ok: false,
+      text: (failure2 || err.trim() || `CLI exited ${code} without a successful turn_complete`).slice(0, 4e3)
+    };
   }
   return { ok: true, text: reply.trim(), conversationId };
 }
 async function runCollaborate(input, run2 = spawnCli, resolvePiResources = installedPiChildResources) {
   if (input.action === "close") {
-    if (!input.handle || !(input.runtime === "pi" ? PI_ID : UUID).test(input.handle)) return { ok: false, text: "A valid conversation handle is required for close." };
-    return { ok: true, text: JSON.stringify({
-      conversation_id: input.handle,
-      closed: false,
-      note: "No live process is held here; the transcript is retained and may be resumed."
-    }) };
+    if (!input.handle || !(input.runtime === "pi" ? PI_ID : UUID).test(input.handle))
+      return {
+        ok: false,
+        text: "A valid conversation handle is required for close."
+      };
+    return {
+      ok: true,
+      text: JSON.stringify({
+        conversation_id: input.handle,
+        closed: false,
+        note: "No live process is held here; the transcript is retained and may be resumed."
+      })
+    };
   }
-  if (process.env[DEPTH_ENV]) return { ok: false, text: "Refusing to collaborate from inside a collaboration \u2014 nesting is disabled." };
-  if (!input.pov || !input.message?.trim()) return { ok: false, text: "pov (local Agreement repo) and message are required." };
-  if (Buffer.byteLength(input.message) > 8 * 1024) return { ok: false, text: "Launch message exceeds 8 KiB; provide a smaller instruction or point to a local Note." };
+  if (process.env[DEPTH_ENV])
+    return {
+      ok: false,
+      text: "Refusing to collaborate from inside a collaboration \u2014 nesting is disabled."
+    };
+  if (!input.pov || !input.message?.trim())
+    return {
+      ok: false,
+      text: "pov (local Agreement repo) and message are required."
+    };
+  if (Buffer.byteLength(input.message) > 8 * 1024)
+    return {
+      ok: false,
+      text: "Launch message exceeds 8 KiB; provide a smaller instruction or point to a local Note."
+    };
   const selected = resolvePov(input.pov, input.cwd);
   if (!selected.dir) return { ok: false, text: selected.error };
-  const runtime = input.runtime ?? "claude";
-  if (runtime !== "pi" && runtime !== "claude") return { ok: false, text: "runtime must be pi or claude" };
-  if (input.action === "say" && (!input.handle || !(runtime === "pi" ? PI_ID : UUID).test(input.handle))) {
-    return { ok: false, text: "A valid conversation handle for the selected runtime is required for say." };
+  const runtime2 = input.runtime ?? "claude";
+  if (runtime2 !== "pi" && runtime2 !== "claude")
+    return { ok: false, text: "runtime must be pi or claude" };
+  if (input.action === "say" && (!input.handle || !(runtime2 === "pi" ? PI_ID : UUID).test(input.handle))) {
+    return {
+      ok: false,
+      text: "A valid conversation handle for the selected runtime is required for say."
+    };
   }
-  if (runtime === "pi" && (input.effort || input.permission_mode || input.read_only === true)) {
-    return { ok: false, text: "Claude effort, permission mode, and read-only tool policy are unavailable under Pi." };
+  if (runtime2 === "pi" && (input.effort || input.permission_mode || input.read_only === true)) {
+    return {
+      ok: false,
+      text: "Claude effort, permission mode, and read-only tool policy are unavailable under Pi."
+    };
   }
-  if (runtime === "claude" && input.thinking) return { ok: false, text: "Pi thinking is unavailable under Claude; choose effort instead." };
+  if (runtime2 === "claude" && input.thinking)
+    return {
+      ok: false,
+      text: "Pi thinking is unavailable under Claude; choose effort instead."
+    };
   let resources;
-  if (runtime === "pi") {
+  if (runtime2 === "pi") {
     try {
       resources = await resolvePiResources();
     } catch (error2) {
-      return { ok: false, text: error2 instanceof Error ? error2.message : String(error2) };
+      return {
+        ok: false,
+        text: error2 instanceof Error ? error2.message : String(error2)
+      };
     }
-    if (!resources.extensionPaths.length) return { ok: false, text: "No trusted Pi connector set is available from the launching habitat; child not started." };
+    if (!resources.extensionPaths.length)
+      return {
+        ok: false,
+        text: "No trusted Pi connector set is available from the launching habitat; child not started."
+      };
   }
-  const readOnly = runtime === "claude" && (input.read_only ?? true);
-  if (readOnly && input.permission_mode === "bypassPermissions") return { ok: false, text: "Read-only cannot bypass permissions." };
-  if (runtime === "pi" || readOnly || input.effort) {
+  const readOnly = runtime2 === "claude" && (input.read_only ?? true);
+  if (readOnly && input.permission_mode === "bypassPermissions")
+    return { ok: false, text: "Read-only cannot bypass permissions." };
+  if (runtime2 === "pi" || readOnly || input.effort) {
     const help = await run2(["agent", "run", "--help"], selected.dir);
-    const marker = runtime === "pi" ? "--pi-trust" : readOnly ? "--read-only" : "--claude-effort";
+    const marker = runtime2 === "pi" ? "--pi-trust" : readOnly ? "--read-only" : "--claude-effort";
     const usage = help.out + help.err;
-    if (help.code !== 0 || !usage.includes(marker) || runtime === "pi" && ["--ext", "--skill", "--pi-trust"].some((flag) => !usage.includes(flag)) || input.effort && !usage.includes("--claude-effort")) {
-      return { ok: false, text: runtime === "pi" ? "CLI lacks Pi child skill isolation; update IdeaSpaces CLI to 0.2.1 or newer before this launch." : `CLI does not support ${marker}; update the IdeaSpaces CLI before this launch.` };
+    if (help.code !== 0 || !usage.includes(marker) || runtime2 === "pi" && ["--ext", "--skill", "--pi-trust"].some(
+      (flag) => !usage.includes(flag)
+    ) || input.effort && !usage.includes("--claude-effort")) {
+      return {
+        ok: false,
+        text: runtime2 === "pi" ? "CLI lacks Pi child skill isolation; update IdeaSpaces CLI to 0.2.1 or newer before this launch." : `CLI does not support ${marker}; update the IdeaSpaces CLI before this launch.`
+      };
     }
   }
   const id = input.action === "say" ? input.handle : void 0;
   if (input.action === "say") {
-    const prior = await run2([
-      "--json",
-      "conversation",
-      "get",
-      "--local",
-      "--runtime",
-      runtime,
-      "--context",
-      selected.dir,
-      "--conversation",
-      input.handle
-    ], selected.dir);
-    if (prior.code !== 0) return { ok: false, text: (prior.err || prior.out || "Could not check conversation").slice(0, 4e3) };
-    if (Buffer.byteLength(prior.out) > MAX_OUTPUT_BYTES) return { ok: false, text: "Conversation history exceeds resume verification limit" };
+    const prior = await run2(
+      [
+        "--json",
+        "conversation",
+        "get",
+        "--local",
+        cliOption("--runtime", runtime2),
+        cliOption("--context", selected.dir),
+        cliOption("--conversation", input.handle)
+      ],
+      selected.dir
+    );
+    if (prior.code !== 0)
+      return {
+        ok: false,
+        text: (prior.err || prior.out || "Could not check conversation").slice(
+          0,
+          4e3
+        )
+      };
+    if (Buffer.byteLength(prior.out) > MAX_OUTPUT_BYTES)
+      return {
+        ok: false,
+        text: "Conversation history exceeds resume verification limit"
+      };
     try {
       const detail3 = JSON.parse(prior.out);
       const reported = typeof detail3.repo_id === "string" ? realpathSync3(detail3.repo_id) : "";
       if (reported !== selected.dir || !Array.isArray(detail3.history) || detail3.history.length === 0) {
-        return { ok: false, text: `No existing ${runtime} conversation ${id} at this Agreement POV; refusing to start a new transcript.` };
+        return {
+          ok: false,
+          text: `No existing ${runtime2} conversation ${id} at this Agreement POV; refusing to start a new transcript.`
+        };
       }
     } catch {
-      return { ok: false, text: "Cannot verify conversation identity before resume" };
+      return {
+        ok: false,
+        text: "Cannot verify conversation identity before resume"
+      };
     }
   }
-  const args = ["--json", "agent", "run", selected.dir, "--runtime", runtime, `--message=${input.message}`];
-  if (id) args.push("--conversation", id);
+  const args = [
+    "--json",
+    "agent",
+    "run",
+    selected.dir,
+    cliOption("--runtime", runtime2),
+    `--message=${input.message}`
+  ];
+  if (id) args.push(cliOption("--conversation", id));
   if (resources) {
-    args.push("--ext", resources.extensionPaths.join(","));
-    if (resources.skillPaths.length) args.push("--skill", resources.skillPaths.join(","));
+    args.push(cliOption("--ext", resources.extensionPaths.join(",")));
+    if (resources.skillPaths.length)
+      args.push(cliOption("--skill", resources.skillPaths.join(",")));
   }
-  if (input.model) args.push("--model", input.model);
-  if (runtime === "pi") args.push("--pi-trust", "saved");
-  if (input.thinking) args.push("--pi-thinking", input.thinking);
-  if (input.effort) args.push("--claude-effort", input.effort);
-  if (runtime === "claude") {
-    args.push("--permission-mode", input.permission_mode ?? (readOnly ? "dontAsk" : "acceptEdits"));
+  if (input.model) args.push(cliOption("--model", input.model));
+  if (runtime2 === "pi") args.push(cliOption("--pi-trust", "saved"));
+  if (input.thinking) args.push(cliOption("--pi-thinking", input.thinking));
+  if (input.effort) args.push(cliOption("--claude-effort", input.effort));
+  if (runtime2 === "claude") {
+    args.push(
+      cliOption(
+        "--permission-mode",
+        input.permission_mode ?? (readOnly ? "dontAsk" : "acceptEdits")
+      )
+    );
     if (readOnly) args.push("--read-only");
   }
   const { out, err, code } = await run2(args, selected.dir);
-  const result = parseTurn(out, err, code, id, runtime);
+  const result = parseTurn(out, err, code, id, runtime2);
   if (!result.ok) return result;
-  return { ok: true, text: JSON.stringify({
-    conversation_id: result.conversationId,
-    handle: result.conversationId,
-    runtime,
-    model: input.model ?? null,
-    permission_mode: runtime === "claude" ? input.permission_mode ?? (readOnly ? "dontAsk" : "acceptEdits") : null,
-    read_only: readOnly,
-    answer: result.text
-  }, null, 2) };
+  return {
+    ok: true,
+    text: JSON.stringify(
+      {
+        conversation_id: result.conversationId,
+        handle: result.conversationId,
+        runtime: runtime2,
+        model: input.model ?? null,
+        permission_mode: runtime2 === "claude" ? input.permission_mode ?? (readOnly ? "dontAsk" : "acceptEdits") : null,
+        read_only: readOnly,
+        answer: result.text
+      },
+      null,
+      2
+    )
+  };
 }
 
 // src/tool-parameters.ts
-var mapRoot = external_exports.object({
-  repo: external_exports.string().optional().describe("Canonical absolute repository URL: <web-origin>/repos/{root_node_id}"),
-  root_node_id: external_exports.string().optional().describe("Portable root Node identity"),
-  sha: external_exports.string().optional().describe("Optional full Git commit pin; omit for a live Space Map root")
-}).passthrough();
-var mapPositionMember = external_exports.object({
-  root: external_exports.number().int().optional().describe("Zero-based index into map.roots"),
-  position: external_exports.string().describe("Portable repository-relative protocol position, or ."),
-  depth: external_exports.enum(["name", "summary", "surface", "children", "full"]).optional()
-}).passthrough();
-var mapAddressMember = external_exports.object({
-  address: external_exports.string().describe("Open type:id address"),
-  name: external_exports.string().optional(),
-  summary: external_exports.string().optional(),
-  depth: external_exports.enum(["name", "summary"]).optional()
-}).passthrough();
-var mapBlock = external_exports.object({
-  roots: external_exports.array(mapRoot),
-  members: external_exports.array(external_exports.union([mapPositionMember, mapAddressMember]))
-}).passthrough();
-var contentDepth = external_exports.enum(["name", "summary", "surface", "children", "full"]);
-var mapField = external_exports.string().optional().describe("Map note (*.map.md or a Note with a map block) an address is read against; relative to cwd or absolute. Defaults to the session's launch Map (IDEASPACES_MAP).");
-var atField = external_exports.enum(["pin", "head"]).optional().describe("Read an address at its root's pin or its checkout's HEAD. Defaults by the Map's kind: a Space's Map reads HEAD and shows drift, a Thread's Map reads the pin.");
-var agreementField = external_exports.enum(["summary", "full"]).optional().describe("How another position's Agreement is read as reference. Default summary: each Agreement arrives as one line plus where to read it in full before writing there. full loads the target's own Agreement in full; ancestors stay summary. Your own Agreement is never affected.");
-var cwdField = external_exports.string().optional().describe(
-  "Absolute working directory for path resolution. Pass it when the agent has `cd`-ed into a subdir during the session \u2014 Bash `cd`s don't propagate to MCP tools, so paths otherwise resolve against the dir Claude Code launched from."
-);
-function sortedShape(shape) {
-  return Object.fromEntries(Object.entries(shape).sort(([a], [b]) => a.localeCompare(b)));
-}
-function frozenRoster(authored) {
-  return Object.fromEntries(
-    Object.entries(authored).map(([tool, shape]) => [tool, sortedShape(shape)])
-  );
-}
-var AUTHORED_TOOL_PARAMETERS = {
-  is_auth: {
-    action: external_exports.enum(["login", "logout"]).default("login").describe("login: open browser OAuth and save credentials. logout: clear credentials.")
-  },
-  is_threads: {
-    action: external_exports.enum(["list", "open", "new", "post", "close", "recent"]).describe("Explicit Thread operation. hosted=true lists/starts through /threads. recent says which local Threads moved, ids and counts only; hold its cursor and pass it next time. Agent acknowledgement of the person's Unread is not exposed."),
-    hosted: external_exports.boolean().optional().describe("List or start a hosted Thread; omit path. Known x_ ids route hosted automatically."),
-    unread: external_exports.boolean().optional().describe("Hosted list: only Threads with the web's unread_count > 0; follow cursor for more pages."),
-    cursor: external_exports.string().optional().describe("Hosted list/open, or recent: opaque CLI cursor from the previous response."),
-    recipients: external_exports.array(external_exports.string()).max(16).optional().describe("Hosted new: @handles or email addresses; omit for solo."),
-    post_id: external_exports.string().optional().describe("Hosted new/post: stable msg_ id for an exact resend after uncertain delivery; no automatic retry."),
-    path: external_exports.string().optional().describe("Local Thread path or hosted x_ id. Omit for combined local/hosted list; use an explicit directory (e.g. .) for local-only."),
-    depth: external_exports.enum(["name", "summary", "children", "surface", "full"]).optional().describe("Open rung: name=frame, summary=parent/snapshot, children=branches/child Threads, surface=head and tail (local cold default), full=paged history. Local only; omit for hosted open."),
-    new: external_exports.boolean().optional().describe("Local open only: unseen posts after the private local read cursor."),
-    since: external_exports.string().optional().describe("Local open only: ISO date or post id. Hosted paging uses cursor."),
-    post: external_exports.string().optional().describe("Read one post in full plus child Threads attached to it (local open)."),
-    limit: external_exports.number().int().positive().optional().describe("Local open, recent (max 500), or hosted list/open page size (hosted max 200); not for pinned selection."),
-    order: external_exports.enum(["newer", "older"]).optional().describe("Live local open only: newer-first or older-first; not for a pinned selection."),
-    message: external_exports.string().optional().describe("Body for an immutable post or closure"),
-    about: external_exports.string().optional().describe("Title for action=new; written on the opening post."),
-    attached_to: external_exports.string().optional().describe("Optional opening link for action=new: post:msg_\u2026 or note:@space//path. Only post: is a Thread tree edge; other types stay metadata."),
-    kind: external_exports.string().optional().describe(`What a reader acts on, for a local post: ${THREAD_KINDS.join(", ")}. A label goes in tags.`),
-    mark: external_exports.string().optional().describe("Open mark value with kind=mark; requires one explicit reply_to post id."),
-    supersedes: external_exports.string().optional().describe("Post id replaced by a correction; kind=correction can retract a mark."),
-    reply_to: external_exports.array(external_exports.string()).optional().describe("Local parent post ids: reply to the post you answer. Omit to branch from the opening post; ['latest'] opts into newest. Hosted post requires explicit msg_ parents; no n_ conversion."),
-    tags: external_exports.array(external_exports.string()).optional().describe("Labels for a post, on any Thread, e.g. ['delivery'] or ['friction']."),
-    author: external_exports.string().optional().describe("Legacy same-Space writer override only. Selected posts reject author and derive it from the caller's own Agreement."),
-    name: external_exports.string().optional().describe("Optional post name"),
-    summary: external_exports.string().optional().describe("Optional post summary"),
-    map: external_exports.string().optional().describe("Authored Map file or inline selection: new writes a pinned Map on the opening post; with member selects a pinned local Thread for open/post; without member cites a same-Space post"),
-    member: external_exports.number().int().nonnegative().optional().describe("Zero-based authored Map member selecting a pinned _threads/ post; pair with map"),
-    checkout: external_exports.string().optional().describe("Explicit local Space root hint, validated against the selected Map root by the CLI; not a cwd override"),
-    pin: external_exports.string().optional().describe("Authored commit pin for legacy same-Space open, paired with position; do not combine with map/member"),
-    position: external_exports.string().optional().describe("Authored _threads/ post position, paired with pin"),
-    cwd: cwdField
-  },
-  is_write: {
-    path: external_exports.string().describe("File path within the ideaspace"),
-    content: external_exports.string().describe("Markdown content (frontmatter prepended automatically)"),
-    name: external_exports.string().optional().describe("Note name (Layer 1 frontmatter)"),
-    summary: external_exports.string().optional().describe("Dense summary for search (Layer 1 frontmatter)"),
-    tags: external_exports.array(external_exports.string()).optional(),
-    attached_to: external_exports.string().optional().describe("Primary entity binding (e.g. 'hostname:acme.com')"),
-    map: mapBlock.optional().describe("Portable Map block for deliberately capturing this Note as a map-note"),
-    if_match: external_exports.string().optional().describe(
-      "Content sha from a prior is_write response or is_status. The session retains its full worktree/index/HEAD revision and refuses stale updates unless force."
-    ),
-    force: external_exports.boolean().optional().describe("Overwrite without if_match"),
-    cwd: cwdField
-  },
-  is_status: {
-    path: external_exports.string().optional().describe(
-      "Single file \u2014 returns its full revision plus { exists, sha, in_index, modified, in_tracked }. The sha remains the is_write if_match compatibility token."
-    ),
-    cwd: cwdField
-  },
-  is_commit: {
-    message: external_exports.string().describe("Commit message \u2014 what understanding this saves, in the user's terms"),
-    paths: external_exports.array(external_exports.string()).optional().describe("Exact paths to commit. Omit only when using all."),
-    all: external_exports.boolean().optional().describe("Commit only paths captured by this MCP server session. Never adopts other staged knowledge from the shared index."),
-    op: external_exports.enum(["create", "update", "move", "delete", "restructure", "capture"]).optional().describe("Optional Op trailer \u2014 the kind of change. The meaning lives in the message body."),
-    cwd: cwdField
-  },
-  is_change_open: {
-    handle: external_exports.string().optional().describe("Short decision handle (2\u20134 words) to mint a fresh Change-Id from, e.g. 'auth session model'."),
-    id: external_exports.string().optional().describe(
-      "An existing chg_\u2026 id to resume a Change across sessions. Reuse the id recorded in the Change's Note. Takes precedence over handle if both are given (resume over mint)."
-    )
-  },
-  is_change_close: {},
-  is_look: {
-    path: external_exports.string().optional().describe("Local Markdown file or Content directory: relative to cwd or absolute. A path that is a Map address is read as one."),
-    address: external_exports.string().optional().describe("A Map member by address instead of a path: @<root name>//<position>, @<root_node_id>//<position>, or //<position> for your own root. Read against `map`, else the session's launch Map; works from any cwd."),
-    map: mapField,
-    at: atField,
-    depth: contentDepth.default("summary").describe("How much to read: name (label only), summary (one line), children (a Note's headings or a directory's entries), surface (a Note's body or a directory's README), full (the same as surface for a Note; README plus entries for a directory). Start at summary or children; deepen when the text itself matters."),
-    limit: external_exports.number().int().nonnegative().optional().describe("Directory children/full: number of direct handles on this page (default 50)."),
-    since: external_exports.string().optional().describe("Directory children/full: exclusive child filename from the prior nextCursor; a stale cursor refuses."),
-    order: external_exports.enum(["older", "newer"]).optional().describe("Directory children/full order: older (default) or newer. Continue with since=<nextCursor>."),
-    post: external_exports.string().optional().describe("Select one msg_ post within a named Thread path/address, or alone with cwd set to a Space root. A unique eight-hex shorthand is accepted; duplicates refuse."),
-    contract: external_exports.enum(["foundation", "agreement"]).optional().describe("Explicit target frame; otherwise the habitat prefers Agreement, then Foundation, then floor."),
-    agreement: agreementField,
-    cwd: cwdField,
-    pin: external_exports.string().optional().describe("Authored full commit id to read this checkout at, paired with position; never inferred from HEAD"),
-    position: external_exports.string().optional().describe("Authored repository-relative position paired with pin; must name the same target as path")
-  },
-  is_navigate: {
-    path: external_exports.string().optional().describe('Target position: relative to cwd or absolute. Omit or "." to orient at the current directory. A path that is a Map address is read as one.'),
-    address: external_exports.string().optional().describe("A Map member directory by address instead of a path: @<root name>//<position>, @<root_node_id>//<position>, or //<position>. Read against `map`, else the session's launch Map."),
-    map: mapField,
-    at: atField,
-    agreement: agreementField,
-    cwd: cwdField
-  },
-  is_pull: {
-    dry_run: external_exports.boolean().optional().describe("Preview behind/what would integrate; mutates nothing."),
-    rebase: external_exports.boolean().optional().describe("Integrate via rebase (default true). Set false to merge instead."),
-    cwd: cwdField
-  },
-  is_push: {
-    dry_run: external_exports.boolean().optional().describe("Preview ahead/what would push; mutates nothing."),
-    cwd: cwdField
-  },
-  // Surface-specific to this (Claude Code / MCP) connector. is_spaces (list)
-  // is a promotion candidate if another surface grows listing;
-  // is_get and is_clone stay MCP-only (Pi accesses spaces via mount, not git clone).
-  is_spaces: {},
-  is_get: {
-    address: external_exports.string().describe("A canonical Space URL (https://\u2026/repos/n_\u2026) or an existing local folder."),
-    mode: external_exports.enum(["clone", "fork", "link"]).optional().describe(
-      "Omit to plan: what clone, fork, or link would do, and nothing changes. Name one to run it \u2014 only after the person chose; clone keeps the Space's identity, fork mints a new one without source history."
-    ),
-    dir: external_exports.string().optional().describe("Destination folder for clone or fork (relative to cwd); for link, the Space to bind to."),
-    cwd: cwdField
-  },
-  is_clone: {
-    space: external_exports.string().describe("Which space to clone \u2014 slug, namespace/slug, or repo_id (from is_spaces)."),
-    dir: external_exports.string().optional().describe("Target folder, relative to cwd. Defaults to ./<slug>."),
-    cwd: cwdField
-  },
-  is_collaborate: {
-    action: external_exports.enum(["open", "say", "close"]).describe("open: start a CLI-backed local conversation. say: resume by conversation id. close: compatibility acknowledgement only; it changes no state."),
-    pov: external_exports.string().optional().describe("For open/say: explicit local IdeaSpace repo path with its own _agent/agreement.md; relative to cwd or absolute."),
-    message: external_exports.string().optional().describe("For open/say: the purpose and task, in your own words. Intent does not grant tools."),
-    handle: external_exports.string().optional().describe("For say/close: exact conversation_id returned by open (Pi local id or Claude UUID); supply the same runtime on say/close."),
-    runtime: external_exports.enum(["pi", "claude"]).optional().describe("Child harness, default claude. On say specify pi if open used pi."),
-    model: external_exports.string().optional().describe("Model alias/id for the selected runtime."),
-    thinking: external_exports.enum(["off", "minimal", "low", "medium", "high", "xhigh", "max"]).optional().describe("Pi thinking only."),
-    effort: external_exports.enum(["low", "medium", "high", "xhigh", "max"]).optional().describe("Claude effort only, if the installed Claude Code supports --effort."),
-    permission_mode: external_exports.enum(["acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan"]).optional().describe("Claude permission mode. bypassPermissions requires read_only=false explicitly."),
-    read_only: external_exports.boolean().optional().describe("Claude-only restricted Read/Grep/Glob and no plugin MCP servers. Default true on Claude; pass false deliberately to allow writes."),
-    cwd: cwdField
-  }
-};
-var MCP_TOOL_PARAMETERS = frozenRoster(AUTHORED_TOOL_PARAMETERS);
 var MCP_TOOL_REQUIRE_ANY = {
   is_change_open: ["handle", "id"]
 };
 function hasAnyNonEmptyString(keys, values) {
-  return keys.some((key2) => typeof values[key2] === "string" && values[key2].trim() !== "");
+  return keys.some(
+    (key2) => typeof values[key2] === "string" && values[key2].trim() !== ""
+  );
 }
 
 // src/index.ts
 var CLI = resolveCli();
-function cli(args, stdin, cwd) {
+function cli(args, stdin, cwd, signal) {
   return new Promise((resolve15) => {
     const { command, argv } = cliInvocation(CLI, args);
     const proc = spawn5(command, argv, {
       stdio: ["pipe", "pipe", "pipe"],
+      signal,
       // The MCP server starts in whatever cwd Claude Code launched it from
       // (the user's session-start dir). The agent may have `cd`-ed inside
       // a Bash invocation since — those changes don't propagate to MCP
@@ -34382,8 +31983,12 @@ function cli(args, stdin, cwd) {
     let err = "";
     proc.stdout.on("data", (d) => out += d);
     proc.stderr.on("data", (d) => err += d);
-    proc.on("close", (code) => resolve15({ out, err, code: code ?? 1 }));
-    proc.on("error", (e) => resolve15({ out: "", err: e.message, code: 1 }));
+    proc.on("close", (code) => {
+      resolve15({ out, err, code: code ?? 1 });
+    });
+    proc.on("error", (e) => {
+      resolve15({ out: "", err: e.message, code: 1 });
+    });
     if (stdin != null) proc.stdin.write(stdin);
     proc.stdin.end();
   });
@@ -34450,61 +32055,83 @@ function persistOpenChange(changeId, handle) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`ideaspaces-mcp: could not persist open Change: ${message}
-`);
+    process.stderr.write(
+      `ideaspaces-mcp: could not persist open Change: ${message}
+`
+    );
   }
 }
-var server = new McpServer({ name: "core", version: "0.3.0" });
-server.tool(
-  "is_auth",
-  "Manage IdeaSpaces sync credentials. Sync is opt-in; the plugin works locally without auth.",
-  MCP_TOOL_PARAMETERS.is_auth,
-  async ({ action }) => {
-    switch (action) {
-      case "login":
-        return run(["login"]);
-      case "logout":
-        return run(["power", "logout"]);
-    }
-  }
+var runtime = await inspectCatalog(
+  (args, signal) => cli(args, void 0, void 0, signal)
 );
-server.tool(
-  "is_threads",
-  "Read and write local or hosted Threads through the CLI. action=recent says which local Threads moved since a cursor you hold. Default list is combined; path='.' is local-only. Local reads start at the newest snapshot; depth, limit/order and exact post select bounded local evidence. Reply to the post answered; omitted local reply_to branches from the opening post. Hosted list/new use hosted=true; open/post use an x_ id. Hosted reads use cursor, posts require explicit msg_ parents, Agents never acknowledge the person's Unread. A stale CLI cannot fall back to exchanges; a default-list fallback is explicitly labelled local-only.",
-  MCP_TOOL_PARAMETERS.is_threads,
-  async (input) => {
-    try {
-      const args = threadArgs(input);
-      if (needsHostedThreads(input)) {
-        const capability = await cli(["--json", "threads", "capabilities"], void 0, input.cwd);
-        let current = false;
-        try {
-          current = capability.code === 0 && threadsOnlyCapability(JSON.parse(capability.out));
-        } catch {
-        }
-        if (!current) {
-          const reason = "Hosted Threads require CLI 0.7.0 or newer with /threads-only support. Update the CLI (or plugin bundle); no hosted Thread request was sent." + (capability.code !== 0 && capability.err.trim() ? ` CLI capability check failed: ${capability.err.trim().slice(0, 500)}` : "");
-          if (input.action === "list" && !input.hosted && !input.path?.trim()) {
-            const local = await cli(["--json", ...threadArgs({ ...input, path: "." })], void 0, input.cwd);
-            if (local.code !== 0) return fail(local.err.trim() || local.out.trim());
-            const data = JSON.parse(local.out);
-            return ok(JSON.stringify({ ...data, hosted_checked: false, hosted_error: reason }, null, 2));
-          }
-          return fail(reason);
-        }
-      }
-      if (input.action === "open" && (input.pin || input.member !== void 0)) {
-        const expected = input.member !== void 0 ? selectedPin(input, input.cwd ?? process.cwd()) : { pin: input.pin, position: input.position };
-        const result = await cli(["--json", ...args], void 0, input.cwd);
-        if (result.code !== 0) return fail(result.err.trim() || result.out.trim());
-        return ok(pinnedView(JSON.parse(result.out), input.depth ?? "summary", expected));
-      }
-      return run(args, void 0, input.cwd, input.action === "recent" ? recentCliFailure : threadCliFailure);
-    } catch (error2) {
-      return fail(error2 instanceof Error ? error2.message : String(error2));
-    }
+var { server, registerTool } = createToolServer(runtime);
+registerTool("is_auth", async ({ action = "login" }) => {
+  switch (action) {
+    case "login":
+      return run(["login"]);
+    case "logout":
+      return run(["power", "logout"]);
   }
-);
+});
+registerTool("is_threads", async (input) => {
+  try {
+    const args = threadArgs(input);
+    if (needsHostedThreads(input)) {
+      const capability = await cli(
+        ["--json", "threads", "capabilities"],
+        void 0,
+        input.cwd
+      );
+      let current = false;
+      try {
+        current = capability.code === 0 && threadsOnlyCapability(JSON.parse(capability.out));
+      } catch {
+      }
+      if (!current) {
+        const reason = "Hosted Threads require CLI 0.7.0 or newer with /threads-only support. Update the CLI (or plugin bundle); no hosted Thread request was sent." + (capability.code !== 0 && capability.err.trim() ? ` CLI capability check failed: ${capability.err.trim().slice(0, 500)}` : "");
+        if (input.action === "list" && !input.hosted && !input.path?.trim()) {
+          const local = await cli(
+            ["--json", ...threadArgs({ ...input, path: "." })],
+            void 0,
+            input.cwd
+          );
+          if (local.code !== 0)
+            return fail(local.err.trim() || local.out.trim());
+          const data = JSON.parse(local.out);
+          return ok(
+            JSON.stringify(
+              { ...data, hosted_checked: false, hosted_error: reason },
+              null,
+              2
+            )
+          );
+        }
+        return fail(reason);
+      }
+    }
+    if (input.action === "open" && (input.pin || input.member !== void 0)) {
+      const expected = input.member !== void 0 ? selectedPin(input, input.cwd ?? process.cwd()) : { pin: input.pin, position: input.position };
+      const result = await cli(["--json", ...args], void 0, input.cwd);
+      if (result.code !== 0)
+        return fail(result.err.trim() || result.out.trim());
+      return ok(
+        pinnedView(
+          JSON.parse(result.out),
+          input.depth ?? "summary",
+          expected
+        )
+      );
+    }
+    return run(
+      args,
+      void 0,
+      input.cwd,
+      input.action === "recent" ? recentCliFailure : threadCliFailure
+    );
+  } catch (error2) {
+    return fail(error2 instanceof Error ? error2.message : String(error2));
+  }
+});
 function localToolDependencies() {
   return {
     capabilities: localEffectCapabilities,
@@ -34514,95 +32141,96 @@ function localToolDependencies() {
     changeId: resolveChangeId
   };
 }
-server.tool(
-  "is_write",
-  "Create or update an ordinary Note in-process with Layer 1 frontmatter and an optional protocol-valid Map block; stages the exact path and returns its revision and content sha. Thread posts must be appended through is_threads, not is_write. Native Write covers code and config.",
-  MCP_TOOL_PARAMETERS.is_write,
-  async (input) => {
-    const result = await runLocalWrite(input, localToolDependencies());
-    return result.ok ? ok(result.text) : fail(result.text);
-  }
-);
-server.tool(
-  "is_commit",
-  "Save captured Notes \u2014 the explicit commit. Commits ONLY the paths you name, or this MCP session's captured paths with all; never adopts unrelated staged work. Auto-stamps the assisting agent, Conversation, and open Change-Id. Timing: an explicit ask to save IS the agreement \u2014 act, don't re-ask; at a natural ending, commit and tell the user what was saved; with neither signal, hold and keep staging silently.",
-  MCP_TOOL_PARAMETERS.is_commit,
-  async (input) => {
-    const result = await runLocalCommit(input, localToolDependencies());
-    return result.ok ? ok(result.text) : fail(result.text);
-  }
-);
-server.tool(
-  "is_change_open",
-  "Open a Change \u2014 an idea-snapshot coordinate stamped as a Change-Id trailer on every is_commit until closed, in any repo. Use when a decision spans multiple commits, files, or repos; skip it for a single ordinary commit. Pass handle to mint a fresh id, or id to resume an existing Change (e.g. recovered from its Note) across sessions.",
-  MCP_TOOL_PARAMETERS.is_change_open,
-  async ({ handle, id }) => {
-    if (!hasAnyNonEmptyString(MCP_TOOL_REQUIRE_ANY.is_change_open, { handle, id })) {
-      return fail("Provide `handle` to mint a new Change, or `id` to continue one.");
-    }
-    const resumedId = id?.trim();
-    if (resumedId) {
-      if (!CHANGE_ID_PATTERN.test(resumedId)) {
-        return fail(`Not a Change-Id: ${id}. Expected chg_\u2026 (mint a new one by passing handle instead).`);
-      }
-      currentChangeId = resumedId;
-      persistOpenChange(resumedId);
-      return ok(`Change resumed: ${currentChangeId}. It stamps every is_commit until is_change_close.`);
-    }
-    const decisionHandle = handle.trim();
-    const minted = mintChangeId(decisionHandle);
-    currentChangeId = minted;
-    persistOpenChange(minted, decisionHandle);
-    return ok(
-      `Change open: ${currentChangeId}. It stamps every is_commit until is_change_close. Find its arc later with: git log --grep="Change-Id: ${currentChangeId}"`
+registerTool("is_write", async (input) => {
+  const result = await runLocalWrite(input, localToolDependencies());
+  return result.ok ? ok(result.text) : fail(result.text);
+});
+registerTool("is_commit", async (input) => {
+  const result = await runLocalCommit(input, localToolDependencies());
+  return result.ok ? ok(result.text) : fail(result.text);
+});
+registerTool("is_change_open", async ({ handle, id }) => {
+  if (!hasAnyNonEmptyString(MCP_TOOL_REQUIRE_ANY.is_change_open, { handle, id })) {
+    return fail(
+      "Provide `handle` to mint a new Change, or `id` to continue one."
     );
   }
-);
-server.tool(
-  "is_change_close",
-  "Close the active Change so later commits no longer carry its Change-Id. The decision's arc stays queryable in git history. Also clears a Change record persisted by a previous session (the one is_status surfaces) when nothing is currently armed. Clears the shared record only \u2014 not another still-running surface's in-memory Change, and not a different Change opened elsewhere since (that record is left in place).",
-  MCP_TOOL_PARAMETERS.is_change_close,
-  async () => {
-    const file = changeCacheFile();
-    const { armed, rec } = await openChangeState();
-    const plan = planChangeClose(armed, rec, Boolean(file));
-    currentChangeId = plan.current;
-    if (plan.clearPersisted && file) clearPersistedChange(file);
-    return ok(plan.message);
+  const resumedId = id?.trim();
+  if (resumedId) {
+    if (!CHANGE_ID_PATTERN.test(resumedId)) {
+      return fail(
+        `Not a Change-Id: ${id}. Expected chg_\u2026 (mint a new one by passing handle instead).`
+      );
+    }
+    currentChangeId = resumedId;
+    persistOpenChange(resumedId);
+    return ok(
+      `Change resumed: ${currentChangeId}. It stamps every is_commit until is_change_close.`
+    );
   }
-);
-server.tool(
-  "is_status",
-  "Capture state: overall git position plus this session's captures, or one path's full revision and legacy sha/status fields. Also reports the open Change as armed or persisted by another session.",
-  MCP_TOOL_PARAMETERS.is_status,
-  async (input) => {
-    const result = await runLocalStatus(input, localToolDependencies());
-    if (!result.ok) return fail(result.text);
-    const { armed, rec } = await openChangeState();
-    const change = statusChange(armed, rec);
-    if (!change) return ok(result.text);
-    return ok(JSON.stringify({ ...JSON.parse(result.text), change }, null, 2));
-  }
-);
+  const decisionHandle = handle.trim();
+  const minted = mintChangeId(decisionHandle);
+  currentChangeId = minted;
+  persistOpenChange(minted, decisionHandle);
+  return ok(
+    `Change open: ${currentChangeId}. It stamps every is_commit until is_change_close. Find its arc later with: git log --grep="Change-Id: ${currentChangeId}"`
+  );
+});
+registerTool("is_change_close", async () => {
+  const file = changeCacheFile();
+  const { armed, rec } = await openChangeState();
+  const plan = planChangeClose(armed, rec, Boolean(file));
+  currentChangeId = plan.current;
+  if (plan.clearPersisted && file) clearPersistedChange(file);
+  return ok(plan.message);
+});
+registerTool("is_status", async (input) => {
+  const result = await runLocalStatus(input, localToolDependencies());
+  if (!result.ok) return fail(result.text);
+  const { armed, rec } = await openChangeState();
+  const change = statusChange(armed, rec);
+  if (!change) return ok(result.text);
+  return ok(JSON.stringify({ ...JSON.parse(result.text), change }, null, 2));
+});
 function isMapAddress(value) {
   return !!value && (value.startsWith("//") || /^@[^/\s]+\/\//.test(value));
 }
 async function readThroughCli(args, cwd) {
   const { out, err, code } = await cli(args, void 0, cwd);
-  if (code !== 0) return fail(lookCliFailure(err.trim() || out.trim() || `Exit ${code}`));
+  if (code !== 0)
+    return fail(lookCliFailure(err.trim() || out.trim() || `Exit ${code}`));
   return ok(out.trim());
 }
 function agreementArgs(agreement) {
-  return agreement ? ["--agreement", agreement] : [];
+  return agreement ? [cliOption("--agreement", agreement)] : [];
 }
 function addressArgs(verb, address, map, at) {
-  return [verb, address, ...map ? ["--map", map] : [], ...at ? ["--at", at] : []];
+  return [
+    verb,
+    address,
+    ...map ? [cliOption("--map", map)] : [],
+    ...at ? [cliOption("--at", at)] : []
+  ];
 }
-server.tool(
+registerTool(
   "is_look",
-  "Read one Note, directory, Thread folder or post at a bounded rung \u2014 so the conversation Map records it. Use it instead of cat/head/sed: a Bash read is not recorded. At children/full, page a directory with limit, since=<nextCursor> and order; post selects a unique msg_ id within a Thread or supplied root. An address @root//_threads/<slug>/msg_\u2026 selects the post at the Map pin from any cwd, never replacing an authored pin with HEAD. Read-only; it never changes caller authority or working directory.",
-  MCP_TOOL_PARAMETERS.is_look,
-  async ({ path, address, map, at, depth, contract, agreement, cwd, pin, position, limit, since, order, post }) => {
+  async ({
+    path,
+    address,
+    map,
+    at,
+    depth: requestedDepth,
+    contract,
+    agreement,
+    cwd,
+    pin,
+    position,
+    limit,
+    since,
+    order,
+    post
+  }) => {
+    const depth = requestedDepth ?? (post ? "full" : limit !== void 0 || since || order ? "children" : "summary");
     let lookArgs;
     try {
       lookArgs = lookReaderArgs({ limit, since, order, post });
@@ -34614,16 +32242,44 @@ server.tool(
       path = void 0;
     }
     if (address) {
-      if (path || pin || position) return fail("Give an address or a path, not both. An address takes its commit from the Map; use at: pin or head.");
-      return readThroughCli([...addressArgs("look", address, map, at), "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : [], ...agreementArgs(agreement), ...lookArgs], cwd);
+      if (path || pin || position)
+        return fail(
+          "Give an address or a path, not both. An address takes its commit from the Map; use at: pin or head."
+        );
+      return readThroughCli(
+        [
+          ...addressArgs("look", address, map, at),
+          cliOption("--depth", depth ?? "summary"),
+          ...contract ? [cliOption("--contract", contract)] : [],
+          ...agreementArgs(agreement),
+          ...lookArgs
+        ],
+        cwd
+      );
     }
-    if (map || at) return fail("map and at read an address (@<root>//<position>); pass address, not path.");
+    if (map || at)
+      return fail(
+        "map and at read an address (@<root>//<position>); pass address, not path."
+      );
     if (!path && post && !pin && !position) {
-      if (!cwd) return fail("A post id without a Thread path needs cwd set to the selected Space root; do not infer another root.");
-      const result2 = await readLook({ path: ".", postId: post, depth, contract, agreement, cwd });
+      if (!cwd)
+        return fail(
+          "A post id without a Thread path needs cwd set to the selected Space root; do not infer another root."
+        );
+      const result2 = await readLook({
+        path: ".",
+        postId: post,
+        depth,
+        contract,
+        agreement,
+        cwd
+      });
       return result2.ok ? ok(result2.text) : fail(result2.error);
     }
-    if (!path) return fail("Give a path, a post id within the supplied cwd root, or an address (@<root>//<position>) read through a Map.");
+    if (!path)
+      return fail(
+        "Give a path, a post id within the supplied cwd root, or an address (@<root>//<position>) read through a Map."
+      );
     const target = resolve14(cwd || process.cwd(), path);
     if (/(?:^|[\\/])_threads[\\/][^\\/]+$/.test(target)) {
       let directory = false;
@@ -34632,56 +32288,145 @@ server.tool(
       } catch {
       }
       if (directory) {
-        if (contract || pin || position) return fail("A Thread folder has its own Agreement and rungs; omit contract, pin and position.");
-        return readThroughCli(["look", target, "--depth", depth ?? "summary", ...agreementArgs(agreement), ...lookArgs], cwd);
+        if (contract || pin || position)
+          return fail(
+            "A Thread folder has its own Agreement and rungs; omit contract, pin and position."
+          );
+        return readThroughCli(
+          [
+            "look",
+            target,
+            cliOption("--depth", depth ?? "summary"),
+            ...agreementArgs(agreement),
+            ...lookArgs
+          ],
+          cwd
+        );
       }
     }
     const root = await resolveRepoRoot(cwd || process.cwd()) ?? cwd ?? process.cwd();
     const virtual = virtualThreadPost(target, root);
     if (virtual) {
       if (virtual.status === "invalid") return fail(virtual.reason);
-      if (contract) return fail("Thread posts are extension payload; omit contract.");
-      if (post || limit !== void 0 || since || order) return fail("A post-id path already selects one post; omit post, limit, since and order.");
-      if (!!pin !== !!position) return fail("Pinned post look requires both authored pin and position.");
-      if (position && position !== virtual.position) return fail("Authored position does not match the requested post selector.");
-      return readThroughCli(["look", virtual.thread, "--post", virtual.postId, "--depth", depth ?? "summary", ...agreementArgs(agreement), ...pin ? ["--pin", pin] : []], root);
+      if (contract)
+        return fail("Thread posts are extension payload; omit contract.");
+      if (post || limit !== void 0 || since || order)
+        return fail(
+          "A post-id path already selects one post; omit post, limit, since and order."
+        );
+      if (!!pin !== !!position)
+        return fail(
+          "Pinned post look requires both authored pin and position."
+        );
+      if (position && position !== virtual.position)
+        return fail(
+          "Authored position does not match the requested post selector."
+        );
+      return readThroughCli(
+        [
+          "look",
+          virtual.thread,
+          cliOption("--post", virtual.postId),
+          cliOption("--depth", depth ?? "summary"),
+          ...agreementArgs(agreement),
+          ...pin ? [cliOption("--pin", pin)] : []
+        ],
+        root
+      );
     }
     const postTarget = threadPost(target, root);
     if (postTarget) {
-      if (contract) return fail("Thread posts are extension payload, not Content under a contract frame; omit contract.");
-      if (lookArgs.length) return fail("This path is already one post; page a Thread folder or select an id with post instead.");
-      if (!!pin !== !!position) return fail("Pinned post look requires both authored pin and position.");
-      if (position && position !== postTarget.position) return fail("Authored position does not match the requested post.");
-      if (depth === "children") return fail("Thread posts support name, summary, surface and full rungs; not children.");
+      if (contract)
+        return fail(
+          "Thread posts are extension payload, not Content under a contract frame; omit contract."
+        );
+      if (lookArgs.length)
+        return fail(
+          "This path is already one post; page a Thread folder or select an id with post instead."
+        );
+      if (!!pin !== !!position)
+        return fail(
+          "Pinned post look requires both authored pin and position."
+        );
+      if (position && position !== postTarget.position)
+        return fail("Authored position does not match the requested post.");
+      if (depth === "children")
+        return fail(
+          "Thread posts support name, summary, surface and full rungs; not children."
+        );
       try {
         if (pin) {
-          const result3 = await cli(["--json", ...threadArgs({ action: "open", path: postTarget.thread, depth: "full", pin, position })], void 0, dirname8(dirname8(postTarget.thread)));
-          if (result3.code !== 0) return fail(result3.err.trim() || result3.out.trim());
-          return ok(pinnedView(JSON.parse(result3.out), depth ?? "summary", { pin, position: postTarget.position }));
+          const result3 = await cli(
+            [
+              "--json",
+              ...threadArgs({
+                action: "open",
+                path: postTarget.thread,
+                depth: "full",
+                pin,
+                position
+              })
+            ],
+            void 0,
+            dirname8(dirname8(postTarget.thread))
+          );
+          if (result3.code !== 0)
+            return fail(result3.err.trim() || result3.out.trim());
+          return ok(
+            pinnedView(JSON.parse(result3.out), depth ?? "summary", {
+              pin,
+              position: postTarget.position
+            })
+          );
         }
         const result2 = await readLook({ path: target, depth, agreement, cwd });
         return result2.ok ? ok(result2.text) : fail(result2.error);
       } catch (error2) {
-        return fail(`Cannot read ${target}: ${error2 instanceof Error ? error2.message : String(error2)}`);
+        return fail(
+          `Cannot read ${target}: ${error2 instanceof Error ? error2.message : String(error2)}`
+        );
       }
     }
     if (pin || position) {
-      if (!pin || !position) return fail("A pinned look requires both authored pin and position.");
+      if (!pin || !position)
+        return fail("A pinned look requires both authored pin and position.");
       const local = relative8(root, target).split(sep8).join("/") || ".";
       if (local === ".." || local.startsWith("../") || /^[A-Za-z]:|^\//.test(local)) {
-        return fail(`${target} is outside the Space at ${root}; a pinned look reads this checkout only.`);
+        return fail(
+          `${target} is outside the Space at ${root}; a pinned look reads this checkout only.`
+        );
       }
-      if (local !== position) return fail("Authored position does not match the requested path.");
-      return readThroughCli(["look", position, "--pin", pin, "--depth", depth ?? "summary", ...contract ? ["--contract", contract] : [], ...agreementArgs(agreement), ...lookArgs], root);
+      if (local !== position)
+        return fail("Authored position does not match the requested path.");
+      return readThroughCli(
+        [
+          "look",
+          position,
+          cliOption("--pin", pin),
+          cliOption("--depth", depth ?? "summary"),
+          ...contract ? [cliOption("--contract", contract)] : [],
+          ...agreementArgs(agreement),
+          ...lookArgs
+        ],
+        root
+      );
     }
-    const result = await readLook({ path, depth, contract, agreement, cwd, limit, since, order, postId: post });
+    const result = await readLook({
+      path,
+      depth,
+      contract,
+      agreement,
+      cwd,
+      limit,
+      since,
+      order,
+      postId: post
+    });
     return result.ok ? ok(result.text) : fail(result.error);
   }
 );
-server.tool(
+registerTool(
   "is_navigate",
-  "Read a position as bounded reference focus \u2014 its selected agent context, depth-one Content tree, and skills at history placement. Pass `address` (@<root>//<position>) to focus on a Map member directory at a commit, against `map` or the session's launch Map. The target contract is reference, never caller authority. Read-only: it does NOT change the working directory or operating frame; Read/Edit/Bash still take explicit paths.",
-  MCP_TOOL_PARAMETERS.is_navigate,
   async ({ path, address, map, at, agreement, cwd }) => {
     if (!address && isMapAddress(path)) {
       address = path;
@@ -34689,88 +32434,74 @@ server.tool(
     }
     if (address) {
       if (path) return fail("Give an address or a path, not both.");
-      return readThroughCli([...addressArgs("navigate", address, map, at), ...agreementArgs(agreement)], cwd);
+      return readThroughCli(
+        [
+          ...addressArgs("navigate", address, map, at),
+          ...agreementArgs(agreement)
+        ],
+        cwd
+      );
     }
-    if (map || at) return fail("map and at read an address (@<root>//<position>); pass address, not path.");
+    if (map || at)
+      return fail(
+        "map and at read an address (@<root>//<position>); pass address, not path."
+      );
     const result = await readNavigate({ path, cwd, agreement });
     return result.ok ? ok(result.text) : fail(result.error);
   }
 );
-server.tool(
-  "is_pull",
-  "Integrate remote changes into the local space (fetch + rebase/merge). Never pushes. Refuses to integrate while staged captures are uncommitted or the tree is dirty. Use dry_run to preview without mutating.",
-  MCP_TOOL_PARAMETERS.is_pull,
-  async ({ dry_run, rebase, cwd }) => {
-    const a = ["pull"];
-    if (dry_run) a.push("--dry-run");
-    if (rebase === false) a.push("--rebase=false");
-    return run(a, void 0, cwd);
-  }
-);
-server.tool(
-  "is_push",
-  "Send committed captures to the remote. Never pulls. Refuses while staged knowledge is uncommitted, and refuses when behind the remote \u2014 pull first. Use dry_run to preview without mutating.",
-  MCP_TOOL_PARAMETERS.is_push,
-  async ({ dry_run, cwd }) => {
-    const a = ["push"];
-    if (dry_run) a.push("--dry-run");
-    return run(a, void 0, cwd);
-  }
-);
-server.tool(
-  "is_spaces",
-  "List your hosted Repos \u2014 slug, role, member count. Read-only; requires login (is_auth). Use before is_clone to choose one.",
-  MCP_TOOL_PARAMETERS.is_spaces,
-  async () => run(["repos"])
-);
-server.tool(
-  "is_get",
-  "Bring a Repo home, plan-first. Without mode: shows what clone (same identity, fetch/push truth, full history), fork (new identity, no source history), or link (bind a local clone) would do \u2014 nothing changes. With mode: runs that one, after the person chose. Returns the local path for clone and fork \u2014 pass it as cwd afterward. is_clone remains for legacy locators.",
-  MCP_TOOL_PARAMETERS.is_get,
-  async ({ address, mode, dir, cwd }) => {
-    const a = ["get", address];
-    if (dir) a.push(dir);
-    if (mode) a.push("--yes", "--as", mode);
-    return run(a, void 0, cwd);
-  }
-);
-server.tool(
-  "is_clone",
-  "Clone one of your hosted Repos into a local folder by a legacy locator (slug, namespace/slug, repo_id from is_spaces); for a canonical Repo URL prefer is_get. Requires login + git. Returns the local path \u2014 pass it as cwd to work there afterward.",
-  MCP_TOOL_PARAMETERS.is_clone,
-  async ({ space, dir, cwd }) => {
-    const a = ["clone", space];
-    if (dir) a.push(dir);
-    return run(a, void 0, cwd);
-  }
-);
-server.tool(
-  "is_collaborate",
-  "Launch a fellow point of view in a local IdeaSpace repository carrying its own _agent/agreement.md. open selects pi or claude, model and supported thinking/effort; say resumes the returned conversation_id. The message carries purpose, not a consult/delegate task type. Claude defaults to restricted read-only tools; to permit writes set read_only=false, and choose bypassPermissions only explicitly. Pi read-only is not supported. A failed child is a failed tool call. close is a compatibility response only: it changes no state, and the transcript can still be resumed. A collaboration cannot nest.",
-  MCP_TOOL_PARAMETERS.is_collaborate,
-  async (input) => {
-    const result = await runCollaborate(input);
-    return result.ok ? ok(result.text) : fail(result.text);
-  }
-);
-for (const skill of await listSkills()) {
-  server.registerResource(
-    `skill-${skill.name}`,
-    `ideaspaces://skill/${skill.name}`,
-    {
-      title: skill.name,
-      description: skill.description ?? void 0,
-      mimeType: "text/markdown"
-    },
-    async (uri) => {
-      const resolved = await readSkill(skill.name);
-      return {
-        contents: [
-          { uri: uri.href, mimeType: "text/markdown", text: resolved.content }
-        ]
-      };
-    }
+registerTool("is_pull", async ({ dry_run, rebase, cwd }) => {
+  const a = ["pull"];
+  if (dry_run) a.push("--dry-run");
+  if (rebase === false) a.push("--rebase=false");
+  return run(a, void 0, cwd);
+});
+registerTool("is_push", async ({ dry_run, cwd }) => {
+  const a = ["push"];
+  if (dry_run) a.push("--dry-run");
+  return run(a, void 0, cwd);
+});
+registerTool("is_spaces", async () => run(["repos"]));
+registerTool("is_get", async ({ address, mode, dir, cwd }) => {
+  const a = ["get", address];
+  if (dir) a.push(dir);
+  if (mode) a.push("--yes", cliOption("--as", mode));
+  return run(a, void 0, cwd);
+});
+registerTool("is_clone", async ({ space, dir, cwd }) => {
+  const a = ["clone", space];
+  if (dir) a.push(dir);
+  return run(a, void 0, cwd);
+});
+registerTool("is_collaborate", async (input) => {
+  const result = await runCollaborate(input);
+  return result.ok ? ok(result.text) : fail(result.text);
+});
+var skills = await listSkills();
+server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+  resources: skills.map((skill) => ({
+    uri: `ideaspaces://skill/${skill.name}`,
+    name: `skill-${skill.name}`,
+    title: skill.name,
+    description: skill.description ?? void 0,
+    mimeType: "text/markdown"
+  }))
+}));
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const skill = skills.find(
+    (skill2) => request.params.uri === `ideaspaces://skill/${skill2.name}`
   );
-}
+  if (!skill) throw new Error(`Unknown resource: ${request.params.uri}`);
+  const resolved = await readSkill(skill.name);
+  return {
+    contents: [
+      {
+        uri: request.params.uri,
+        mimeType: "text/markdown",
+        text: resolved.content
+      }
+    ]
+  };
+});
 var transport = new StdioServerTransport();
 await server.connect(transport);

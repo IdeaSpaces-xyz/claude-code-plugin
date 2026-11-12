@@ -1,6 +1,6 @@
 {
   "name": "ideaspaces-plugin",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Ideaspace Protocol for Claude Code, Codex, and Cowork — durable awareness, deliberate capture, optional sync.",
   "private": true,
   "type": "module",
@@ -20,18 +20,20 @@
     "build:hook": "node build-hook.mjs",
     "build:reference": "node reference.mjs",
     "vendor": "node vendor.mjs",
-    "check:generated": "npm run build:reference && npm run build:hook && git diff --exit-code -- reference/ dist/awareness-hook.js dist/capture-nudge-hook.js dist/run-record-hook.js",
+    "check:generated": "npm run build:reference && npm run build:hook && git diff --exit-code -- reference/ dist/awareness-hook.js dist/capture-nudge-hook.js dist/run-record-hook.js && npm run check:tools",
     "check:vendor": "node scripts/check-vendor.mjs",
     "lint:skills": "node scripts/lint-skills.mjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:tools": "node scripts/check-agent-tools.mjs"
   },
   "devDependencies": {
-    "@ideaspaces/protocol": "github:IdeaSpaces-xyz/ideaspace-protocol#5d5db8ab1a30154930b407afe16bd8d905286975",
+    "@ideaspaces/protocol": "github:IdeaSpaces-xyz/ideaspace-protocol#916ae9ffb2733295b04b192abc29cf3fe1b736c6",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^20.0.0",
     "esbuild": "^0.24.0",
     "typescript": "^5.6.0",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "ajv": "^8.20.0"
   }
 }
