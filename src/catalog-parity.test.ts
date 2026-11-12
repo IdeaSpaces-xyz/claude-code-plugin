@@ -40,37 +40,31 @@ describe("vendored catalog parity", () => {
       expect(() => verifyTools(broken, contract.tools)).toThrow("drift");
     }
   });
-  it("reports observed wrapper/CLI/protocol build facts without latest-version claims", () => {
-    const root = mkdtempSync(join(tmpdir(), "plugin-surface-line-")),
-      previous = process.env.IS_CLI_PATH;
+  it("uses the same short session-start wording for matching, drifting and unknown CLI metadata", async () => {
+    const root = mkdtempSync(join(tmpdir(), "plugin-surface-line-"));
+    const previous = process.env.IS_CLI_PATH;
+    const built = "sha256:00eb3df2" + "0".repeat(56);
+    const running = "sha256:7a1b2c3d" + "a".repeat(56);
     try {
       mkdirSync(join(root, "cli/bundle"), { recursive: true });
-      writeFileSync(
-        join(root, "cli/bundle/agent-tools.json"),
-        JSON.stringify({
-          digest: "sha256:generated",
-          protocol: { commit: "a".repeat(40) },
-        }),
-      );
-      writeFileSync(
-        join(root, "vendor-lock.json"),
-        JSON.stringify({ "mcp-server": { version: "1.2.3" } }),
-      );
-      writeFileSync(
-        join(root, "package.json"),
-        JSON.stringify({ version: "4.5.6" }),
-      );
+      writeFileSync(join(root, "cli/bundle/agent-tools.json"), JSON.stringify({ digest: built, protocol: { commit: "b".repeat(40) } }));
+      writeFileSync(join(root, "vendor-lock.json"), JSON.stringify({ "mcp-server": { version: "0.1.36" } }));
+      writeFileSync(join(root, "package.json"), JSON.stringify({ version: "0.10.2" }));
       const fake = join(root, "cli.cjs");
-      writeFileSync(
-        fake,
-        'console.log(JSON.stringify({cli:{version:"7.8.9"},digest:"sha256:running"}))',
-      );
       process.env.IS_CLI_PATH = fake;
-      const line = renderAgentSurfaceLine(root);
-      expect(line).toContain("plugin 4.5.6; MCP 1.2.3");
-      expect(line).toContain("CLI 7.8.9, sha256:running");
-      expect(line).toContain("Catalog drift");
-      expect(line).not.toContain("latest");
+      const answer = (version: string, digest: string) => writeFileSync(fake, `console.log(${JSON.stringify(JSON.stringify({cli:{version},digest}))})`);
+      answer("0.10.1", built);
+      expect(await renderAgentSurfaceLine(root)).toBe("Agent tools: plugin 0.10.2 · MCP 0.1.36 · CLI 0.10.1 · catalog 00eb3df2.");
+      answer("0.11.0", running);
+      expect(await renderAgentSurfaceLine(root)).toBe("Agent tools: plugin 0.10.2 · MCP 0.1.36 · CLI 0.11.0 · catalog differs (built 00eb3df2, running 7a1b2c3d); tools keep working. Update the plugin to match.");
+      writeFileSync(fake, "process.exit(1)");
+      expect(await renderAgentSurfaceLine(root)).toBe("Agent tools: plugin 0.10.2 · MCP 0.1.36 · CLI unknown (no answer in 1.2 s) · catalog 00eb3df2.");
+      writeFileSync(fake, "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)");
+      let settled = false;
+      const pending = renderAgentSurfaceLine(root).then(line => { settled = true; return line; });
+      await new Promise(resolve => setTimeout(resolve, 25));
+      expect(settled, "the probe must leave the event loop free for other startup work").toBe(false);
+      expect(await pending).toContain("CLI unknown (no answer in 1.2 s)");
     } finally {
       if (previous === undefined) delete process.env.IS_CLI_PATH;
       else process.env.IS_CLI_PATH = previous;

@@ -7361,31 +7361,58 @@ var require_dist = __commonJS({
 });
 
 // src/agent-surface-line.ts
-import { spawnSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-function renderAgentSurfaceLine(root) {
+var CATALOG_BUDGET_MS = 1200;
+function observeCli(cli2) {
+  return new Promise((resolve8) => {
+    let child;
+    let settled = false;
+    const finish = (runtime) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve8(runtime);
+    };
+    const timer = setTimeout(() => {
+      child?.kill("SIGKILL");
+      child?.stdin?.destroy();
+      child?.stdout?.destroy();
+      child?.stderr?.destroy();
+      finish();
+    }, CATALOG_BUDGET_MS);
+    try {
+      const script = /\.(?:[cm]?js)$/.test(cli2);
+      child = execFile(
+        script ? process.execPath : cli2,
+        script ? [cli2, "capabilities", "--json"] : ["capabilities", "--json"],
+        { encoding: "utf8", maxBuffer: 1024 * 1024, killSignal: "SIGKILL", windowsHide: true },
+        (error, stdout) => {
+          try {
+            const data = error ? void 0 : JSON.parse(stdout);
+            finish(typeof data?.digest === "string" && typeof data?.cli?.version === "string" ? data : void 0);
+          } catch {
+            finish();
+          }
+        }
+      );
+      child.stdin?.end();
+    } catch {
+      finish();
+    }
+  });
+}
+async function renderAgentSurfaceLine(root) {
   try {
     const read = (p) => JSON.parse(readFileSync(join(root, p), "utf8"));
-    const catalog = read("cli/bundle/agent-tools.json"), lock = read("vendor-lock.json"), pkg = read("package.json");
-    const cli2 = process.env.IS_CLI_PATH?.trim() || join(root, "cli/bundle/ideaspaces.js");
-    const script = /\.(?:[cm]?js)$/.test(cli2);
-    const result = spawnSync(
-      script ? process.execPath : cli2,
-      script ? [cli2, "capabilities", "--json"] : ["capabilities", "--json"],
-      {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-        timeout: 1500,
-        windowsHide: true
-      }
-    );
-    let runtime = {};
-    try {
-      if (result.status === 0) runtime = JSON.parse(result.stdout);
-    } catch {
-    }
-    return `Agent tools: plugin ${pkg.version}; MCP ${lock["mcp-server"].version}; generated ${catalog.digest}; CLI ${runtime.cli?.version ?? "unknown"}, ${runtime.digest ?? "unknown"}; protocol ${catalog.protocol.commit}.${runtime.digest && runtime.digest !== catalog.digest ? " Catalog drift: MCP initialization names changed exposed entries; tools keep running." : ""}`;
+    const catalog = read("cli/bundle/agent-tools.json");
+    const lock = read("vendor-lock.json");
+    const pkg = read("package.json");
+    const runtime = await observeCli(process.env.IS_CLI_PATH?.trim() || join(root, "cli/bundle/ideaspaces.js"));
+    const short = (digest) => digest.replace(/^sha256:/, "").slice(0, 8);
+    const catalogText = runtime && runtime.digest !== catalog.digest ? `catalog differs (built ${short(catalog.digest)}, running ${short(runtime.digest)}); tools keep working. Update the plugin to match.` : `catalog ${short(catalog.digest)}.`;
+    return `Agent tools: plugin ${pkg.version} \xB7 MCP ${lock["mcp-server"].version} \xB7 CLI ${runtime?.cli.version ?? "unknown (no answer in 1.2 s)"} \xB7 ${catalogText}`;
   } catch {
     return "";
   }
@@ -7393,7 +7420,7 @@ function renderAgentSurfaceLine(root) {
 
 // src/awareness-hook.ts
 import { fileURLToPath as fileURLToPath2 } from "node:url";
-import { spawnSync as spawnSync3 } from "node:child_process";
+import { spawnSync as spawnSync2 } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync as readFileSync3 } from "node:fs";
 import { dirname as dirname5 } from "node:path";
 import { homedir as homedir3 } from "node:os";
@@ -9321,13 +9348,13 @@ async function renderArrivalLine() {
 }
 
 // src/agent-run.ts
-import { spawnSync as spawnSync2 } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { homedir as homedir2, tmpdir } from "node:os";
 import { dirname as dirname4, join as join9, resolve as resolve7 } from "node:path";
 import { fileURLToPath } from "node:url";
 var cli = join9(dirname4(fileURLToPath(import.meta.url)), "..", "cli", "bundle", "ideaspaces.js");
 function call(args) {
-  const result = spawnSync2(process.execPath, [cli, ...args], {
+  const result = spawnSync(process.execPath, [cli, ...args], {
     cwd: tmpdir(),
     encoding: "utf8",
     timeout: 1200,
@@ -9378,7 +9405,7 @@ function changeLine(sessionId, projectDir) {
 }
 function markSeen(repoRoot, headSha) {
   try {
-    spawnSync3("git", ["-C", repoRoot, "update-ref", SEEN_REF, headSha], {
+    spawnSync2("git", ["-C", repoRoot, "update-ref", SEEN_REF, headSha], {
       encoding: "utf-8"
     });
   } catch {
@@ -9400,6 +9427,9 @@ async function main() {
     }
     if (manifest && manifest.status === "ok") {
       const arrivalLine = renderArrivalLine().catch(() => void 0);
+      const surfaceLine = renderAgentSurfaceLine(
+        process.env.CLAUDE_PLUGIN_ROOT || dirname5(dirname5(fileURLToPath2(import.meta.url)))
+      ).catch(() => "");
       const head = renderContentAwareness(manifest, { placement: "head" });
       const state = manifest.position.repoRoot && manifest.git ? {
         placement: "tail",
@@ -9408,9 +9438,9 @@ async function main() {
       } : null;
       const tail = renderContentTail(manifest, { state, change: openChange });
       const kind = renderKindLine(manifest) ?? "";
-      const arrival = await arrivalLine;
+      const [arrival, surface] = await Promise.all([arrivalLine, surfaceLine]);
       const join10 = joinParts;
-      const rest = join10(kind, READING_LINE, renderAgentSurfaceLine(process.env.CLAUDE_PLUGIN_ROOT || dirname5(dirname5(fileURLToPath2(import.meta.url)))), arrival ?? "", tail);
+      const rest = join10(kind, READING_LINE, surface, arrival ?? "", tail);
       let text = join10(head, rest);
       if (text.length > INLINE_BUDGET) {
         const slim = summarizeContract(manifest);

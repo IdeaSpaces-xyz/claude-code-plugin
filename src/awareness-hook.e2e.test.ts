@@ -308,6 +308,52 @@ describe("shipped in-process awareness hook", () => {
     expect(plainRun.stdout).not.toContain("Kind:");
   });
 
+  it("bounds a hanging capabilities probe, kills its child, and never probes outside an ideaspace", () => {
+    const space = tempDir("is-hook-hung-catalog-space-");
+    const home = tempDir("is-hook-hung-catalog-home-");
+    const outside = tempDir("is-hook-hung-catalog-outside-");
+    const pidFile = join(home, "capabilities.pid");
+    const fake = join(home, "hung-cli.cjs");
+    mkdirSync(join(space, "_agent"));
+    writeFileSync(join(space, "_agent/agreement.md"), "# Agreement\n\nA bounded startup fixture.\n");
+    writeFileSync(fake, `if (process.argv[2] !== 'capabilities' || process.argv[3] !== '--json') process.exit(99); require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid)); process.on('SIGTERM', () => {}); setInterval(() => {}, 1000);`);
+    const run = (cwd: string) => spawnSync(process.execPath, [HOOK], {
+      cwd,
+      env: { ...process.env, HOME: home, CLAUDE_PROJECT_DIR: cwd, CLAUDE_PLUGIN_ROOT: process.cwd(), IS_CLI_PATH: fake, IDEASPACES_DISABLE_RUN_RECORDS: "1" },
+      input: JSON.stringify({ session_id: "bounded-catalog", cwd }),
+      encoding: "utf8", timeout: 3500, killSignal: "SIGKILL",
+    });
+    try {
+      const start = performance.now();
+      const result = run(space);
+      // 1.2 s metadata deadline plus Node/local-render overhead, far below the hook's 20 s allowance.
+      expect(performance.now() - start).toBeLessThan(3000);
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toContain("Agent tools: plugin 0.10.2 · MCP 0.1.36 · CLI unknown (no answer in 1.2 s) · catalog 00eb3df2.");
+      const pid = Number(readFileSync(pidFile, "utf8"));
+      expect(() => process.kill(pid, 0), "the timed-out CLI must not be left running").toThrow();
+      rmSync(pidFile);
+      const silent = run(outside);
+      expect(silent.status).toBe(0);
+      expect(silent.stdout).toBe("");
+      expect(existsSync(pidFile)).toBe(false);
+      const changeFile = changeCachePath(home, outside);
+      mkdirSync(join(changeFile, ".."), { recursive: true });
+      writeFileSync(changeFile, JSON.stringify({ change_id: "chg_outside-catalog-0001", session_id: "bounded-catalog", opened_at: Date.now() }));
+      const changeOnly = run(outside);
+      expect(changeOnly.status).toBe(0);
+      expect(changeOnly.stdout.trim()).toMatch(/^Change open: chg_outside-catalog-0001[^\n]*$/);
+      expect(changeOnly.stdout).not.toContain("Agent tools:");
+      expect(existsSync(pidFile)).toBe(false);
+    } finally {
+      if (existsSync(pidFile)) {
+        try { process.kill(Number(readFileSync(pidFile, "utf8")), "SIGKILL"); } catch { /* already exited */ }
+      }
+    }
+  }, 15_000);
+
   it("keeps automatic SessionStart silent at the protocol floor", () => {
     const folder = tempDir("is-awareness-hook-floor-");
     const home = tempDir("is-awareness-hook-floor-home-");
